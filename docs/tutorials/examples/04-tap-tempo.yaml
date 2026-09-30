@@ -6,7 +6,7 @@ id: example-tap-tempo
 title: Tap Tempo
 language: en
 theme: south-signal-lab-default
-interaction_profile: HUMAN_FAST
+interaction_profile: HUMAN_NORMAL
 publication:
   intro_video: ../assets/video/south-signal-lab-intro.mp4
   outro_video: ../assets/video/south-signal-lab-outro.mp4

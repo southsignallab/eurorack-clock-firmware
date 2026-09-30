@@ -100,6 +100,8 @@ scenes:
             for (const auto& issue : parsed.issues) std::cerr << filename << ':' << issue.sourceLine << ": " << issue.reason << '\n';
             continue;
         }
+        ok &= require(parsed.story->interactionProfile == InteractionProfile::HumanNormal,
+                      std::string(filename) + " must use HUMAN_NORMAL publication pacing");
         const auto validation = validateStory(*parsed.story, tutorialRoot);
         if (!validation.empty()) {
             for (const auto& issue : validation) std::cerr << filename << ':' << issue.sourceLine << ": " << issue.reason << '\n';

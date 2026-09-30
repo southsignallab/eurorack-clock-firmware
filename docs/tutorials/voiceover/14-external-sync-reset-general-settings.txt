@@ -2,7 +2,9 @@
 
 [thoughtful] And because this is still a DIY project with hardware under verification, what I am showing here is the implemented firmware and user-interface behaviour. The electrical characteristics of the final hardware are still part of the hardware validation work.
 
-[conversational] Let us start with the controls themselves. From the Performance screen, hold TAP and press the encoder. That opens the main Settings menu. The first entry is General Settings. Press the encoder to open it.
+[conversational] Let us start with the controls themselves. From the Performance screen, hold TAP and press the encoder. That opens the main Settings menu, with General Settings selected first.
+
+Press the encoder once more to open General Settings.
 
 General Settings contains five areas: Mode and Clock, Inputs, Screensaver, Diagnostics, and Hardware. For external sync, reset and transport control, Inputs is the interesting one. Turn once to Inputs and press the encoder.
 
@@ -10,7 +12,7 @@ Here you can see INPUT 1, INPUT 2, and CONFIG. By default, INPUT 1 is assigned t
 
 [with a smile] Let us start with probably the most obvious example. Two Eurorack systems, both running a CLOCK. Naturally, the technically correct solution here is to own two CLOCKs.
 
-[conversational] CLOCK A is the master. Take a normal clock output from the first module and patch it into the SYNC input of the second one. On the second CLOCK, INPUT 1 is already assigned to SYNC, so we do not need to change that. What we do need to check is CONFIG.
+[conversational] CLOCK A is the master. On the second CLOCK, INPUT 1 is already assigned to SYNC, so we do not need to change that. What we do need to check is CONFIG.
 
 CONFIG contains the settings that define how external timing is interpreted. The first one is SOURCE. SOURCE answers a very specific question: who owns musical time? INTERNAL means CLOCK uses its own tempo. EXTERNAL means the assigned SYNC input provides the timing reference. And AUTO lets CLOCK run internally until a valid external clock is detected, then hands timing over automatically.
 
@@ -20,25 +22,73 @@ Watch the upper-left status. While CLOCK owns its own timing, it is shown as the
 
 The second valid pulse provides that first period. CLOCK can now calculate the external tempo, acquire lock, and align its external phase. The display changes to slave status and shows the lock indicator. The BPM display now represents the measured external tempo.
 
+Open Settings and General Settings again.
+
+Return to Inputs, then open CONFIG.
+
 The next setting is PPQN. PPQN means pulses per quarter note. CLOCK supports one, two, four, or twenty-four pulses per quarter note. This setting must match the device sending the clock. If the master sends one pulse for every quarter note, select one. If it sends twenty-four pulses per quarter note, select twenty-four. This is not just a display preference: CLOCK uses PPQN to convert the incoming pulse period into musical tempo.
 
 The next setting is EDGE. CLOCK can use either the rising or the falling transition of the incoming signal as the timing edge. For a conventional clock or gate signal, rising edge is normally the obvious choice and it is the factory setting. The important point is that CLOCK measures the selected edges. The width of the incoming pulse is not the clock period.
 
 Now let us look at what happens if the external clock disappears. That is controlled by LOSS. There are three options: STOP, FREE, and INTERNAL.
 
+Open LOSS, move it to STOP, and confirm the change.
+
+Back out to the Performance screen.
+
 STOP does exactly what it says. If CLOCK had external lock and the clock disappears for long enough, transport stops. That is useful when you want the slave system to stop together with its master.
+
+Open Settings and General Settings again.
+
+Return to Inputs, then open CONFIG.
+
+Move to LOSS, open it, choose FREE, and confirm.
+
+Back out to Performance.
 
 FREE means freewheel. CLOCK continues at the last valid external tempo after lock is lost. This can be useful when maintaining the tempo is more important than stopping immediately because of a missing pulse or disconnected source. The external lock disappears, but CLOCK keeps running at the last measured tempo.
 
+Open Settings and General Settings again.
+
+Return to Inputs, then open CONFIG.
+
+Move to LOSS, open it, choose INTERNAL, and confirm.
+
+Back out to Performance.
+
 INTERNAL returns to the configured internal fallback tempo. So the external source owns the tempo while it is available, but if it disappears, CLOCK continues using its own configured BPM. Which of these is right is really a patch decision.
+
+Open Settings and General Settings again.
+
+Return to Inputs, then open CONFIG.
+
+Move to LOSS, open it, restore FREE, and confirm.
+
+Back out to Performance.
 
 There is one important rule here. A manual STOP or PAUSE still wins. Incoming sync is not allowed to silently override an explicit transport decision you made on the front panel. So if I stop CLOCK myself, it stays stopped even though external clock pulses are still arriving. Sync controls timing; it does not take the front panel away from you.
 
 [conversational] Now let us use a different master. Imagine a full gate or CV sequencer with a clock output and a reset output. In this case the sequencer is the timing authority and CLOCK is the slave. Its clock output goes to the input assigned to SYNC. Its reset output goes to the input assigned to RESET.
 
+Start CLOCK, patch the external reset line into INPUT 2, and leave the reset generator low.
+
+Open Settings and General Settings.
+
+Return to Inputs, open CONFIG, and move down to RESET INPUT.
+
 The RESET behaviour is configured with RESET INPUT. There are two modes: TRIGGER and GATE. TRIGGER is the normal one-shot reset behaviour.
 
+Back out to the Performance screen.
+
 One accepted active edge resets the global musical phase once. Keeping the reset signal high does not repeatedly reset the clock. And RESET does not automatically start or stop transport. It resets phase. This is the mode I would normally use with a sequencer that provides a short reset pulse at the beginning of a song, pattern, or bar structure.
+
+Open Settings and General Settings again.
+
+Return to Inputs, then open CONFIG.
+
+Move to RESET INPUT, open it, choose GATE, and confirm.
+
+Back out to Performance.
 
 GATE behaves differently. Here, a high reset level becomes a held reset condition. When the reset input goes high, CLOCK resets and musical progression is held. When the signal goes low again, the hold is released and runtime continues from the new phase-zero boundary. That is useful when the external device treats reset as a level rather than a short event.
 
@@ -46,17 +96,65 @@ There is one further detail if you use Independent channels. The global reset st
 
 Now, sometimes a sequencer gives you more than clock and reset. It may provide a run gate, a start pulse, or a restart pulse. That is why the input roles are configurable.
 
+Stop transport, then open Settings.
+
+Open General Settings, then Inputs.
+
+Open INPUT 2 and move its role to RUN.
+
+Back out to Performance.
+
 For example, I can change INPUT 2 from RESET to RUN. RUN is level-controlled. After the input has been armed, HIGH means PLAY and LOW means STOP. That is useful with equipment that provides a dedicated run signal. CLOCK can follow the external clock on INPUT 1 and the transport state on INPUT 2.
+
+Open Settings and General Settings again.
+
+Return to Inputs and open INPUT 2.
+
+Move the role from RUN to START and confirm it.
+
+Back out to Performance.
 
 Alternatively, INPUT 2 can be START. A positive edge requests PLAY.
 
+Open Settings and General Settings again.
+
+Return to Inputs and open INPUT 2.
+
+Move the role from START to STOP and confirm it.
+
+Back out to Performance.
+
 STOP does the corresponding job for stopping transport.
+
+Open Settings and General Settings again.
+
+Return to Inputs and open INPUT 2.
+
+Move the role from STOP to RESTART and confirm it.
+
+Back out to Performance.
 
 RESTART is slightly different. A positive edge performs a deterministic stop-and-play transition from phase zero. That is useful when the master device gives you a song-start or restart pulse and you want CLOCK to restart its timing in a known state.
 
+Open Settings and General Settings again.
+
+Return to Inputs and open INPUT 2.
+
+Move the role from RESTART to TAP and confirm it.
+
+Back out to Performance.
+
 And TAP lets an external trigger act like the front-panel Tap Tempo button. The input pulse is passed to the normal Tap Tempo estimator using its captured timestamp. So a foot controller, trigger source, or another suitable pulse source can provide Tap Tempo without touching the module.
 
-Because there are only two inputs, these roles are deliberately choices rather than additional dedicated jacks. A typical setup might be SYNC plus RESET. Another might be SYNC plus RUN. Or SYNC plus RESTART. The right combination depends on what the master device actually provides.
+Open Settings and General Settings again.
+
+Return to Inputs and open INPUT 2.
+
+Restore INPUT 2 to RESET and confirm it.
+
+Open CONFIG and return to RESET INPUT.
+
+Because there are only two inputs, these roles are deliberately choices rather than additional dedicated jacks. A typical setup might be SYNC plus RESET. Another might be SYNC plus RUN. Or SYNC plus RESTART. The right combination depends on what the master device actually provides. Before moving on, I am restoring the normal SYNC plus RESET setup and putting RESET INPUT back to TRIGGER.
 
 There are a few more external-clock parameters in CONFIG that are worth understanding. FILTER rejects selected edges that arrive implausibly soon after the previous accepted edge. It is essentially a minimum inter-edge floor for rejecting glitches. The range is zero to five thousand microseconds. The important part is not to treat a bigger number as automatically better: if you make the filter too large, genuinely fast clock pulses can also be rejected.
 
@@ -65,6 +163,8 @@ Tempo smoothing is a separate setting. SMOOTHING controls how quickly valid chan
 Finally, TIMEOUT controls how long CLOCK waits before declaring the external clock lost. The configured range is two hundred to five thousand milliseconds. CLOCK also protects slow clocks from timing out between perfectly valid pulses, so the effective timeout is never shorter than roughly two expected pulse periods.
 
 So TIMEOUT and LOSS work together. TIMEOUT answers: when do we decide the clock is gone? LOSS answers: what should CLOCK do after that has happened?
+
+Back out to General Settings and open Diagnostics.
 
 There is also a very useful practical tool when setting all of this up: Diagnostics. Open General Settings, choose Diagnostics, and then Inputs. This page shows the digital comparator levels that the firmware actually sees on INPUT 1 and INPUT 2.
 
@@ -79,6 +179,8 @@ And PRE COUNT provides an optional silent count-in from one to sixty-four beats.
 The Screensaver section is mostly about the OLED rather than musical timing. You can select the idle animation and configure when it starts, when the display dims, and when the OLED is switched off. These stages are active while transport is stopped, and normal front-panel activity wakes the display again.
 
 Hardware contains two installation preferences. ENCODER DIR reverses the user-facing rotary direction if that feels more natural for your build. ORIENTATION rotates the complete display by one hundred and eighty degrees. Both settings are persistent and belong to the device itself rather than to a musical preset.
+
+Back out to the Performance screen.
 
 So the General Settings are really where CLOCK meets the rest of the system. For external sync in particular, I would remember three separate questions. What does the input do? That is the input role. Who owns musical time? That is SOURCE. And what happens if the external clock disappears? That is LOSS. Keeping those three questions separate makes the configuration much easier to understand.
 

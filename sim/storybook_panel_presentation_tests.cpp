@@ -165,7 +165,7 @@ scenes:
     if (focusEvent != nullptr) {
         const auto focused = timeline.stateAt(focusEvent->presentationUs + 200000ULL);
         ok &= require(focused.explicitFocus == FocusTarget::OledRegion && focused.focusWidth == 128 &&
-                      focused.focusHeight == 12 && focused.focusLabel == "Top bar" &&
+                      focused.focusHeight == 10 && focused.focusLabel == "Top bar" &&
                       focused.focusPlacement == FocusPlacement::Right,
                       "manual OLED focus must remain presentation-only for its requested duration");
         ok &= require(timeline.stateAt(focusEvent->presentationUs + 400000ULL).explicitFocus == FocusTarget::None,

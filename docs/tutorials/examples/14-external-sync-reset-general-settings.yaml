@@ -6,7 +6,7 @@ id: example-external-sync-reset-general-settings
 title: External Sync, Reset & General Settings
 language: en
 theme: south-signal-lab-default
-interaction_profile: HUMAN_FAST
+interaction_profile: HUMAN_NORMAL
 publication:
   intro_video: ../assets/video/south-signal-lab-intro.mp4
   outro_video: ../assets/video/south-signal-lab-outro.mp4
@@ -35,7 +35,7 @@ scenes:
         - wait_ms: 1100
         - beat:
             narration: s03
-            duration_ms: 2800
+            duration_ms: 5800
         - button:
             name: TAP
             state: down
@@ -48,17 +48,22 @@ scenes:
             placement: right
             label: GENERAL SETTINGS
             duration_ms: 0
+        - beat_end: s03
+
+        - beat:
+            narration: s44
+            duration_ms: 3600
         - encoder_push: {}
         - focus:
             target: oled_settings_rows
             placement: right
             label: GENERAL SETTINGS
             duration_ms: 0
-        - beat_end: s03
+        - beat_end: s44
 
         - beat:
             narration: s04
-            duration_ms: 1800
+            duration_ms: 5600
         - encoder:
             direction: clockwise
             detents: 1
@@ -77,7 +82,7 @@ scenes:
 
         - beat:
             narration: s05
-            duration_ms: 4100
+            duration_ms: 14500
         - encoder:
             direction: clockwise
             detents: 1
@@ -112,7 +117,7 @@ scenes:
       actions:
         - beat:
             narration: s07
-            duration_ms: 1800
+            duration_ms: 5600
         - encoder:
             direction: clockwise
             detents: 1
@@ -146,7 +151,7 @@ scenes:
 
         - beat:
             narration: s10
-            duration_ms: 3200
+            duration_ms: 10000
         - button:
             name: STOP_BACK
         - button:
@@ -186,8 +191,8 @@ scenes:
         - beat_end: s11
 
         - beat:
-            narration: s12
-            duration_ms: 6300
+            narration: s45
+            duration_ms: 9000
         - button:
             name: TAP
             state: down
@@ -196,6 +201,11 @@ scenes:
             name: TAP
             state: up
         - encoder_push: {}
+        - beat_end: s45
+
+        - beat:
+            narration: s46
+            duration_ms: 11200
         - encoder:
             direction: clockwise
             detents: 1
@@ -204,6 +214,11 @@ scenes:
             direction: clockwise
             detents: 2
         - encoder_push: {}
+        - beat_end: s46
+
+        - beat:
+            narration: s12
+            duration_ms: 2600
         - encoder:
             direction: clockwise
             detents: 1
@@ -216,7 +231,7 @@ scenes:
 
         - beat:
             narration: s13
-            duration_ms: 900
+            duration_ms: 2500
         - encoder:
             direction: clockwise
             detents: 1
@@ -229,7 +244,7 @@ scenes:
 
         - beat:
             narration: s14
-            duration_ms: 900
+            duration_ms: 2500
         - encoder:
             direction: clockwise
             detents: 1
@@ -241,13 +256,18 @@ scenes:
         - beat_end: s14
 
         - beat:
-            narration: s15
-            duration_ms: 6000
+            narration: s47
+            duration_ms: 9000
         - encoder_push: {}
         - encoder:
             direction: counter_clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s47
+
+        - beat:
+            narration: s48
+            duration_ms: 6600
         - button:
             name: STOP_BACK
         - button:
@@ -256,6 +276,11 @@ scenes:
             name: STOP_BACK
         - button:
             name: STOP_BACK
+        - beat_end: s48
+
+        - beat:
+            narration: s15
+            duration_ms: 5000
         - sync_generator:
             state: hold
         - wait_until:
@@ -272,8 +297,8 @@ scenes:
         - beat_end: s15
 
         - beat:
-            narration: s16
-            duration_ms: 12900
+            narration: s49
+            duration_ms: 9000
         - button:
             name: TAP
             state: down
@@ -282,6 +307,11 @@ scenes:
             name: TAP
             state: up
         - encoder_push: {}
+        - beat_end: s49
+
+        - beat:
+            narration: s50
+            duration_ms: 11200
         - encoder:
             direction: clockwise
             detents: 1
@@ -290,6 +320,11 @@ scenes:
             direction: clockwise
             detents: 2
         - encoder_push: {}
+        - beat_end: s50
+
+        - beat:
+            narration: s51
+            duration_ms: 11500
         - encoder:
             direction: clockwise
             detents: 3
@@ -298,6 +333,11 @@ scenes:
             direction: clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s51
+
+        - beat:
+            narration: s52
+            duration_ms: 6600
         - button:
             name: STOP_BACK
         - button:
@@ -306,6 +346,11 @@ scenes:
             name: STOP_BACK
         - button:
             name: STOP_BACK
+        - beat_end: s52
+
+        - beat:
+            narration: s16
+            duration_ms: 6500
         - sync_generator:
             state: run
         - wait_until:
@@ -329,8 +374,8 @@ scenes:
         - beat_end: s16
 
         - beat:
-            narration: s17
-            duration_ms: 12900
+            narration: s53
+            duration_ms: 9000
         - button:
             name: TAP
             state: down
@@ -339,6 +384,11 @@ scenes:
             name: TAP
             state: up
         - encoder_push: {}
+        - beat_end: s53
+
+        - beat:
+            narration: s54
+            duration_ms: 11200
         - encoder:
             direction: clockwise
             detents: 1
@@ -347,6 +397,11 @@ scenes:
             direction: clockwise
             detents: 2
         - encoder_push: {}
+        - beat_end: s54
+
+        - beat:
+            narration: s55
+            duration_ms: 11500
         - encoder:
             direction: clockwise
             detents: 3
@@ -355,6 +410,11 @@ scenes:
             direction: clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s55
+
+        - beat:
+            narration: s56
+            duration_ms: 6600
         - button:
             name: STOP_BACK
         - button:
@@ -363,6 +423,11 @@ scenes:
             name: STOP_BACK
         - button:
             name: STOP_BACK
+        - beat_end: s56
+
+        - beat:
+            narration: s17
+            duration_ms: 6500
         - sync_generator:
             state: run
         - wait_until:
@@ -383,8 +448,8 @@ scenes:
         - beat_end: s17
 
         - beat:
-            narration: s18
-            duration_ms: 12600
+            narration: s57
+            duration_ms: 9000
         - button:
             name: TAP
             state: down
@@ -393,6 +458,11 @@ scenes:
             name: TAP
             state: up
         - encoder_push: {}
+        - beat_end: s57
+
+        - beat:
+            narration: s58
+            duration_ms: 11200
         - encoder:
             direction: clockwise
             detents: 1
@@ -401,6 +471,11 @@ scenes:
             direction: clockwise
             detents: 2
         - encoder_push: {}
+        - beat_end: s58
+
+        - beat:
+            narration: s59
+            duration_ms: 11500
         - encoder:
             direction: clockwise
             detents: 3
@@ -409,6 +484,11 @@ scenes:
             direction: counter_clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s59
+
+        - beat:
+            narration: s60
+            duration_ms: 6600
         - button:
             name: STOP_BACK
         - button:
@@ -417,6 +497,11 @@ scenes:
             name: STOP_BACK
         - button:
             name: STOP_BACK
+        - beat_end: s60
+
+        - beat:
+            narration: s18
+            duration_ms: 7000
         - sync_generator:
             state: run
         - wait_until:
@@ -449,14 +534,19 @@ scenes:
       subtitle: Configure RESET, then compare TRIGGER and GATE behaviour.
       actions:
         - beat:
-            narration: s20
-            duration_ms: 8000
+            narration: s61
+            duration_ms: 5400
         - button:
             name: PLAY
         - rst_cable:
             state: connect
         - rst_generator:
             state: hold
+        - beat_end: s61
+
+        - beat:
+            narration: s62
+            duration_ms: 9000
         - button:
             name: TAP
             state: down
@@ -465,6 +555,11 @@ scenes:
             name: TAP
             state: up
         - encoder_push: {}
+        - beat_end: s62
+
+        - beat:
+            narration: s63
+            duration_ms: 11200
         - encoder:
             direction: clockwise
             detents: 1
@@ -473,6 +568,11 @@ scenes:
             direction: clockwise
             detents: 2
         - encoder_push: {}
+        - beat_end: s63
+
+        - beat:
+            narration: s20
+            duration_ms: 3600
         - encoder:
             direction: clockwise
             detents: 4
@@ -484,16 +584,21 @@ scenes:
         - beat_end: s20
 
         - beat:
+            narration: s64
+            duration_ms: 6600
+        - button:
+            name: STOP_BACK
+        - button:
+            name: STOP_BACK
+        - button:
+            name: STOP_BACK
+        - button:
+            name: STOP_BACK
+        - beat_end: s64
+
+        - beat:
             narration: s21
-            duration_ms: 3400
-        - button:
-            name: STOP_BACK
-        - button:
-            name: STOP_BACK
-        - button:
-            name: STOP_BACK
-        - button:
-            name: STOP_BACK
+            duration_ms: 4000
         - rst_pulse: {}
         - assert:
             transport: playing
@@ -511,8 +616,8 @@ scenes:
         - beat_end: s21
 
         - beat:
-            narration: s22
-            duration_ms: 12600
+            narration: s65
+            duration_ms: 9000
         - button:
             name: TAP
             state: down
@@ -521,6 +626,11 @@ scenes:
             name: TAP
             state: up
         - encoder_push: {}
+        - beat_end: s65
+
+        - beat:
+            narration: s66
+            duration_ms: 11200
         - encoder:
             direction: clockwise
             detents: 1
@@ -529,6 +639,11 @@ scenes:
             direction: clockwise
             detents: 2
         - encoder_push: {}
+        - beat_end: s66
+
+        - beat:
+            narration: s67
+            duration_ms: 12000
         - encoder:
             direction: clockwise
             detents: 4
@@ -537,6 +652,11 @@ scenes:
             direction: clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s67
+
+        - beat:
+            narration: s68
+            duration_ms: 6600
         - button:
             name: STOP_BACK
         - button:
@@ -545,6 +665,11 @@ scenes:
             name: STOP_BACK
         - button:
             name: STOP_BACK
+        - beat_end: s68
+
+        - beat:
+            narration: s22
+            duration_ms: 6500
         - rst_generator:
             state: run
         - scope:
@@ -586,8 +711,8 @@ scenes:
       subtitle: Reassign INPUT 2 and exercise the external transport roles.
       actions:
         - beat:
-            narration: s25
-            duration_ms: 10300
+            narration: s69
+            duration_ms: 7600
         - button:
             name: STOP_BACK
         - assert:
@@ -599,6 +724,11 @@ scenes:
         - button:
             name: TAP
             state: up
+        - beat_end: s69
+
+        - beat:
+            narration: s70
+            duration_ms: 11000
         - encoder_push: {}
         - encoder:
             direction: clockwise
@@ -607,17 +737,32 @@ scenes:
         - encoder:
             direction: clockwise
             detents: 1
+        - beat_end: s70
+
+        - beat:
+            narration: s71
+            duration_ms: 9000
         - encoder_push: {}
         - encoder:
             direction: clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s71
+
+        - beat:
+            narration: s72
+            duration_ms: 5200
         - button:
             name: STOP_BACK
         - button:
             name: STOP_BACK
         - button:
             name: STOP_BACK
+        - beat_end: s72
+
+        - beat:
+            narration: s25
+            duration_ms: 6500
         - rst_generator:
             state: run
         - wait_until:
@@ -637,7 +782,7 @@ scenes:
         - beat_end: s25
 
         - beat:
-            narration: s26
+            narration: s73
             duration_ms: 9000
         - button:
             name: TAP
@@ -647,6 +792,11 @@ scenes:
             name: TAP
             state: up
         - encoder_push: {}
+        - beat_end: s73
+
+        - beat:
+            narration: s74
+            duration_ms: 11000
         - encoder:
             direction: clockwise
             detents: 1
@@ -655,16 +805,31 @@ scenes:
             direction: clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s74
+
+        - beat:
+            narration: s75
+            duration_ms: 5600
         - encoder:
             direction: clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s75
+
+        - beat:
+            narration: s76
+            duration_ms: 5200
         - button:
             name: STOP_BACK
         - button:
             name: STOP_BACK
         - button:
             name: STOP_BACK
+        - beat_end: s76
+
+        - beat:
+            narration: s26
+            duration_ms: 4000
         - rst_pulse: {}
         - wait_until:
             transport: playing
@@ -677,7 +842,7 @@ scenes:
         - beat_end: s26
 
         - beat:
-            narration: s27
+            narration: s77
             duration_ms: 9000
         - button:
             name: TAP
@@ -687,6 +852,11 @@ scenes:
             name: TAP
             state: up
         - encoder_push: {}
+        - beat_end: s77
+
+        - beat:
+            narration: s78
+            duration_ms: 11000
         - encoder:
             direction: clockwise
             detents: 1
@@ -695,16 +865,31 @@ scenes:
             direction: clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s78
+
+        - beat:
+            narration: s79
+            duration_ms: 5600
         - encoder:
             direction: clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s79
+
+        - beat:
+            narration: s80
+            duration_ms: 5200
         - button:
             name: STOP_BACK
         - button:
             name: STOP_BACK
         - button:
             name: STOP_BACK
+        - beat_end: s80
+
+        - beat:
+            narration: s27
+            duration_ms: 4000
         - rst_pulse: {}
         - wait_until:
             transport: stopped
@@ -717,8 +902,8 @@ scenes:
         - beat_end: s27
 
         - beat:
-            narration: s28
-            duration_ms: 9500
+            narration: s81
+            duration_ms: 9000
         - button:
             name: TAP
             state: down
@@ -727,6 +912,11 @@ scenes:
             name: TAP
             state: up
         - encoder_push: {}
+        - beat_end: s81
+
+        - beat:
+            narration: s82
+            duration_ms: 11000
         - encoder:
             direction: clockwise
             detents: 1
@@ -735,16 +925,31 @@ scenes:
             direction: clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s82
+
+        - beat:
+            narration: s83
+            duration_ms: 5600
         - encoder:
             direction: clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s83
+
+        - beat:
+            narration: s84
+            duration_ms: 5200
         - button:
             name: STOP_BACK
         - button:
             name: STOP_BACK
         - button:
             name: STOP_BACK
+        - beat_end: s84
+
+        - beat:
+            narration: s28
+            duration_ms: 5000
         - button:
             name: PLAY
         - rst_pulse: {}
@@ -758,8 +963,8 @@ scenes:
         - beat_end: s28
 
         - beat:
-            narration: s29
-            duration_ms: 10000
+            narration: s85
+            duration_ms: 9000
         - button:
             name: TAP
             state: down
@@ -768,6 +973,11 @@ scenes:
             name: TAP
             state: up
         - encoder_push: {}
+        - beat_end: s85
+
+        - beat:
+            narration: s86
+            duration_ms: 11000
         - encoder:
             direction: clockwise
             detents: 1
@@ -776,16 +986,31 @@ scenes:
             direction: clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s86
+
+        - beat:
+            narration: s87
+            duration_ms: 5600
         - encoder:
             direction: clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s87
+
+        - beat:
+            narration: s88
+            duration_ms: 5200
         - button:
             name: STOP_BACK
         - button:
             name: STOP_BACK
         - button:
             name: STOP_BACK
+        - beat_end: s88
+
+        - beat:
+            narration: s29
+            duration_ms: 5500
         - rst_pulse: {}
         - wait_ms: 500
         - rst_pulse: {}
@@ -797,8 +1022,8 @@ scenes:
         - beat_end: s29
 
         - beat:
-            narration: s30
-            duration_ms: 12000
+            narration: s89
+            duration_ms: 9000
         - button:
             name: TAP
             state: down
@@ -807,6 +1032,11 @@ scenes:
             name: TAP
             state: up
         - encoder_push: {}
+        - beat_end: s89
+
+        - beat:
+            narration: s90
+            duration_ms: 11000
         - encoder:
             direction: clockwise
             detents: 1
@@ -815,6 +1045,11 @@ scenes:
             direction: clockwise
             detents: 1
         - encoder_push: {}
+        - beat_end: s90
+
+        - beat:
+            narration: s91
+            duration_ms: 6500
         - encoder:
             direction: counter_clockwise
             detents: 5
@@ -825,6 +1060,11 @@ scenes:
             placement: right
             label: INPUT 1 = SYNC · INPUT 2 = RESET
             duration_ms: 0
+        - beat_end: s91
+
+        - beat:
+            narration: s92
+            duration_ms: 12000
         - encoder:
             direction: clockwise
             detents: 1
@@ -833,6 +1073,11 @@ scenes:
             direction: clockwise
             detents: 4
         - encoder_push: {}
+        - beat_end: s92
+
+        - beat:
+            narration: s30
+            duration_ms: 5600
         - encoder:
             direction: counter_clockwise
             detents: 1
@@ -849,7 +1094,7 @@ scenes:
       actions:
         - beat:
             narration: s31
-            duration_ms: 900
+            duration_ms: 2500
         - encoder:
             direction: clockwise
             detents: 1
@@ -862,7 +1107,7 @@ scenes:
 
         - beat:
             narration: s32
-            duration_ms: 900
+            duration_ms: 2500
         - encoder:
             direction: clockwise
             detents: 1
@@ -875,7 +1120,7 @@ scenes:
 
         - beat:
             narration: s33
-            duration_ms: 900
+            duration_ms: 2500
         - encoder:
             direction: clockwise
             detents: 1
@@ -899,8 +1144,8 @@ scenes:
       subtitle: Use Diagnostics before debugging the rest of the patch.
       actions:
         - beat:
-            narration: s35
-            duration_ms: 5100
+            narration: s93
+            duration_ms: 9200
         - button:
             name: STOP_BACK
         - button:
@@ -909,6 +1154,11 @@ scenes:
             direction: clockwise
             detents: 2
         - encoder_push: {}
+        - beat_end: s93
+
+        - beat:
+            narration: s35
+            duration_ms: 7500
         - encoder_push: {}
         - rst_generator:
             state: run
@@ -934,7 +1184,7 @@ scenes:
 
         - beat:
             narration: s37
-            duration_ms: 2300
+            duration_ms: 7200
         - button:
             name: STOP_BACK
         - encoder:
@@ -950,7 +1200,7 @@ scenes:
 
         - beat:
             narration: s38
-            duration_ms: 3000
+            duration_ms: 9500
         - button:
             name: STOP_BACK
         - button:
@@ -968,7 +1218,7 @@ scenes:
 
         - beat:
             narration: s39
-            duration_ms: 1100
+            duration_ms: 3200
         - encoder:
             direction: clockwise
             detents: 5
@@ -982,7 +1232,7 @@ scenes:
 
         - beat:
             narration: s40
-            duration_ms: 2400
+            duration_ms: 7500
         - button:
             name: STOP_BACK
         - encoder:
@@ -998,7 +1248,7 @@ scenes:
 
         - beat:
             narration: s41
-            duration_ms: 3800
+            duration_ms: 7500
         - button:
             name: STOP_BACK
         - encoder:
@@ -1010,13 +1260,18 @@ scenes:
             placement: right
             label: ENCODER DIR · ORIENTATION
             duration_ms: 0
-        - button:
-            name: STOP_BACK
-        - button:
-            name: STOP_BACK
-        - button:
-            name: STOP_BACK
         - beat_end: s41
+
+        - beat:
+            narration: s94
+            duration_ms: 5200
+        - button:
+            name: STOP_BACK
+        - button:
+            name: STOP_BACK
+        - button:
+            name: STOP_BACK
+        - beat_end: s94
 
   - callout:
       type: recipe

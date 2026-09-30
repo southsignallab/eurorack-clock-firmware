@@ -26,11 +26,19 @@ For a lot of patches, that already removes the need for a separate clock multipl
 
 [matter-of-fact] And because those outputs come from the same engine, transport, phase and reset behaviour remain consistent across all of them.
 
+Stop the clock, open the operating view, and use the TAP modifier to move to the topology selector.
+
+Turn once to Divider Bank and press the encoder to select it.
+
 [short pause] The next mode is Divider Bank.
 
 Here, the eight outputs provide different divisions of the master clock.
 
 So if I need slower clocks for percussion, envelopes, sequencers or resets, I can get them directly from CLOCK instead of patching through another divider module.
+
+Stop again, open the operating view, and return to the topology selector.
+
+Turn once to Independent, select it, and open the channel overview.
 
 [short pause] The most flexible mode is Independent.
 
@@ -42,17 +50,31 @@ But the channels do not all have to run at the same rate. They can use different
 
 That makes polymetric and polyrhythmic patches quite straightforward without turning the eight outputs into unrelated free-running clocks.
 
+Open channel two settings and use the TAP modifier to move to its mode selector.
+
+Turn once to Euclid and press the encoder to select it.
+
 [short pause] Another channel can run a Euclidean rhythm.
 
 Instead of producing every pulse, it distributes a number of hits across a pattern.
 
 That gives you structured rhythmic patterns very quickly, and they can run alongside normal Clock channels.
 
+Stop playback, open the channel overview, move to channel three, and select it.
+
+Open channel three settings, use the TAP modifier, and choose Sequencer.
+
+Enter the sequencer editor, move to the fourth step, and place a gate there.
+
 [short pause] And another channel can use the gate sequencer.
 
 Here, I can define where gates occur in a pattern rather than simply deriving another clock rate.
 
 So I might have a straight clock on one output, a slower clock on another, a Euclidean pattern on a third and a programmed gate sequence on a fourth. And the remaining outputs are still available.
+
+Back out of the sequencer editor and the channel settings.
+
+Return to the channel overview.
 
 [short pause] That is really the main idea behind CLOCK.
 

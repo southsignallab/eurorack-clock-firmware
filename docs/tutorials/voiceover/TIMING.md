@@ -41,6 +41,10 @@ These defaults can be changed locally without modifying source. The generated re
 
 The measured reference delivery — roughly 15 seconds for the opening, 16 seconds for the sign-off and about **195 spoken words/minute** overall — remains useful before TTS exists. It is not allowed to override a real rendered duration. Audio Tags, punctuation, breathing and the selected voice/model can all materially change the result.
 
+## Interaction pacing contract
+
+All editable publication examples use **`HUMAN_NORMAL`**. `HUMAN_FAST` remains available for engineering previews, but it is not a publication default. Long UI workflows are split into smaller narration beats so a spoken segment does not have to carry an entire Settings traversal, mode change and result demonstration at once. Authored beat durations are therefore action-safe minimums; measured TTS duration plus headroom may extend them, never shorten them.
+
 ## Stable narration IDs
 
 [`segments.json`](segments.json) groups one or more adjacent script paragraphs under stable IDs (`s01`, `s02`, ...). Each ID occurs exactly once in the matching Story YAML: directly on a bounded non-tutorial scene or on one explicit tutorial `beat`, closed by the matching `beat_end`.

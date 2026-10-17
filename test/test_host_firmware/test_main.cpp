@@ -567,6 +567,7 @@ int main() {
     RUN_TEST(testDefaultsTemplatesAndServices);
     RUN_TEST(testPersistentLayoutV1ForwardCompatibilityContract);
     RUN_TEST(testCustomGrooveStorePreservesRegionsAndRejectsCorruption);
+    RUN_TEST(testCustomGrooveUiDefersFlashUntilTransportStops);
     RUN_TEST(testPersistentStorageTransactionalUpdate);
     RUN_TEST(testPersistentStorageAndStateService);
     RUN_TEST(testPersistentV3Migration);

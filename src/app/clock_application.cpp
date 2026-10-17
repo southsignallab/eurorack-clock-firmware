@@ -56,7 +56,7 @@ ClockApplication::ClockApplication()
       eggJourneyGame_(display_, controlPanel_, gateOutputs_, eggJourneyLeaderboard_),
       beatknecht_(display_, controlPanel_, gateOutputs_),
       persistentState_(persistentStorage_),
-      customGrooveStore_(persistentStorage_),
+      customGrooveStore_(persistentStorage_, true),
       sequencerPatternStore_(persistentStorage_),
       sequencerStepStore_(persistentStorage_),
       engine_(gateOutputs_),
@@ -206,6 +206,8 @@ void ClockApplication::runOnce() {
     // erased or programmed. Never start a persistence commit while PLAYING;
     // queued CURRENT/preset writes are flushed once transport is PAUSED/STOPPED.
     const bool allowFlashWrite = state_.transport != TransportState::Playing;
+    // Flush grooves before CURRENT to avoid durable references to unwritten slots.
+    (void)customGrooveStore_.service(allowFlashWrite);
     persistentState_.service(nowMs, allowFlashWrite);
     (void)sequencerPatternStore_.service(nowMs, allowFlashWrite);
     (void)sequencerStepStore_.service(nowMs, allowFlashWrite);

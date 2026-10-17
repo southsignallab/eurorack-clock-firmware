@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 
@@ -30,7 +31,10 @@ public:
     static constexpr std::size_t kStorageOffset = 3136U;
 
     /** @brief Constructs the fixed-record store around the shared persistent image. */
-    explicit CustomGrooveStore(hal::PersistentStorage& storage);
+    explicit CustomGrooveStore(hal::PersistentStorage& storage, bool deferredWrites = false);
+
+    /** @brief Commits queued groove mutations only when transport permits Flash writes. */
+    bool service(bool allowFlashWrite);
 
     /** @brief Loads one validated slot; returns false for empty/corrupt/out-of-range slots. */
     bool load(
@@ -39,10 +43,10 @@ public:
         char* name = nullptr,
         std::size_t nameSize = 0U) const;
 
-    /** @brief Saves one named validated pattern with CRC protection. */
+    /** @brief Accepts a named validated pattern; production stores defer Flash until safe. */
     bool save(std::uint8_t slotIndex, const char* name, const CustomGroovePattern& pattern);
 
-    /** @brief Erases one slot back to the Flash-erased representation. */
+    /** @brief Accepts one slot deletion; deferred readers see it immediately. */
     bool clear(std::uint8_t slotIndex);
 
     /** @brief Returns true when a slot contains one valid current-format record. */
@@ -61,7 +65,13 @@ private:
     /** @brief Copies and sanitizes one bounded persistent Custom Groove name. */
     static void normalizeName(const char* source, char* destination);
 
+    /** @brief Writes a validated/erased record immediately or queues it for a safe commit. */
+    bool writeRecord(std::uint8_t slotIndex, const std::array<std::uint8_t, kRecordBytes>& record);
+
     hal::PersistentStorage& storage_;
+    bool deferredWrites_ = false;
+    std::array<std::array<std::uint8_t, kRecordBytes>, kCustomGrooveSlotCount> queuedRecords_{};
+    std::array<bool, kCustomGrooveSlotCount> queuedSlots_{};
 };
 
 static_assert(

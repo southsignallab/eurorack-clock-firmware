@@ -16,6 +16,9 @@
 #include <string>
 
 #include "domain/clock_types.h"
+#include "hal/persistent_storage.h"
+#include "services/custom_groove_store.h"
+#include <cstring>
 #include "hal/oled_display.h"
 #include "panel_layout.h"
 #include "scope_timeline.h"
@@ -31,6 +34,54 @@ int fail(const char* const message) {
 }  // namespace
 
 int runStaticContracts() {
+    // Issue #5: all Custom Groove mutations remain RAM-visible while PLAYING.
+    // A STOP/PAUSE service pass must commit every affected slot atomically.
+    {
+        hal::PersistentStorage::resetForTest();
+        hal::PersistentStorage storage;
+        services::CustomGrooveStore store(storage, true);
+        CustomGroovePattern pattern{};
+        pattern.length = 4U;
+        pattern.offsets256[1] = 32;
+        const std::uint32_t before = hal::PersistentStorage::writeCommitCountForTest();
+        if (!store.save(0U, "FIRST", pattern) ||
+            !store.save(1U, "SECOND", pattern) ||
+            !store.save(0U, "RENAMED", pattern) || !store.clear(1U) ||
+            !store.service(false) ||
+            hal::PersistentStorage::writeCommitCountForTest() != before ||
+            !store.exists(0U) || store.exists(1U)) {
+            return fail("groove SAVE/RENAME/DELETE must not touch Flash during PLAY");
+        }
+        char name[services::CustomGrooveStore::kNameLength + 1U]{};
+        store.name(0U, name, sizeof(name));
+        services::CustomGrooveStore durableReader(storage);
+        if (std::strcmp(name, "RENAMED") != 0 || durableReader.exists(0U)) {
+            return fail("queued grooves must be visible only to their owning runtime");
+        }
+        hal::PersistentStorage::failNextWriteForTest();
+        if (store.service(true) ||
+            hal::PersistentStorage::writeCommitCountForTest() != before ||
+            !store.exists(0U) || !store.service(true) ||
+            hal::PersistentStorage::writeCommitCountForTest() != before + 1U) {
+            return fail("failed groove commit must retain every queued change for retry");
+        }
+        if (!durableReader.exists(0U) || durableReader.exists(1U)) {
+            return fail("safe flush must commit queued groove changes");
+        }
+        durableReader.name(0U, name, sizeof(name));
+        if (std::strcmp(name, "RENAMED") != 0) {
+            return fail("groove rename must survive a fresh reader after safe flush");
+        }
+        if (!store.clear(0U) || !store.save(2U, "THIRD", pattern) ||
+            !store.service(false) ||
+            hal::PersistentStorage::writeCommitCountForTest() != before + 1U ||
+            !store.service(true) ||
+            hal::PersistentStorage::writeCommitCountForTest() != before + 2U ||
+            durableReader.exists(0U) || !durableReader.exists(2U)) {
+            return fail("safe flush must preserve queued delete and another slot save");
+        }
+    }
+
 
     // The virtual OLED must follow the same transfer transform as hardware.
     // CLOCK keeps the controller at its proven A1/C8 orientation and rotates the

@@ -38,7 +38,46 @@ std::uint32_t read32(const std::uint8_t* const source) {
 }
 }  // namespace
 
-CustomGrooveStore::CustomGrooveStore(hal::PersistentStorage& storage) : storage_(storage) {}
+CustomGrooveStore::CustomGrooveStore(
+    hal::PersistentStorage& storage, const bool deferredWrites)
+    : storage_(storage), deferredWrites_(deferredWrites) {}
+
+bool CustomGrooveStore::writeRecord(
+    const std::uint8_t slotIndex, const std::array<std::uint8_t, kRecordBytes>& record) {
+    if (!deferredWrites_) {
+        return storage_.writeBytes(slotOffset(slotIndex), record.data(), record.size());
+    }
+    queuedRecords_[slotIndex] = record;
+    queuedSlots_[slotIndex] = true;
+    return true;
+}
+
+bool CustomGrooveStore::service(const bool allowFlashWrite) {
+    if (!deferredWrites_ || !allowFlashWrite) {
+        return true;
+    }
+    if (std::none_of(queuedSlots_.begin(), queuedSlots_.end(), [](const bool queued) {
+            return queued;
+        })) {
+        return true;
+    }
+    if (!storage_.beginUpdate()) {
+        return false;
+    }
+    for (std::uint8_t index = 0U; index < kCustomGrooveSlotCount; ++index) {
+        if (queuedSlots_[index] && !storage_.stageBytes(
+            slotOffset(index), queuedRecords_[index].data(), kRecordBytes)) {
+            storage_.cancelUpdate();
+            return false;
+        }
+    }
+    if (!storage_.commitUpdate()) {
+        storage_.cancelUpdate();
+        return false;
+    }
+    queuedSlots_.fill(false);
+    return true;
+}
 
 std::size_t CustomGrooveStore::slotOffset(const std::uint8_t slotIndex) {
     return kStorageOffset + static_cast<std::size_t>(slotIndex) * kRecordBytes;
@@ -67,7 +106,10 @@ bool CustomGrooveStore::load(
         return false;
     }
     std::array<std::uint8_t, kRecordBytes> record{};
-    if (!storage_.readBytes(slotOffset(slotIndex), record.data(), record.size()) ||
+    const bool recordAvailable = queuedSlots_[slotIndex]
+        ? (record = queuedRecords_[slotIndex], true)
+        : storage_.readBytes(slotOffset(slotIndex), record.data(), record.size());
+    if (!recordAvailable ||
         read32(record.data()) != kMagic || record[4] != kVersion ||
         read32(record.data() + kCrcOffset) != calculateCrc32(record.data(), kCrcOffset)) {
         return false;
@@ -125,7 +167,7 @@ bool CustomGrooveStore::save(
         record[kOffsetsOffset + index] = static_cast<std::uint8_t>(pattern.offsets256[index]);
     }
     write32(record.data() + kCrcOffset, calculateCrc32(record.data(), kCrcOffset));
-    return storage_.writeBytes(slotOffset(slotIndex), record.data(), record.size());
+    return writeRecord(slotIndex, record);
 }
 
 bool CustomGrooveStore::clear(const std::uint8_t slotIndex) {
@@ -134,7 +176,7 @@ bool CustomGrooveStore::clear(const std::uint8_t slotIndex) {
     }
     std::array<std::uint8_t, kRecordBytes> erased{};
     erased.fill(0xFFU);
-    return storage_.writeBytes(slotOffset(slotIndex), erased.data(), erased.size());
+    return writeRecord(slotIndex, erased);
 }
 
 bool CustomGrooveStore::exists(const std::uint8_t slotIndex) const {

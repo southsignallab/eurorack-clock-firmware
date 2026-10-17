@@ -10,6 +10,14 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 ## [Unreleased]
 
+### Fix: safe Custom Groove persistence during transport (#5)
+
+- Queue Custom Groove save, rename and delete mutations in bounded RAM while transport is PLAYING; do not erase/program MCU Flash from those UI handlers.
+- Commit all queued Groove records in one A/B storage update when PAUSED/STOPPED, before committing CURRENT state references to the same slots.
+- Keep uncommitted Groove changes visible to the editor and retry a failed Flash transaction without discarding accepted changes.
+- Add native UI save/rename/delete regression coverage and headless storage-transaction regressions.
+
+
 ### Storybook publication assets, narration and repository hygiene
 
 - Expand the editable teaching set from thirteen to fourteen examples with **External Sync, Reset & General Settings**, a scenario-driven walkthrough that atomically demonstrates Settings entry, configurable input roles, AUTO lock acquisition, PPQN/EDGE, all three loss policies, TRIGGER/GATE reset semantics, RUN/START/STOP/RESTART/TAP transport roles, FILTER/SMOOTHING/TIMEOUT, Diagnostics, Mode & Clock, Screensaver and Hardware preferences.

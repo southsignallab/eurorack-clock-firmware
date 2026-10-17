@@ -257,6 +257,84 @@ void testCustomGrooveEditorControllerWorkflow() {
     CHECK_EQ(state.channels[0].common.groove.preset, GroovePreset::Custom);
 }
 
+void testCustomGrooveUiDefersFlashUntilTransportStops() {
+    resetFakes();
+    prepareDisplaySuccess();
+    hal::OledDisplay display;
+    CHECK(display.begin());
+    ClockState state = makeDefaultState();
+    state.operatingMode = OperatingMode::UnifiedClock;
+    state.transport = TransportState::Playing;
+    hal::GateOutputDriver gates;
+    gates.beginDisabled();
+    engine::ClockEngine engine(gates);
+    engine.begin(state);
+    hal::PersistentStorage::resetForTest();
+    hal::PersistentStorage storage;
+    services::PersistentStateService persistentState(storage);
+    persistentState.begin();
+    services::CustomGrooveStore grooveStore(storage, true);
+    ui::UiRenderer renderer(display, persistentState, grooveStore);
+    ui::UiController controller(state, engine, renderer, persistentState, grooveStore);
+    std::uint32_t now = 100U;
+
+    // Exercise production UI actions with the production store's deferred policy.
+    controllerOpenSettingsChord(controller, now);
+    controllerTurn(controller, 1, now); // CHANNEL SETTINGS
+    controllerShortPress(controller, now);
+    controllerTurn(controller, 1, now); // TIMING
+    controllerShortPress(controller, now);
+    controllerTurn(controller, 4, now); // GROOVE
+    controllerShortPress(controller, now);
+    controllerTurn(controller, 4, now); // EDITOR
+    controllerShortPress(controller, now);
+    CHECK_EQ(controller.navigation().screen, ui::Screen::GrooveEditor);
+
+    controllerLongPress(controller, now);
+    controllerShortPress(controller, now); // SAVE
+    controllerShortPress(controller, now); // empty slot 0
+    controllerLongPress(controller, now); // confirm generated name
+    CHECK(grooveStore.exists(0U));
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 0U);
+    CHECK(grooveStore.service(false));
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 0U);
+    state.transport = TransportState::Stopped;
+    CHECK(grooveStore.service(true));
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 1U);
+
+    state.transport = TransportState::Playing;
+    controllerTurn(controller, 2, now); // RENAME
+    controllerShortPress(controller, now);
+    controllerShortPress(controller, now); // slot 0
+    CHECK_EQ(controller.navigation().screen, ui::Screen::GrooveNameEntry);
+    controllerTurn(controller, 1, now);
+    controllerLongPress(controller, now); // rename
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 1U);
+    CHECK(grooveStore.service(false));
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 1U);
+    state.transport = TransportState::Stopped;
+    CHECK(grooveStore.service(true));
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 2U);
+
+    state.transport = TransportState::Playing;
+    controllerReset(controller, now); // RENAME slots -> GROOVE
+    controllerTurn(controller, 1, now); // DELETE
+    controllerShortPress(controller, now);
+    controllerShortPress(controller, now); // slot 0
+    CHECK_EQ(controller.navigation().screen, ui::Screen::GrooveDeleteConfirm);
+    controllerTurn(controller, 1, now); // YES
+    controllerShortPress(controller, now);
+    CHECK(!grooveStore.exists(0U));
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 2U);
+    CHECK(grooveStore.service(false));
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 2U);
+    state.transport = TransportState::Stopped;
+    CHECK(grooveStore.service(true));
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 3U);
+    services::CustomGrooveStore recovered(storage);
+    CHECK(!recovered.exists(0U));
+}
+
 void testCustomGrooveRecorderControllerWorkflow() {
     resetFakes();
     prepareDisplaySuccess();

@@ -71,13 +71,17 @@ void PersistentStateService::service(
 
     bool currentRecordReady = writePending_ &&
         nowMs - pendingSinceMs_ >= config::kPersistenceCommitDelayMs;
-    if (pendingPresetWrite_) {
+    const bool hasPendingPresets = std::any_of(
+        pendingPresetWrites_.begin(), pendingPresetWrites_.end(), [](const bool pending) {
+            return pending;
+        });
+    if (hasPendingPresets) {
         // An explicit user save is already a synchronization point. Include a
         // pending CURRENT record in the same whole-sector Flash commit rather
         // than causing a second erase/program cycle a few seconds later.
         currentRecordReady = writePending_;
     }
-    if (!currentRecordReady && !pendingPresetWrite_) {
+    if (!currentRecordReady && !hasPendingPresets) {
         return;
     }
 
@@ -92,11 +96,15 @@ void PersistentStateService::service(
         staged = storage_.stageBytes(
             kCurrentRecordOffset, currentRecord.data(), currentRecord.size());
     }
-    if (staged && pendingPresetWrite_) {
-        staged = storage_.stageBytes(
-            presetOffset(pendingPresetSlot_),
-            pendingPresetRecord_.data(),
-            pendingPresetRecord_.size());
+    // A single A/B Flash transaction contains every accepted pending mutation.
+    // Never clear pending flags on a failed stage/commit; all slots stay retryable.
+    for (std::uint8_t slot = 0U; staged && slot < kUserPresetSlotCount; ++slot) {
+        if (pendingPresetWrites_[slot]) {
+            staged = storage_.stageBytes(
+                presetOffset(slot),
+                pendingPresetRecords_[slot].data(),
+                pendingPresetRecords_[slot].size());
+        }
     }
 
     if (!staged || !storage_.commitUpdate()) {
@@ -110,16 +118,19 @@ void PersistentStateService::service(
         hasStoredCurrentState_ = true;
         writePending_ = false;
     }
-    if (pendingPresetWrite_) {
-        presetValid_[pendingPresetSlot_] = pendingPresetWillExist_;
-        presetNames_[pendingPresetSlot_].fill('\0');
-        if (pendingPresetWillExist_) {
-            std::copy_n(
-                pendingPresetName_.begin(),
-                kPresetNameLength,
-                presetNames_[pendingPresetSlot_].begin());
+    for (std::uint8_t slot = 0U; slot < kUserPresetSlotCount; ++slot) {
+        if (!pendingPresetWrites_[slot]) {
+            continue;
         }
-        pendingPresetWrite_ = false;
+        presetValid_[slot] = pendingPresetWillExist_[slot];
+        presetNames_[slot].fill('\0');
+        if (pendingPresetWillExist_[slot]) {
+            std::copy_n(
+                pendingPresetNames_[slot].begin(),
+                kPresetNameLength,
+                presetNames_[slot].begin());
+        }
+        pendingPresetWrites_[slot] = false;
     }
 }
 
@@ -143,15 +154,14 @@ bool PersistentStateService::savePreset(
         return false;
     }
 
-    pendingPresetRecord_ = serializePresetRecord(name, state);
-    pendingPresetSlot_ = slotIndex;
-    pendingPresetWillExist_ = true;
-    pendingPresetWrite_ = true;
+    pendingPresetRecords_[slotIndex] = serializePresetRecord(name, state);
+    pendingPresetWillExist_[slotIndex] = true;
+    pendingPresetWrites_[slotIndex] = true;
 
     char normalizedName[kPresetNameLength + 1U]{};
     normalizePresetName(name, normalizedName);
-    pendingPresetName_.fill('\0');
-    std::copy_n(normalizedName, kPresetNameLength, pendingPresetName_.begin());
+    pendingPresetNames_[slotIndex].fill('\0');
+    std::copy_n(normalizedName, kPresetNameLength, pendingPresetNames_[slotIndex].begin());
     return true;
 }
 
@@ -163,8 +173,8 @@ bool PersistentStateService::loadPreset(
     }
 
     std::array<std::uint8_t, kPresetRecordSize> record{};
-    if (pendingPresetWrite_ && pendingPresetSlot_ == slotIndex) {
-        record = pendingPresetRecord_;
+    if (pendingPresetWrites_[slotIndex]) {
+        record = pendingPresetRecords_[slotIndex];
     } else if (!storage_.readBytes(presetOffset(slotIndex), record.data(), record.size())) {
         return false;
     }
@@ -192,8 +202,8 @@ bool PersistentStateService::renamePreset(
     }
 
     std::array<std::uint8_t, kPresetRecordSize> record{};
-    if (pendingPresetWrite_ && pendingPresetSlot_ == slotIndex) {
-        record = pendingPresetRecord_;
+    if (pendingPresetWrites_[slotIndex]) {
+        record = pendingPresetRecords_[slotIndex];
     } else if (!storage_.readBytes(presetOffset(slotIndex), record.data(), record.size())) {
         return false;
     }
@@ -211,11 +221,10 @@ bool PersistentStateService::clearPreset(const std::uint8_t slotIndex) {
         return false;
     }
 
-    pendingPresetRecord_.fill(0xFFU);
-    pendingPresetName_.fill('\0');
-    pendingPresetSlot_ = slotIndex;
-    pendingPresetWillExist_ = false;
-    pendingPresetWrite_ = true;
+    pendingPresetRecords_[slotIndex].fill(0xFFU);
+    pendingPresetNames_[slotIndex].fill('\0');
+    pendingPresetWillExist_[slotIndex] = false;
+    pendingPresetWrites_[slotIndex] = true;
     return true;
 }
 
@@ -223,8 +232,8 @@ bool PersistentStateService::presetExists(const std::uint8_t slotIndex) const {
     if (slotIndex >= kUserPresetSlotCount) {
         return false;
     }
-    if (pendingPresetWrite_ && pendingPresetSlot_ == slotIndex) {
-        return pendingPresetWillExist_;
+    if (pendingPresetWrites_[slotIndex]) {
+        return pendingPresetWillExist_[slotIndex];
     }
     return presetValid_[slotIndex];
 }
@@ -241,9 +250,9 @@ void PersistentStateService::presetName(
         return;
     }
 
-    if (pendingPresetWrite_ && pendingPresetSlot_ == slotIndex) {
+    if (pendingPresetWrites_[slotIndex]) {
         const std::size_t copyLength = std::min(kPresetNameLength, destinationSize - 1U);
-        std::copy_n(pendingPresetName_.data(), copyLength, destination);
+        std::copy_n(pendingPresetNames_[slotIndex].data(), copyLength, destination);
         destination[copyLength] = '\0';
         std::size_t end = std::strlen(destination);
         while (end > 0U && destination[end - 1U] == ' ') {

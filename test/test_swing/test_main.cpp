@@ -401,6 +401,84 @@ void testCustomGrooveEngineMatrixAcrossBpmRatesGridsAndAmounts() {
     }
 }
 
+/**
+ * @brief Regression for #6: long gates must never absorb close Custom Groove edges.
+ *
+ * Verify the physical GPIO transitions, not merely the theoretical event times.
+ * Exercise durable library patterns and live editor previews with swing/rotation.
+ */
+void testCustomGrooveLongGatesPreserveEveryRisingEdge() {
+    CustomGroovePattern pattern{};
+    pattern.length = 2U;
+    pattern.offsets256[0] = -120;
+    pattern.offsets256[1] = 120;
+
+    for (const bool preview : {false, true}) {
+        for (const std::uint8_t rotation : std::array<std::uint8_t, 2U>{{0U, 1U}}) {
+            for (const std::uint8_t swing : std::array<std::uint8_t, 2U>{{0U, 50U}}) {
+                ClockState state{};
+                initializeFactoryDefaults(state);
+                state.operatingMode = OperatingMode::Independent;
+                state.source = ClockSource::Internal;
+                state.bpm = 120U;
+                for (auto& configuredChannel : state.channels) {
+                    configuredChannel.common.mode = ChannelMode::Off;
+                }
+                auto& channel = state.channels[0];
+                channel.common.mode = ChannelMode::Clock;
+                channel.common.probabilityPercent = 100U;
+                channel.common.rate = {ClockRatioMode::Multiply, 1U, 1U, 1U};
+                channel.common.gateLengthMs = 100U;
+                channel.common.swingPercent = swing;
+                channel.common.groove = {GroovePreset::Custom, 100U, rotation, 0U};
+
+                hal::GateOutputDriver gates;
+                gates.beginDisabled();
+                gates.enableOutputStage();
+                engine::ClockEngine engine(gates);
+                engine.updateCustomGrooveSlot(0U, pattern, false);
+                engine.begin(state);
+                if (preview) {
+                    engine.setCustomGroovePreview(0U, pattern, 100U, rotation, true);
+                }
+                engine.play();
+
+                std::vector<std::uint32_t> risingTicks;
+                std::vector<std::uint32_t> fallingTicks;
+                for (std::uint32_t tick = 0U; tick < 80000U && risingTicks.size() < 5U; ++tick) {
+                    fakefw::writes.clear();
+                    engine.processSchedulerTick();
+                    for (const auto& write : fakefw::writes) {
+                        if (write.pin != pinmap::kGateChannelPins[0]) {
+                            continue;
+                        }
+                        if (write.value == HIGH) {
+                            risingTicks.push_back(tick);
+                        } else {
+                            fallingTicks.push_back(tick);
+                        }
+                    }
+                }
+                TEST_ASSERT_EQUAL_UINT32(5U, static_cast<std::uint32_t>(risingTicks.size()));
+                TEST_ASSERT_TRUE(fallingTicks.size() >= 4U);
+                for (std::size_t index = 1U; index < risingTicks.size(); ++index) {
+                    TEST_ASSERT_TRUE(risingTicks[index] > risingTicks[index - 1U]);
+                    TEST_ASSERT_TRUE(std::any_of(
+                        fallingTicks.begin(), fallingTicks.end(), [&](const std::uint32_t offTick) {
+                            return offTick > risingTicks[index - 1U] && offTick <= risingTicks[index];
+                        }));
+                }
+                // The two opposed offsets at 120 BPM yield an exceptionally
+                // narrow ~31 ms pair despite the configured 100 ms gate.
+                if (swing == 0U && rotation == 0U) {
+                    const std::uint32_t closeTicks = risingTicks[2U] - risingTicks[1U];
+                    TEST_ASSERT_TRUE(closeTicks >= 620U && closeTicks <= 630U);
+                }
+            }
+        }
+    }
+}
+
 void testCustomGrooveDefensiveAndRescheduleBranches() {
     ClockState state{};
     initializeFactoryDefaults(state);
@@ -668,6 +746,7 @@ int main() {
     RUN_TEST(testCustomGroovePreviewCanBeAppliedAndClearedWithoutStateMutation);
     RUN_TEST(testCustomGrooveLookupSweepsAllLengthsStepsAndAmounts);
     RUN_TEST(testCustomGrooveEngineMatrixAcrossBpmRatesGridsAndAmounts);
+    RUN_TEST(testCustomGrooveLongGatesPreserveEveryRisingEdge);
     RUN_TEST(testCustomGrooveDefensiveAndRescheduleBranches);
     RUN_TEST(testGrooveRecorderCountInAndOneShotCapture);
     RUN_TEST(testGrooveRecorderEndlessWrapsAndOverwritesTappedStepOnly);

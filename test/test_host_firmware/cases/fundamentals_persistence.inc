@@ -627,6 +627,107 @@ void testPersistentStorageAndStateService() {
 }
 
 
+/**
+ * @brief Issue #7 regression: independent deferred preset slots survive PLAY and reboot.
+ */
+void testPendingPresetsAcrossSlotsCommitAtomically() {
+    hal::PersistentStorage::resetForTest();
+    hal::PersistentStorage storage;
+    services::PersistentStateService service(storage);
+    service.begin();
+
+    ClockState first = makeDefaultState();
+    first.bpm = 91U;
+    ClockState second = makeDefaultState();
+    second.bpm = 142U;
+    ClockState third = makeDefaultState();
+    third.bpm = 173U;
+
+    CHECK(service.savePreset(0U, "FIRST", first));
+    service.service(10000U, false);  // PLAY: none may hit Flash.
+    CHECK(service.savePreset(1U, "SECOND", second));
+    CHECK(service.savePreset(2U, "THIRD", third));
+    CHECK(service.renamePreset(0U, "RENAMED"));
+    CHECK(service.clearPreset(2U));
+    CHECK(service.savePreset(3U, "FOURTH", first));
+    CHECK(service.savePreset(3U, "LATEST", third)); // Only same-slot replacement is legal.
+    CHECK(service.savePreset(7U, "LAST", second));
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 0U);
+
+    ClockState loaded = makeDefaultState();
+    char name[services::PersistentStateService::kPresetNameLength + 1U]{};
+    CHECK(service.loadPreset(0U, loaded));
+    CHECK_EQ(loaded.bpm, 91U);
+    service.presetName(0U, name, sizeof(name));
+    CHECK(std::strcmp(name, "RENAMED") == 0);
+    CHECK(service.loadPreset(1U, loaded));
+    CHECK_EQ(loaded.bpm, 142U);
+    CHECK(!service.presetExists(2U));
+    CHECK(service.loadPreset(3U, loaded));
+    CHECK_EQ(loaded.bpm, 173U);
+    CHECK(service.loadPreset(7U, loaded));
+    CHECK_EQ(loaded.bpm, 142U);
+
+    // The atomic update must be retryable without discarding any queued slot.
+    hal::PersistentStorage::failNextReadForTest();
+    service.service(10001U, true);
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 0U);
+    CHECK(service.presetExists(0U));
+    CHECK(service.presetExists(1U));
+    CHECK(service.presetExists(3U));
+    CHECK(service.presetExists(7U));
+
+    service.service(10002U, false);
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 0U);
+    service.service(10003U, true);
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 1U);
+    service.service(10004U, true);
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 1U);
+
+    services::PersistentStateService afterReboot(storage);
+    afterReboot.begin();
+    CHECK(afterReboot.presetExists(0U));
+    CHECK(afterReboot.presetExists(1U));
+    CHECK(!afterReboot.presetExists(2U));
+    CHECK(afterReboot.presetExists(3U));
+    CHECK(afterReboot.presetExists(7U));
+    afterReboot.presetName(0U, name, sizeof(name));
+    CHECK(std::strcmp(name, "RENAMED") == 0);
+    CHECK(afterReboot.loadPreset(1U, loaded));
+    CHECK_EQ(loaded.bpm, 142U);
+    CHECK(afterReboot.loadPreset(3U, loaded));
+    CHECK_EQ(loaded.bpm, 173U);
+
+    // Clear plus overwrite across slots also has to commit together.
+    CHECK(afterReboot.clearPreset(0U));
+    CHECK(afterReboot.savePreset(2U, "RESTORED", first));
+    CHECK(afterReboot.renamePreset(7U, "RENAMED7"));
+    afterReboot.service(20000U, false);
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 1U);
+    afterReboot.service(20001U, true);
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), 2U);
+    services::PersistentStateService finalReload(storage);
+    finalReload.begin();
+    CHECK(!finalReload.presetExists(0U));
+    CHECK(finalReload.presetExists(1U));
+    CHECK(finalReload.presetExists(2U));
+    CHECK(finalReload.loadPreset(2U, loaded));
+    CHECK_EQ(loaded.bpm, 91U);
+    finalReload.presetName(7U, name, sizeof(name));
+    CHECK(std::strcmp(name, "RENAMED7") == 0);
+
+    // Factory reset must discard every outstanding operation without resurrecting it.
+    CHECK(finalReload.savePreset(6U, "CANCELLED", first));
+    const ClockState factory = makeDefaultState();
+    CHECK(finalReload.factoryReset(factory));
+    finalReload.service(30000U, true);
+    services::PersistentStateService resetReload(storage);
+    resetReload.begin();
+    for (std::uint8_t slot = 0U; slot < services::PersistentStateService::kUserPresetSlotCount; ++slot) {
+        CHECK(!resetReload.presetExists(slot));
+    }
+}
+
 void testPersistentV3Migration() {
     constexpr std::size_t kV12CurrentSize = services::PersistentStateService::kCurrentRecordBytes;
     constexpr std::size_t kV12PresetSize = services::PersistentStateService::kPresetRecordBytes;

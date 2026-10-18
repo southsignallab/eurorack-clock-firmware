@@ -504,11 +504,14 @@ private:
     std::uint32_t pendingSinceMs_ = 0U;
     bool hasStoredCurrentState_ = false;
     bool writePending_ = false;
-    std::array<std::uint8_t, kPresetRecordSize> pendingPresetRecord_{};
-    std::array<char, kPresetNameLength + 1U> pendingPresetName_{};
-    std::uint8_t pendingPresetSlot_ = 0U;
-    bool pendingPresetWrite_ = false;
-    bool pendingPresetWillExist_ = false;
+    // Each accepted operation owns its own slot until an atomic A/B commit.
+    // Updating one pending slot may replace its own value, never another slot.
+    std::array<std::array<std::uint8_t, kPresetRecordSize>, kUserPresetSlotCount>
+        pendingPresetRecords_{};
+    std::array<std::array<char, kPresetNameLength + 1U>, kUserPresetSlotCount>
+        pendingPresetNames_{};
+    std::array<bool, kUserPresetSlotCount> pendingPresetWrites_{};
+    std::array<bool, kUserPresetSlotCount> pendingPresetWillExist_{};
 };
 
 static_assert(

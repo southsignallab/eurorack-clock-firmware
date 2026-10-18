@@ -57,9 +57,11 @@ bool loadPresetRecord(
 }  // namespace
 
 void PersistentStateService::begin() {
-    pendingPresetWrite_ = false;
-    pendingPresetWillExist_ = false;
-    pendingPresetName_.fill('\0');
+    pendingPresetWrites_.fill(false);
+    pendingPresetWillExist_.fill(false);
+    for (auto& name : pendingPresetNames_) {
+        name.fill('\0');
+    }
 
     ClockState loadedCurrent{};
     hasStoredCurrentState_ = loadCurrentRecord(

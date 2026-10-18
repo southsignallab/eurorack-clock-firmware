@@ -10,6 +10,19 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 ## [Unreleased]
 
+### Fix: preserve multiple deferred preset saves (#7)
+
+- Track pending Save, Rename, and Clear operations independently for all eight preset slots, rather than silently replacing the previous slot's pending record.
+- Stage all accepted mutations and any pending CURRENT state in one A/B Flash transaction once transport permits writes.
+- Preserve queued changes after a failed commit; expose the pending state consistently through preset loading, names, and availability.
+- Add regression coverage for concurrent deferred slots during PLAY, failed-commit retry, reboot, same-slot replacement, and factory reset cancellation.
+
+### Regression: Custom Groove close-event gate edges (#6)
+
+- Assert real rising/falling GPIO edges for the reviewed 120 BPM / 100 ms gate / -120,+120 Custom Groove scenario across Swing, rotation, and live preview.
+- The current event-to-next-event gate limiter already keeps the reported rising edges distinct; do not change production timing semantics without a failing current vector.
+
+
 ### Fix: safe Custom Groove persistence during transport (#5)
 
 - Queue Custom Groove save, rename and delete mutations in bounded RAM while transport is PLAYING; do not erase/program MCU Flash from those UI handlers.

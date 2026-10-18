@@ -570,6 +570,7 @@ int main() {
     RUN_TEST(testCustomGrooveUiDefersFlashUntilTransportStops);
     RUN_TEST(testPersistentStorageTransactionalUpdate);
     RUN_TEST(testPersistentStorageAndStateService);
+    RUN_TEST(testPendingPresetsAcrossSlotsCommitAtomically);
     RUN_TEST(testPersistentV3Migration);
     RUN_TEST(testPersistentStateValidationBoundaries);
     RUN_TEST(testMenuModelAndFormatters);

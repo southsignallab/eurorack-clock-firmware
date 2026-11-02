@@ -94,8 +94,8 @@ int main() {
                   "second accepted SYNC edge must establish measurable lock");
     ok &= require(port.clockSource() == ClockSource::Auto,
                   "external lock must not rewrite factory AUTO source selection");
-    ok &= require(port.transportState() == TransportState::Playing,
-                  "AUTO lock must exercise production firmware auto-start semantics");
+    ok &= require(port.transportState() == TransportState::Stopped,
+                  "factory AUTO lock must not start transport (SYNC AUTOSTART OFF, decision D-01)");
 
     ok &= require(accepted(port.setGeneratorRunning(ExternalStimulus::SyncGenerator, false)),
                   "SYNC hold must succeed while cable remains connected");

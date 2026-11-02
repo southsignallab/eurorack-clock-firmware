@@ -348,3 +348,88 @@ void testTimestampWraparound() {
     CHECK_EQ(fixture.sync.filteredBpmMilli(), 120000U);
     CHECK(fixture.engine.snapshot().externalLocked);
 }
+
+namespace {
+struct StartTrace {
+    std::array<std::uint8_t, 30000U> step{};
+    std::array<std::uint8_t, 30000U> gate{};
+    std::array<std::uint8_t, 30000U> beat{};
+};
+
+void recordStart(Fixture& fixture, StartTrace& trace) {
+    for (std::size_t tick = 0U; tick < trace.step.size(); ++tick) {
+        fixture.engine.processSchedulerTick();
+        const auto snapshot = fixture.engine.snapshot();
+        trace.step[tick] = snapshot.channelStep[0];
+        trace.beat[tick] = snapshot.masterBeat;
+        trace.gate[tick] = fakefw::pinValues[pinmap::kGateChannelPins[0]];
+    }
+}
+}  // namespace
+
+void testExternalPulsesWhileStoppedDoNotShiftNextStart() {
+    // F-006: SYNC pulses during STOP must neither move the grid nor produce a
+    // catch-up burst; PLAY without Pre-Count starts exactly like a fresh start.
+    constexpr std::uint32_t kTicksPerBeat = config::kSchedulerFrequencyHz / 2U;  // 120 BPM
+
+    StartTrace reference{};
+    {
+        Fixture fresh;
+        fresh.state.source = ClockSource::Internal;
+        fresh.state.bpm = 120U;
+        fresh.state.preCountSteps = 0U;
+        fresh.begin();
+        recordStart(fresh, reference);
+    }
+
+    Fixture fixture;
+    fixture.state.source = ClockSource::Auto;
+    fixture.state.bpm = 120U;
+    fixture.state.preCountSteps = 0U;
+    fixture.begin();
+    // Lock and run on external pulses long enough that a 100-pulse backward
+    // shift cannot be hidden by clamping at master position zero.
+    for (std::uint32_t beat = 0U; beat < 120U; ++beat) {
+        fixture.engine.acceptExternalPulse(120000U, 1U);
+        runTicks(fixture.engine, kTicksPerBeat);
+    }
+    fixture.engine.stop();
+    // The external clock keeps running for 100 beats while CLOCK is stopped.
+    for (std::uint32_t beat = 0U; beat < 100U; ++beat) {
+        fixture.engine.acceptExternalPulse(120000U, 1U);
+        runTicks(fixture.engine, kTicksPerBeat);
+    }
+    fakefw::writes.clear();
+    fixture.engine.play();
+    StartTrace restarted{};
+    recordStart(fixture, restarted);
+
+    CHECK(restarted.step == reference.step);
+    CHECK(restarted.gate == reference.gate);
+    CHECK(restarted.beat == reference.beat);
+    CHECK_EQ(restarted.beat[0], 1U);
+}
+
+void testPauseIgnoresPulsesAndResumesWithoutBurst() {
+    constexpr std::uint32_t kTicksPerBeat = config::kSchedulerFrequencyHz / 2U;
+    Fixture fixture;
+    fixture.state.source = ClockSource::Auto;
+    fixture.state.bpm = 120U;
+    fixture.state.preCountSteps = 0U;
+    fixture.begin();
+    for (std::uint32_t beat = 0U; beat < 3U; ++beat) {
+        fixture.engine.acceptExternalPulse(120000U, 1U);
+        runTicks(fixture.engine, kTicksPerBeat);
+    }
+    const std::uint8_t stepAtPause = fixture.engine.snapshot().channelStep[0];
+    fixture.engine.pause();
+    for (std::uint32_t beat = 0U; beat < 50U; ++beat) {
+        fixture.engine.acceptExternalPulse(120000U, 1U);
+        runTicks(fixture.engine, kTicksPerBeat);
+    }
+    fixture.engine.play();
+    fixture.engine.processSchedulerTick();
+    // No catch-up: at most the one event that was due when paused.
+    const std::uint8_t stepAfterResume = fixture.engine.snapshot().channelStep[0];
+    CHECK(static_cast<std::uint8_t>(stepAfterResume - stepAtPause) <= 1U);
+}

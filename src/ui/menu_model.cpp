@@ -78,7 +78,7 @@ std::uint8_t settingsPageItemCount(
         case SettingsPage::DiagnosticsInputs:
         case SettingsPage::DiagnosticsOutputs: return 0U;
         case SettingsPage::Master: return 6U;
-        case SettingsPage::Sync: return 8U;
+        case SettingsPage::Sync: return 9U;
         case SettingsPage::Preferences: return 4U;
         case SettingsPage::Screensaver: return 4U;
         case SettingsPage::Info: return 6U;

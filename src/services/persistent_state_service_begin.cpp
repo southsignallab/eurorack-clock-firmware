@@ -73,6 +73,7 @@ void PersistentStateService::begin() {
     bool migrationNeeded = false;
     if (!hasStoredCurrentState_) {
         migrationNeeded =
+            loadCurrentRecord(storage_, kCurrentRecordOffset, deserializeV12CurrentRecord, loadedCurrent) ||
             loadCurrentRecord(storage_, kCurrentRecordOffset, deserializeV11CurrentRecord, loadedCurrent) ||
             loadCurrentRecord(storage_, kCurrentRecordOffset, deserializeV10CurrentRecord, loadedCurrent) ||
             loadCurrentRecord(storage_, kCurrentRecordOffset, deserializeV9CurrentRecord, loadedCurrent) ||
@@ -100,61 +101,90 @@ void PersistentStateService::begin() {
     }
     writePending_ = false;
 
-    // Build the canonical v12 records area in PersistentStorage's bounded staging
-    // image while old records are inspected. If no old schema is found, the staged
-    // transaction is discarded. This avoids keeping eight migrated ClockState
-    // objects or a complete 8-KiB persistence image on the embedded stack.
-    constexpr std::size_t kRecordsEnd =
-        kCurrentRecordSize + kUserPresetSlotCount * kPresetRecordSize;
-    bool migrationStagingReady = storage_.beginUpdate() &&
-        storage_.stageFill(0U, kRecordsEnd, static_cast<std::uint8_t>(0xFFU));
-    if (migrationStagingReady && hasStoredCurrentState_) {
-        const auto migratedRecord = serializeCurrentRecord(storedCurrentState_);
-        migrationStagingReady = storage_.stageBytes(
-            kCurrentRecordOffset, migratedRecord.data(), migratedRecord.size());
-    }
-
     for (std::uint8_t slotIndex = 0U; slotIndex < kUserPresetSlotCount; ++slotIndex) {
         ClockState loadedPreset{};
         char name[kPresetNameLength + 1U]{};
-        presetValid_[slotIndex] = loadPresetRecord(
-            storage_, presetOffset(slotIndex), deserializePresetRecord, name, loadedPreset);
-
         bool loadedPriorSchema = false;
-        if (!presetValid_[slotIndex]) {
-            loadedPriorSchema =
-                loadPresetRecord(storage_, v11PresetOffset(slotIndex), deserializeV11PresetRecord, name, loadedPreset) ||
-                loadPresetRecord(storage_, v10PresetOffset(slotIndex), deserializeV10PresetRecord, name, loadedPreset) ||
-                loadPresetRecord(storage_, v9PresetOffset(slotIndex), deserializeV9PresetRecord, name, loadedPreset) ||
-                loadPresetRecord(storage_, v8PresetOffset(slotIndex), deserializeV8PresetRecord, name, loadedPreset) ||
-                loadPresetRecord(storage_, v7PresetOffset(slotIndex), deserializeV7PresetRecord, name, loadedPreset) ||
-                loadPresetRecord(storage_, v6PresetOffset(slotIndex), deserializeV6PresetRecord, name, loadedPreset) ||
-                loadPresetRecord(storage_, v5PresetOffset(slotIndex), deserializeV5PresetRecord, name, loadedPreset) ||
-                loadPresetRecord(storage_, previousPresetOffset(slotIndex), deserializePreviousPresetRecord, name, loadedPreset) ||
-                loadPresetRecord(storage_, legacyPresetOffset(slotIndex), deserializeLegacyPresetRecord, name, loadedPreset);
-            presetValid_[slotIndex] = loadedPriorSchema;
-        }
-
+        presetValid_[slotIndex] =
+            loadPresetAnySchema(slotIndex, name, loadedPreset, loadedPriorSchema);
         migrationNeeded = migrationNeeded || loadedPriorSchema;
         presetNames_[slotIndex].fill('\0');
+        if (presetValid_[slotIndex]) {
+            std::copy_n(name, kPresetNameLength, presetNames_[slotIndex].begin());
+            presetNames_[slotIndex][kPresetNameLength] = '\0';
+        }
+    }
+
+    // Rewrite the records area in the current schema in one A/B transaction. A
+    // failed commit is not ignored: the older layout stays authoritative and the
+    // migration is retried by service() before any other write of this service.
+    migrationPending_ = false;
+    migrationRetryScheduled_ = false;
+    if (migrationNeeded) {
+        const bool committed =
+            storage_.beginUpdate() && stageMigratedRecords() && storage_.commitUpdate();
+        if (!committed) {
+            storage_.cancelUpdate();
+            migrationPending_ = true;
+        }
+    }
+}
+
+bool PersistentStateService::loadPresetAnySchema(
+    const std::uint8_t slotIndex,
+    char* const name,
+    ClockState& state,
+    bool& priorSchema) const {
+    priorSchema = false;
+    if (loadPresetRecord(storage_, presetOffset(slotIndex), deserializePresetRecord, name, state)) {
+        return true;
+    }
+    priorSchema =
+        loadPresetRecord(storage_, v12PresetOffset(slotIndex), deserializeV12PresetRecord, name, state) ||
+        loadPresetRecord(storage_, v11PresetOffset(slotIndex), deserializeV11PresetRecord, name, state) ||
+        loadPresetRecord(storage_, v10PresetOffset(slotIndex), deserializeV10PresetRecord, name, state) ||
+        loadPresetRecord(storage_, v9PresetOffset(slotIndex), deserializeV9PresetRecord, name, state) ||
+        loadPresetRecord(storage_, v8PresetOffset(slotIndex), deserializeV8PresetRecord, name, state) ||
+        loadPresetRecord(storage_, v7PresetOffset(slotIndex), deserializeV7PresetRecord, name, state) ||
+        loadPresetRecord(storage_, v6PresetOffset(slotIndex), deserializeV6PresetRecord, name, state) ||
+        loadPresetRecord(storage_, v5PresetOffset(slotIndex), deserializeV5PresetRecord, name, state) ||
+        loadPresetRecord(storage_, previousPresetOffset(slotIndex), deserializePreviousPresetRecord, name, state) ||
+        loadPresetRecord(storage_, legacyPresetOffset(slotIndex), deserializeLegacyPresetRecord, name, state);
+    return priorSchema;
+}
+
+bool PersistentStateService::stageMigratedRecords() {
+    // The bounded staging image holds the migrated records; this avoids keeping
+    // eight migrated ClockState objects or a complete image on the embedded stack.
+    constexpr std::size_t kRecordsEnd =
+        kCurrentRecordSize + kUserPresetSlotCount * kPresetRecordSize;
+    if (!storage_.stageFill(0U, kRecordsEnd, static_cast<std::uint8_t>(0xFFU))) {
+        return false;
+    }
+    if (hasStoredCurrentState_) {
+        const auto migratedRecord = serializeCurrentRecord(storedCurrentState_);
+        if (!storage_.stageBytes(
+                kCurrentRecordOffset, migratedRecord.data(), migratedRecord.size())) {
+            return false;
+        }
+    }
+    for (std::uint8_t slotIndex = 0U; slotIndex < kUserPresetSlotCount; ++slotIndex) {
         if (!presetValid_[slotIndex]) {
             continue;
         }
-
-        std::copy_n(name, kPresetNameLength, presetNames_[slotIndex].begin());
-        presetNames_[slotIndex][kPresetNameLength] = '\0';
-        if (migrationStagingReady) {
-            const auto migratedRecord = serializePresetRecord(name, loadedPreset);
-            migrationStagingReady = storage_.stageBytes(
-                presetOffset(slotIndex), migratedRecord.data(), migratedRecord.size());
+        ClockState loadedPreset{};
+        char name[kPresetNameLength + 1U]{};
+        bool ignoredPriorSchema = false;
+        if (!loadPresetAnySchema(slotIndex, name, loadedPreset, ignoredPriorSchema)) {
+            return false;
+        }
+        const auto migratedRecord = serializePresetRecord(name, loadedPreset);
+        if (!storage_.stageBytes(
+                presetOffset(slotIndex), migratedRecord.data(), migratedRecord.size())) {
+            return false;
         }
     }
-
-    if (migrationNeeded && migrationStagingReady) {
-        (void)storage_.commitUpdate();
-    } else {
-        storage_.cancelUpdate();
-    }
+    return true;
 }
 
 }  // namespace clockfw::services

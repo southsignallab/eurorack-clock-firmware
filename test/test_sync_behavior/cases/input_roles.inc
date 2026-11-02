@@ -197,10 +197,34 @@ void testRunRoleCanUsePhysicalInput2AndReassertAfterManualTransport() {
     fixture.sync.processSchedulerTick(1100U);
     CHECK(fixture.engine.snapshot().playing);
 
+    // D-03: a manual STOP wins until the RUN level changes again.
     fixture.engine.stop();
     fixture.sync.notifyManualTransportState(TransportState::Stopped);
     fixture.sync.processSchedulerTick(1200U);
+    CHECK(!fixture.engine.snapshot().playing);
+    fixture.sync.processSchedulerTick(50000U);
+    CHECK(!fixture.engine.snapshot().playing);
+    fixture.inputs.injectResetEdgeForTest(60000U, false);
+    fixture.sync.processSchedulerTick(60000U);
+    CHECK(!fixture.engine.snapshot().playing);
+    fixture.inputs.injectResetEdgeForTest(70000U, true);
+    fixture.sync.processSchedulerTick(70000U);
     CHECK(fixture.engine.snapshot().playing);
+
+    // ...and a manual START at RUN LOW wins until the next edge as well.
+    fixture.inputs.injectResetEdgeForTest(80000U, false);
+    fixture.sync.processSchedulerTick(80000U);
+    CHECK(!fixture.engine.snapshot().playing);
+    fixture.engine.play();
+    fixture.sync.notifyManualTransportState(TransportState::Playing);
+    fixture.sync.processSchedulerTick(90000U);
+    CHECK(fixture.engine.snapshot().playing);
+    fixture.inputs.injectResetEdgeForTest(100000U, true);
+    fixture.sync.processSchedulerTick(100000U);
+    CHECK(fixture.engine.snapshot().playing);
+    fixture.inputs.injectResetEdgeForTest(110000U, false);
+    fixture.sync.processSchedulerTick(110000U);
+    CHECK(!fixture.engine.snapshot().playing);
 }
 
 

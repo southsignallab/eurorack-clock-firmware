@@ -91,8 +91,17 @@ int main() {
         !lockedSync.locked || lockedSync.pulseCount < 2ULL || lockedSync.bpmMilli != 90000U) {
         return fail("virtual SYNC IN generator must acquire lock from generated pulses");
     }
+    // Decision D-01: factory SYNC AUTOSTART is OFF, so a lock alone never starts
+    // transport. The following checks run with an explicitly started transport.
+    if (runtime.state().transport != clockfw::TransportState::Stopped) {
+        return fail("factory AUTO lock must not start transport (SYNC AUTOSTART OFF)");
+    }
+    runtime.setButton(SimButton::Play, true);
+    runtime.advanceMicroseconds(35000ULL);
+    runtime.setButton(SimButton::Play, false);
+    runtime.advanceMicroseconds(35000ULL);
     if (runtime.state().transport != clockfw::TransportState::Playing) {
-        return fail("AUTO source must start transport when virtual SYNC acquires a valid lock");
+        return fail("PLAY must start transport while virtual SYNC is locked");
     }
     const std::uint8_t oldPpqn = lockedSync.ppqn;
     runtime.cycleSyncPpqn();
@@ -193,7 +202,7 @@ int main() {
         return fail("simulator encoder feedback must track requested detents");
     }
 
-    // Earlier external-SYNC checks intentionally auto-start transport in AUTO mode.
+    // Earlier external-SYNC checks started transport with PLAY while locked.
     // Return to an explicit user STOP before validating the developer scope's
     // pre-start contract; manual STOP must remain authoritative over external sync.
     runtime.setButton(clockfw::sim::SimButton::Stop, true);
@@ -201,7 +210,7 @@ int main() {
     runtime.setButton(clockfw::sim::SimButton::Stop, false);
     runtime.advanceMicroseconds(35000ULL);
     if (runtime.state().transport != clockfw::TransportState::Stopped) {
-        return fail("manual STOP must override transport started by external AUTO sync");
+        return fail("manual STOP must stop transport while external AUTO sync stays locked");
     }
 
     scope::Session scopeSession{};

@@ -124,6 +124,8 @@ struct NavigationState {
     std::uint8_t sequencerPage = 0U;
     /** 0 hides the Performance-screen tap indicator; 1..4 select shrinking animation frames. */
     std::uint8_t tapIndicatorFrame = 0U;
+    /** True while the "tempo is set externally" notice is shown on the Performance screen. */
+    bool externalTempoNotice = false;
     /** True when the selected ranked Easter egg has created a durable leaderboard record. */
     bool highScoreResetAvailable = false;
     PresetSlotAction presetSlotAction = PresetSlotAction::Load;

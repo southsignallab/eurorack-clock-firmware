@@ -53,6 +53,8 @@ void SettingsEditor::adjustSync(const std::uint8_t rowIndex, const std::int8_t d
             static_cast<int>(state_.externalSync.timeoutMs) + delta * 100,
             200,
             5000));
+    } else if (rowIndex == 8U && delta != 0) {
+        state_.externalSync.autostartOnLock = delta > 0;
     }
 
     engine_.updateConfiguration(state_, false);

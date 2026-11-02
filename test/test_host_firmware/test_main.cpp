@@ -306,6 +306,32 @@ void writeTestUint32Le(std::uint8_t* const destination, const std::uint32_t valu
 
 
 template <std::size_t CurrentSize, std::size_t LegacySize, std::size_t PayloadOffset>
+std::array<std::uint8_t, LegacySize> makeLegacyV12Record(
+    const std::array<std::uint8_t, CurrentSize>& current) {
+    constexpr std::size_t kV13PayloadSize = 295U;
+    constexpr std::size_t kV12PayloadSize = 294U;
+    static_assert(kV13PayloadSize == kV12PayloadSize + 1U);
+    std::array<std::uint8_t, LegacySize> legacy{};
+    if constexpr (PayloadOffset == 8U) {
+        writeTestUint32Le(legacy.data(), 0x32315543UL);  // "CU12"
+    } else {
+        std::copy_n(current.begin() + 8, 16U, legacy.begin() + 8);
+        writeTestUint32Le(legacy.data(), 0x32315250UL);  // "PR12"
+    }
+    legacy[4] = 12U;
+    legacy[5] = current[5];
+    writeTestUint16Le(legacy.data() + 6U, static_cast<std::uint16_t>(kV12PayloadSize));
+    std::copy_n(
+        current.begin() + static_cast<std::ptrdiff_t>(PayloadOffset),
+        kV12PayloadSize,
+        legacy.begin() + static_cast<std::ptrdiff_t>(PayloadOffset));
+    writeTestUint32Le(
+        legacy.data() + LegacySize - 4U,
+        testCrc32(legacy.data(), LegacySize - 4U));
+    return legacy;
+}
+
+template <std::size_t CurrentSize, std::size_t LegacySize, std::size_t PayloadOffset>
 std::array<std::uint8_t, LegacySize> makeLegacyV11Record(
     const std::array<std::uint8_t, CurrentSize>& current) {
     constexpr std::size_t kV12PayloadSize = 294U;
@@ -572,6 +598,8 @@ int main() {
     RUN_TEST(testPersistentStorageAndStateService);
     RUN_TEST(testPendingPresetsAcrossSlotsCommitAtomically);
     RUN_TEST(testPersistentV3Migration);
+    RUN_TEST(testFailedBootMigrationIsRetriedBeforeOtherWrites);
+    RUN_TEST(testV12MigratesToV13WithSyncAutostartOff);
     RUN_TEST(testPersistentStateValidationBoundaries);
     RUN_TEST(testMenuModelAndFormatters);
     RUN_TEST(testHalBasicsAndDisplay);
@@ -602,6 +630,7 @@ int main() {
     RUN_TEST(testCustomGrooveRecorderControllerWorkflow);
     RUN_TEST(testUiControllerFlows);
     RUN_TEST(testUiCursorWrapToleratesFullEncoderDeltaRange);
+    RUN_TEST(testManualTempoAfterSignalLossAndExternalTempoLock);
     RUN_TEST(testHighScoreResetAppearsAfterStartAndClearsSafely);
     RUN_TEST(testEasterEggGameAndHighScore);
     RUN_TEST(testApplicationAndEntryPoints);

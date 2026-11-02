@@ -141,7 +141,13 @@ void ClockEngine::acceptExternalPulseUnsafe(
     const std::uint64_t expectedPulsePositionQ32 = externalReferenceQ32_ + pulseIntervalQ32;
     externalMusicalPositionQ32_ += pulseIntervalQ32;
 
-    alignGlobalSchedulesToExternalPulse(expectedPulsePositionQ32);
+    // The master position stands while STOPPED/PAUSED. Correcting the channel
+    // epochs against it would move every schedule one pulse interval into the
+    // past per pulse, and PLAY would then catch up as a burst. Only the musical
+    // position (display, lock estimator) follows the pulses while stopped.
+    if (playing_) {
+        alignGlobalSchedulesToExternalPulse(expectedPulsePositionQ32);
+    }
     externalReferenceQ32_ = masterPositionQ32_;
     masterBeatPhaseQ32_ = externalMusicalPositionQ32_ % core::kQ32One;
 
@@ -168,6 +174,10 @@ void ClockEngine::alignGlobalSchedulesToExternalPulse(
         ChannelRuntime& runtime = channelRuntime_[channelIndex];
         shiftPosition(runtime.scheduleEpochQ32, expectedPulsePositionQ32, observedPulsePositionQ32);
         shiftPosition(runtime.nextEventQ32, expectedPulsePositionQ32, observedPulsePositionQ32);
+        // Pending ratchet sub-events belong to the same corrected step grid.
+        if (runtime.ratchetRemaining != 0U) {
+            shiftPosition(runtime.nextRatchetQ32, expectedPulsePositionQ32, observedPulsePositionQ32);
+        }
     }
 }
 

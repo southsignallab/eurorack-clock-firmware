@@ -10,6 +10,29 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 ## [Unreleased]
 
+### Changed: no autostart after power-up; new SYNC setting AUTOSTART
+
+- CLOCK no longer starts transport on its own when the first SYNC lock after power-up is acquired. New `INPUT CONFIG` row **AUTOSTART** (`OFF / ON`, factory `OFF`): with `ON`, a lock may start transport, including the first one after power-up. Switching it while stopped applies to the next lock.
+- Persistence schema **v13** appends the setting to the CURRENT and preset records (payload 295 bytes, CURRENT 307, preset 323; repeated-record headroom now 20 bytes). v12 records from firmware 1.1.0 migrate with `AUTOSTART = OFF`. Firmware 1.1.0 cannot read v13 records; a downgrade falls back to defaults.
+
+### Changed: tempo ownership with an external clock
+
+- `SOURCE = AUTO` without a signal: a manual tempo change (encoder, TAP, settings) replaces a held freewheel tempo; a returning signal takes over again. Previously the last measured tempo stayed in effect until restart while the display followed the manual value.
+- `SOURCE = EXTERNAL`, or `AUTO` with a locked signal: the Performance encoder and TAP no longer change the tempo; the display shows **EXTERNAL CLOCK** for 1.5 s. Menus and settings stay fully usable. A TAP input role is ignored in this state.
+
+### Changed: front-panel transport wins until the next RUN edge
+
+- With an input assigned to RUN, a front-panel STOP/PAUSE (RUN HIGH) or START (RUN LOW) now holds until the RUN level changes the next time. Previously RUN HIGH restarted the clock at the next scheduler tick after a manual STOP.
+
+### Fix: SYNC pulses while stopped no longer shift the grid
+
+- Pulses received during STOP/PAUSE moved every GLOBAL channel schedule one pulse interval into the past; PLAY then caught up as a burst and Euclid/Sequencer did not start on step 1. Phase correction now runs only while playing, a fresh start without Pre-Count begins at step 1 and beat 1, and pending ratchet sub-events are shifted together with their step.
+
+### Fix: failed boot migration commit is retried, not ignored
+
+- When the commit of a schema migration failed at boot, the next autosave wrote current-schema records over the older layout and could destroy presets. The migration is now retried (3 s interval) inside the same transaction as, and before, any other write of the settings store; presets are served from the older layout until then.
+- Stale STM32 Flash error flags are cleared before every sector erase (a stale flag made the first commit after reset fail).
+
 ### Fix: persistence-preserving DFU upload recognizes current slots (#12)
 
 - Validate both A/B slots against the firmware's slot contract for every accepted payload size (4, 8 and 12 KiB). Previously only 4-KiB slots were recognized, so current 12-KiB slots always looked invalid and the uploader fell into the legacy-migration path.
@@ -26,7 +49,6 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 - The commit gate asks the engine (`ClockEngine::isPlaying()`, read under an interrupt lock) immediately before each store, not only the foreground transport field. The scheduler ISR can start the engine mid-pass (RUN level, START/RESTART input, lock acquisition); a sector commit then stalled a running engine.
 - A queued ISR transport transition is adopted only while it still matches the engine, so a front-panel STOP that overtook a RUN start no longer leaves the display on PLAY with a stopped engine.
-- Unchanged in this fix: with RUN HIGH, a manual STOP is still re-overridden by the RUN level at the next scheduler tick (decision D-03, planned separately).
 
 ### Build: SSD1315 is the default display profile
 

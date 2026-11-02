@@ -193,6 +193,12 @@ bool commitImage(
     if (HAL_FLASH_Unlock() != HAL_OK) {
         return false;
     }
+    // A stale error flag would make FLASH_WaitForLastOperation() fail the next erase.
+    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
+                           FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
+#ifdef FLASH_FLAG_RDERR
+    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_RDERR);
+#endif
     const std::uintptr_t base = kSlotAddresses[targetSlot];
     const bool programmed =
         eraseSlotUnlocked(targetSlot) &&

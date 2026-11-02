@@ -28,6 +28,9 @@ bool PersistentStateService::factoryReset(const ClockState& factoryState) {
     persistedTransportPreference_ = factoryState.transport;
     hasStoredCurrentState_ = true;
     writePending_ = false;
+    // The whole image was rewritten in the current schema.
+    migrationPending_ = false;
+    migrationRetryScheduled_ = false;
     pendingPresetWrites_.fill(false);
     pendingPresetWillExist_.fill(false);
     for (std::size_t slot = 0U; slot < kUserPresetSlotCount; ++slot) {

@@ -29,22 +29,22 @@ The boundaries are now centralized in `src/hal/persistent_layout.h` and guarded 
 
 ## Exact V1 state budget
 
-Current development schema v12 uses:
+Current development schema v13 (v12 plus the one-byte SYNC `AUTOSTART` setting) uses:
 
-- serialized `ClockState` payload: **294 bytes**;
-- CURRENT record: **306 bytes**;
-- one named preset record: **322 bytes**;
-- CURRENT + eight presets: **2,882 bytes**.
+- serialized `ClockState` payload: **295 bytes**;
+- CURRENT record: **307 bytes**;
+- one named preset record: **323 bytes**;
+- CURRENT + eight presets: **2,891 bytes**.
 
-The next fixed region begins at byte 3,072, so only **190 bytes** remain between the current preset area and the legacy-score compatibility region.
+The next fixed region begins at byte 3,072, so only **181 bytes** remain between the current preset area and the legacy-score compatibility region.
 
 Every byte added naively to the serialized ClockState payload is repeated once in CURRENT and once in each of eight presets. It therefore consumes **9 logical-image bytes**. The maximum safe in-place payload growth before colliding with the next region is only:
 
 ```text
-floor(190 / 9) = 21 bytes
+floor(181 / 9) = 20 bytes
 ```
 
-This is now a tested V1 contract (`kMaximumInPlaceStatePayloadGrowthBytes == 21`). It corrects the misleading assumption that all unused bytes in the 8-KiB image are available to grow the state record.
+This is now a tested V1 contract (`kMaximumInPlaceStatePayloadGrowthBytes == 20`). It corrects the misleading assumption that all unused bytes in the 8-KiB image are available to grow the state record.
 
 ## Consequence for post-1.0 Sequencer/Groove work
 
@@ -101,7 +101,7 @@ Post-1.0 storage-heavy rhythm data must therefore remain outside the small hot-p
 ## Public-contract decisions frozen for V1
 
 - Hardware Rev 1 remains gate/trigger focused; no analog CV subsystem is required for 1.0.
-- Persistent schema v12 is the 1.1.0 write format. Schema v11, schema v10, schema v9, stable 1.0.x schema v8, schema v7, and the earlier supported formats remain explicit migration sources for upgrades. Schema v10 migrates with the factory input roles `SYNC / RESET` injected.
+- Persistent schema v12 is the 1.1.0 write format; the post-1.1 development write format is schema v13, and v12 is its explicit migration source. Schema v11, schema v10, schema v9, stable 1.0.x schema v8, schema v7, and the earlier supported formats remain explicit migration sources for upgrades. Schema v10 migrates with the factory input roles `SYNC / RESET` injected.
 - Boot always enters STOP regardless of stored transport history.
 - CURRENT and eight named presets remain the user-facing persistence model.
 - No future 1.x feature may silently invalidate V1 presets; migration or explicit compatibility handling is required.

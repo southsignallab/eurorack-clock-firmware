@@ -1644,3 +1644,96 @@ void testUiCursorWrapToleratesFullEncoderDeltaRange() {
         CHECK_EQ(now_.rotation, before[channel].rotation);
     }
 }
+
+void testManualTempoAfterSignalLossAndExternalTempoLock() {
+    // D-02 / F-005.
+    resetFakes();
+    prepareDisplaySuccess();
+    hal::OledDisplay display;
+    CHECK(display.begin());
+    ClockState state = makeDefaultState();
+    state.source = ClockSource::Auto;
+    state.externalSync.lossMode = SyncLossMode::Freewheel;
+    state.bpm = 100U;
+    hal::GateOutputDriver gates;
+    gates.beginDisabled();
+    engine::ClockEngine engine(gates);
+    engine.begin(state);
+    hal::PersistentStorage::resetForTest();
+    hal::PersistentStorage storage;
+    services::PersistentStateService persistentState(storage);
+    persistentState.begin();
+    services::CustomGrooveStore grooveStore(storage);
+    services::SequencerPatternStore sequencerStore(storage);
+    services::SequencerStepStore sequencerStepStore(storage);
+    CHECK(sequencerStore.begin());
+    CHECK(sequencerStepStore.begin());
+    ui::UiRenderer renderer(
+        display, persistentState, grooveStore, sequencerStore, sequencerStepStore);
+    ui::UiController controller(
+        state, engine, renderer, persistentState, grooveStore, sequencerStore, sequencerStepStore);
+    std::uint32_t now = 100U;
+
+    // AUTO, locked at 120 BPM: the signal owns the tempo; the encoder only shows the notice.
+    engine.acceptExternalPulse(120000U, 1U);
+    controllerTurn(controller, 5, now);
+    CHECK_EQ(state.bpm, 100U);
+    CHECK(controller.navigation().externalTempoNotice);
+    CHECK_EQ(engine.snapshot().externalBpmMilli, 120000U);
+    controller.serviceRendering(now + config::kExternalTempoNoticeMs + 1U);
+    CHECK(!controller.navigation().externalTempoNotice);
+    now += config::kExternalTempoNoticeMs + 2U;
+
+    // Only tempo gestures are blocked: Settings stay reachable and editable.
+    controllerLongPress(controller, now);
+    CHECK_EQ(controller.navigation().screen, ui::Screen::Settings);
+    controllerReset(controller, now);
+    CHECK_EQ(controller.navigation().screen, ui::Screen::Performance);
+
+    // Signal lost (freewheel at 120). A manual change now wins.
+    engine.setExternalLock(false, 120000U);
+    CHECK_EQ(engine.snapshot().externalBpmMilli, 120000U);
+    controllerTurn(controller, -10, now);
+    CHECK_EQ(state.bpm, 90U);
+    CHECK(!controller.navigation().externalTempoNotice);
+    CHECK_EQ(engine.snapshot().externalBpmMilli, 0U);
+    // The engine runs at 90 BPM: one second = 1.5 beats.
+    engine.play();
+    const std::uint64_t before = engine.snapshot().masterPositionQ32;
+    for (std::uint32_t tick = 0U; tick < config::kSchedulerFrequencyHz; ++tick) {
+        engine.processSchedulerTick();
+    }
+    CHECK_EQ(engine.snapshot().masterPositionQ32 - before, core::kQ32One + core::kQ32One / 2U);
+    engine.stop();
+
+    // A returning signal owns the tempo again.
+    engine.acceptExternalPulse(120000U, 1U);
+    CHECK(engine.snapshot().externalLocked);
+    CHECK_EQ(engine.snapshot().externalBpmMilli, 120000U);
+
+    // EXTERNAL: no manual tempo change even without a signal; the freewheel tempo stays.
+    state.source = ClockSource::External;
+    engine.updateConfiguration(state, false);
+    engine.setExternalLock(false, 120000U);
+    controllerTurn(controller, 3, now);
+    CHECK_EQ(state.bpm, 90U);
+    CHECK(controller.navigation().externalTempoNotice);
+    CHECK_EQ(engine.snapshot().externalBpmMilli, 120000U);
+    // A settings-level fallback-tempo change does not drop the EXTERNAL freewheel tempo.
+    engine.updateMasterTempo(95U);
+    CHECK_EQ(engine.snapshot().externalBpmMilli, 120000U);
+
+    // The notice is drawn: frames with and without it differ.
+    hal::OledDisplay plainDisplay;
+    CHECK(plainDisplay.begin());
+    ui::PerformanceRenderer plain(plainDisplay);
+    ui::NavigationState navigation{};
+    const engine::EngineSnapshot snapshot = engine.snapshot();
+    plain.render(state, navigation, snapshot);
+    hal::OledDisplay noticeDisplay;
+    CHECK(noticeDisplay.begin());
+    ui::PerformanceRenderer notice(noticeDisplay);
+    navigation.externalTempoNotice = true;
+    notice.render(state, navigation, snapshot);
+    CHECK(plainDisplay.framebufferForTest() != noticeDisplay.framebufferForTest());
+}

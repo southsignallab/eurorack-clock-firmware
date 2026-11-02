@@ -2,7 +2,7 @@
 
 # South Signal Lab CLOCK Test Coverage — stable v1.1.0
 
-The stable-release test policy is repository-wide rather than limited to `clock_core`. Stable 1.1.0 shipped with 497 named Native cases. The current post-1.1 development tree adds the focused `test_sequencer2` suite plus current Sequencer expression/UI and realtime gate regressions for a **525-case** working inventory, while `run_host_tests.py` remains the authoritative variant/sanitizer/coverage matrix.
+The stable-release test policy is repository-wide rather than limited to `clock_core`. Stable 1.1.0 shipped with 497 named Native cases. The current post-1.1 development tree adds the focused `test_sequencer2` suite plus current Sequencer expression/UI and realtime gate regressions for a **538-case** working inventory, while `run_host_tests.py` remains the authoritative variant/sanitizer/coverage matrix.
 
 ## Hard CI gates
 
@@ -138,7 +138,7 @@ The complete firmware variants compile the real production `.cpp` files against 
 - application boot lifecycle, safe display-failure path, scheduler callback and STM32Cube entry-point/platform-I/O glue
 - all `ClockEngine` public methods and OFF/CLOCK/EUC/SEQ behavior
 - pause/stop, external-loss STOP/FREE behavior, bar progression/wrap and GLOBAL/FREE reset handling
-- all settings mutation pages and sequencer commands, including invalid-index boundary handling; a dedicated 89-case Settings suite also locks down min/max coupling, enum boundaries, SYNC smoothing labels and cross-setting invariants
+- all settings mutation pages and sequencer commands, including invalid-index boundary handling; a dedicated 90-case Settings suite also locks down min/max coupling, enum boundaries, SYNC smoothing labels and cross-setting invariants
 - tap tempo and all factory templates
 - all menu pages, labels, compact formatters and localization fallback
 - performance, pictographic 2×4 channel overview, horizontal centered mode carousel, settings, Clock/Plug/Heartbeat/Acid/Spectrum/Field/Blox/Matrix/Cube Cover/Fractal/Orbit/Make Music/Labyrinth/Starfield/Fireworks screensaver effects, preset overwrite/name-band, templates and sequencer render paths
@@ -152,7 +152,7 @@ The complete firmware variants compile the real production `.cpp` files against 
 - complete CURRENT-state persistence plus CRC/schema validation, 8 named user preset slots, and the 10-record Custom Groove store, including screensaver mode/start/dim/off plus device-local encoder-direction/OLED-orientation preferences
 - schema-v11 to schema-v12 migration for Custom Groove slot references, schema-v10 to schema-v11 migration for configurable input roles, schema-v9 to schema-v10 Groove migration, the earlier v8/v7/v6/v5/v4/v3 migration chain, corrupt-record isolation, preset/Custom-Groove name validation, CRC-protected 10-slot Groove records, and preservation of unrelated NVM bytes
 - external-sync regression cases for 20/120/999 BPM, 1/2/4/24 PPQN, jitter, adaptive lock timeout, queue overflow/reacquisition, timestamp wraparound, effective-tempo gate release, monotonic scheduler time, phase alignment, ISR-safe pulse entry, and PPQN interpretation
-- 116-case atomic input/SYNC behavior: external clocks at 1/20/30/60/120/240/300/600/900/999 BPM plus configurable SYNC/RESET/RUN/START/STOP/RESTART/TAP roles on either physical input, role-change queue invalidation, input exclusivity, transport-neutral RUN assignment/boot baselining, level-authoritative RUN after a physical change, timestamp-preserving TAP, jitter/glitches, runtime PPQN/edge changes, loss policies and continuity recovery
+- 117-case atomic input/SYNC behavior: external clocks at 1/20/30/60/120/240/300/600/900/999 BPM plus configurable SYNC/RESET/RUN/START/STOP/RESTART/TAP roles on either physical input, role-change queue invalidation, input exclusivity, transport-neutral RUN assignment/boot baselining, level-authoritative RUN after a physical change, timestamp-preserving TAP, jitter/glitches, runtime PPQN/edge changes, loss policies and continuity recovery
 - external-SYNC `SMOOTHING` OFF/LOW/MEDIUM/FULL weighting, factory LOW default, live smoothing changes after lock, and menu-label coverage for all four modes
 - continuous external-tempo movement including 60->180 and 180->60 ramps, slow drift, repeated tempo steps, ramp-plus-jitter and 24-PPQN acceleration; permanently asserted SYNC is checked for one-edge behavior and natural lock timeout rather than a synthetic pulse train
 - dedicated Swing edge-train tests, One Clock Humanize bounds/repeatability/mode isolation, Tap Tempo rolling-estimator boundaries, encoder NORMAL/REVERSED plus TIM4 detent-recovery/fast-turn backlog behavior, exact OLED 0°/180° transfer-frame rotation, and atomic button debounce/queue behavior

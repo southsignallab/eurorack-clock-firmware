@@ -32,7 +32,8 @@ MenuRow buildSyncMenuRow(const std::uint8_t rowIndex, const ClockState& state) {
         text::TextId::ResetInputMode,
         text::TextId::Filter,
         text::TextId::Smoothing,
-        text::TextId::Timeout};
+        text::TextId::Timeout,
+        text::TextId::Autostart};
     if (rowIndex >= sizeof(kLabels) / sizeof(kLabels[0])) {
         return row;
     }
@@ -64,9 +65,12 @@ MenuRow buildSyncMenuRow(const std::uint8_t rowIndex, const ClockState& state) {
                 : (state.externalSync.smoothing == SyncSmoothing::Medium
                     ? text::TextId::SyncMedium : text::TextId::SyncFull));
         copySyncText(row.value, sizeof(row.value), smoothingText);
-    } else {
+    } else if (rowIndex == 7U) {
         std::snprintf(row.value, sizeof(row.value), text::get(text::TextId::MillisecondsFormat),
             state.externalSync.timeoutMs);
+    } else {
+        copySyncText(row.value, sizeof(row.value), state.externalSync.autostartOnLock
+            ? text::TextId::On : text::TextId::Off);
     }
     return row;
 }

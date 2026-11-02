@@ -38,14 +38,14 @@ public:
     /** Maximum number of user-visible characters in one preset name. */
     static constexpr std::size_t kPresetNameLength = 16U;
 
-    /** Serialized v12 payload bytes for one complete ClockState. */
-    static constexpr std::size_t kCurrentStatePayloadBytes = 294U;
+    /** Serialized v13 payload bytes for one complete ClockState. */
+    static constexpr std::size_t kCurrentStatePayloadBytes = 295U;
 
     /** Durable CURRENT record bytes: header + state payload + CRC-32. */
-    static constexpr std::size_t kCurrentRecordBytes = 306U;
+    static constexpr std::size_t kCurrentRecordBytes = 307U;
 
     /** Durable named-preset record bytes: header + name + state payload + CRC-32. */
-    static constexpr std::size_t kPresetRecordBytes = 322U;
+    static constexpr std::size_t kPresetRecordBytes = 323U;
 
     /** Bytes occupied by CURRENT plus all eight V1 named presets. */
     static constexpr std::size_t kSettingsPresetFootprintBytes =
@@ -186,7 +186,13 @@ private:
     static constexpr std::size_t kPresetRecordSize = kPresetRecordBytes;
 
     /** Current development record schema version. */
-    static constexpr std::uint8_t kSchemaVersion = 12U;
+    static constexpr std::uint8_t kSchemaVersion = 13U;
+
+    /** v12 schema (firmware 1.1.0 write format) before SYNC AUTOSTART was appended. */
+    static constexpr std::uint8_t kV12SchemaVersion = 12U;
+    static constexpr std::size_t kV12StatePayloadSize = 294U;
+    static constexpr std::size_t kV12CurrentRecordSize = 306U;
+    static constexpr std::size_t kV12PresetRecordSize = 322U;
 
     /** v11 schema used before Custom Groove slot references were appended. */
     static constexpr std::uint8_t kV11SchemaVersion = 11U;
@@ -255,6 +261,12 @@ private:
     /** @brief Returns the byte offset for one preset slot. */
     static constexpr std::size_t presetOffset(const std::uint8_t slotIndex) {
         return kPresetAreaOffset + static_cast<std::size_t>(slotIndex) * kPresetRecordSize;
+    }
+
+    /** @brief Returns the byte offset used by one v12 preset slot. */
+    static constexpr std::size_t v12PresetOffset(const std::uint8_t slotIndex) {
+        return kV12CurrentRecordSize +
+            static_cast<std::size_t>(slotIndex) * kV12PresetRecordSize;
     }
 
     /** @brief Returns the byte offset used by one v11 preset slot. */
@@ -336,6 +348,22 @@ private:
     /** @brief Validates and extracts one named user preset record. */
     static bool deserializePresetRecord(
         const std::array<std::uint8_t, kPresetRecordSize>& record,
+        char* name,
+        ClockState& state);
+
+    /** @brief Upgrades a v12 payload by injecting the SYNC AUTOSTART default (OFF). */
+    static bool deserializeV12State(
+        const std::array<std::uint8_t, kV12StatePayloadSize>& payload,
+        ClockState& state);
+
+    /** @brief Validates and upgrades one v12 CURRENT record. */
+    static bool deserializeV12CurrentRecord(
+        const std::array<std::uint8_t, kV12CurrentRecordSize>& record,
+        ClockState& state);
+
+    /** @brief Validates and upgrades one named v12 preset record. */
+    static bool deserializeV12PresetRecord(
+        const std::array<std::uint8_t, kV12PresetRecordSize>& record,
         char* name,
         ClockState& state);
 
@@ -495,6 +523,28 @@ private:
     /** @brief Compares two complete states without relying on structure padding. */
     static bool statesEqual(const ClockState& first, const ClockState& second);
 
+    /**
+     * @brief Reads one preset slot in the current schema or, failing that, any supported older layout.
+     * @param slotIndex Preset slot in [0, kUserPresetSlotCount).
+     * @param name Destination for the normalized preset name (kPresetNameLength + 1 bytes).
+     * @param state Destination state.
+     * @param priorSchema Set true when the record was found in an older layout.
+     * @return True when a valid record was found.
+     */
+    bool loadPresetAnySchema(
+        std::uint8_t slotIndex, char* name, ClockState& state, bool& priorSchema) const;
+
+    /**
+     * @brief Stages the canonical current-schema records area from the stored (possibly older) layout.
+     *
+     * Requires an open storage update. CURRENT is staged from storedCurrentState_;
+     * every valid preset is re-read from Flash and re-serialized at its current offset.
+     */
+    bool stageMigratedRecords();
+
+    /** @brief Delay between retries of a failed boot migration commit. */
+    static constexpr std::uint32_t kMigrationRetryIntervalMs = 3000U;
+
     hal::PersistentStorage& storage_;
     ClockState storedCurrentState_{};
     ClockState pendingCurrentState_{};
@@ -504,6 +554,12 @@ private:
     std::uint32_t pendingSinceMs_ = 0U;
     bool hasStoredCurrentState_ = false;
     bool writePending_ = false;
+    // A boot migration whose commit failed leaves the older layout in Flash. Until
+    // it is committed, no other write of this service may touch the records area,
+    // because current-schema offsets would overwrite older-layout presets.
+    bool migrationPending_ = false;
+    bool migrationRetryScheduled_ = false;
+    std::uint32_t migrationRetryAtMs_ = 0U;
     // Each accepted operation owns its own slot until an atomic A/B commit.
     // Updating one pending slot may replace its own value, never another slot.
     std::array<std::array<std::uint8_t, kPresetRecordSize>, kUserPresetSlotCount>
@@ -519,7 +575,7 @@ static_assert(
         hal::persistent_layout::kLegacyScoreRegionOffset,
     "CURRENT plus named presets overlap the legacy score region.");
 static_assert(
-    PersistentStateService::kMaximumInPlaceStatePayloadGrowthBytes == 21U,
+    PersistentStateService::kMaximumInPlaceStatePayloadGrowthBytes == 20U,
     "V1 persistence headroom changed; update the forward-compatibility analysis.");
 
 }  // namespace clockfw::services

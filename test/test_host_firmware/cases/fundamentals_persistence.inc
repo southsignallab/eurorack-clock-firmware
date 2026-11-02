@@ -132,12 +132,13 @@ void testPersistentLayoutV1ForwardCompatibilityContract() {
     CHECK_EQ(hal::persistent_layout::kMaximumImageBytes, 12288U);
     CHECK_EQ(hal::persistent_layout::kLegacyScoreRegionOffset, 3072U);
     CHECK_EQ(hal::persistent_layout::kLeaderboardRegionOffset, 4096U);
-    CHECK_EQ(services::PersistentStateService::kCurrentStatePayloadBytes, 294U);
-    CHECK_EQ(services::PersistentStateService::kCurrentRecordBytes, 306U);
-    CHECK_EQ(services::PersistentStateService::kPresetRecordBytes, 322U);
-    CHECK_EQ(services::PersistentStateService::kSettingsPresetFootprintBytes, 2882U);
-    CHECK_EQ(services::PersistentStateService::kBytesBeforeLegacyScoreRegion, 190U);
-    CHECK_EQ(services::PersistentStateService::kMaximumInPlaceStatePayloadGrowthBytes, 21U);
+    // Schema v13 (SYNC AUTOSTART) appended one byte to the repeated ClockState.
+    CHECK_EQ(services::PersistentStateService::kCurrentStatePayloadBytes, 295U);
+    CHECK_EQ(services::PersistentStateService::kCurrentRecordBytes, 307U);
+    CHECK_EQ(services::PersistentStateService::kPresetRecordBytes, 323U);
+    CHECK_EQ(services::PersistentStateService::kSettingsPresetFootprintBytes, 2891U);
+    CHECK_EQ(services::PersistentStateService::kBytesBeforeLegacyScoreRegion, 181U);
+    CHECK_EQ(services::PersistentStateService::kMaximumInPlaceStatePayloadGrowthBytes, 20U);
     CHECK_EQ(services::CustomGrooveStore::kStorageOffset, 3136U);
     CHECK_EQ(services::CustomGrooveStore::kStorageOffset +
         static_cast<std::size_t>(kCustomGrooveSlotCount) * services::CustomGrooveStore::kRecordBytes,
@@ -729,8 +730,8 @@ void testPendingPresetsAcrossSlotsCommitAtomically() {
 }
 
 void testPersistentV3Migration() {
-    constexpr std::size_t kV12CurrentSize = services::PersistentStateService::kCurrentRecordBytes;
-    constexpr std::size_t kV12PresetSize = services::PersistentStateService::kPresetRecordBytes;
+    constexpr std::size_t kWriteCurrentSize = services::PersistentStateService::kCurrentRecordBytes;
+    constexpr std::size_t kWritePresetSize = services::PersistentStateService::kPresetRecordBytes;
     constexpr std::size_t kV11CurrentSize = 297U;
     constexpr std::size_t kV11PresetSize = 313U;
     constexpr std::size_t kV10CurrentSize = 295U;
@@ -778,12 +779,12 @@ void testPersistentV3Migration() {
     CHECK(seed.savePreset(0U, "MIGRATE", legacyState));
     seed.service(5000U);
 
-    std::array<std::uint8_t, kV12CurrentSize> v12Current{};
-    std::array<std::uint8_t, kV12PresetSize> v12Preset{};
+    std::array<std::uint8_t, kWriteCurrentSize> v12Current{};
+    std::array<std::uint8_t, kWritePresetSize> v12Preset{};
     CHECK(seedStorage.readBytes(0U, v12Current.data(), v12Current.size()));
-    CHECK(seedStorage.readBytes(kV12CurrentSize, v12Preset.data(), v12Preset.size()));
-    const auto v11Current = makeLegacyV11Record<kV12CurrentSize, kV11CurrentSize, 8U>(v12Current);
-    const auto v11Preset = makeLegacyV11Record<kV12PresetSize, kV11PresetSize, 24U>(v12Preset);
+    CHECK(seedStorage.readBytes(kWriteCurrentSize, v12Preset.data(), v12Preset.size()));
+    const auto v11Current = makeLegacyV11Record<kWriteCurrentSize, kV11CurrentSize, 8U>(v12Current);
+    const auto v11Preset = makeLegacyV11Record<kWritePresetSize, kV11PresetSize, 24U>(v12Preset);
     const auto v10Current = makeLegacyV10Record<kV11CurrentSize, kV10CurrentSize, 8U>(v11Current);
     const auto v10Preset = makeLegacyV10Record<kV11PresetSize, kV10PresetSize, 24U>(v11Preset);
     const auto v9Current = makeLegacyV9Record<kV10CurrentSize, kV9CurrentSize, 8U>(v10Current);
@@ -821,12 +822,12 @@ void testPersistentV3Migration() {
     CHECK_EQ(restoredV11.unifiedClock.groove.customSlot, 0U);
     CHECK_EQ(restoredV11.channels[2].common.groove.customSlot, 0U);
     CHECK(migratedV11.presetExists(0U));
-    std::array<std::uint8_t, kV12CurrentSize> migratedV11Current{};
-    std::array<std::uint8_t, kV12PresetSize> migratedV11Preset{};
+    std::array<std::uint8_t, kWriteCurrentSize> migratedV11Current{};
+    std::array<std::uint8_t, kWritePresetSize> migratedV11Preset{};
     CHECK(legacyV11Storage.readBytes(0U, migratedV11Current.data(), migratedV11Current.size()));
-    CHECK(legacyV11Storage.readBytes(kV12CurrentSize, migratedV11Preset.data(), migratedV11Preset.size()));
-    CHECK_EQ(migratedV11Current[4], 12U);
-    CHECK_EQ(migratedV11Preset[4], 12U);
+    CHECK(legacyV11Storage.readBytes(kWriteCurrentSize, migratedV11Preset.data(), migratedV11Preset.size()));
+    CHECK_EQ(migratedV11Current[4], 13U);
+    CHECK_EQ(migratedV11Preset[4], 13U);
 
     // Every legacy record parser has a fail-closed header/CRC contract. Exercise
     // every short-circuit guard independently so migration regressions cannot be
@@ -922,12 +923,12 @@ void testPersistentV3Migration() {
     CHECK_EQ(restoredV10.inputs.input1, InputFunction::Sync);
     CHECK_EQ(restoredV10.inputs.input2, InputFunction::Reset);
     CHECK(migratedV10.presetExists(0U));
-    std::array<std::uint8_t, kV12CurrentSize> rewrittenV12Current{};
-    std::array<std::uint8_t, kV12PresetSize> rewrittenV12Preset{};
+    std::array<std::uint8_t, kWriteCurrentSize> rewrittenV12Current{};
+    std::array<std::uint8_t, kWritePresetSize> rewrittenV12Preset{};
     CHECK(legacyV10Storage.readBytes(0U, rewrittenV12Current.data(), rewrittenV12Current.size()));
-    CHECK(legacyV10Storage.readBytes(kV12CurrentSize, rewrittenV12Preset.data(), rewrittenV12Preset.size()));
-    CHECK_EQ(rewrittenV12Current[4], 12U);
-    CHECK_EQ(rewrittenV12Preset[4], 12U);
+    CHECK(legacyV10Storage.readBytes(kWriteCurrentSize, rewrittenV12Preset.data(), rewrittenV12Preset.size()));
+    CHECK_EQ(rewrittenV12Current[4], 13U);
+    CHECK_EQ(rewrittenV12Preset[4], 13U);
 
     // v9 -> v11: early 1.1 Pre-Count state survives and Groove defaults to OFF.
     hal::PersistentStorage::resetForTest();
@@ -965,9 +966,9 @@ void testPersistentV3Migration() {
     std::array<std::uint8_t, kV11CurrentSize> migratedV8ToV9Current{};
     std::array<std::uint8_t, kV11PresetSize> migratedV8ToV9Preset{};
     CHECK(legacyV8Storage.readBytes(0U, migratedV8ToV9Current.data(), migratedV8ToV9Current.size()));
-    CHECK(legacyV8Storage.readBytes(kV12CurrentSize, migratedV8ToV9Preset.data(), migratedV8ToV9Preset.size()));
-    CHECK_EQ(migratedV8ToV9Current[4], 12U);
-    CHECK_EQ(migratedV8ToV9Preset[4], 12U);
+    CHECK(legacyV8Storage.readBytes(kWriteCurrentSize, migratedV8ToV9Preset.data(), migratedV8ToV9Preset.size()));
+    CHECK_EQ(migratedV8ToV9Current[4], 13U);
+    CHECK_EQ(migratedV8ToV9Preset[4], 13U);
 
     // v7 -> v10: all prior musical/device state survives, SYNC smoothing receives
     // the release-safe LOW default, and Pre-Count receives OFF before rewrite.
@@ -984,12 +985,12 @@ void testPersistentV3Migration() {
     CHECK_EQ(restoredV7.externalSync.smoothing, SyncSmoothing::Low);
     CHECK(migratedV7.presetExists(0U));
     CHECK_EQ(restoredV7.preCountSteps, 0U);
-    std::array<std::uint8_t, kV12CurrentSize> migratedV7ToV9Current{};
-    std::array<std::uint8_t, kV12PresetSize> migratedV7ToV9Preset{};
+    std::array<std::uint8_t, kWriteCurrentSize> migratedV7ToV9Current{};
+    std::array<std::uint8_t, kWritePresetSize> migratedV7ToV9Preset{};
     CHECK(legacyV7Storage.readBytes(0U, migratedV7ToV9Current.data(), migratedV7ToV9Current.size()));
-    CHECK(legacyV7Storage.readBytes(kV12CurrentSize, migratedV7ToV9Preset.data(), migratedV7ToV9Preset.size()));
-    CHECK_EQ(migratedV7ToV9Current[4], 12U);
-    CHECK_EQ(migratedV7ToV9Preset[4], 12U);
+    CHECK(legacyV7Storage.readBytes(kWriteCurrentSize, migratedV7ToV9Preset.data(), migratedV7ToV9Preset.size()));
+    CHECK_EQ(migratedV7ToV9Current[4], 13U);
+    CHECK_EQ(migratedV7ToV9Preset[4], 13U);
 
     // A CRC-valid current record with a semantically invalid payload must be rejected.
     // This exercises the post-decode semantic-validation path independently of CRC checks.
@@ -1022,12 +1023,12 @@ void testPersistentV3Migration() {
     CHECK_EQ(restoredV6.externalSync.smoothing, SyncSmoothing::Low);
     CHECK_EQ(restoredV6.preCountSteps, 0U);
     CHECK(migratedV6.presetExists(0U));
-    std::array<std::uint8_t, kV12CurrentSize> migratedV6ToV9Current{};
-    std::array<std::uint8_t, kV12PresetSize> migratedV6ToV9Preset{};
+    std::array<std::uint8_t, kWriteCurrentSize> migratedV6ToV9Current{};
+    std::array<std::uint8_t, kWritePresetSize> migratedV6ToV9Preset{};
     CHECK(legacyV6Storage.readBytes(0U, migratedV6ToV9Current.data(), migratedV6ToV9Current.size()));
-    CHECK(legacyV6Storage.readBytes(kV12CurrentSize, migratedV6ToV9Preset.data(), migratedV6ToV9Preset.size()));
-    CHECK_EQ(migratedV6ToV9Current[4], 12U);
-    CHECK_EQ(migratedV6ToV9Preset[4], 12U);
+    CHECK(legacyV6Storage.readBytes(kWriteCurrentSize, migratedV6ToV9Preset.data(), migratedV6ToV9Preset.size()));
+    CHECK_EQ(migratedV6ToV9Current[4], 13U);
+    CHECK_EQ(migratedV6ToV9Preset[4], 13U);
 
     // v5 -> v10: user state remains intact; newer fields receive safe defaults.
     hal::PersistentStorage::resetForTest();
@@ -1046,12 +1047,12 @@ void testPersistentV3Migration() {
     CHECK_EQ(restoredV5.externalSync.smoothing, SyncSmoothing::Low);
     CHECK_EQ(restoredV5.preCountSteps, 0U);
     CHECK(migratedV5.presetExists(0U));
-    std::array<std::uint8_t, kV12CurrentSize> migratedV9Current{};
-    std::array<std::uint8_t, kV12PresetSize> migratedV9Preset{};
+    std::array<std::uint8_t, kWriteCurrentSize> migratedV9Current{};
+    std::array<std::uint8_t, kWritePresetSize> migratedV9Preset{};
     CHECK(legacyV5Storage.readBytes(0U, migratedV9Current.data(), migratedV9Current.size()));
-    CHECK(legacyV5Storage.readBytes(kV12CurrentSize, migratedV9Preset.data(), migratedV9Preset.size()));
-    CHECK_EQ(migratedV9Current[4], 12U);
-    CHECK_EQ(migratedV9Preset[4], 12U);
+    CHECK(legacyV5Storage.readBytes(kWriteCurrentSize, migratedV9Preset.data(), migratedV9Preset.size()));
+    CHECK_EQ(migratedV9Current[4], 13U);
+    CHECK_EQ(migratedV9Preset[4], 13U);
 
     // v4 -> v10: user BPM remains intact and newer preferences receive factory defaults.
     hal::PersistentStorage::resetForTest();
@@ -1072,9 +1073,9 @@ void testPersistentV3Migration() {
     CHECK_EQ(restoredV4.preCountSteps, 0U);
     CHECK(migratedV4.presetExists(0U));
     CHECK(legacyV4Storage.readBytes(0U, migratedV9Current.data(), migratedV9Current.size()));
-    CHECK(legacyV4Storage.readBytes(kV12CurrentSize, migratedV9Preset.data(), migratedV9Preset.size()));
-    CHECK_EQ(migratedV9Current[4], 12U);
-    CHECK_EQ(migratedV9Preset[4], 12U);
+    CHECK(legacyV4Storage.readBytes(kWriteCurrentSize, migratedV9Preset.data(), migratedV9Preset.size()));
+    CHECK_EQ(migratedV9Current[4], 13U);
+    CHECK_EQ(migratedV9Preset[4], 13U);
 
     // v3 -> v10 through all intermediate layouts, preserving the independent high-score area.
     hal::PersistentStorage::resetForTest();
@@ -1121,9 +1122,9 @@ void testPersistentV3Migration() {
     CHECK(legacyStorage.readBytes(kScoreOffset, scoreAfter.data(), scoreAfter.size()));
     CHECK(scoreAfter == scoreMarker);
     CHECK(legacyStorage.readBytes(0U, migratedV9Current.data(), migratedV9Current.size()));
-    CHECK(legacyStorage.readBytes(kV12CurrentSize, migratedV9Preset.data(), migratedV9Preset.size()));
-    CHECK_EQ(migratedV9Current[4], 12U);
-    CHECK_EQ(migratedV9Preset[4], 12U);
+    CHECK(legacyStorage.readBytes(kWriteCurrentSize, migratedV9Preset.data(), migratedV9Preset.size()));
+    CHECK_EQ(migratedV9Current[4], 13U);
+    CHECK_EQ(migratedV9Preset[4], 13U);
 
     // A damaged v3 CURRENT must not prevent a valid v3 preset from being recovered.
     auto corruptCurrent = v3Current;
@@ -1268,4 +1269,159 @@ void testPersistentStateValidationBoundaries() {
     invalid([](ClockState& s) { s.channels[0].sequencer.length = 0U; });
     invalid([](ClockState& s) { s.channels[0].sequencer.length = 65U; });
     invalid([](ClockState& s) { s.channels[0].sequencer.length = 8U; s.channels[0].sequencer.rotation = 8U; });
+}
+
+void testFailedBootMigrationIsRetriedBeforeOtherWrites() {
+    // F-007: a failed migration commit must never let a current-schema write
+    // overwrite older-layout presets that are still the only durable copy.
+    constexpr std::size_t kWriteCurrentSize = services::PersistentStateService::kCurrentRecordBytes;
+    constexpr std::size_t kWritePresetSize = services::PersistentStateService::kPresetRecordBytes;
+    constexpr std::size_t kV11CurrentSize = 297U;
+    constexpr std::size_t kV11PresetSize = 313U;
+
+    // Build v11 CURRENT + presets 0/1 from production v12 records.
+    hal::PersistentStorage::resetForTest();
+    hal::PersistentStorage seedStorage;
+    services::PersistentStateService seed(seedStorage);
+    seed.begin();
+    ClockState current = makeDefaultState();
+    current.bpm = 143U;
+    ClockState presetA = makeDefaultState();
+    presetA.bpm = 101U;
+    ClockState presetB = makeDefaultState();
+    presetB.bpm = 177U;
+    seed.requestCurrentState(current, 10U);
+    CHECK(seed.savePreset(0U, "FIRST", presetA));
+    CHECK(seed.savePreset(1U, "SECOND", presetB));
+    seed.service(10U + config::kPersistenceCommitDelayMs);
+    std::array<std::uint8_t, kWriteCurrentSize> v12Current{};
+    std::array<std::uint8_t, kWritePresetSize> v12PresetA{};
+    std::array<std::uint8_t, kWritePresetSize> v12PresetB{};
+    CHECK(seedStorage.readBytes(0U, v12Current.data(), v12Current.size()));
+    CHECK(seedStorage.readBytes(kWriteCurrentSize, v12PresetA.data(), v12PresetA.size()));
+    CHECK(seedStorage.readBytes(kWriteCurrentSize + kWritePresetSize, v12PresetB.data(), v12PresetB.size()));
+    const auto v11Current = makeLegacyV11Record<kWriteCurrentSize, kV11CurrentSize, 8U>(v12Current);
+    const auto v11PresetA = makeLegacyV11Record<kWritePresetSize, kV11PresetSize, 24U>(v12PresetA);
+    const auto v11PresetB = makeLegacyV11Record<kWritePresetSize, kV11PresetSize, 24U>(v12PresetB);
+
+    hal::PersistentStorage::resetForTest();
+    hal::PersistentStorage storage;
+    CHECK(storage.writeBytes(0U, v11Current.data(), v11Current.size()));
+    CHECK(storage.writeBytes(kV11CurrentSize, v11PresetA.data(), v11PresetA.size()));
+    CHECK(storage.writeBytes(kV11CurrentSize + kV11PresetSize, v11PresetB.data(), v11PresetB.size()));
+    const std::uint32_t commitsBeforeBoot = hal::PersistentStorage::writeCommitCountForTest();
+
+    // Boot with a failing migration commit.
+    hal::PersistentStorage::failNextWriteForTest();
+    services::PersistentStateService service(storage);
+    service.begin();
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), commitsBeforeBoot);
+    CHECK(service.presetExists(0U));
+    CHECK(service.presetExists(1U));
+    ClockState loaded = makeDefaultState();
+    CHECK(service.loadPreset(0U, loaded));  // served from the older layout
+    CHECK_EQ(loaded.bpm, 101U);
+
+    // An autosave is due; the retry fails once more and nothing is written.
+    ClockState edited = current;
+    edited.bpm = 99U;
+    service.requestCurrentState(edited, 20U);
+    hal::PersistentStorage::failNextWriteForTest();
+    service.service(20U + config::kPersistenceCommitDelayMs, true);
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), commitsBeforeBoot);
+    {
+        services::PersistentStateService reboot(storage);
+        reboot.begin();  // older layout must still be complete
+        ClockState check = makeDefaultState();
+        CHECK(reboot.loadPreset(0U, check));
+        CHECK_EQ(check.bpm, 101U);
+        CHECK(reboot.loadPreset(1U, check));
+        CHECK_EQ(check.bpm, 177U);
+    }
+    // The reboot above succeeded in migrating; restore the failed-migration image.
+    hal::PersistentStorage::resetForTest();
+    CHECK(storage.writeBytes(0U, v11Current.data(), v11Current.size()));
+    CHECK(storage.writeBytes(kV11CurrentSize, v11PresetA.data(), v11PresetA.size()));
+    CHECK(storage.writeBytes(kV11CurrentSize + kV11PresetSize, v11PresetB.data(), v11PresetB.size()));
+    hal::PersistentStorage::failNextWriteForTest();
+    services::PersistentStateService retry(storage);
+    retry.begin();
+    retry.requestCurrentState(edited, 20U);
+
+    // Before the retry interval the service does not hammer the Flash.
+    const std::uint32_t commitsBeforeRetry = hal::PersistentStorage::writeCommitCountForTest();
+    hal::PersistentStorage::failNextWriteForTest();
+    retry.service(20U + config::kPersistenceCommitDelayMs, true);
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), commitsBeforeRetry);
+    retry.service(21U + config::kPersistenceCommitDelayMs, true);
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), commitsBeforeRetry);
+
+    // After the interval: migration and the autosave commit together.
+    retry.service(30U + 2U * config::kPersistenceCommitDelayMs, true);
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), commitsBeforeRetry + 1U);
+    services::PersistentStateService finalBoot(storage);
+    finalBoot.begin();
+    ClockState restored = makeDefaultState();
+    CHECK(finalBoot.restoreCurrentState(restored));
+    CHECK_EQ(restored.bpm, 99U);
+    CHECK(finalBoot.loadPreset(0U, restored));
+    CHECK_EQ(restored.bpm, 101U);
+    CHECK(finalBoot.loadPreset(1U, restored));
+    CHECK_EQ(restored.bpm, 177U);
+    std::array<std::uint8_t, kWritePresetSize> migratedPreset{};
+    CHECK(storage.readBytes(kWriteCurrentSize, migratedPreset.data(), migratedPreset.size()));
+    CHECK_EQ(migratedPreset[4], 13U);
+}
+
+void testV12MigratesToV13WithSyncAutostartOff() {
+    // D-01: schema v13 appends SYNC AUTOSTART; v12 (firmware 1.1.0) records migrate with OFF.
+    constexpr std::size_t kV13CurrentSize = services::PersistentStateService::kCurrentRecordBytes;
+    constexpr std::size_t kV13PresetSize = services::PersistentStateService::kPresetRecordBytes;
+    constexpr std::size_t kV12CurrentSize = 306U;
+    constexpr std::size_t kV12PresetSize = 322U;
+    hal::PersistentStorage::resetForTest();
+    hal::PersistentStorage seedStorage;
+    services::PersistentStateService seed(seedStorage);
+    seed.begin();
+    ClockState current = makeDefaultState();
+    current.bpm = 133U;
+    current.externalSync.autostartOnLock = true;  // must not survive a v12 source
+    ClockState preset = makeDefaultState();
+    preset.bpm = 77U;
+    seed.requestCurrentState(current, 10U);
+    CHECK(seed.savePreset(0U, "V12", preset));
+    seed.service(10U + config::kPersistenceCommitDelayMs);
+    std::array<std::uint8_t, kV13CurrentSize> v13Current{};
+    std::array<std::uint8_t, kV13PresetSize> v13Preset{};
+    CHECK(seedStorage.readBytes(0U, v13Current.data(), v13Current.size()));
+    CHECK(seedStorage.readBytes(kV13CurrentSize, v13Preset.data(), v13Preset.size()));
+    CHECK_EQ(v13Current[4], 13U);
+    const auto v12Current = makeLegacyV12Record<kV13CurrentSize, kV12CurrentSize, 8U>(v13Current);
+    const auto v12Preset = makeLegacyV12Record<kV13PresetSize, kV12PresetSize, 24U>(v13Preset);
+
+    hal::PersistentStorage::resetForTest();
+    hal::PersistentStorage storage;
+    CHECK(storage.writeBytes(0U, v12Current.data(), v12Current.size()));
+    CHECK(storage.writeBytes(kV12CurrentSize, v12Preset.data(), v12Preset.size()));
+    services::PersistentStateService migrated(storage);
+    migrated.begin();
+    ClockState restored = makeDefaultState();
+    CHECK(migrated.restoreCurrentState(restored));
+    CHECK_EQ(restored.bpm, 133U);
+    CHECK(!restored.externalSync.autostartOnLock);
+    CHECK(migrated.loadPreset(0U, restored));
+    CHECK_EQ(restored.bpm, 77U);
+    std::array<std::uint8_t, kV13CurrentSize> rewritten{};
+    CHECK(storage.readBytes(0U, rewritten.data(), rewritten.size()));
+    CHECK_EQ(rewritten[4], 13U);
+
+    // v13 round trip keeps SYNC AUTOSTART ON.
+    current.externalSync.autostartOnLock = true;
+    migrated.requestCurrentState(current, 20U);
+    migrated.service(20U + config::kPersistenceCommitDelayMs, true);
+    services::PersistentStateService reboot(storage);
+    reboot.begin();
+    ClockState reloaded = makeDefaultState();
+    CHECK(reboot.restoreCurrentState(reloaded));
+    CHECK(reloaded.externalSync.autostartOnLock);
 }

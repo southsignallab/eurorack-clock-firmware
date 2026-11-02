@@ -375,10 +375,13 @@ Transport has three states: **PLAY, PAUSE, STOP**.
 - START/PAUSE toggles running and paused states without an implicit phase reset.
 - STOP/BACK from Performance enters STOP and applies the global reset policy.
 - Tap Tempo adjusts the master tempo from a sequence of TAP presses within the supported 1–999 BPM technical range and the configured user MIN/MAX boundaries.
+- While an external clock owns the tempo — `SOURCE = EXTERNAL`, or `SOURCE = AUTO` with a locked SYNC signal — turning the encoder on the Performance screen or pressing TAP does not change the tempo; the display briefly shows **EXTERNAL CLOCK** instead. Only tempo gestures are blocked: menus and settings remain fully usable. With `SOURCE = AUTO` and no signal, a manual tempo change replaces a held freewheel tempo; a returning signal takes over again. The Performance screen always shows the tempo that is actually in effect.
 - The first TAP starts a new measurement sequence without an indicator. The second and every following TAP in that sequence triggers a four-frame **8×8 shrinking-dot animation** in a fixed right-aligned slot at the display edge, vertically centered on the tempo display. The BPM numerals remain centered and do not move.
 - The Tap Tempo sequence expires after one beat at the configured **MIN BPM**. At the factory minimum of 20 BPM this is 3000 ms; after a longer pause the next TAP is again the silent first tap and the following TAP resumes visual feedback.
 
-CLOCK persists the working configuration but never restores PLAY on power-up. Flash commits are also deferred while transport is PLAYING so erase/program work cannot block the live gate path.
+CLOCK persists the working configuration but never restores PLAY on power-up, and by default a SYNC lock after power-up does not start transport either (see `AUTOSTART` in Chapter 16). Flash commits are also deferred while the engine runs so erase/program work cannot block the live gate path.
+
+A fresh STOP→PLAY without Pre-Count starts at step 1 and beat 1. SYNC pulses that arrive while CLOCK is stopped or paused do not move the pattern grid; PLAY therefore never produces a catch-up burst.
 
 ### Pre-Count
 
@@ -407,7 +410,7 @@ A jack assigned to **SYNC** does not by itself force external timing ownership. 
 | `OFF` | Ignore the conditioned input. `OFF` may be assigned to both inputs. |
 | `SYNC` | Use selected edges for external period measurement, lock and phase alignment. |
 | `RESET` | Apply global phase reset; `RESET INPUT` selects `TRIGGER` or `GATE` semantics. |
-| `RUN` | After arming, conditioned `HIGH = PLAY`, `LOW = STOP`. Assigning/restoring RUN first baselines the present level and waits for a later physical change. |
+| `RUN` | After arming, conditioned `HIGH = PLAY`, `LOW = STOP`. Assigning/restoring RUN first baselines the present level and waits for a later physical change. A front-panel START/PAUSE or STOP wins until the RUN level changes the next time. |
 | `START` | A positive edge requests PLAY. |
 | `STOP` | A positive edge requests STOP. |
 | `RESTART` | A positive edge performs deterministic STOP→PLAY from phase zero. |
@@ -434,7 +437,7 @@ A jack assigned to **SYNC** does not by itself force external timing ownership. 
 
 1. Without a valid external period, CLOCK runs at the internal/fallback BPM.
 2. The first accepted selected SYNC edge starts acquisition but cannot establish lock because there is no period yet.
-3. The second valid selected edge establishes period and external BPM, acquires lock and re-anchors external phase to zero. Transport may auto-start only while external auto-transport is armed.
+3. The second valid selected edge establishes period and external BPM, acquires lock and re-anchors external phase to zero. A lock starts transport only while external auto-transport is armed: after power-up only with `AUTOSTART = ON`; during a session after a front-panel START, and again after a sync-loss stop.
 4. If external edges later disappear for the effective timeout, lock is lost and `LOSS` decides what happens next.
 
 An explicit user STOP or PAUSE has priority; incoming clock cannot silently undo a manual transport decision.
@@ -447,7 +450,7 @@ An explicit user STOP or PAUSE has priority; incoming clock cannot silently undo
 | `FREE` | Continue at the last measured external tempo and keep that BPM as the effective/visible tempo after lock loss. |
 | `INTERNAL` | Continue using the configured internal/fallback BPM. |
 
-### PPQN, EDGE, FILTER, SMOOTHING and TIMEOUT
+### PPQN, EDGE, FILTER, SMOOTHING, TIMEOUT and AUTOSTART
 
 | Setting | Meaning |
 | --- | --- |
@@ -456,6 +459,7 @@ An explicit user STOP or PAUSE has priority; incoming clock cannot silently undo
 | **FILTER** | `0…5000 µs` minimum inter-edge rejection floor in 250 µs steps. Implausibly short selected-edge intervals are rejected as glitches and do not become the next period reference. |
 | **SMOOTHING** | `OFF = 100%` newest period; `LOW = 75% new / 25% previous`; `MEDIUM = 50/50`; `FULL = 25% new / 75% previous`. Factory default is `LOW`. |
 | **TIMEOUT** | `200…5000 ms` configured lock-loss floor. The effective timeout is never shorter than roughly two expected pulse periods, so a valid slow clock does not time out between pulses. |
+| **AUTOSTART** | `OFF / ON`, factory `OFF`. `OFF`: CLOCK never starts on its own after power-up, not even when an external clock is already running. `ON`: a SYNC lock may start transport, including the first lock after power-up. Switching it while stopped applies to the next lock. |
 
 `FILTER` and `SMOOTHING` solve different problems. FILTER rejects implausibly short edge spacing **before** it can become a new period reference. SMOOTHING decides how quickly **valid** period changes alter the measured tempo. A large FILTER can reject legitimate very-fast clock edges; heavy SMOOTHING deliberately follows real tempo moves more slowly.
 

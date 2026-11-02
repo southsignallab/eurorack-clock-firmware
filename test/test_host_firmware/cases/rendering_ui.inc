@@ -919,8 +919,15 @@ void testTapTempoPreservesClockSourceAndPersistence() {
         controllerTapAt(controller, 1000U);
         controllerTapAt(controller, 1500U);
 
-        CHECK_EQ(state.bpm, 120U);
         CHECK_EQ(state.source, source);
+        if (source == ClockSource::External) {
+            // D-02: EXTERNAL owns the tempo; TAP only shows the notice.
+            CHECK_EQ(state.bpm, 90U);
+            CHECK(controller.navigation().externalTempoNotice);
+            continue;
+        }
+        CHECK_EQ(state.bpm, 120U);
+        CHECK(!controller.navigation().externalTempoNotice);
 
         persistence.service(1500U + config::kPersistenceCommitDelayMs);
         ClockState restored{};

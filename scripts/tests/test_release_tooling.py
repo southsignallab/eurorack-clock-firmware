@@ -582,8 +582,9 @@ class RepositoryPolicyTests(unittest.TestCase):
         self.assertIn("Why no general CV modulation?", readme)
         self.assertIn("digital timing, gate, and trigger", roadmap)
         self.assertIn("0.19.0-beta.1", roadmap)
-        self.assertIn("2,882 bytes", audit)
-        self.assertIn("21 bytes", audit)
+        self.assertIn("2,891 bytes", audit)
+        self.assertIn("20 bytes", audit)
+        self.assertIn("schema v13", audit)
         self.assertIn("schema v12", audit)
         self.assertIn("schema v9", audit)
 

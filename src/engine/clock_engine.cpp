@@ -39,7 +39,11 @@ void ClockEngine::begin(const ClockState& state) {
 
 void ClockEngine::updateConfiguration(const ClockState& state, const bool rescheduleChannels) {
     hal::InterruptLock interruptLock;
+    const std::uint16_t previousBpm = configuration_.bpm;
     copyConfigurationUnsafe(state);
+    if (configuration_.bpm != previousBpm) {
+        discardFreewheelTempoAfterManualChangeUnsafe();
+    }
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
         const ChannelConfig& channel = configuration_.channels[channelIndex];
         if (channel.common.mode == ChannelMode::Off || channel.common.muted) {
@@ -58,6 +62,16 @@ void ClockEngine::updateMasterTempo(const std::uint16_t bpm) {
     }
     hal::InterruptLock interruptLock;
     configuration_.bpm = bpm;
+    discardFreewheelTempoAfterManualChangeUnsafe();
+}
+
+void ClockEngine::discardFreewheelTempoAfterManualChangeUnsafe() {
+    // Decision D-02: with source AUTO and no external signal, a manual tempo
+    // change wins over the last measured (freewheel) tempo. A returning signal
+    // relocks and owns the tempo again. EXTERNAL keeps its freewheel tempo.
+    if (configuration_.source == ClockSource::Auto && !externalLocked_) {
+        externalBpmMilli_ = 0U;
+    }
 }
 
 void ClockEngine::updateChannel(
@@ -89,6 +103,20 @@ void ClockEngine::play() {
     playing_ = true;
     if (freshStart) {
         startPreCountUnsafe();
+        if (!preCountActive_) {
+            // Without Pre-Count a fresh start begins at step 1 and beat 1 now;
+            // external pulses received while stopped must not shift that downbeat.
+            restartFromCurrentPositionUnsafe();
+        }
+    }
+}
+
+void ClockEngine::restartFromCurrentPositionUnsafe() {
+    resetRuntime();
+    if (externalPhaseInitialized_) {
+        externalReferenceQ32_ = masterPositionQ32_;
+        externalMusicalPositionQ32_ = 0U;
+        externalPulseRemainder_ = 0U;
     }
 }
 

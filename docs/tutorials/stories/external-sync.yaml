@@ -37,6 +37,11 @@ scenes:
             timeout_ms: 3000
         - assert:
             clock_source: auto
+        # Lock alone does not start transport (SYNC AUTOSTART is OFF by default).
+        - assert:
+            transport: stopped
+        - button:
+            name: PLAY
         - assert:
             transport: playing
         - wait_ms: 800

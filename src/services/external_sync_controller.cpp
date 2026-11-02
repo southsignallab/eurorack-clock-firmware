@@ -31,7 +31,8 @@ bool settingsEqual(
         first.resetMode == second.resetMode &&
         first.smoothing == second.smoothing &&
         first.glitchFilterUs == second.glitchFilterUs &&
-        first.timeoutMs == second.timeoutMs;
+        first.timeoutMs == second.timeoutMs &&
+        first.autostartOnLock == second.autostartOnLock;
 }
 
 bool inputsEqual(
@@ -88,7 +89,9 @@ void ExternalSyncController::begin(const ClockState& state) {
     lastAcceptedPulseUs_ = 0U;
     filteredPeriodQ8_ = 0U;
     filteredBpmMilli_ = 0U;
-    autoTransportArmed_ = true;
+    // Decision D-01: power-up never starts transport on its own. Only SYNC
+    // AUTOSTART lets a lock acquisition (including the first one) start it.
+    autoTransportArmed_ = settings_.autostartOnLock;
     pendingTransportTransition_ = kNoPendingTransportTransition;
     pendingTap_ = false;
     pendingTapTimestampUs_ = 0U;
@@ -124,6 +127,10 @@ void ExternalSyncController::updateConfiguration(const ClockState& state) {
 
     hal::InterruptLock interruptLock;
     const bool resetModeChanged = foregroundSettings_.resetMode != settings_.resetMode;
+    if (foregroundSettings_.autostartOnLock != settings_.autostartOnLock && !engine_.isPlaying()) {
+        // While stopped, switching SYNC AUTOSTART arms or disarms the next lock.
+        autoTransportArmed_ = foregroundSettings_.autostartOnLock;
+    }
     settings_ = foregroundSettings_;
     inputs_ = foregroundInputs_;
     fallbackBpmMilli_ = foregroundFallbackBpmMilli_;
@@ -185,10 +192,13 @@ std::uint32_t ExternalSyncController::filteredBpmMilli() const {
 void ExternalSyncController::notifyManualTransportState(const TransportState transport) {
     hal::InterruptLock interruptLock;
     autoTransportArmed_ = transport == TransportState::Playing;
-    if (assignedInput(InputFunction::Run) >= 0) {
-        // A wired RUN level remains authoritative over a front-panel transport
-        // action; re-apply it at the next scheduler boundary.
-        runLevelInitialized_ = false;
+    const int runInput = assignedInput(InputFunction::Run);
+    if (runInput >= 0) {
+        // Decision D-03: a front-panel START/STOP/PAUSE wins until the RUN level
+        // changes the next time. Treat the current level as already applied so
+        // processRunLevel() reacts only to the next edge.
+        runLevelApplied_ = inputLevelHigh(runInput);
+        runLevelInitialized_ = true;
     }
 }
 

@@ -21,7 +21,7 @@ A jack assigned to **SYNC** does not by itself force external timing ownership. 
 | `OFF` | Ignore the conditioned input. `OFF` may be assigned to both inputs. |
 | `SYNC` | Use selected edges for external period measurement, lock and phase alignment. |
 | `RESET` | Apply global phase reset; `RESET INPUT` selects `TRIGGER` or `GATE` semantics. |
-| `RUN` | After arming, conditioned `HIGH = PLAY`, `LOW = STOP`. Assigning/restoring RUN first baselines the present level and waits for a later physical change. |
+| `RUN` | After arming, conditioned `HIGH = PLAY`, `LOW = STOP`. Assigning/restoring RUN first baselines the present level and waits for a later physical change. A front-panel START/PAUSE or STOP wins until the RUN level changes the next time. |
 | `START` | A positive edge requests PLAY. |
 | `STOP` | A positive edge requests STOP. |
 | `RESTART` | A positive edge performs deterministic STOP→PLAY from phase zero. |
@@ -48,7 +48,7 @@ A jack assigned to **SYNC** does not by itself force external timing ownership. 
 
 1. Without a valid external period, CLOCK runs at the internal/fallback BPM.
 2. The first accepted selected SYNC edge starts acquisition but cannot establish lock because there is no period yet.
-3. The second valid selected edge establishes period and external BPM, acquires lock and re-anchors external phase to zero. Transport may auto-start only while external auto-transport is armed.
+3. The second valid selected edge establishes period and external BPM, acquires lock and re-anchors external phase to zero. A lock starts transport only while external auto-transport is armed: after power-up only with `AUTOSTART = ON`; during a session after a front-panel START, and again after a sync-loss stop.
 4. If external edges later disappear for the effective timeout, lock is lost and `LOSS` decides what happens next.
 
 An explicit user STOP or PAUSE has priority; incoming clock cannot silently undo a manual transport decision.
@@ -61,7 +61,7 @@ An explicit user STOP or PAUSE has priority; incoming clock cannot silently undo
 | `FREE` | Continue at the last measured external tempo and keep that BPM as the effective/visible tempo after lock loss. |
 | `INTERNAL` | Continue using the configured internal/fallback BPM. |
 
-### PPQN, EDGE, FILTER, SMOOTHING and TIMEOUT
+### PPQN, EDGE, FILTER, SMOOTHING, TIMEOUT and AUTOSTART
 
 | Setting | Meaning |
 | --- | --- |
@@ -70,6 +70,7 @@ An explicit user STOP or PAUSE has priority; incoming clock cannot silently undo
 | **FILTER** | `0…5000 µs` minimum inter-edge rejection floor in 250 µs steps. Implausibly short selected-edge intervals are rejected as glitches and do not become the next period reference. |
 | **SMOOTHING** | `OFF = 100%` newest period; `LOW = 75% new / 25% previous`; `MEDIUM = 50/50`; `FULL = 25% new / 75% previous`. Factory default is `LOW`. |
 | **TIMEOUT** | `200…5000 ms` configured lock-loss floor. The effective timeout is never shorter than roughly two expected pulse periods, so a valid slow clock does not time out between pulses. |
+| **AUTOSTART** | `OFF / ON`, factory `OFF`. `OFF`: CLOCK never starts on its own after power-up, not even when an external clock is already running. `ON`: a SYNC lock may start transport, including the first lock after power-up. Switching it while stopped applies to the next lock. |
 
 `FILTER` and `SMOOTHING` solve different problems. FILTER rejects implausibly short edge spacing **before** it can become a new period reference. SMOOTHING decides how quickly **valid** period changes alter the measured tempo. A large FILTER can reject legitimate very-fast clock edges; heavy SMOOTHING deliberately follows real tempo moves more slowly.
 

@@ -68,6 +68,11 @@ void PersistentStateService::service(
     if (!allowFlashCommit) {
         return;
     }
+    const bool migrate = migrationPending_;
+    if (migrate && migrationRetryScheduled_ &&
+        static_cast<std::int32_t>(nowMs - migrationRetryAtMs_) < 0) {
+        return;
+    }
 
     bool currentRecordReady = writePending_ &&
         nowMs - pendingSinceMs_ >= config::kPersistenceCommitDelayMs;
@@ -81,16 +86,14 @@ void PersistentStateService::service(
         // than causing a second erase/program cycle a few seconds later.
         currentRecordReady = writePending_;
     }
-    if (!currentRecordReady && !hasPendingPresets) {
+    if (!migrate && !currentRecordReady && !hasPendingPresets) {
         return;
     }
 
-    if (!storage_.beginUpdate()) {
-        return;
-    }
-
-    bool staged = true;
-    if (currentRecordReady) {
+    // A pending boot migration always rides in the same transaction as, and
+    // underneath, every other accepted mutation.
+    bool staged = storage_.beginUpdate() && (!migrate || stageMigratedRecords());
+    if (staged && currentRecordReady) {
         const std::array<std::uint8_t, kCurrentRecordSize> currentRecord =
             serializeCurrentRecord(pendingCurrentState_);
         staged = storage_.stageBytes(
@@ -109,9 +112,15 @@ void PersistentStateService::service(
 
     if (!staged || !storage_.commitUpdate()) {
         storage_.cancelUpdate();
+        if (migrate) {
+            migrationRetryScheduled_ = true;
+            migrationRetryAtMs_ = nowMs + kMigrationRetryIntervalMs;
+        }
         return;
     }
 
+    migrationPending_ = false;
+    migrationRetryScheduled_ = false;
     if (currentRecordReady) {
         storedCurrentState_ = pendingCurrentState_;
         persistedTransportPreference_ = storedCurrentState_.transport;
@@ -172,16 +181,18 @@ bool PersistentStateService::loadPreset(
         return false;
     }
 
-    std::array<std::uint8_t, kPresetRecordSize> record{};
-    if (pendingPresetWrites_[slotIndex]) {
-        record = pendingPresetRecords_[slotIndex];
-    } else if (!storage_.readBytes(presetOffset(slotIndex), record.data(), record.size())) {
-        return false;
-    }
     ClockState loaded{};
     char ignoredName[kPresetNameLength + 1U]{};
-    if (!deserializePresetRecord(record, ignoredName, loaded)) {
-        return false;
+    if (pendingPresetWrites_[slotIndex]) {
+        if (!deserializePresetRecord(pendingPresetRecords_[slotIndex], ignoredName, loaded)) {
+            return false;
+        }
+    } else {
+        // While a boot migration is pending, Flash may still hold an older layout.
+        bool ignoredPriorSchema = false;
+        if (!loadPresetAnySchema(slotIndex, ignoredName, loaded, ignoredPriorSchema)) {
+            return false;
+        }
     }
 
     // Loading a musical preset must never cause an implicit transport transition
@@ -201,17 +212,17 @@ bool PersistentStateService::renamePreset(
         return false;
     }
 
-    std::array<std::uint8_t, kPresetRecordSize> record{};
-    if (pendingPresetWrites_[slotIndex]) {
-        record = pendingPresetRecords_[slotIndex];
-    } else if (!storage_.readBytes(presetOffset(slotIndex), record.data(), record.size())) {
-        return false;
-    }
-
     ClockState state{};
     char ignoredName[kPresetNameLength + 1U]{};
-    if (!deserializePresetRecord(record, ignoredName, state)) {
-        return false;
+    if (pendingPresetWrites_[slotIndex]) {
+        if (!deserializePresetRecord(pendingPresetRecords_[slotIndex], ignoredName, state)) {
+            return false;
+        }
+    } else {
+        bool ignoredPriorSchema = false;
+        if (!loadPresetAnySchema(slotIndex, ignoredName, state, ignoredPriorSchema)) {
+            return false;
+        }
     }
     return savePreset(slotIndex, name, state);
 }

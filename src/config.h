@@ -159,5 +159,8 @@ inline constexpr std::uint8_t kTapIndicatorFrameCount = 4U;
 /** Duration of one Tap Tempo indicator animation frame. */
 inline constexpr std::uint32_t kTapIndicatorFrameDurationMs = 50UL;
 
+/** Visibility of the Performance-screen notice that the tempo is set externally. */
+inline constexpr std::uint32_t kExternalTempoNoticeMs = 1500UL;
+
 
 }  // namespace clockfw::config

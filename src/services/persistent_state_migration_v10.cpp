@@ -41,7 +41,7 @@ bool isAllowedV10PresetCharacter(const char character) {
 bool PersistentStateService::deserializeV10State(
     const std::array<std::uint8_t, kV10StatePayloadSize>& payload,
     ClockState& state) {
-    static_assert(kStatePayloadSize == kV10StatePayloadSize + 11U);
+    static_assert(kStatePayloadSize == kV10StatePayloadSize + 12U);
     std::array<std::uint8_t, kStatePayloadSize> upgraded{};
     std::copy(payload.begin(), payload.end(), upgraded.begin());
 

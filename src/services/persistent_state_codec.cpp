@@ -12,10 +12,10 @@
 #include "config.h"
 namespace clockfw::services {
 namespace {
-/** Four-byte CURRENT magic value "CU12" stored little-endian. */
-constexpr std::uint32_t kCurrentMagic = 0x32315543UL;
-/** Four-byte preset magic value "PR12" stored little-endian. */
-constexpr std::uint32_t kPresetMagic = 0x32315250UL;
+/** Four-byte CURRENT magic value "CU13" stored little-endian. */
+constexpr std::uint32_t kCurrentMagic = 0x33315543UL;
+/** Four-byte preset magic value "PR13" stored little-endian. */
+constexpr std::uint32_t kPresetMagic = 0x33315250UL;
 /** Reflected CRC-32 polynomial used by Ethernet/ZIP and many embedded formats. */
 constexpr std::uint32_t kCrcPolynomial = 0xEDB88320UL;
 /** CRC-32 initialization/final-XOR value. */
@@ -220,6 +220,8 @@ PersistentStateService::serializeState(const ClockState& state) {
     for (const ChannelConfig& channel : state.channels) {
         writer.write8(channel.common.groove.customSlot);
     }
+    // Schema v13 appends SYNC AUTOSTART; every v12 payload remains an exact prefix.
+    writer.write8(state.externalSync.autostartOnLock ? 1U : 0U);
 
     // A schema-size mismatch is a programmer error and should fail at compile/test time.
     (void)writer.position();
@@ -302,8 +304,10 @@ bool PersistentStateService::deserializeState(
     for (ChannelConfig& channel : candidate.channels) {
         channel.common.groove.customSlot = reader.read8();
     }
+    const std::uint8_t autostart = reader.read8();
+    candidate.externalSync.autostartOnLock = autostart == 1U;
 
-    if (reader.position() != kStatePayloadSize || !isStateValid(candidate)) {
+    if (autostart > 1U || reader.position() != kStatePayloadSize || !isStateValid(candidate)) {
         return false;
     }
     state = candidate;

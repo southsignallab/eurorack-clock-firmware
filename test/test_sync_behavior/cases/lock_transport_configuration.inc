@@ -21,9 +21,44 @@ void testFirstPulseIsAcquisitionOnlyAndDoesNotAdvertiseLock() {
     CHECK(!snapshot.playing);
 }
 
+void testSecondValidPulseAcquiresLockWithoutAutostartByDefault() {
+    // D-01 / F-003: factory SYNC AUTOSTART OFF - the first lock after power-up
+    // never starts transport on its own.
+    Fixture fixture;
+    fixture.state.source = ClockSource::Auto;
+    CHECK(!fixture.state.externalSync.autostartOnLock);
+    fixture.begin();
+    fixture.engine.stop();
+
+    fixture.inputs.injectSyncEdgeForTest(1000U, true);
+    fixture.sync.processSchedulerTick(1000U);
+    fixture.inputs.injectSyncEdgeForTest(501000U, true);
+    fixture.sync.processSchedulerTick(501000U);
+
+    const auto snapshot = fixture.engine.snapshot();
+    CHECK(snapshot.externalLocked);
+    CHECK_NEAR(snapshot.externalBpmMilli, 120000U, 1U);
+    CHECK(!snapshot.playing);
+    TransportState transition = TransportState::Stopped;
+    CHECK(!fixture.sync.consumeTransportTransition(transition));
+
+    // Switching SYNC AUTOSTART ON while stopped arms the next lock acquisition.
+    fixture.state.externalSync.autostartOnLock = true;
+    fixture.sync.updateConfiguration(fixture.state);
+    fixture.sync.processSchedulerTick(3000000U);  // timeout: lock lost
+    CHECK(!fixture.engine.snapshot().externalLocked);
+    injectRisingPulse(fixture, 3500000U);
+    injectRisingPulse(fixture, 4000000U);
+    CHECK(fixture.engine.snapshot().externalLocked);
+    CHECK(fixture.engine.snapshot().playing);
+    CHECK(fixture.sync.consumeTransportTransition(transition));
+    CHECK_EQ(transition, TransportState::Playing);
+}
+
 void testSecondValidPulseAcquiresLockAndAutoStartsTransport() {
     Fixture fixture;
     fixture.state.source = ClockSource::Auto;
+    fixture.state.externalSync.autostartOnLock = true;  // SYNC AUTOSTART ON
     fixture.begin();
     fixture.engine.stop();
 
@@ -72,6 +107,7 @@ void testStopLossStopsAndReacquisitionRestartsWhenNotManuallyStopped() {
     fixture.state.source = ClockSource::Auto;
     fixture.state.externalSync.lossMode = SyncLossMode::Stop;
     fixture.state.externalSync.timeoutMs = 200U;
+    fixture.state.externalSync.autostartOnLock = true;
     fixture.begin();
     fixture.engine.stop();
 
@@ -103,6 +139,7 @@ void testStopLossStopsAndReacquisitionRestartsWhenNotManuallyStopped() {
     paused.state.source = ClockSource::Auto;
     paused.state.externalSync.lossMode = SyncLossMode::Stop;
     paused.state.externalSync.timeoutMs = 200U;
+    paused.state.externalSync.autostartOnLock = true;
     paused.begin();
     acquireRising(paused, 500000U);
     CHECK(paused.sync.consumeTransportTransition(transition));

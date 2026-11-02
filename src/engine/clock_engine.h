@@ -346,6 +346,12 @@ private:
     /** @brief Finishes the count-in and restarts musical phase at the first audible boundary. */
     void finishPreCountUnsafe();
 
+    /** @brief Drops the AUTO freewheel tempo after a manual tempo change while unlocked; caller holds the lock. */
+    void discardFreewheelTempoAfterManualChangeUnsafe();
+
+    /** @brief Restarts all schedules and the external musical position at the current master position; caller holds the lock. */
+    void restartFromCurrentPositionUnsafe();
+
     /** @brief Copies master and channel configuration without entering a critical section. */
     void copyConfigurationUnsafe(const ClockState& state);
 

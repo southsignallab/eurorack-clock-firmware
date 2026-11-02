@@ -201,6 +201,8 @@ struct ExternalSyncSettings {
     SyncSmoothing smoothing = SyncSmoothing::Low;
     std::uint16_t glitchFilterUs = 1000U;
     std::uint16_t timeoutMs = 1500U;
+    /** SYNC AUTOSTART (decision D-01): a lock acquisition may start transport, also the first one after power-up. Factory OFF. */
+    bool autostartOnLock = false;
 };
 
 /** @brief STOP-mode display protection and idle-animation preferences. */

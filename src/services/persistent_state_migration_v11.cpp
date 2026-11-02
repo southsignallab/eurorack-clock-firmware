@@ -38,7 +38,7 @@ bool isAllowedV11PresetCharacter(const char character) {
 bool PersistentStateService::deserializeV11State(
     const std::array<std::uint8_t, kV11StatePayloadSize>& payload,
     ClockState& state) {
-    static_assert(kStatePayloadSize == kV11StatePayloadSize + 9U);
+    static_assert(kStatePayloadSize == kV11StatePayloadSize + 10U);
     std::array<std::uint8_t, kStatePayloadSize> upgraded{};
     std::copy(payload.begin(), payload.end(), upgraded.begin());
 

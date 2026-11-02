@@ -1,12 +1,13 @@
 /**
  * @file performance_renderer_precount.cpp
- * @brief Static Pre-Count popover for the Performance screen.
+ * @brief Static Pre-Count popover and transient notices for the Performance screen.
  * @author Axel Napolitano
  * @copyright 2026 Axel Napolitano
  * @license PolyForm-Noncommercial-1.0.0
  */
 
 #include "ui/performance_renderer.h"
+#include "ui_text.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -103,10 +104,34 @@ void PerformanceRenderer::drawPreCountOverlay(
     }
 }
 
+void PerformanceRenderer::drawExternalTempoNotice() {
+    // One calm full-width banner across the tempo area; same black box with a
+    // one-pixel white border as the Pre-Count popover.
+    constexpr std::int16_t kNoticeX = 4;
+    constexpr std::int16_t kNoticeY = 22;
+    constexpr std::int16_t kNoticeWidth = static_cast<std::int16_t>(hal::OledDisplay::kWidth) - 8;
+    constexpr std::int16_t kNoticeHeight = 19;
+    display_.fillRectangle(kNoticeX, kNoticeY, kNoticeWidth, kNoticeHeight, hal::PixelColor::Black);
+    display_.drawRectangle(kNoticeX, kNoticeY, kNoticeWidth, kNoticeHeight, hal::PixelColor::White);
+    display_.setFont(hal::DisplayFont::Small);
+    display_.setTextColor(hal::PixelColor::White);
+    const char* const notice = text::get(text::TextId::ExternalClockNotice);
+    const hal::TextBounds bounds = display_.measureText(notice, 0, 0);
+    const std::int16_t textX = static_cast<std::int16_t>(
+        (static_cast<int>(hal::OledDisplay::kWidth) - static_cast<int>(bounds.width)) / 2);
+    const std::int16_t textY = static_cast<std::int16_t>(
+        kNoticeY + std::max<int>(0, (kNoticeHeight - static_cast<int>(bounds.height)) / 2));
+    display_.drawText(textX, textY, notice);
+}
+
 void PerformanceRenderer::presentPerformanceFrame(
     const ClockState& state,
+    const NavigationState& navigation,
     const engine::EngineSnapshot& engineSnapshot) {
     drawPreCountOverlay(state, engineSnapshot);
+    if (navigation.externalTempoNotice && !engineSnapshot.preCountActive) {
+        drawExternalTempoNotice();
+    }
     display_.present();
 }
 

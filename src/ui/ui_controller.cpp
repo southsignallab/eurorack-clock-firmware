@@ -361,43 +361,9 @@ void UiController::stopTransport(const std::uint32_t nowMs) {
     invalidate();
 }
 
-void UiController::registerExternalTapTempo(const std::uint32_t timestampMs) {
-    registerTapTempo(timestampMs);
-}
-
 void UiController::seedGeneratedNames(const std::uint32_t seed) {
     generatedNameSeed_ = seed != 0U ? seed : 0xC10C2026U;
     generatedNameSequence_ = 0U;
-}
-
-void UiController::registerTapTempo(const std::uint32_t nowMs) {
-    const std::uint32_t sequenceIntervalMs =
-        services::TapTempo::maximumSequenceIntervalMs(state_.tempoRange.minimumBpm);
-    const bool sequenceContinues =
-        tapVisualSequenceActive_ && sequenceIntervalMs > 0U &&
-        nowMs - lastTapVisualAtMs_ <= sequenceIntervalMs;
-
-    lastTapVisualAtMs_ = nowMs;
-    tapVisualSequenceActive_ = sequenceIntervalMs > 0U;
-    if (sequenceContinues) {
-        tapIndicatorStartedAtMs_ = nowMs;
-        navigation_.tapIndicatorFrame = 1U;
-        invalidate();
-    } else {
-        navigation_.tapIndicatorFrame = 0U;
-    }
-
-    const std::uint16_t estimatedBpm = tapTempo_.registerTap(
-        nowMs, state_.tempoRange.minimumBpm, state_.tempoRange.maximumBpm);
-    if (estimatedBpm == 0U) {
-        return;
-    }
-
-    state_.bpm = estimatedBpm;
-    // Tap Tempo updates only the internal/fallback BPM; SOURCE remains user-selected.
-    engine_.updateConfiguration(state_, false);
-    persistCurrentState(nowMs);
-    invalidate();
 }
 
 void UiController::serviceTapTempoFeedback(const std::uint32_t nowMs) {

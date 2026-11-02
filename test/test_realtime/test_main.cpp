@@ -105,6 +105,8 @@ int main() {
     RUN_TEST(testSyncTimeoutBoundaryAndLossModes);
     RUN_TEST(testSlowExternalClockDoesNotTimeoutBeforeSecondPulse);
     RUN_TEST(testTimestampWraparound);
+    RUN_TEST(testExternalPulsesWhileStoppedDoNotShiftNextStart);
+    RUN_TEST(testPauseIgnoresPulsesAndResumesWithoutBurst);
     RUN_TEST(testResetTriggerIsEdgeTriggered);
     RUN_TEST(testResetBurstIsCoalescedPerSchedulerQuantum);
     RUN_TEST(testResetOverflowStillCoalescesToOneReset);

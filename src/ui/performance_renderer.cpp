@@ -139,7 +139,7 @@ void PerformanceRenderer::render(
     if (state.operatingMode == OperatingMode::Independent &&
         configuredChannel.common.mode == ChannelMode::Off) {
         drawTempoText("---", hal::DisplayFont::TempoLarge, kClockTempoTopY);
-        presentPerformanceFrame(state, engineSnapshot);
+        presentPerformanceFrame(state, navigation, engineSnapshot);
         return;
     }
 
@@ -198,7 +198,7 @@ void PerformanceRenderer::render(
 
     if (dividerView) {
         drawDividerBankSlots(state);
-        presentPerformanceFrame(state, engineSnapshot);
+        presentPerformanceFrame(state, navigation, engineSnapshot);
         return;
     }
 
@@ -213,7 +213,7 @@ void PerformanceRenderer::render(
             display_.drawText(rateX, contextY, rateText);
         }
         drawGrooveStatus(selectedChannel.common.groove, 55);
-        presentPerformanceFrame(state, engineSnapshot);
+        presentPerformanceFrame(state, navigation, engineSnapshot);
         return;
     }
 
@@ -248,7 +248,7 @@ void PerformanceRenderer::render(
         }
     }
 
-    presentPerformanceFrame(state, engineSnapshot);
+    presentPerformanceFrame(state, navigation, engineSnapshot);
 }
 
 void PerformanceRenderer::drawDividerBankSlots(const ClockState& state) {

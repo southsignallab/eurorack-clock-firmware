@@ -181,8 +181,9 @@ scenes:
             timeout_ms: 2500
         - assert:
             clock_source: auto
+        # A lock alone does not start transport (SYNC AUTOSTART is OFF by default).
         - assert:
-            transport: playing
+            transport: stopped
         - focus:
             target: oled_top_bar
             placement: right
@@ -192,7 +193,12 @@ scenes:
 
         - beat:
             narration: s45
-            duration_ms: 9000
+            # +1500 ms for the explicit PLAY (lock alone no longer starts transport, D-01).
+            duration_ms: 10500
+        - button:
+            name: PLAY
+        - assert:
+            transport: playing
         - button:
             name: TAP
             state: down

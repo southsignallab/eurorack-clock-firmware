@@ -7,10 +7,13 @@ Transport has three states: **PLAY, PAUSE, STOP**.
 - START/PAUSE toggles running and paused states without an implicit phase reset.
 - STOP/BACK from Performance enters STOP and applies the global reset policy.
 - Tap Tempo adjusts the master tempo from a sequence of TAP presses within the supported 1–999 BPM technical range and the configured user MIN/MAX boundaries.
+- While an external clock owns the tempo — `SOURCE = EXTERNAL`, or `SOURCE = AUTO` with a locked SYNC signal — turning the encoder on the Performance screen or pressing TAP does not change the tempo; the display briefly shows **EXTERNAL CLOCK** instead. Only tempo gestures are blocked: menus and settings remain fully usable. With `SOURCE = AUTO` and no signal, a manual tempo change replaces a held freewheel tempo; a returning signal takes over again. The Performance screen always shows the tempo that is actually in effect.
 - The first TAP starts a new measurement sequence without an indicator. The second and every following TAP in that sequence triggers a four-frame **8×8 shrinking-dot animation** in a fixed right-aligned slot at the display edge, vertically centered on the tempo display. The BPM numerals remain centered and do not move.
 - The Tap Tempo sequence expires after one beat at the configured **MIN BPM**. At the factory minimum of 20 BPM this is 3000 ms; after a longer pause the next TAP is again the silent first tap and the following TAP resumes visual feedback.
 
-CLOCK persists the working configuration but never restores PLAY on power-up. Flash commits are also deferred while transport is PLAYING so erase/program work cannot block the live gate path.
+CLOCK persists the working configuration but never restores PLAY on power-up, and by default a SYNC lock after power-up does not start transport either (see `AUTOSTART` in Chapter 16). Flash commits are also deferred while the engine runs so erase/program work cannot block the live gate path.
+
+A fresh STOP→PLAY without Pre-Count starts at step 1 and beat 1. SYNC pulses that arrive while CLOCK is stopped or paused do not move the pattern grid; PLAY therefore never produces a catch-up burst.
 
 ### Pre-Count
 

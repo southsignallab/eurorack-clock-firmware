@@ -278,6 +278,7 @@ int main() {
     RUN_TEST(testAccelerationWithAlternatingJitterRemainsLocked);
     RUN_TEST(testTwentyFourPpqnTempoRampRemainsLocked);
     RUN_TEST(testFirstPulseIsAcquisitionOnlyAndDoesNotAdvertiseLock);
+    RUN_TEST(testSecondValidPulseAcquiresLockWithoutAutostartByDefault);
     RUN_TEST(testSecondValidPulseAcquiresLockAndAutoStartsTransport);
     RUN_TEST(testManualStopPreventsExternalReacquisitionFromStartingTransport);
     RUN_TEST(testStopLossStopsAndReacquisitionRestartsWhenNotManuallyStopped);

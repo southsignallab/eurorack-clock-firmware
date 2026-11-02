@@ -89,6 +89,10 @@ void UiController::handleEncoderDelta(
     }
 
     if (navigation_.screen == Screen::Performance) {
+        if (masterTempoIsExternal()) {
+            showExternalTempoNotice(nowMs);
+            return;
+        }
         settingsEditor_.changeMasterTempo(delta);
         invalidate();
         return;

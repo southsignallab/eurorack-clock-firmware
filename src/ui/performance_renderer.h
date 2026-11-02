@@ -86,7 +86,11 @@ private:
     /** @brief Applies transient Performance overlays and presents the completed frame. */
     void presentPerformanceFrame(
         const ClockState& state,
+        const NavigationState& navigation,
         const engine::EngineSnapshot& engineSnapshot);
+
+    /** @brief Draws the transient EXTERNAL CLOCK notice over the tempo area. */
+    void drawExternalTempoNotice();
 
     /** @brief Returns the one-character O/C/E/S status abbreviation for one channel mode. */
     static char statusModeCharacter(ChannelMode mode);

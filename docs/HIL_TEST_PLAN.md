@@ -223,13 +223,15 @@ Verify `STOP`, `FREE`, and `INT` loss modes.
 
 Insert and remove a patch cable with and without clock activity.
 
+> **Hardware Rev C:** the TN switch contacts of both input jacks are tied to GND and no jack-detect signal reaches the MCU (`CLOCK_EXTERNAL_*_JACK_DETECT_PIN` stay unassigned). A separate JACK state cannot be observed on this hardware; the scope of this item must be decided before it is executed.
+
 **Pass criteria**
 
 - JACK, SIGNAL, and LOCK states remain independently correct
 
 ### HIL-RST-001 — Reset threshold and edge integrity
 
-Drive RST IN with square, sine, and triangle sources across the specified amplitude/rate range.
+Drive IN 2 with square, sine, and triangle sources across the specified amplitude/rate range.
 
 **Pass criteria**
 

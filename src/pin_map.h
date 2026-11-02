@@ -32,37 +32,37 @@ inline constexpr std::uint32_t kEncoderPhaseBPin = mcu::PB7;
 /** Encoder integrated push switch. */
 inline constexpr std::uint32_t kEncoderPushButtonPin = mcu::PB14;
 
-/** Dedicated PLAY/PAUSE front-panel button. */
+/** Dedicated START/PAUSE front-panel button (SW1, net BTN_PLAY). */
 inline constexpr std::uint32_t kPlayPauseButtonPin = mcu::PA1;
 
-/** Dedicated TAP TEMPO front-panel button. */
+/** Dedicated TAP TEMPO front-panel button (SW2, net BTN_TAP). */
 inline constexpr std::uint32_t kTapTempoButtonPin = mcu::PA3;
 
-/** Dedicated RESET/BACK front-panel button. */
+/** Dedicated STOP/BACK front-panel button (SW3, net BTN_RESET_BACK). */
 inline constexpr std::uint32_t kResetBackButtonPin = mcu::PA2;
 
-/** Channel 1 logic output feeding activity LED 1 and 74HCT541 input 1. */
+/** Channel 1 gate source (net GATE_SRC_1) feeding 74HCT541 input A0; LED 1 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel1GateLedPin = mcu::PB0;
 
-/** Channel 2 logic output feeding activity LED 2 and 74HCT541 input 2. */
+/** Channel 2 gate source (net GATE_SRC_2) feeding 74HCT541 input A1; LED 2 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel2GateLedPin = mcu::PB1;
 
-/** Channel 3 logic output feeding activity LED 3 and 74HCT541 input 3. */
+/** Channel 3 gate source (net GATE_SRC_3) feeding 74HCT541 input A2; LED 3 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel3GateLedPin = mcu::PB2;
 
-/** Channel 4 logic output feeding activity LED 4 and 74HCT541 input 4. */
+/** Channel 4 gate source (net GATE_SRC_4) feeding 74HCT541 input A3; LED 4 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel4GateLedPin = mcu::PB5;
 
-/** Channel 5 logic output feeding activity LED 5 and 74HCT541 input 5. */
+/** Channel 5 gate source (net GATE_SRC_5) feeding 74HCT541 input A4; LED 5 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel5GateLedPin = mcu::PB8;
 
-/** Channel 6 logic output feeding activity LED 6 and 74HCT541 input 6. */
+/** Channel 6 gate source (net GATE_SRC_6) feeding 74HCT541 input A5; LED 6 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel6GateLedPin = mcu::PB10;
 
-/** Channel 7 logic output feeding activity LED 7 and 74HCT541 input 7. */
+/** Channel 7 gate source (net GATE_SRC_7) feeding 74HCT541 input A6; LED 7 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel7GateLedPin = mcu::PB12;
 
-/** Channel 8 logic output feeding activity LED 8 and 74HCT541 input 8. */
+/** Channel 8 gate source (net GATE_SRC_8) feeding 74HCT541 input A7; LED 8 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel8GateLedPin = mcu::PB13;
 
 /** Ordered channel-pin table used by the gate-output driver. */
@@ -166,13 +166,17 @@ static_assert(kDisplaySpiDataCommandPin != kDisplayResetPin,
  */
 inline constexpr std::uint32_t kExternalSyncSignalPin = CLOCK_EXTERNAL_SYNC_PIN;
 
-/** Thonkiconn switch contact used for external-sync jack detection. */
+/** Optional external-sync jack-detect GPIO.
+ *
+ * Hardware Rev C ties the TN switch contact of both input jacks to GND, so no
+ * jack-detect signal reaches the MCU and the default stays unassigned.
+ */
 inline constexpr std::uint32_t kExternalSyncJackDetectPin = CLOCK_EXTERNAL_SYNC_JACK_DETECT_PIN;
 
 /** External RST comparator output. */
 inline constexpr std::uint32_t kExternalResetSignalPin = CLOCK_EXTERNAL_RESET_PIN;
 
-/** Thonkiconn switch contact used for external-reset jack detection. */
+/** Optional external-reset jack-detect GPIO; unassigned on hardware Rev C (TN tied to GND). */
 inline constexpr std::uint32_t kExternalResetJackDetectPin = CLOCK_EXTERNAL_RESET_JACK_DETECT_PIN;
 
 static_assert(

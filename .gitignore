@@ -125,3 +125,6 @@ publication-manifest.json
 # Explicit authored publication inputs. These are source assets, not rendered output.
 !docs/tutorials/assets/video/south-signal-lab-intro.mp4
 !docs/tutorials/assets/video/south-signal-lab-outro.mp4
+
+# Local working knowledge base (RAG) for firmware maintenance; never committed.
+.rag/

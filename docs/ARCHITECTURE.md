@@ -262,8 +262,8 @@ The engine-side clock/reset/transport input semantics and interrupt-driven digit
 
 ```mermaid
 flowchart LR
-    SyncJack[SYNC IN] --> SyncAnalog[Protection + LM393 comparator]
-    ResetJack[RST IN] --> ResetAnalog[Protection + LM393 comparator]
+    SyncJack[IN 1] --> SyncAnalog[Protection + LM393 comparator]
+    ResetJack[IN 2] --> ResetAnalog[Protection + LM393 comparator]
     SyncAnalog --> SyncCapture[PA8 GPIO EXTI timestamp]
     ResetAnalog --> ResetCapture[PA9 GPIO EXTI edge/level]
     SyncCapture --> Tracker[Sync tracker + selectable period smoothing]

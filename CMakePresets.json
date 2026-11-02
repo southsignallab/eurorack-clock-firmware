@@ -16,7 +16,8 @@
         "CLOCK_BUILD_SIMULATOR": "ON",
         "CLOCK_SIMULATOR_WITH_SDL": "ON",
         "CLOCK_SIMULATOR_FETCH_SDL": "ON"
-      }
+      },
+      "toolchainFile": "${sourceDir}/cmake/toolchains/clock-host.cmake"
     },
     {
       "name": "simulator-headless",
@@ -27,7 +28,8 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "CLOCK_BUILD_SIMULATOR": "ON",
         "CLOCK_SIMULATOR_WITH_SDL": "OFF"
-      }
+      },
+      "toolchainFile": "${sourceDir}/cmake/toolchains/clock-host.cmake"
     },
     {
       "name": "simulator-headless-release",
@@ -38,7 +40,8 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CLOCK_BUILD_SIMULATOR": "ON",
         "CLOCK_SIMULATOR_WITH_SDL": "OFF"
-      }
+      },
+      "toolchainFile": "${sourceDir}/cmake/toolchains/clock-host.cmake"
     }
   ],
   "buildPresets": [

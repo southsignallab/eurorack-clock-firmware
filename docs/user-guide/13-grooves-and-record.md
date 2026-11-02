@@ -16,10 +16,10 @@ Groove is deterministic microtiming applied to the same master timeline as Clock
 
 Editor controls:
 
-- **TAP** — select the next marker;
+- **TAP TEMPO** — select the next marker;
 - **encoder turn** — move the selected marker finely;
-- **TAP + turn** — coarse marker movement;
-- **PLAY + turn** — quick zoom through `FIT / 32 / 16 / 8 / 4` without issuing a transport command;
+- **TAP TEMPO + turn** — coarse marker movement;
+- **START + turn** — quick zoom through `FIT / 32 / 16 / 8 / 4` without issuing a transport command;
 - **encoder long press** — open the Groove editor menu;
 - **BACK** — leave immediately when clean, or open `DISCARD CHANGES?` when the draft has changed.
 
@@ -33,9 +33,9 @@ Changes are previewed live while transport runs but remain temporary until saved
 
 Recorder controls:
 
-- **PLAY** — start/stop capture; stopping rewinds the recorder to the beginning;
-- **TAP** — record one timing event; TAP does not run Tap Tempo while the recorder is active;
-- **PLAY + turn** — quick zoom;
+- **START** — start/stop capture; stopping rewinds the recorder to the beginning;
+- **TAP TEMPO** — record one timing event; the button does not run Tap Tempo while the recorder is active;
+- **START + turn** — quick zoom;
 - **encoder long press** — open the Record menu;
 - **BACK** — leave/confirm discard using the same shared-draft rules as the editor.
 
@@ -47,9 +47,9 @@ Front-panel TAP capture preserves the high-resolution physical press timestamp t
 
 1. Open `TIMING → GROOVE → RECORD`. RECORD and EDITOR work on the same temporary Custom Groove draft.
 2. Long-press the encoder and set **LENGTH** (`1–64`), recorder **COUNT IN** (`OFF / 1–64`, default `4`) and **MODE** (`ONE SHOT / ENDLESS`). Choose a useful **ZOOM** if needed.
-3. Press **PLAY**. If recorder Count-In is enabled, it runs first; capture begins only after that local count reaches zero.
-4. Tap the rhythm on **TAP**. Every press records one high-resolution timing event against the live Q32 engine position. Tap Tempo is disabled while the recorder is active.
-5. Press **PLAY** again to stop. The recorder rewinds to the beginning and the recorded draft stays available.
+3. Press **START**. If recorder Count-In is enabled, it runs first; capture begins only after that local count reaches zero.
+4. Tap the rhythm on **TAP TEMPO**. Every press records one high-resolution timing event against the live Q32 engine position. Tap Tempo is disabled while the recorder is active.
+5. Press **START** again to stop. The recorder rewinds to the beginning and the recorded draft stays available.
 6. Choose `EDITOR >` for precise marker cleanup, then **SAVE** to a named Custom Groove slot when the result is ready.
 
 `ENDLESS` is deliberately non-destructive to untouched steps: later passes replace only steps that receive a new TAP. `ONE SHOT` stops automatically after one pattern cycle.

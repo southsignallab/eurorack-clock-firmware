@@ -54,9 +54,9 @@ pio run -e blackpill_f401cc_spi_ssd1306
 | `2` | Formula 1 | encoder steer; automatic speed/crash recovery; score + independent Top 100 |
 | `3` | Breakout | encoder paddle, TAP launch; variable angles/modifiers, three lives; score + independent Top 100 |
 | `4` | Egg Journey | auto-scrolling parallax terrain; encoder forward/backward, TAP jump/retry; three lives/progression; score + independent Top 100 |
-| `5` **(default)** | BEATKNECHT | PLAY/PAUSE controls rhythm transport; STOP resets to step 1; TAP cycles styles; encoder changes BPM; long encoder push opens a guarded NO/YES exit confirmation; eight curated 16-step gate patterns drive OUT 1–8; no leaderboard |
+| `5` **(default)** | BEATKNECHT | START/PAUSE controls rhythm transport; STOP resets to step 1; TAP TEMPO cycles styles; encoder changes BPM; long encoder push opens a guarded NO/YES exit confirmation; eight curated 16-step gate patterns drive OUT 1–8; no leaderboard |
 
-The boot chord is unchanged: hold encoder push throughout the boot screen. Every selection opens with an individual retro intro and there is no automatic timeout into gameplay. The four ranked games start with TAP or encoder PUSH; BEATKNECHT starts with PLAY so TAP remains exclusively its style control. Ranked arcade games route final scores through the shared initials/scrollable Top-100 flow; BACK from the ranking starts a new run and a long encoder hold exits. Existing single-score prerelease records are retained as migration fallbacks. All modes run before the normal clock scheduler starts. The arcade games keep all gate source GPIOs muted; BEATKNECHT intentionally allows gate output only after PLAY leaves its intro. PLAY/PAUSE then controls transport, STOP resets phase and mutes all gate sources, and a long encoder push opens a NO/YES confirmation. The prompt silences active gates; NO restores the previous transport state, while YES exits with every output LOW and gate output muted.
+The boot chord is unchanged: hold encoder push throughout the boot screen. Every selection opens with an individual retro intro and there is no automatic timeout into gameplay. The four ranked games start with TAP or encoder PUSH; BEATKNECHT starts with PLAY so TAP remains exclusively its style control. Ranked arcade games route final scores through the shared initials/scrollable Top-100 flow; BACK from the ranking starts a new run and a long encoder hold exits. Existing single-score prerelease records are retained as migration fallbacks. All modes run before the normal clock scheduler starts. The arcade games keep all gate source GPIOs muted; BEATKNECHT intentionally allows gate output only after PLAY leaves its intro. START/PAUSE then controls transport, STOP resets phase and mutes all gate sources, and a long encoder push opens a NO/YES confirmation. The prompt silences active gates; NO restores the previous transport state, while YES exits with every output LOW and gate output muted.
 
 ## `src/defaults.h`
 
@@ -97,7 +97,7 @@ Current mappings include. Gate/LED channels are also exposed as individually nam
 
 | Function | STM32 pin |
 | --- | --- |
-| PLAY/PAUSE button | PA1 |
+| START/PAUSE button | PA1 |
 | RESET/BACK button | PA2 |
 | TAP TEMPO button | PA3 |
 | OLED SPI CS | PA4 |

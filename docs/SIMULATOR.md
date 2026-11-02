@@ -42,7 +42,7 @@ This makes the simulator useful for UI work, timing regression checks, persisten
 - accelerated virtual time at 1×, 4×, or 16×;
 - a scrolling developer oscilloscope with rising-edge counters, engine-phase-locked musical reference lines, and fixed 0.5 / 1 / 2 / 4 / 8 / 16 / 32 second visible spans;
 - explicit `HI` / `LO` state at every output jack;
-- virtual sources patched to **SYNC IN** and **RST IN**, each with SQUARE / SINE / TRIANGLE generation and an ideal comparator exposing conditioned `HI` / `LO`;
+- virtual sources patched to **IN 1** and **IN 2**, each with SQUARE / SINE / TRIANGLE generation and an ideal comparator exposing conditioned `HI` / `LO`;
 - SYNC tempo/PPQN acquisition, lock/loss state, and phase/tempo injection into the real clock engine;
 - continuous and one-shot RST edges that invoke the real engine global-reset boundary without stopping transport;
 - a virtual POWER cycle that destroys/reconstructs volatile application state while retaining durable simulator Flash state;
@@ -75,11 +75,11 @@ The simulator follows the intended **10 HP / 3U** physical hierarchy:
 - PLAY, TAP, STOP in one row above the inputs, with PAUSE / SHIFT / BACK as grey secondary labels;
 - OLED above the buttons, left aligned;
 - encoder beside the OLED;
-- one activity LED associated with each output.
+- one activity LED above and to the right of each output jack (hardware Rev C).
 
-The built-in simulator panel deliberately follows the current VCV presentation: black background, white primary labels, grey secondary button functions, output numbers `1`–`8`, and `SOUTH SIGNAL LAB` branding. The VCV and simulator shells still share the same physical coordinates from `sim/panel_layout.ini`; visual styling does not alter firmware behavior.
+The committed layout uses the KiCad front-panel project as its panel image: `background_image = panel_background.png` is the F.SilkS engraving and Edge.Cuts cut-outs rendered by `scripts/import_kicad_front_panel.py`, and `draw_builtin_labels = false` suppresses the simulator's own debug lettering. Controls, LEDs and the OLED are drawn on top at the coordinates the same importer writes into `sim/panel_layout.ini`. The VCV shell and the manual illustration use the identical artwork and coordinates; visual styling does not alter firmware behavior. Custom layouts without an image can still enable the built-in labels.
 
-The panel geometry is isolated in `sim/panel_layout.h`. Exact PCB/front-panel millimetre coordinates can therefore replace the current design coordinates later without touching firmware or simulator behavior.
+The panel geometry is isolated in `sim/panel_layout.h`. Its committed values are the KiCad front-panel coordinates; re-run the importer after a panel change instead of editing them.
 
 ## Build system
 
@@ -204,14 +204,14 @@ The simulator keeps the desktop bindings close to the physical module: keys are 
 
 ### Mouse
 
-- mouse wheel over the encoder, or elsewhere on the module panel except SYNC IN: encoder rotation; natural/flipped wheel direction is normalized;
+- mouse wheel over the encoder, or elsewhere on the module panel except IN 1: encoder rotation; natural/flipped wheel direction is normalized;
 - left-click encoder: encoder push;
-- left-click PLAY / TAP / STOP: corresponding physical button;
-- left-click SYNC IN or RST IN: insert/remove that virtual cable (inserting also starts its generator);
-- right-click SYNC IN or RST IN: run/hold that generator while leaving the cable connected;
+- left-click START / TAP TEMPO / STOP: corresponding physical button;
+- left-click IN 1 or IN 2: insert/remove that virtual cable (inserting also starts its generator);
+- right-click IN 1 or IN 2: run/hold that generator while leaving the cable connected;
 - middle-click either input: cycle SQUARE / SINE / TRIANGLE;
-- mouse wheel over SYNC IN: external-source BPM ±1;
-- mouse wheel over RST IN: reset period ±100 ms;
+- mouse wheel over IN 1: external-source BPM ±1;
+- mouse wheel over IN 2: reset period ±100 ms;
 - left-click the POWER control in the developer panel: virtual module power toggle.
 
 ### Keyboard
@@ -221,8 +221,8 @@ The simulator keeps the desktop bindings close to the physical module: keys are 
 | Left / A | Encoder counter-clockwise; hold for repeated detents |
 | Right / D | Encoder clockwise; hold for repeated detents |
 | Enter / E | Encoder push |
-| Space / P | PLAY |
-| T | TAP |
+| Space / P | START |
+| T | TAP TEMPO |
 | S / Backspace | STOP/BACK |
 | Escape | Quit simulator |
 | C | Insert/remove virtual SYNC cable |
@@ -340,7 +340,7 @@ The firmware does **not** know or care about this file. It is a simulator-host c
 
 ### Physical coordinate and size system
 
-Front-panel component positions **and mechanical sizes** are stored in millimetres from the physical panel's top-left corner. Desktop pixels are no longer an independent geometry source. The current prototype panel declares:
+Front-panel component positions **and mechanical sizes** are stored in millimetres from the physical panel's top-left corner. Desktop pixels are no longer an independent geometry source. Positions are generated from the KiCad front-panel project (`Simple Frontpanel.kicad_pcb`, Edge.Cuts hole and cut-out centres) by `scripts/import_kicad_front_panel.py`; do not edit those keys by hand. The panel declares:
 
 ```ini
 [simulator]
@@ -357,13 +357,13 @@ Example:
 
 ```ini
 [encoder]
-x_mm = 44.0472
-y_mm = 23.1075
+x_mm = 40.7
+y_mm = 29.25
 knob_diameter_mm = 8.4166
 
 [play]
-x_mm = 9.6792
-y_mm = 48.7511
+x_mm = 8.2
+y_mm = 52.23
 actuator_diameter_mm = 9.0
 body_diameter_mm = 12.0
 color = #B02020
@@ -381,13 +381,13 @@ opening_diameter_mm = 3.6
 The 7.85 mm value models the standard QingPu W-QP-NUT-K knurled mounting nut seen from the front. The 6.0 mm bushing and approximately 3.6 mm jack opening come from the Thonkiconn mechanical drawing. PJ366ST/TRS uses the same front geometry; its body is 1 mm wider behind the panel.
 
 [sync]
-x_mm = 7.2944
-y_mm = 70.1678
+x_mm = 7.75
+y_mm = 70.1
 jack_type = ts
 
 [reset]
-x_mm = 18.6569
-y_mm = 70.1678
+x_mm = 19.4167
+y_mm = 70.13
 jack_type = ts
 
 [leds]
@@ -400,7 +400,7 @@ The Thonkiconn profiles distinguish TS (`WQP518MA` / `PJ398SM`) and TRS (`PJ366S
 
 The following physical elements are configurable without touching C++:
 
-- OLED position and rectangle;
+- OLED position and rectangle (the panel window, 25.0 × 13.6 mm on hardware Rev C);
 - encoder centre and knob/cap diameter;
 - D6R button centres, visible actuator diameter, behind-panel body diameter, and individual color;
 - TS and TRS Thonkiconn bushing/opening diameters;
@@ -410,13 +410,15 @@ The following physical elements are configurable without touching C++:
 - four mounting-screw centres;
 - desktop magnification and developer-view geometry.
 
-The encoder knob is deliberately modeled as a separate mechanical part: the PEC11L shaft does not determine the outside diameter of the fitted knob. The committed value therefore remains the existing visual diameter until the final knob part number is frozen; changing `knob_diameter_mm` does not require code changes.
+The encoder knob is deliberately modeled as a separate mechanical part: the PEC11R shaft does not determine the outside diameter of the fitted knob. The committed value therefore remains the existing visual diameter until the final knob part number is frozen; changing `knob_diameter_mm` does not require code changes.
 
 The INI parser is deliberately strict. Unknown sections, unknown keys, duplicate keys, malformed colors/numbers, impossible jack diameters, and invalid dimensions abort simulator startup with a readable error. This prevents a misspelled coordinate or accidental pixel-era key from silently changing the panel.
 
 ### OLED integer scaling
 
 `[display] pixel_scale` is an integer in the range 1..8. The OLED is always drawn as exact `N × N` rectangles per firmware pixel; no filtered texture scaling or antialiasing is used. The 128×64 framebuffer therefore remains pixel-faithful at every supported scale.
+
+The matrix is centred in the `[display]` rectangle. That rectangle is the physical panel window; at the default 7 px/mm and `pixel_scale = 2` the rendered matrix (256 × 128 px, about 36.6 × 18.3 mm) is larger than the 25.0 × 13.6 mm Rev C window, so the dark display well grows to the matrix size and extends slightly past the left panel edge. This is a desktop magnification effect, not a hardware dimension.
 
 ```ini
 [display]

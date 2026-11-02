@@ -82,7 +82,7 @@ private:
     /**
      * @brief Re-anchors quadrature bookkeeping after the encoder push switch settles.
      *
-     * The PEC11L detent lies at a contact transition, so axial push/release can
+     * Axial push/release of the PEC11R shaft and contact bounce can
      * leave a harmless partial quadrature residue even though the shaft is again
      * sitting in a mechanical detent. Re-anchoring after a debounced release
      * prevents that residue from consuming the next detent or direction reversal.

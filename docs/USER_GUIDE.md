@@ -29,12 +29,12 @@ For a first patch:
 
 1. Power the rack with CLOCK connected normally. CLOCK always boots into **STOP**.
 2. Patch `OUT 1` to a module that accepts a clock or trigger.
-3. Press **PLAY**. The factory topology is **One Clock**, so all eight outputs now carry the same master clock.
+3. Press **START**. The factory topology is **One Clock**, so all eight outputs now carry the same master clock.
 4. Turn the encoder to change master BPM.
-5. Tap **TAP** repeatedly to set tempo by feel.
+5. Tap **TAP TEMPO** repeatedly to set tempo by feel.
 6. Press **STOP/BACK** to stop and reset the global phase.
 7. Short-press the encoder to inspect the current output topology. Long-press it for the current context settings.
-8. Hold **TAP** and turn the encoder when you want to change an output function or global topology.
+8. Hold **TAP TEMPO** and turn the encoder when you want to change an output function or global topology.
 
 > [!TIP]
 > Start with One Clock until the transport and navigation feel natural. Independent mode is where CLOCK becomes an eight-channel rhythm tool; Divider Bank is the fastest way to obtain conventional clock divisions.
@@ -51,21 +51,21 @@ For the frozen V1/post-1.0 boundary, see [`ROADMAP.md`](ROADMAP.md).
 
 ## 4. Front panel
 
-![Numbered CLOCK front-panel illustration showing the OLED at the upper left, encoder at the upper right, PLAY/TAP/STOP buttons below them, SYNC and RST inputs in the middle, and eight output jacks with red activity LEDs in a 4×2 matrix.](manual-source/assets/front-panel-anatomy.svg)
+![Numbered CLOCK front panel as engraved: the OLED window at the upper left, the DATA/ENTER encoder at the upper right, START/PAUSE, TAP TEMPO/SHIFT and STOP/BACK buttons below them, the IN 1 and IN 2 inputs in the middle, and eight numbered output jacks with activity LEDs in a 4×2 matrix.](manual-source/assets/front-panel-anatomy.svg)
 
 | No. | Element | Function |
 | ---: | --- | --- |
 | 1 | OLED | Performance view, menus, editors, prompts, and status feedback |
-| 2 | Push encoder | Turn to select/change values; short press to select/confirm; long press (~650 ms) opens the current context settings |
-| 3 | PLAY | Start/pause master transport, including while the Sequencer editor is open |
-| 4 | TAP | Tap Tempo; modifier for Settings/mode selection; previous eight-step viewport in the Sequencer editor |
+| 2 | DATA / ENTER | Push encoder. Turn to select/change values; short press to select/confirm; long press (~650 ms) opens the current context settings |
+| 3 | START / PAUSE | Start/pause master transport, including while the Sequencer editor is open |
+| 4 | TAP TEMPO / SHIFT | Tap Tempo; modifier for Settings/mode selection; previous eight-step viewport in the Sequencer editor |
 | 5 | STOP / BACK | Stop and reset global phase from Performance; back/cancel elsewhere |
-| 6 | SYNC IN | Conditioned external timing input |
-| 7 | RST IN | Conditioned external reset/phase input |
-| 8 | OUT 1–8 | Eight clock/gate outputs |
-| 9 | Activity LEDs | One red indicator per output |
+| 6 | IN 1 | Conditioned digital input; factory role SYNC (external timing) |
+| 7 | IN 2 | Conditioned digital input; factory role RESET (external reset/phase) |
+| 8 | 1–8 | Eight clock/gate outputs |
+| 9 | Activity LEDs | One indicator per output, above and to the right of its jack |
 
-The panel layout in this illustration is generated from [`sim/panel_layout.ini`](../sim/panel_layout.ini), the same geometry used by the desktop simulator. The drawing is an explanatory manual asset, not a drill or manufacturing template.
+The panel in this illustration is the engraving and cut-outs of the KiCad front-panel project, imported by `scripts/import_kicad_front_panel.py`; the simulator, the VCV Rack panel and this manual all use that same import. The drawing is an explanatory manual asset, not a drill or manufacturing template.
 
 ## 5. Boot and output safety
 
@@ -130,10 +130,10 @@ Only the value currently being edited is inverted. Whole-row inversion is avoide
 | Encoder turn | Change master BPM | Move selection | Move/change value |
 | Encoder short press | Open overview | Confirm selection / return | Enter / confirm / toggle step |
 | Encoder long press | Open current channel/global settings | Open highlighted settings | Context-dependent |
-| TAP + encoder press | Open Settings tree | — | — |
-| Hold TAP + encoder turn | — | Open/scroll horizontal mode carousel | — |
-| PLAY/PAUSE | Play / pause | — | Sequencer editor: play / pause |
-| TAP short | Tap Tempo | Modifier | Sequencer editor: previous 8-step viewport |
+| TAP TEMPO + encoder press | Open Settings tree | — | — |
+| Hold TAP TEMPO + encoder turn | — | Open/scroll horizontal mode carousel | — |
+| START/PAUSE | Play / pause | — | Sequencer editor: play / pause |
+| TAP TEMPO short | Tap Tempo | Modifier | Sequencer editor: previous 8-step viewport |
 | STOP/BACK | Stop + global reset | Back / cancel | Back / cancel |
 
 ## 8. Channel and global overview
@@ -157,7 +157,7 @@ Short press returns from a global overview. Long press opens that topology's set
 
 ## 9. Changing function or topology
 
-Hold **TAP** and turn the encoder. CLOCK opens a horizontal mode carousel. The selected function stays centered and is the only item drawn on an inverted background; its immediate neighbors remain unframed, with a pictogram and label underneath. Turning moves the band rather than moving a highlight through a fixed 2×3 tile grid.
+Hold **TAP TEMPO** and turn the encoder. CLOCK opens a horizontal mode carousel. The selected function stays centered and is the only item drawn on an inverted background; its immediate neighbors remain unframed, with a pictogram and label underneath. Turning moves the band rather than moving a highlight through a fixed 2×3 tile grid.
 
 The current catalog order is **One Clock → Divider Bank → Clock → Euclid → Sequencer → Off**. The renderer and navigation use this catalog directly, so future channel modes can be added without inventing another fixed palette layout.
 
@@ -171,7 +171,7 @@ One Clock and Divider Bank change the global output topology. Clock, Euclid, Seq
 </tr>
 </table>
 
-Releasing TAP does not silently mutate the running setup. If the highlighted function differs from the active function, CLOCK opens `CHANGE MODE?` with **NO** selected by default.
+Releasing TAP TEMPO does not silently mutate the running setup. If the highlighted function differs from the active function, CLOCK opens `CHANGE MODE?` with **NO** selected by default.
 
 ![Mode-change confirmation dialog showing CHANGE MODE? with NO selected as the safe default.](manual-source/assets/mode-change-confirm-no.png)
 
@@ -255,7 +255,7 @@ The current post-1.1 Sequencer 2.0 development path stores **P1–P8 per channel
 
 `EDITOR` is the first Sequencer-menu item. Pattern selection, Length, Rotate, play Mode (`FORWARD / REVERSE / PINGPONG / RANDOM`) and `LOOP / ONCE` follow below it.
 
-Turning the encoder moves continuously through the pattern and changes viewport automatically at each eight-step boundary. The bottom indicator follows this **edit viewport**. PLAY/PAUSE remains transport in the editor; when running, a small bottom triangle follows the production playback step without moving the rectangular edit cursor. TAP moves to the previous viewport, TAP + encoder press opens the selected step's expression editor, encoder long-press opens Pattern Operations, and BACK returns to Sequencer parameters.
+Turning the encoder moves continuously through the pattern and changes viewport automatically at each eight-step boundary. The bottom indicator follows this **edit viewport**. START/PAUSE remains transport in the editor; when running, a small bottom triangle follows the production playback step without moving the rectangular edit cursor. TAP TEMPO moves to the previous viewport, TAP TEMPO + encoder press opens the selected step's expression editor, encoder long-press opens Pattern Operations, and BACK returns to Sequencer parameters.
 
 The editor replaces per-step numbers with a timing grid: four-step beat boundaries are solid, use longer ticks and show the beat number; intermediate step boundaries are dotted. Gate cells are centered between their grid boundaries. Step expression is shown compactly: `%` marks a non-selected explicit Probability override, while the selected step replaces `%` with the compact numeric value in the same position. Ratchet dots sit directly above Probability and use one row for 2–4 substeps or two rows for 5–8. Tie visibly bridges the current gate cell into the next one. Probability and Ratchet may coexist; Tie and Ratchet are mutually exclusive, and Tie is unavailable for RANDOM traversal.
 
@@ -326,10 +326,10 @@ Groove is deterministic microtiming applied to the same master timeline as Clock
 
 Editor controls:
 
-- **TAP** — select the next marker;
+- **TAP TEMPO** — select the next marker;
 - **encoder turn** — move the selected marker finely;
-- **TAP + turn** — coarse marker movement;
-- **PLAY + turn** — quick zoom through `FIT / 32 / 16 / 8 / 4` without issuing a transport command;
+- **TAP TEMPO + turn** — coarse marker movement;
+- **START + turn** — quick zoom through `FIT / 32 / 16 / 8 / 4` without issuing a transport command;
 - **encoder long press** — open the Groove editor menu;
 - **BACK** — leave immediately when clean, or open `DISCARD CHANGES?` when the draft has changed.
 
@@ -343,9 +343,9 @@ Changes are previewed live while transport runs but remain temporary until saved
 
 Recorder controls:
 
-- **PLAY** — start/stop capture; stopping rewinds the recorder to the beginning;
-- **TAP** — record one timing event; TAP does not run Tap Tempo while the recorder is active;
-- **PLAY + turn** — quick zoom;
+- **START** — start/stop capture; stopping rewinds the recorder to the beginning;
+- **TAP TEMPO** — record one timing event; the button does not run Tap Tempo while the recorder is active;
+- **START + turn** — quick zoom;
 - **encoder long press** — open the Record menu;
 - **BACK** — leave/confirm discard using the same shared-draft rules as the editor.
 
@@ -357,9 +357,9 @@ Front-panel TAP capture preserves the high-resolution physical press timestamp t
 
 1. Open `TIMING → GROOVE → RECORD`. RECORD and EDITOR work on the same temporary Custom Groove draft.
 2. Long-press the encoder and set **LENGTH** (`1–64`), recorder **COUNT IN** (`OFF / 1–64`, default `4`) and **MODE** (`ONE SHOT / ENDLESS`). Choose a useful **ZOOM** if needed.
-3. Press **PLAY**. If recorder Count-In is enabled, it runs first; capture begins only after that local count reaches zero.
-4. Tap the rhythm on **TAP**. Every press records one high-resolution timing event against the live Q32 engine position. Tap Tempo is disabled while the recorder is active.
-5. Press **PLAY** again to stop. The recorder rewinds to the beginning and the recorded draft stays available.
+3. Press **START**. If recorder Count-In is enabled, it runs first; capture begins only after that local count reaches zero.
+4. Tap the rhythm on **TAP TEMPO**. Every press records one high-resolution timing event against the live Q32 engine position. Tap Tempo is disabled while the recorder is active.
+5. Press **START** again to stop. The recorder rewinds to the beginning and the recorded draft stays available.
 6. Choose `EDITOR >` for precise marker cleanup, then **SAVE** to a named Custom Groove slot when the result is ready.
 
 `ENDLESS` is deliberately non-destructive to untouched steps: later passes replace only steps that receive a new TAP. `ONE SHOT` stops automatically after one pattern cycle.
@@ -372,7 +372,7 @@ The frozen 1.1.0 storage scope is **10 named Custom Groove slots**. The normal G
 
 Transport has three states: **PLAY, PAUSE, STOP**.
 
-- PLAY/PAUSE toggles running and paused states without an implicit phase reset.
+- START/PAUSE toggles running and paused states without an implicit phase reset.
 - STOP/BACK from Performance enters STOP and applies the global reset policy.
 - Tap Tempo adjusts the master tempo from a sequence of TAP presses within the supported 1–999 BPM technical range and the configured user MIN/MAX boundaries.
 - The first TAP starts a new measurement sequence without an indicator. The second and every following TAP in that sequence triggers a four-frame **8×8 shrinking-dot animation** in a fixed right-aligned slot at the display edge, vertically centered on the tempo display. The BPM numerals remain centered and do not move.
@@ -574,11 +574,11 @@ The four ranked games — **Pixel Raid, Formula 1, Breakout, and Egg Journey** �
 </tr>
 </table>
 
-- **Pixel Raid** — encoder moves the cannon; TAP fires.
+- **Pixel Raid** — encoder moves the cannon; TAP TEMPO fires.
 - **Formula 1** — encoder steers through changing road geometry and traffic; three crashes end the run.
-- **Breakout** — encoder moves the paddle; TAP launches the waiting ball; the run has three lives and scored bricks/board clears.
-- **Egg Journey** — encoder shifts the egg within the scrolling lunar landscape; TAP jumps; craters and asteroids consume one of three lives.
-- **BEATKNECHT** — not a ranked game. **PLAY/PAUSE** starts and pauses the rhythm, **STOP/BACK** stops it and resets the pattern to step 1, TAP cycles curated one-bar rhythm styles, and the encoder changes BPM. OUT 1–8 intentionally emit the displayed eight gate patterns. Pause forces every gate LOW while preserving the remaining step interval; PLAY resumes from that point. STOP additionally mutes all gate source GPIOs until PLAY is pressed again. A long encoder push opens an **EXIT GAME? / NO / YES** confirmation instead of leaving immediately. NO returns to the exact previous transport state; if the rhythm was playing it resumes from the preserved phase. YES stops the rhythm, forces all gates LOW, keeps gate output muted, and returns to the normal clock firmware.
+- **Breakout** — encoder moves the paddle; TAP TEMPO launches the waiting ball; the run has three lives and scored bricks/board clears.
+- **Egg Journey** — encoder shifts the egg within the scrolling lunar landscape; TAP TEMPO jumps; craters and asteroids consume one of three lives.
+- **BEATKNECHT** — not a ranked game. **START/PAUSE** starts and pauses the rhythm, **STOP/BACK** stops it and resets the pattern to step 1, TAP TEMPO cycles curated one-bar rhythm styles, and the encoder changes BPM. OUT 1–8 intentionally emit the displayed eight gate patterns. Pause forces every gate LOW while preserving the remaining step interval; START resumes from that point. STOP additionally mutes all gate source GPIOs until PLAY is pressed again. A long encoder push opens an **EXIT GAME? / NO / YES** confirmation instead of leaving immediately. NO returns to the exact previous transport state; if the rhythm was playing it resumes from the preserved phase. YES stops the rhythm, forces all gates LOW, keeps gate output muted, and returns to the normal clock firmware.
 
 After a ranked Easter egg has been launched at least once, the Settings root gains **HI-SCORES / CLEAR**. The entry is hidden beforehand and is not shown for BEATKNECHT. Clearing uses a guarded **NO / YES** confirmation, stops transport before Flash is written, clears the complete Top 100 for that selected ranked game, and keeps the menu entry available for later resets.
 

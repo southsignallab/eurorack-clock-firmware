@@ -2,7 +2,7 @@
 
 # 15 Settings map
 
-Hold **TAP** and press the encoder from Performance to open the root Settings tree. The root is organized by scope rather than by implementation detail.
+Hold **TAP TEMPO** and press the encoder from Performance to open the root Settings tree. The root is organized by scope rather than by implementation detail.
 
 <p align="center"><img src="../manual-source/assets/settings-root.png" alt="CLOCK root Settings menu." width="360"></p>
 

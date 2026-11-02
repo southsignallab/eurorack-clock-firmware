@@ -230,10 +230,16 @@ int runStaticContracts() {
           defaultLayout.outputCenters[7].y == defaultLayout.outputCenters[4].y)) {
         return fail("encoder and two-by-four output layout must match panel intent");
     }
+    // Hardware Rev C places every output LED above its jack, offset to the right by the same
+    // amount for all eight channels (KiCad front panel: +3.165 mm, -7.37 mm).
+    const float ledOffsetX = defaultLayout.ledCenters[0].x - defaultLayout.outputCenters[0].x;
+    const float ledOffsetY = defaultLayout.ledCenters[0].y - defaultLayout.outputCenters[0].y;
     for (std::size_t index = 0U; index < defaultLayout.outputCenters.size(); ++index) {
-        if (defaultLayout.ledCenters[index].y >= defaultLayout.outputCenters[index].y ||
-            defaultLayout.ledCenters[index].x != defaultLayout.outputCenters[index].x) {
-            return fail("each output LED must sit directly above its matching jack");
+        const float offsetX = defaultLayout.ledCenters[index].x - defaultLayout.outputCenters[index].x;
+        const float offsetY = defaultLayout.ledCenters[index].y - defaultLayout.outputCenters[index].y;
+        if (offsetY >= 0.0F || offsetX <= 0.0F ||
+            std::fabs(offsetX - ledOffsetX) > 0.5F || std::fabs(offsetY - ledOffsetY) > 0.5F) {
+            return fail("each output LED must sit above and right of its jack with one common offset");
         }
     }
     if (defaultLayout.displayPixelScale != 2) {

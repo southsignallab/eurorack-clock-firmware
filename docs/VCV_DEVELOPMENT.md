@@ -198,14 +198,14 @@ The CTest suite includes `vcv_runtime_adapter_tests`. These tests exercise the r
 python scripts/generate_vcv_panel.py --check
 ```
 
-If this fails after an intentional `sim/panel_layout.ini` change:
+If this fails after an intentional front-panel change (imported with `scripts/import_kicad_front_panel.py`):
 
 ```bash
 python scripts/generate_vcv_panel.py
 git diff -- vcv/res vcv/generated_panel_layout.hpp
 ```
 
-Do not manually move VCV controls independently from the simulator geometry.
+Do not manually move VCV controls or edit panel lettering; both come from the KiCad front-panel project.
 
 ### 1.8 Build the VCV plugin
 
@@ -278,11 +278,11 @@ Start VCV Rack 2 and locate **South Signal Lab Clock** in the Module Browser.
 Minimum Trial-First smoke test:
 
 1. Add one CLOCK module to an empty patch and observe the normal CLOCK boot sequence.
-2. Press **PLAY / PAUSE**. Patch output **1** to a scope or gate-visible destination and verify 0/+5-V behavior; in factory One Clock mode, outputs 1–8 must fire coherently.
+2. Press **START / PAUSE**. Patch output **1** to a scope or gate-visible destination and verify 0/+5-V behavior; in factory One Clock mode, outputs 1–8 must fire coherently.
 3. Drag/scroll the encoder to turn it. Use a stationary short click for encoder push, then hold it for more than 650 ms and verify that the production long-press action occurs.
-4. Hover CLOCK and verify the keyboard bridge: `Shift` holds TAP/SHIFT, `Enter/E` holds encoder push, `Up/Down` turns the encoder, `P` drives PLAY/PAUSE, `T` drives TAP, and `S/Backspace` drives STOP/BACK. Verify `Shift+Enter` and `Shift+Up/Down` as the two-control chords.
+4. Hover CLOCK and verify the keyboard bridge: `Shift` holds TAP TEMPO/SHIFT, `Enter/E` holds encoder push, `Up/Down` turns the encoder, `P` drives START/PAUSE, `T` drives TAP TEMPO, and `S/Backspace` drives STOP/BACK. Verify `Shift+Enter` and `Shift+Up/Down` as the two-control chords.
 5. Right-click CLOCK, choose **General Settings...**, and verify that the OLED opens the production `GENERAL SETTINGS` page rather than a separate Rack settings panel.
-6. Exercise **PLAY / PAUSE**, **TAP / SHIFT** and **STOP / BACK** and compare OLED transitions with the simulator.
+6. Exercise **START / PAUSE**, **TAP TEMPO / SHIFT** and **STOP / BACK** and compare OLED transitions with the simulator.
 7. Patch a clock into **IN 1 / SYNC** and verify acquisition, lock, source behavior and loss handling. Also try a one-sample/very-short Rack trigger source; accepted edges must not depend sporadically on alignment with the 50 us CLOCK scheduler tick.
 8. Patch a trigger/gate into **IN 2 / RST** and verify the configured RESET role/behavior.
 9. Exercise One Clock, Independent, Divider Bank, Clock, Euclid, Sequencer, Swing, Groove, Humanize and Pre-Count as applicable.
@@ -502,7 +502,7 @@ CLOCK therefore follows these hard rules:
 - `libRack`: runtime host dependency, never bundled in `.vcvplugin`;
 - Rack/Core source: not copied;
 - VCV Component Library/Core panel graphics: not copied;
-- CLOCK panel/widget artwork: project-generated from `sim/panel_layout.ini`;
+- CLOCK panel artwork: derived from the project's own KiCad front-panel project; widget positions from `sim/panel_layout.ini`;
 - plugin distribution: free of charge while relying on the non-commercial plugin exception.
 
 If the VCV plugin is ever sold rather than distributed free of charge, this licensing assumption must be reviewed before distribution.

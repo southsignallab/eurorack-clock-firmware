@@ -1,7 +1,7 @@
 <!-- Author: Axel Napolitano | License: PolyForm-Noncommercial-1.0.0 -->
 
 <p align="center">
-  <img src="docs/assets/clock-header.jpg" alt="CLOCK eight-channel Eurorack clock and gate-rhythm generator" width="100%">
+  <img src="docs/assets/clock-header.svg" alt="CLOCK digital master clock: wordmark, eight gate traces and the engraved 10 HP front panel" width="100%">
 </p>
 
 [![CI](https://github.com/napolitano/eurorack-clock-firmware/actions/workflows/ci.yml/badge.svg)](https://github.com/napolitano/eurorack-clock-firmware/actions/workflows/ci.yml)
@@ -40,7 +40,7 @@ Custom Grooves go further. A 1–64-step graphical editor uses movable diamond m
 </tr>
 </table>
 
-`RECORD >` is a second input mode over the same Custom Groove draft: **PLAY** starts/stops capture, **TAP** records an event with the high-resolution physical button timestamp, **PLAY + encoder** zooms, and the moving playhead follows the real engine phase. Recorder Count-In is independently configurable `OFF / 1–64` (default `4`); `ONE SHOT` stops at the end while `ENDLESS` wraps and overwrites only steps that receive a new TAP. A recorded Groove can be opened immediately in `EDITOR >` for cleanup before saving.
+`RECORD >` is a second input mode over the same Custom Groove draft: **START** starts/stops capture, **TAP TEMPO** records an event with the high-resolution physical button timestamp, **START + encoder** zooms, and the moving playhead follows the real engine phase. Recorder Count-In is independently configurable `OFF / 1–64` (default `4`); `ONE SHOT` stops at the end while `ENDLESS` wraps and overwrites only steps that receive a new TAP. A recorded Groove can be opened immediately in `EDITOR >` for cleanup before saving.
 
 CLOCK 1.1.0 also adds the optional 1–64-beat **Pre-Count**, globally configurable `INPUT 1 / INPUT 2` roles (`OFF / SYNC / RESET / RUN / START / STOP / RESTART / TAP`), a scalable horizontal Channel Mode carousel, improved long-information handling on the OLED, and tighter simulator/host qualification. The frozen 1.1 scope and later milestones are documented in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
@@ -51,7 +51,7 @@ A clock module looks simple until it becomes the timing centre of a real rack. T
 CLOCK exists because we wanted a module with a specific balance that we did not want to compromise away:
 
 - **Eight useful outputs, not eight copies of the same feature.** Each output can be a straight clock, a Euclidean pattern, a gate sequence or Off, while One Clock and Divider Bank cover the common global use cases immediately.
-- **A performance interface first.** One OLED, one push encoder and three large transport buttons keep PLAY, TAP and STOP/BACK physically obvious. Detailed settings are available, but they are not the normal performance surface.
+- **A performance interface first.** One OLED, one push encoder and three large transport buttons keep START/PAUSE, TAP TEMPO and STOP/BACK physically obvious. Detailed settings are available, but they are not the normal performance surface.
 - **One deterministic timing model.** Clock, Euclid and Sequencer derive from the same master timeline instead of behaving like unrelated mini-sequencers that happen to share a box.
 - **Useful sync semantics rather than a token clock input.** INTERNAL, EXTERNAL and AUTO sources, configurable PPQN, edge selection, filtering, loss policy and separate reset behaviour are explicit parts of the design.
 - **DIY should still feel like a finished instrument.** The goal is not merely a buildable PCB. Parts availability, simulator coverage, update/recovery documentation, HIL procedures and a publication-quality manual are part of the product.
@@ -109,7 +109,7 @@ The post-1.1 development tree now contains a **VCV Rack edition** under [`vcv/`]
 | Inputs | Two LM393-conditioned digital comparator inputs; Rev 1 physical nets remain SYNC/PA8 and RST/PA9, while firmware 1.1.0 assigns their musical roles globally |
 | MCU | STM32F401CCU6 Black Pill, 84 MHz Cortex-M4 |
 | Display | 128×64 SSD1306/SSD1315 over the final 4-wire SPI pin map |
-| Controls | Push encoder + PLAY/PAUSE + TAP + STOP/BACK |
+| Controls | Push encoder + START/PAUSE + TAP TEMPO + STOP/BACK |
 | Topologies | Independent, One Clock, Divider Bank |
 | Channel functions | Off, Clock, Euclid, Sequencer |
 | Tempo | 1–999 BPM technical range; factory user range 20–999 BPM |
@@ -193,7 +193,7 @@ Open `SETTINGS → GENERAL SETTINGS → INPUTS` to assign a role. Current select
 - `START` — a positive edge starts transport;
 - `STOP` — a positive edge stops transport;
 - `RESTART` — a positive edge performs a deterministic stop/restart from phase zero;
-- `TAP` — a positive edge is fed, with its captured timestamp, into the same Tap Tempo estimator used by the front-panel TAP button.
+- `TAP` — a positive edge is fed, with its captured timestamp, into the same Tap Tempo estimator used by the front-panel TAP TEMPO button.
 
 `FILL` is reserved in the input-role model for the later Euclid/Fill work, but is **not selectable or persistable yet**. Every active role is exclusive across the two inputs: if one input owns `SYNC`, `SYNC` is skipped while editing the other input. `OFF` is the only role that may be assigned twice.
 
@@ -224,10 +224,10 @@ The normal interaction grammar is deliberately small:
 | Encoder turn | Master BPM | Move selection | Move/change value |
 | Encoder short press | Open overview | Confirm selection | Enter/confirm/toggle step |
 | Encoder long press | Open current context settings | Open highlighted settings | Context dependent |
-| TAP + encoder press | Open Settings | - | - |
-| Hold TAP + encoder turn | - | Open/scroll horizontal mode carousel | - |
-| PLAY/PAUSE | Play/pause | - | Sequencer editor: play/pause |
-| TAP | Tap Tempo | Modifier | Sequencer editor: previous 8-step viewport |
+| TAP TEMPO + encoder press | Open Settings | - | - |
+| Hold TAP TEMPO + encoder turn | - | Open/scroll horizontal mode carousel | - |
+| START/PAUSE | Play/pause | - | Sequencer editor: play/pause |
+| TAP TEMPO | Tap Tempo | Modifier | Sequencer editor: previous 8-step viewport |
 | STOP/BACK | Stop + reset global phase | Back/cancel | Back/cancel |
 
 `SETTINGS → GENERAL SETTINGS` contains `INPUTS >`, `DIAGNOSTICS >` and `HARDWARE >`. `HARDWARE >` owns the two persistent device-local installation preferences: **ENCODER DIR** (`NORMAL / REVERSED`) changes semantic rotary direction after quadrature decoding, and **ORIENTATION** (`0 DEG / 180 DEG`) rotates the OLED transfer framebuffer. `DIAGNOSTICS → INPUTS` shows the live conditioned **INPUT 1 / INPUT 2** comparator levels; `DIAGNOSTICS → OUTPUTS` shows the eight gate source levels in a 4×2 indicator grid. Device-local hardware preferences are deliberately not changed by named presets or factory templates. Settings selection is shown by full-row inversion rather than a left-side cursor, reclaiming horizontal space on the 128×64 display.
@@ -279,13 +279,13 @@ The hidden boot Easter egg is selected at compile time. The shipped/default conf
 
 ### Firmware
 
-The reference hardware profile is SPI SSD1306:
+The default build and the public release images use the SPI SSD1306-compatible profile; the SSD1315 on the Rev C reference board uses the same command subset exercised by the production OLED HAL:
 
 ```bash
 pio run -e blackpill_f401cc_spi_ssd1306
 ```
 
-An additional production profile covers SPI SSD1315. The custom linker/upload path protects the Flash sectors reserved for A/B persistence.
+A dedicated production profile for SPI SSD1315 is also available (`blackpill_f401cc_spi_ssd1315`). The custom linker/upload path protects the Flash sectors reserved for A/B persistence.
 
 ### Native tests
 
@@ -354,19 +354,38 @@ The curated manual screenshots are generated from the **real production framebuf
 
 ## Hardware target
 
-The current reference design uses:
+The current reference design is hardware **Rev C**. Its KiCad project is the source of truth for every hardware statement in this repository; the list below follows it:
 
-- STM32F401CCU6 Black Pill;
-- 0.96-inch 128×64 SSD1306/SSD1315 OLED;
-- PEC11L-style push encoder;
-- three C&K D6R transport buttons;
-- two conditioned comparator inputs with factory SYNC/RESET roles and configurable global firmware assignments;
-- eight Thonkiconn-style output jacks;
-- eight 3 mm red activity LEDs;
-- 74HCT541-class 5 V output buffer;
-- local +12 V to +5 V conversion.
+- WeAct BlackPill V2.0 with STM32F401CCU6, plugged into socket strips;
+- 0.96-inch 128×64 OLED module on SPI — the reference board carries a Waveshare SSD1315 module; the firmware supports SSD1306 and SSD1315;
+- Bourns PEC11R-4220F-S0024 push encoder (24 detents / 24 PPR);
+- three C&K D6R push buttons: START/PAUSE, TAP TEMPO, STOP/BACK;
+- two LM393 comparator inputs with hysteresis and Schottky clamping, factory SYNC/RESET roles and configurable global firmware assignments; the jacks' switch contacts are tied to GND, so there is no jack detection;
+- ten Thonkiconn PJ398SM jacks (two inputs, eight outputs);
+- eight 3 mm red activity LEDs (Kingbright WP424IDT), driven from the buffered outputs;
+- SN74HCT541N 5 V output buffer with a 1 kΩ series resistor per output and 100 kΩ pull-downs on the buffer inputs;
+- +12 V only from the Eurorack bus, reverse-polarity diode, ferrite filter and an LM2574N-5.0 switching regulator for +5 V; +3.3 V comes from the BlackPill regulator;
+- two stacked through-hole boards (front board and main board) and a 10 HP front panel.
 
-The simulator panel dimensions and control coordinates are maintained in [`sim/panel_layout.ini`](sim/panel_layout.ini). The documentation front-panel SVG is generated directly from that file, so the illustration cannot silently drift away from the simulator layout.
+### Front-panel artwork
+
+Every image of the front panel comes from the KiCad front-panel project (`Simple Frontpanel.kicad_pcb` in the CLOCK hardware repository). `scripts/import_kicad_front_panel.py` reads its Edge.Cuts outline and cut-outs and its F.SilkS engraving directly, without a KiCad installation, and writes:
+
+- [`docs/assets/front-panel/clock-front-panel.svg`](docs/assets/front-panel/clock-front-panel.svg) — canonical vector artwork in millimetres;
+- [`docs/assets/front-panel/clock-front-panel.png`](docs/assets/front-panel/clock-front-panel.png) — 20 px/mm raster with transparent cut-outs for web and print;
+- `sim/panel_background.png` — the simulator panel image;
+- the panel size and all control coordinates in [`sim/panel_layout.ini`](sim/panel_layout.ini).
+
+The manual illustration (`scripts/generate_front_panel_illustration.py`), the VCV Rack panel (`scripts/generate_vcv_panel.py`) and the README header (`scripts/generate_readme_header.py`) are generated from those committed files, so CI checks them without access to the private hardware repository. After a panel change:
+
+```bash
+python scripts/import_kicad_front_panel.py --kicad "<hardware repo>/Simple Frontpanel/Simple Frontpanel.kicad_pcb"
+python scripts/generate_front_panel_illustration.py
+python scripts/generate_vcv_panel.py
+python scripts/generate_readme_header.py
+```
+
+`--check` on the importer proves that the committed files still match the KiCad file (same Pillow version assumed for the PNG outputs).
 
 ## Supporting the project
 

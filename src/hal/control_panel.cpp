@@ -62,11 +62,12 @@ void ControlPanel::begin() {
         pinmap::kEncoderPhaseAPin,
         pinmap::kEncoderPhaseBPin);
     encoderLastTransitionCount_ = platform::quadratureEncoderCount();
-    // PEC11L-4120K-S0020 is a 20-detent / 20-PPR encoder. Capture the
-    // electrical state seen at rest as a recovery anchor. Bourns places the
-    // mechanical detent at a contact transition, so this state is deliberately
-    // refreshed after every debounced encoder-button release rather than treated
-    // as an immutable phase for the lifetime of the firmware.
+    // Hardware Rev C fits a Bourns PEC11R-4220F-S0024: 24 detents / 24 PPR, i.e.
+    // one quadrature cycle per mechanical detent. Capture the electrical state
+    // seen at rest as a recovery anchor. The anchor is measured at runtime and
+    // deliberately refreshed after every debounced encoder-button release rather
+    // than assumed from the datasheet or treated as an immutable phase for the
+    // lifetime of the firmware.
     encoderDetentPhase_ = platform::quadratureEncoderState();
     encoderTransitionRemainder_ = 0;
     pendingEncoderDetents_ = 0;
@@ -82,10 +83,9 @@ ControlSample ControlPanel::sample(const std::uint32_t nowMs) {
     const ButtonSample encoderButton = encoderButton_.sample(nowMs);
     std::int8_t encoderDelta = sampleEncoder();
 
-    // The PEC11L push switch is part of the same mechanical shaft as A/B. Its
-    // datasheet places the detent at a quadrature contact transition and allows
-    // contact bounce, so pressing/releasing the shaft can leave the transition
-    // accumulator between detents even when no intentional turn happened. The
+    // The PEC11R push switch is part of the same mechanical shaft as A/B. Axial
+    // push/release and contact bounce can leave the transition accumulator
+    // between detents even when no intentional turn happened. The
     // debounced release means the switch and shaft have already been stable for
     // kDebounceMs, making this a safe point to discard only the partial residue
     // and re-anchor the electrical phase. Completed/pending detents are kept.
@@ -135,8 +135,8 @@ std::int8_t ControlPanel::sampleEncoder() {
 
         std::int32_t newDetents = 0;
         if (atDetentPhase) {
-            // PEC11L-4120K-S0020 has one quadrature pulse per mechanical detent
-            // (20 detents / 20 PPR). Returning to the current rest-phase anchor
+            // PEC11R-4220F-S0024 has one quadrature pulse per mechanical detent
+            // (24 detents / 24 PPR). Returning to the current rest-phase anchor
             // is therefore a useful recovery boundary. Round a one-edge count
             // error to the nearest complete cycle and discard any remaining
             // half-cycle corruption instead of carrying it across a later

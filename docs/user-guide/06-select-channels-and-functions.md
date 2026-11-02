@@ -19,7 +19,7 @@ One Clock and Divider Bank are global topologies, so their overview deliberately
 
 Short press returns from a global overview. Long press opens that topology's settings.
 
-Hold **TAP** and turn the encoder. CLOCK opens a horizontal mode carousel. The selected function stays centered and is the only item drawn on an inverted background; its immediate neighbors remain unframed, with a pictogram and label underneath. Turning moves the band rather than moving a highlight through a fixed 2×3 tile grid.
+Hold **TAP TEMPO** and turn the encoder. CLOCK opens a horizontal mode carousel. The selected function stays centered and is the only item drawn on an inverted background; its immediate neighbors remain unframed, with a pictogram and label underneath. Turning moves the band rather than moving a highlight through a fixed 2×3 tile grid.
 
 The current catalog order is **One Clock → Divider Bank → Clock → Euclid → Sequencer → Off**. The renderer and navigation use this catalog directly, so future channel modes can be added without inventing another fixed palette layout.
 
@@ -33,7 +33,7 @@ One Clock and Divider Bank change the global output topology. Clock, Euclid, Seq
 </tr>
 </table>
 
-Releasing TAP does not silently mutate the running setup. If the highlighted function differs from the active function, CLOCK opens `CHANGE MODE?` with **NO** selected by default.
+Releasing TAP TEMPO does not silently mutate the running setup. If the highlighted function differs from the active function, CLOCK opens `CHANGE MODE?` with **NO** selected by default.
 
 ![Mode-change confirmation dialog showing CHANGE MODE? with NO selected as the safe default.](../manual-source/assets/mode-change-confirm-no.png)
 

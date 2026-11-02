@@ -150,11 +150,11 @@ struct ClockModule final : Module {
         getParamQuantity(ENCODER_PARAM)->resetEnabled = false;
         getParamQuantity(ENCODER_PARAM)->randomizeEnabled = false;
         configButton(ENCODER_PUSH_PARAM, "Encoder push (legacy hidden)");
-        configButton(PLAY_PARAM, "PLAY / PAUSE");
-        configButton(TAP_PARAM, "TAP / SHIFT");
+        configButton(PLAY_PARAM, "START / PAUSE");
+        configButton(TAP_PARAM, "TAP TEMPO / SHIFT");
         configButton(STOP_PARAM, "STOP / BACK");
-        configInput(SYNC_INPUT, "IN 1 / SYNC");
-        configInput(RESET_INPUT, "IN 2 / RST");
+        configInput(SYNC_INPUT, "IN 1");
+        configInput(RESET_INPUT, "IN 2");
         for (int index = 0; index < 8; ++index) {
             configOutput(OUT1_OUTPUT + index, std::to_string(index + 1));
         }
@@ -408,8 +408,11 @@ struct ClockDisplayWidget final : Widget {
             return;
         }
 
-        const float scaleX = box.size.x / 128.0F;
-        const float scaleY = box.size.y / 64.0F;
+        // The panel window (Rev C: 25.0 x 13.6 mm) is not exactly 2:1. Scale the 128x64 matrix
+        // uniformly and centre it so OLED pixels stay square.
+        const float scale = std::min(box.size.x / 128.0F, box.size.y / 64.0F);
+        const float originX = (box.size.x - 128.0F * scale) * 0.5F;
+        const float originY = (box.size.y - 64.0F * scale) * 0.5F;
         nvgFillColor(args.vg, nvgRGB(245, 245, 245));
         for (std::size_t y = 0U; y < 64U; ++y) {
             const std::size_t page = y / 8U;
@@ -421,82 +424,13 @@ struct ClockDisplayWidget final : Widget {
                 }
                 nvgBeginPath(args.vg);
                 nvgRect(args.vg,
-                    static_cast<float>(x) * scaleX,
-                    static_cast<float>(y) * scaleY,
-                    std::max(1.0F, scaleX),
-                    std::max(1.0F, scaleY));
+                    originX + static_cast<float>(x) * scale,
+                    originY + static_cast<float>(y) * scale,
+                    std::max(1.0F, scale),
+                    std::max(1.0F, scale));
                 nvgFill(args.vg);
             }
         }
-    }
-};
-
-/**
- * @brief Draws all panel lettering with Rack's UI font.
- *
- * Rack's NanoSVG renderer intentionally does not render SVG <text> elements. The generated SVG
- * keeps text for standalone previews/documentation, while this overlay makes the same labels
- * visible in the actual Rack module without bundling a second font.
- */
-struct ClockPanelLabels final : Widget {
-    static Vec panelPoint(const clockfw::vcv::panel::PointMm& point) {
-        using namespace clockfw::vcv::panel;
-        return mm2px(Vec(point.x + kPanelOffsetXmm, point.y + kPanelOffsetYmm));
-    }
-
-    static Vec panelPoint(const float xMm, const float yMm) {
-        using namespace clockfw::vcv::panel;
-        return mm2px(Vec(xMm + kPanelOffsetXmm, yMm + kPanelOffsetYmm));
-    }
-
-    static void drawLabel(
-        NVGcontext* vg,
-        const Vec& position,
-        const char* text,
-        const float size,
-        const NVGcolor color,
-        const int align = NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE) {
-        if (APP == nullptr || APP->window == nullptr || !APP->window->uiFont) {
-            return;
-        }
-        nvgFontFaceId(vg, APP->window->uiFont->handle);
-        nvgFontSize(vg, size);
-        nvgFillColor(vg, color);
-        nvgTextAlign(vg, align);
-        nvgText(vg, position.x, position.y, text, nullptr);
-    }
-
-    void draw(const DrawArgs& args) override {
-        using namespace clockfw::vcv::panel;
-        constexpr float panelCenterX = kPanelWidthMm * 0.5F;
-
-        const NVGcolor primary = nvgRGB(244, 244, 244);
-        const NVGcolor secondary = nvgRGB(142, 144, 148);
-
-        // The CLOCK wordmark itself is project-owned vector geometry in the generated panel SVG.
-        // Control labels always sit below their hardware. The encoder deliberately remains
-        // unlabelled, because the OLED UI carries its context and the panel benefits from space.
-        const float buttonLabelY = kPlayCenter.y + kButtonActuatorDiameterMm * 0.5F + 1.25F;
-        constexpr float labelLineGapMm = 2.25F;
-        drawLabel(args.vg, panelPoint(kPlayCenter.x, buttonLabelY), "PLAY", 7.2F, primary);
-        drawLabel(args.vg, panelPoint(kPlayCenter.x, buttonLabelY + labelLineGapMm), "PAUSE", 6.5F, secondary);
-        drawLabel(args.vg, panelPoint(kTapCenter.x, buttonLabelY), "TAP", 7.2F, primary);
-        drawLabel(args.vg, panelPoint(kTapCenter.x, buttonLabelY + labelLineGapMm), "SHIFT", 6.5F, secondary);
-        drawLabel(args.vg, panelPoint(kStopCenter.x, buttonLabelY), "STOP", 7.2F, primary);
-        drawLabel(args.vg, panelPoint(kStopCenter.x, buttonLabelY + labelLineGapMm), "BACK", 6.5F, secondary);
-
-        const float inputLabelY = kSyncCenter.y + kJackNutDiameterMm * 0.5F + 2.4F;
-        drawLabel(args.vg, panelPoint(kSyncCenter.x, inputLabelY), "IN 1", 7.2F, primary);
-        drawLabel(args.vg, panelPoint(kResetCenter.x, inputLabelY), "IN 2", 7.2F, primary);
-
-        for (std::size_t index = 0U; index < kOutputCenters.size(); ++index) {
-            const auto& center = kOutputCenters[index];
-            const float labelY = center.y + kJackNutDiameterMm * 0.5F + 2.5F;
-            const std::string label = std::to_string(index + 1U);
-            drawLabel(args.vg, panelPoint(center.x, labelY), label.c_str(), 7.6F, primary);
-        }
-
-        drawLabel(args.vg, panelPoint(panelCenterX, 123.15F), "SOUTH SIGNAL LAB", 6.5F, primary);
     }
 };
 
@@ -759,9 +693,6 @@ struct ClockWidget final : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/CLOCK.svg")));
 
-        auto* labels = createWidget<ClockPanelLabels>(Vec(0.0F, 0.0F));
-        labels->box.size = box.size;
-        addChild(labels);
 
         auto* display = createWidget<ClockDisplayWidget>(
             mm2px(Vec(kDisplay.x + kPanelOffsetXmm, kDisplay.y + kPanelOffsetYmm)));

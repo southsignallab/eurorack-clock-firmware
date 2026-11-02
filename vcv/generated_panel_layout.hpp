@@ -29,25 +29,25 @@ inline constexpr float kPanelWidthMm = 50.5F;
 inline constexpr float kPanelHeightMm = 128.5F;
 inline constexpr float kPanelOffsetXmm = 0.15F;
 inline constexpr float kPanelOffsetYmm = 0.0967F;
-inline constexpr RectMm kDisplay{2.525F, 14.6535F, 35.9111F, 18.0351F};
-inline constexpr PointMm kEncoderCenter{44.0472F, 23.1075F};
+inline constexpr RectMm kDisplay{3.75F, 22.25F, 25.0F, 13.6F};
+inline constexpr PointMm kEncoderCenter{40.7F, 29.25F};
 inline constexpr float kEncoderDiameterMm = 8.4166F;
-inline constexpr PointMm kPlayCenter{9.6792F, 48.7511F};
-inline constexpr PointMm kTapCenter{23.8472F, 48.7511F};
-inline constexpr PointMm kStopCenter{38.0153F, 48.7511F};
+inline constexpr PointMm kPlayCenter{8.2F, 52.23F};
+inline constexpr PointMm kTapCenter{25.12F, 52.25F};
+inline constexpr PointMm kStopCenter{41.75F, 52.35F};
 inline constexpr float kButtonActuatorDiameterMm = 9.0F;
-inline constexpr PointMm kSyncCenter{7.2944F, 70.1678F};
-inline constexpr PointMm kResetCenter{18.6569F, 70.1678F};
+inline constexpr PointMm kSyncCenter{7.75F, 70.1F};
+inline constexpr PointMm kResetCenter{19.4167F, 70.13F};
 inline constexpr float kJackNutDiameterMm = 7.85F;
 inline constexpr float kLedDiameterMm = 3.0F;
 inline constexpr std::array<PointMm, 8U> kOutputCenters{{
-    {6.5931F, 95.8114F}, {17.9556F, 95.8114F}, {29.3181F, 95.8114F}, {40.6806F, 95.8114F}, {6.5931F, 112.4375F}, {17.9556F, 112.4375F}, {29.3181F, 112.4375F}, {40.6806F, 112.4375F}
+    {7.75F, 88.93F}, {19.4167F, 88.93F}, {31.0833F, 88.93F}, {42.75F, 88.93F}, {7.75F, 107.73F}, {19.4167F, 107.73F}, {31.0833F, 107.73F}, {42.75F, 107.73F}
 }};
 inline constexpr std::array<PointMm, 8U> kLedCenters{{
-    {6.5931F, 89.8936F}, {17.9556F, 89.8936F}, {29.3181F, 89.8936F}, {40.6806F, 89.8936F}, {6.5931F, 106.5197F}, {17.9556F, 106.5197F}, {29.3181F, 106.5197F}, {40.6806F, 106.5197F}
+    {10.915F, 81.56F}, {22.5817F, 81.56F}, {34.2483F, 81.56F}, {45.915F, 81.56F}, {10.915F, 100.36F}, {22.5817F, 100.36F}, {34.2483F, 100.36F}, {45.915F, 100.36F}
 }};
 inline constexpr std::array<PointMm, 4U> kScrewCenters{{
-    {2.1042F, 2.2533F}, {48.4097F, 2.2533F}, {2.1042F, 126.2467F}, {48.4097F, 126.2467F}
+    {7.47F, 3.0F}, {43.03F, 3.0F}, {7.47F, 125.5F}, {43.03F, 125.5F}
 }};
 
 }  // namespace clockfw::vcv::panel

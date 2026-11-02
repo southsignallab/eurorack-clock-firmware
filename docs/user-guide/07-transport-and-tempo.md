@@ -4,7 +4,7 @@
 
 Transport has three states: **PLAY, PAUSE, STOP**.
 
-- PLAY/PAUSE toggles running and paused states without an implicit phase reset.
+- START/PAUSE toggles running and paused states without an implicit phase reset.
 - STOP/BACK from Performance enters STOP and applies the global reset policy.
 - Tap Tempo adjusts the master tempo from a sequence of TAP presses within the supported 1–999 BPM technical range and the configured user MIN/MAX boundaries.
 - The first TAP starts a new measurement sequence without an indicator. The second and every following TAP in that sequence triggers a four-frame **8×8 shrinking-dot animation** in a fixed right-aligned slot at the display edge, vertically centered on the tempo display. The BPM numerals remain centered and do not move.

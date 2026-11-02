@@ -90,7 +90,7 @@
     {
       "label": "CLOCK: Configure native simulator",
       "type": "shell",
-      "command": "cmake --preset simulator",
+      "command": "python scripts/configure_simulator.py",
       "group": "build",
       "problemMatcher": [
         "$gcc"
@@ -99,7 +99,7 @@
     {
       "label": "CLOCK: Build native simulator",
       "type": "shell",
-      "command": "cmake --build --preset simulator",
+      "command": "python scripts/configure_simulator.py --build",
       "group": "build",
       "problemMatcher": [
         "$gcc"

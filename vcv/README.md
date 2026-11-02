@@ -15,30 +15,30 @@ Implemented in this first slice:
 - `vcv/` is a peer platform directory beside `sim/`;
 - the VCV bridge advances the real CLOCK 20 kHz / 50 us scheduler rather than implementing a Rack-specific clock engine;
 - the real 128x64 CLOCK OLED framebuffer is drawn in Rack;
-- PLAY/PAUSE, TAP/SHIFT, STOP/BACK, encoder turn and encoder push feed the same debounced control path as the hardware/simulator;
+- START/PAUSE, TAP TEMPO/SHIFT, STOP/BACK, encoder turn and encoder push feed the same debounced control path as the hardware/simulator;
 - the endless encoder classifies each mouse-down exclusively as vertical rotation or push, so a drag cannot also trigger a click while held push still reaches the production long-press path;
 - IN 1 / SYNC and IN 2 / RST use Rack-voltage hysteresis plus an allocation-free transition queue before the 20 kHz firmware boundary, so one-sample Rack triggers are not lost between 50 us scheduler ticks;
 - OUT 1..8 expose the actual logical gate states as **0/+5 V**, matching the hardware contract;
 - Rack patch state embeds CLOCK's complete logical persistence image instead of inventing a second preset/schema format;
-- the functional 10 HP Rack panel is generated from `../sim/panel_layout.ini`, so OLED, encoder, transport buttons, SYNC/RST, eight 3 mm activity LEDs and the 4x2 output matrix use the same millimetre geometry as the native simulator; no independent Rack layout is maintained.
+- the 10 HP Rack panel shows the KiCad-derived hardware engraving (`../docs/assets/front-panel/clock-front-panel.svg`) and places OLED, encoder, buttons, IN 1/IN 2, eight 3 mm activity LEDs and the 4x2 output matrix at the coordinates in `../sim/panel_layout.ini`; no independent Rack layout is maintained.
 
 Current limitation: the existing host HAL and `ClockApplication` callback boundary own process-global state. The experimental Rack shell therefore permits **one CLOCK instance per Rack process** and visibly disables additional instances rather than allowing silent cross-instance corruption. Multi-instance support requires a later host-HAL instance-context refactor; it is not papered over in this initial port.
 
 ## Front-panel geometry
 
-`sim/panel_layout.ini` is the single geometry source for the native simulator, the manual front-panel illustration and the VCV Rack shell. Run:
+The KiCad front-panel project is the single source for the native simulator, the manual front-panel illustration and the VCV Rack shell. `scripts/import_kicad_front_panel.py` writes the panel artwork and `sim/panel_layout.ini` from it; then run:
 
 ```bash
 python scripts/generate_vcv_panel.py
 ```
 
-after changing panel geometry. This regenerates the Rack panel SVG, the C++ millimetre coordinate header and the three transport-button frame pairs. CI runs the same command in `--check` mode and rejects stale Rack panel assets.
+after importing a panel change. This regenerates the Rack panel SVG, the C++ millimetre coordinate header and the three transport-button frame pairs. CI runs the same command in `--check` mode and rejects stale Rack panel assets.
 
 The Rack encoder is intentionally implemented as an endless relative control rather than a bounded Rack parameter. **Press and drag vertically** to produce discrete hardware-style detents; mouse-wheel movement still produces one detent per step. Each mouse-down is classified once: early vertical movement locks the gesture to rotation, while a stationary click becomes a short push on release and a stationary hold becomes encoder push after a short grace period. A rotation gesture can therefore never also fire a click.
 
-While the module is hovered, Rack keyboard input can act as the second hand for physical combinations: hold **Shift** for TAP/SHIFT, use **Enter/E** for encoder push, and **Up/Down** for encoder detents. `Shift+Enter` and `Shift+Up/Down` therefore reproduce the two important TAP/SHIFT chords. **P**, **T**, and **S/Backspace** map to PLAY/PAUSE, TAP, and STOP/BACK respectively. Right-clicking the module also exposes **General Settings...**, which opens the existing production CLOCK General Settings page rather than a parallel Rack configuration UI.
+While the module is hovered, Rack keyboard input can act as the second hand for physical combinations: hold **Shift** for TAP TEMPO/SHIFT, use **Enter/E** for encoder push, and **Up/Down** for encoder detents. `Shift+Enter` and `Shift+Up/Down` therefore reproduce the two important TAP TEMPO/SHIFT chords. **P**, **T**, and **S/Backspace** map to START/PAUSE, TAP TEMPO, and STOP/BACK respectively. Right-clicking the module also exposes **General Settings...**, which opens the existing production CLOCK General Settings page rather than a parallel Rack configuration UI.
 
-The Rack module uses a black functional front plate while retaining the simulator-defined geometry. The Rack-visible identity is **South Signal Lab Clock**. The top uses the canonical project-owned **CLOCK vector wordmark** rather than a text approximation, at a slightly reduced scale; **SOUTH SIGNAL LAB** is centred more prominently at the bottom. Primary button functions **PLAY**, **TAP**, and **STOP** are white; secondary functions **PAUSE**, **SHIFT**, and **BACK** sit below them in grey without slash separators. Input jacks use only **IN 1** and **IN 2** on the panel, while their Rack tooltips retain the `SYNC` and `RST` function names. Outputs are numbered **1–8** below the jacks with additional clearance from the jack hardware. The encoder remains intentionally unlabelled. Rack's NanoSVG loader does not render SVG `<text>` nodes, so the actual module draws lettering as a NanoVG overlay with Rack's bundled UI font; the generated SVG keeps matching text for standalone previews.
+The Rack module shows the hardware front panel exactly as engraved: **CLOCK / DIGITAL MASTER CLOCK**, **DATA / ENTER**, **START / PAUSE**, **TAP TEMPO / SHIFT**, **STOP / BACK**, **IN 1**, **IN 2**, the boxed output numbers **1–8** and the South Signal Lab mark. The Rack-visible identity is **South Signal Lab Clock**. The engraving is drawn geometry, so NanoSVG renders it directly and no lettering overlay is needed; Rack tooltips use the same names.
 
 OUT 1–8 always expose the real instantaneous 0/+5 V CLOCK gate state. The panel's inactive LED apertures are deliberately dark, and Rack's built-in `setBrightnessSmooth()` provides a short bounded visual decay for brief gates instead of a manually latched activity timer.
 
@@ -64,7 +64,7 @@ cmake --build --preset simulator-headless
 ctest --preset simulator-headless --output-on-failure
 ```
 
-`vcv_runtime_adapter_tests` currently verifies real boot, held encoder long-press, physical PLAY, coherent 0/+5-V gate output across all eight channels, factory One Clock rising-edge periodicity at 44.1/48/96 kHz, persistence-image round trip, and one-Rack-sample SYNC/RST pulse capture at 48 kHz.
+`vcv_runtime_adapter_tests` currently verifies real boot, held encoder long-press, physical START/PAUSE, coherent 0/+5-V gate output across all eight channels, factory One Clock rising-edge periodicity at 44.1/48/96 kHz, persistence-image round trip, and one-Rack-sample SYNC/RST pulse capture at 48 kHz.
 
 ## Build against the real Rack SDK
 
@@ -94,8 +94,8 @@ The Rack SDK is deliberately kept outside the repository and is never shipped in
 For the first functional validation:
 
 1. Add **South Signal Lab Clock** to an empty patch and wait for the normal CLOCK boot sequence.
-2. Press **PLAY / PAUSE** and patch output **1** to a scope or gate-visible destination. The output must switch only between 0 V and +5 V; outputs 1–8 must remain phase-coherent in factory One Clock mode.
-3. Press and drag the encoder vertically to turn it, or use the mouse wheel. A stationary short click must act as encoder push without changing the value; a stationary hold must reach the production long-press path. Verify that a rotation gesture never also opens/confirms a screen. Exercise **TAP / SHIFT** and **STOP / BACK** as well.
+2. Press **START / PAUSE** and patch output **1** to a scope or gate-visible destination. The output must switch only between 0 V and +5 V; outputs 1–8 must remain phase-coherent in factory One Clock mode.
+3. Press and drag the encoder vertically to turn it, or use the mouse wheel. A stationary short click must act as encoder push without changing the value; a stationary hold must reach the production long-press path. Verify that a rotation gesture never also opens/confirms a screen. Exercise **TAP TEMPO / SHIFT** and **STOP / BACK** as well.
 4. Patch a Rack clock or short trigger into **IN 1 / SYNC** and verify acquisition/lock and loss behavior. Include a one-sample/very-short trigger source if available; edges must not be accepted only sporadically because of Rack/scheduler phase.
 5. Patch a gate/trigger into **IN 2 / RST** and verify the configured RESET role/behavior through the real CLOCK settings.
 6. Save the Rack patch, remove/reload it, and verify that CLOCK settings, presets and custom-groove persistence restore while transport still boots in STOP.

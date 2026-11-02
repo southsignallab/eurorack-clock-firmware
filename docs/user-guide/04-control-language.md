@@ -16,10 +16,10 @@ Only the value currently being edited is inverted. Whole-row inversion is avoide
 | Encoder turn | Change master BPM | Move selection | Move/change value |
 | Encoder short press | Open overview | Confirm selection / return | Enter / confirm / toggle step |
 | Encoder long press | Open current channel/global settings | Open highlighted settings | Context-dependent |
-| TAP + encoder press | Open Settings tree | — | — |
-| Hold TAP + encoder turn | — | Open/scroll horizontal mode carousel | — |
-| PLAY/PAUSE | Play / pause | — | Sequencer editor: play / pause |
-| TAP short | Tap Tempo | Modifier | Sequencer editor: previous 8-step viewport |
+| TAP TEMPO + encoder press | Open Settings tree | — | — |
+| Hold TAP TEMPO + encoder turn | — | Open/scroll horizontal mode carousel | — |
+| START/PAUSE | Play / pause | — | Sequencer editor: play / pause |
+| TAP TEMPO short | Tap Tempo | Modifier | Sequencer editor: previous 8-step viewport |
 | STOP/BACK | Stop + global reset | Back / cancel | Back / cancel |
 
 <h6 align="center">From Munich with &#9829;</h6>

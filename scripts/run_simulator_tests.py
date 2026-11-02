@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -21,8 +22,7 @@ def run(command: list[str]) -> None:
 
 def main() -> int:
     """Build and execute the portable CMake/CTest simulator integration suite."""
-    run(["cmake", "--preset", "simulator-headless"])
-    run(["cmake", "--build", "--preset", "simulator-headless"])
+    run([sys.executable, "scripts/configure_simulator.py", "--preset", "simulator-headless", "--build"])
     run(["ctest", "--preset", "simulator-headless"])
     return 0
 

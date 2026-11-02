@@ -13,7 +13,7 @@ The VCV Rack version exists so you can try **South Signal Lab CLOCK** before bui
 ## What you get
 
 - the normal CLOCK boot sequence and OLED UI;
-- PLAY/PAUSE, TAP/SHIFT, STOP/BACK and the push encoder;
+- START/PAUSE, TAP TEMPO/SHIFT, STOP/BACK and the push encoder;
 - two digital inputs, shown on the panel as **IN 1** and **IN 2**;
 - eight **0/+5 V** gate/clock outputs numbered **1–8**;
 - One Clock, Independent and Divider Bank operation;
@@ -29,8 +29,8 @@ The panel follows the hardware interaction model as closely as Rack allows.
 
 | VCV action | CLOCK action |
 | --- | --- |
-| Click PLAY | PLAY / PAUSE |
-| Click TAP | TAP |
+| Click START | START / PAUSE |
+| Click TAP TEMPO | TAP TEMPO |
 | Click STOP | STOP / BACK |
 | Mouse wheel over encoder | Encoder turn |
 | Hold left mouse button on encoder and drag vertically | Encoder turn |
@@ -45,17 +45,17 @@ Rack has only one mouse pointer, so keyboard input acts as the second hand for h
 
 | Key | CLOCK control |
 | --- | --- |
-| `Shift` held | Hold TAP / SHIFT |
+| `Shift` held | Hold TAP TEMPO / SHIFT |
 | `Enter` or `E` | Encoder push |
 | `Up` / `Down` | Encoder turn |
-| `P` | PLAY / PAUSE |
-| `T` | TAP |
+| `P` | START / PAUSE |
+| `T` | TAP TEMPO |
 | `S` or `Backspace` | STOP / BACK |
 
 This makes the important hardware chords practical in Rack:
 
-- `Shift` + `Enter` = **TAP/SHIFT + encoder push**;
-- hold `Shift` while pressing `Up`/`Down` = **TAP/SHIFT + encoder turn**.
+- `Shift` + `Enter` = **TAP TEMPO/SHIFT + encoder push**;
+- hold `Shift` while pressing `Up`/`Down` = **TAP TEMPO/SHIFT + encoder turn**.
 
 Mouse and keyboard can be mixed. For example, hold `Shift` and use the mouse wheel over the encoder.
 
@@ -67,7 +67,7 @@ The page is the same settings hierarchy used by the hardware/firmware UI: **MODE
 
 ## Inputs and outputs
 
-The physical Rev-1 hardware names its two comparator paths SYNC and RST, but firmware 1.1.0 treats them as configurable digital inputs. The VCV panel therefore uses the neutral labels **IN 1** and **IN 2** while Rack's port metadata retains the SYNC/RST reference names.
+The hardware panel engraves the two comparator inputs as **IN 1** and **IN 2**; firmware 1.1.0 treats them as configurable digital inputs with the factory roles SYNC and RESET. The VCV panel and Rack's port tooltips use the same **IN 1** / **IN 2** names.
 
 Outputs **1–8** follow the instantaneous production gate state. Panel LEDs are visual indicators only; they do not stretch the actual gate voltage.
 

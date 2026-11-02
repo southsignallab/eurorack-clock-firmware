@@ -7,7 +7,7 @@
 1. Select **One Clock**.
 2. Set `RATE = ×1` and `HUMANIZE = OFF`.
 3. Choose the shared gate length.
-4. Press **PLAY**.
+4. Press **START**.
 
 ### A conventional clock tree
 
@@ -28,8 +28,8 @@
 1. Choose **Sequencer** and open **EDITOR**.
 2. Set `LENGTH = 64` and choose the required P1–P8 pattern slot.
 3. Turn the encoder through the pattern; the eight-step viewport follows automatically.
-4. Toggle gates with encoder presses. Use TAP + encoder press for Probability, Gate/Duty, Ratchet or Tie on exceptional steps.
-5. Press PLAY to audition without losing the edit cursor; the triangle is the independent playhead.
+4. Toggle gates with encoder presses. Use TAP TEMPO + encoder press for Probability, Gate/Duty, Ratchet or Tie on exceptional steps.
+5. Press START to audition without losing the edit cursor; the triangle is the independent playhead.
 6. BACK returns to Sequencer settings.
 
 ### Record a Groove by feel — step by step
@@ -38,9 +38,9 @@ Use this short workflow when the musical feel matters more than drawing offsets 
 
 1. Open `TIMING → GROOVE → RECORD`.
 2. Long-press the encoder and set **LENGTH**, recorder **COUNT IN**, and `ONE SHOT` or `ENDLESS`.
-3. Press **PLAY**; capture starts after the optional Recorder Count-In.
-4. Tap the feel with **TAP** against the moving playhead.
-5. Press PLAY again to stop and rewind the recorder.
+3. Press **START**; capture starts after the optional Recorder Count-In.
+4. Tap the feel with **TAP TEMPO** against the moving playhead.
+5. Press START again to stop and rewind the recorder.
 6. Open `EDITOR >` for precise marker correction and **SAVE** to a named Custom Groove slot.
 
 Recorder Count-In is local to Groove Record and is independent from the global transport Pre-Count. In `ENDLESS`, later passes overwrite only steps that receive a new TAP.

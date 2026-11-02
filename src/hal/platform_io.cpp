@@ -173,7 +173,7 @@ void attachInterrupt(const mcu::Pin pin, const InterruptCallback callback, const
     HAL_GPIO_Init(port,&init); const IRQn_Type irq=extiIrq(index); HAL_NVIC_SetPriority(irq,kExtiPreemptPriority,kExtiSubPriority); HAL_NVIC_EnableIRQ(irq);
 }
 bool beginQuadratureEncoder(const mcu::Pin phaseA, const mcu::Pin phaseB) {
-    // Final CLOCK hardware routes PEC11L A/B to PB6/PB7. On STM32F401 these
+    // Final CLOCK hardware routes PEC11R A/B to PB6/PB7. On STM32F401 these
     // pins are TIM4_CH1/TIM4_CH2 (AF2), so quadrature remains hardware-counted
     // even while foreground rendering or EXTI service is delayed. TIM4 is a
     // 16-bit timer; quadratureEncoderCount() extends its wrapping count to the

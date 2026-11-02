@@ -56,20 +56,22 @@ struct LayoutDefinition {
     bool drawBuiltinLabels = true;
     bool drawScrews = true;
 
-    PhysicalRect display{2.525F, 14.6535F, 35.9111F, 18.0351F};
+    // Hardware Rev C front panel (KiCad Frontpanel.kicad_pcb). The display rectangle is the
+    // 25.0 x 13.6 mm panel window; the 128x64 matrix is centred in it at integer scale.
+    PhysicalRect display{3.75F, 22.25F, 25.0F, 13.6F};
     int displayPixelScale = 2;
-    PhysicalPoint encoder{44.0472F, 23.1075F};
+    PhysicalPoint encoder{40.7F, 29.25F};
     float encoderDiameterMm = 8.4166F;
 
-    PhysicalCircle play{{9.6792F, 48.7511F}, 9.0F, 12.0F, {176U, 32U, 32U}};
-    PhysicalCircle tap{{23.8472F, 48.7511F}, 9.0F, 12.0F, {112U, 112U, 112U}};
-    PhysicalCircle stop{{38.0153F, 48.7511F}, 9.0F, 12.0F, {28U, 28U, 28U}};
+    PhysicalCircle play{{8.2F, 52.23F}, 9.0F, 12.0F, {176U, 32U, 32U}};
+    PhysicalCircle tap{{25.12F, 52.25F}, 9.0F, 12.0F, {112U, 112U, 112U}};
+    PhysicalCircle stop{{41.75F, 52.35F}, 9.0F, 12.0F, {28U, 28U, 28U}};
 
     PhysicalJack tsJack{};
     PhysicalJack trsJack{};
-    PhysicalPoint sync{7.2944F, 70.1678F};
+    PhysicalPoint sync{7.75F, 70.1F};
     JackType syncJackType = JackType::Ts;
-    PhysicalPoint reset{18.6569F, 70.1678F};
+    PhysicalPoint reset{19.4167F, 70.13F};
     JackType resetJackType = JackType::Ts;
 
     float ledDiameterMm = 3.0F;
@@ -77,19 +79,19 @@ struct LayoutDefinition {
     Color ledOffColor{17U, 17U, 19U};
 
     std::array<PhysicalPoint, 8U> outputs{{
-        {6.5931F, 95.8114F}, {17.9556F, 95.8114F}, {29.3181F, 95.8114F}, {40.6806F, 95.8114F},
-        {6.5931F, 112.4375F}, {17.9556F, 112.4375F}, {29.3181F, 112.4375F}, {40.6806F, 112.4375F}
+        {7.75F, 88.93F}, {19.4167F, 88.93F}, {31.0833F, 88.93F}, {42.75F, 88.93F},
+        {7.75F, 107.73F}, {19.4167F, 107.73F}, {31.0833F, 107.73F}, {42.75F, 107.73F}
     }};
     std::array<JackType, 8U> outputJackTypes{{
         JackType::Ts, JackType::Ts, JackType::Ts, JackType::Ts,
         JackType::Ts, JackType::Ts, JackType::Ts, JackType::Ts
     }};
     std::array<PhysicalPoint, 8U> leds{{
-        {6.5931F, 89.8936F}, {17.9556F, 89.8936F}, {29.3181F, 89.8936F}, {40.6806F, 89.8936F},
-        {6.5931F, 106.5197F}, {17.9556F, 106.5197F}, {29.3181F, 106.5197F}, {40.6806F, 106.5197F}
+        {10.915F, 81.56F}, {22.5817F, 81.56F}, {34.2483F, 81.56F}, {45.915F, 81.56F},
+        {10.915F, 100.36F}, {22.5817F, 100.36F}, {34.2483F, 100.36F}, {45.915F, 100.36F}
     }};
     std::array<PhysicalPoint, 4U> screws{{
-        {2.1042F, 2.2533F}, {48.4097F, 2.2533F}, {2.1042F, 126.2467F}, {48.4097F, 126.2467F}
+        {7.47F, 3.0F}, {43.03F, 3.0F}, {7.47F, 125.5F}, {43.03F, 125.5F}
     }};
 };
 

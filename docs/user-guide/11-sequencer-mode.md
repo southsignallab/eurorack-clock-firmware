@@ -16,9 +16,9 @@ Inside the editor:
 
 - encoder turn moves the edit cursor and scrolls across viewport boundaries;
 - encoder press toggles the selected gate;
-- PLAY/PAUSE controls transport without moving the edit cursor;
+- START/PAUSE controls transport without moving the edit cursor;
 - while PLAY is active, a small triangle at the bottom follows the real playback step when it is inside the visible viewport;
-- TAP moves to the previous eight-step viewport; TAP + encoder press opens the selected step's expression editor;
+- TAP TEMPO moves to the previous eight-step viewport; TAP TEMPO + encoder press opens the selected step's expression editor;
 - encoder long-press opens Pattern Operations;
 - STOP/BACK returns to Sequencer parameters.
 

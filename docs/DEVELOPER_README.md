@@ -269,17 +269,22 @@ The source tree can be accessed through `/mnt/c/...`, although a clone inside th
 
 ## 15A. Windows: build and run the native simulator
 
-The simulator uses **CMake + SDL3**, independently of PlatformIO. Install CMake, Ninja, Git, and a native C++ compiler. Visual Studio 2022 Build Tools with the Desktop C++ workload is the simplest Windows choice; MSYS2/UCRT64 is also valid. Keep `cmake`, `ninja`, and `git` on the user/system PATH. When using MSVC with the committed Ninja preset, launch the terminal/VSCodium from **Developer PowerShell for VS 2022** (or initialize the matching Visual Studio developer environment first) so `cl.exe`, the Windows SDK, and linker are visible. With MSYS2, run from the UCRT64 environment instead. Do not commit compiler paths or Visual Studio installation paths.
+The simulator uses **CMake + SDL3**, independently of PlatformIO. Install CMake, Ninja, Git, and a native C++ compiler. **Project Windows host baseline: VSCodium + integrated PowerShell + MSYS2 UCRT64 GCC/G++**. The simulator uses CMake + Ninja + SDL3, separately from the PlatformIO-managed ARM toolchain. No Visual Studio IDE, Developer PowerShell, or second MSYS2 terminal is required. Install CMake, Ninja, Git, and MSYS2 UCRT64 GCC/G++; keep `cmake`, `ninja`, `git` and Python available in VSCodium's PowerShell. The default Windows CMake presets automatically locate the UCRT64 compilers, not any ambient legacy `cl.exe`. Their toolchain file does not affect Linux or macOS.
 
-The portable preset fetches the pinned SDL3 source on first configure:
+The default installation root is `C:\msys64\ucrt64`. If MSYS2 is installed elsewhere, set `CLOCK_UCRT64_ROOT` in PowerShell to the UCRT64 **root directory** (not the `bin` directory). Do not commit machine-specific paths. A full host toolchain prerequisite check (including a C++17 standard-library compile and runtime smoke test) is provided by `scripts/configure_simulator.py`. It also removes a stale simulator CMake build directory **only when its cached compiler or generator is incompatible**, for example after a Visual Studio 2013 `cl.exe` was accidentally selected.
+
+For ordinary CLOCK development, PlatformIO handles STM32 firmware, and the MSYS2 UCRT64 GCC host compiler handles native CMake builds. VCV Rack's plugin toolchain is a separate case and must not change the native simulator default.
+
+The portable preset fetches the pinned SDL3 source on first configure. Configure and build from the same VSCodium PowerShell terminal:
 
 ```powershell
-cmake --preset simulator
-cmake --build --preset simulator
+python scripts\configure_simulator.py --build
 python scripts\run_simulator.py
 ```
 
 If network access is unavailable, install SDL3 separately and configure with `CLOCK_SIMULATOR_FETCH_SDL=OFF`; see `docs/SIMULATOR.md`.
+
+Direct `cmake --preset simulator` also uses the UCRT64 compiler for **new** Windows build directories. If an old build tree already contains Visual Studio 2013, use `python scripts\configure_simulator.py --build` once; CMake cannot switch compilers in an existing cache safely.
 
 For the SDL-free firmware/simulator integration tests:
 
@@ -289,9 +294,9 @@ python scripts\run_simulator_tests.py
 
 VSCodium users can run the equivalent committed tasks: **Clock: Configure native simulator**, **Clock: Build native simulator**, **Clock: Run native simulator**, and **Clock: Headless simulator tests**. CMake Tools is available through Open VSX and understands the committed presets; its use remains optional because the command line is authoritative.
 
-The simulator's local persistence file and `CMakeUserPresets.json` are intentionally ignored by Git. Machine-specific kits, compiler paths, and local SDL locations belong in `CMakeUserPresets.json` or the shell environment, never in committed `.vscode` files.
+The simulator's local persistence file and `CMakeUserPresets.json` are intentionally ignored by Git. Machine-specific kits, compiler paths, and local SDL locations belong in `CMakeUserPresets.json` or the shell environment, never in committed `.vscode` files. The Windows baseline is MSYS2 UCRT64 GCC; other host toolchains require an explicit project/user-preset override rather than silent discovery via PATH.
 
-Panel geometry is separately configurable in `sim/panel_layout.ini`. Coordinates and control dimensions are physical millimetres from the 10 HP / 3U panel origin, resolved through one uniform `pixels_per_mm` scale. D6R visible-actuator/behind-panel-body diameters, per-button colors, TS/TRS Thonkiconn nut/bushing/opening diameters, knob diameter, and 3 mm LED diameter are all data rather than renderer constants. `python scripts/run_simulator.py` passes this file automatically. Use `--layout path/to/layout.ini` for another geometry or `--panel-image path/to/panel.png` to override only the front-panel background. SDL3 3.4+ loads BMP, PNG, and JPEG directly, so no SDL_image package is required. Local experimental layouts may be stored as `sim/panel_layout.local.ini`, which is ignored by Git. See `docs/SIMULATOR.md` for the complete schema.
+Panel geometry is separately configurable in `sim/panel_layout.ini`; its committed panel size, coordinates and background image are generated from the KiCad front-panel project by `scripts/import_kicad_front_panel.py`. Coordinates and control dimensions are physical millimetres from the 10 HP / 3U panel origin, resolved through one uniform `pixels_per_mm` scale. D6R visible-actuator/behind-panel-body diameters, per-button colors, TS/TRS Thonkiconn nut/bushing/opening diameters, knob diameter, and 3 mm LED diameter are all data rather than renderer constants. `python scripts/run_simulator.py` passes this file automatically. Use `--layout path/to/layout.ini` for another geometry or `--panel-image path/to/panel.png` to override only the front-panel background. SDL3 3.4+ loads BMP, PNG, and JPEG directly, so no SDL_image package is required. Local experimental layouts may be stored as `sim/panel_layout.local.ini`, which is ignored by Git. See `docs/SIMULATOR.md` for the complete schema.
 
 For panel controls, virtual time, persistent-state files, macOS/Linux setup, and current limitations, see [`SIMULATOR.md`](SIMULATOR.md).
 

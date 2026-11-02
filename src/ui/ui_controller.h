@@ -376,6 +376,15 @@ private:
     /** @brief Clamps a signed integer to an inclusive range. */
     static int clampInt(int value, int minimum, int maximum);
 
+    /**
+     * @brief Moves a cyclic list index by a signed encoder delta.
+     * @param index Current index; values outside the list are wrapped as well.
+     * @param delta Signed detent count; any magnitude, including the full int8 range.
+     * @param count Number of list entries; zero yields index 0.
+     * @return Index in [0, count), never negative.
+     */
+    static std::uint8_t wrapIndex(std::uint8_t index, int delta, std::uint8_t count);
+
     ClockState& state_;
     engine::ClockEngine& engine_;
     UiRenderer& renderer_;

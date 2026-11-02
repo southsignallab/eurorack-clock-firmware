@@ -20,10 +20,10 @@ Use this file for firmware policy and hardware-independent compile-time behavior
 
 The final CLOCK hardware supports **SSD1306** and **SSD1315** 128×64 controllers over 4-wire SPI. The legacy I2C transport remains in the HAL only for regression/reference builds; PB6/PB7 are now dedicated to the encoder.
 
-Current final-hardware/default build:
+Current final-hardware/default build (reference board: Waveshare 24102 OLED module):
 
 ```text
-controller  SSD1306
+controller  SSD1315
 transport   4-wire SPI
 CLK         PA5
 DIN         PA7  (SPI MOSI; labeled SDA on the earlier prototype module)
@@ -42,7 +42,7 @@ pio run -e blackpill_f401cc_spi_ssd1315
 pio run -e blackpill_f401cc_spi_ssd1306
 ```
 
-`blackpill_f401cc_spi` remains a compatibility alias for the SSD1306 SPI profile. `default_envs` selects the SPI SSD1306 reference build. The controller can also be selected directly with `CLOCK_DISPLAY_CONTROLLER=1306` or `1315`.
+`blackpill_f401cc_spi` remains a compatibility alias for the SSD1306 SPI profile. `default_envs` and all `release_*` environments select the SPI SSD1315 reference build. The controller can also be selected directly with `CLOCK_DISPLAY_CONTROLLER=1306` or `1315`.
 
 ### Boot Easter egg
 

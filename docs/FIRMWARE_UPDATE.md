@@ -128,11 +128,13 @@ For another release variant, substitute the matching environment name.
 
 CLOCK's custom upload helper deliberately does **not** flash one contiguous binary. It:
 
-1. reads existing persistence when required for migration;
+1. reads Flash sectors 1 and 2 and keeps them as a timestamped backup in `.pio/persistence-backups/`;
 2. writes the application region beginning at `0x0800C000`;
 3. writes sector 0/vector table at `0x08000000` last;
 4. leaves Flash sectors 1 and 2 untouched;
 5. asks the ROM bootloader to leave DFU mode from the vector-table address.
+
+Keep the backup files until the update has been checked on the module. They contain the raw 32 KiB of both persistence sectors (`0x08004000`, length `0x8000`).
 
 If CLOCK does not restart automatically after a successful upload, make sure BOOT0 is released and press RESET once.
 
@@ -190,7 +192,7 @@ A conventional contiguous binary can span the reserved gap and overwrite saved s
 
 ### Settings or presets disappeared
 
-The normal CLOCK update paths are designed to preserve them. If they are gone, check whether a **Full chip erase** or a flat contiguous binary was used.
+The normal CLOCK update paths are designed to preserve them. If they are gone, check whether a **Full chip erase** or a flat contiguous binary was used. The PlatformIO upload keeps a copy of both persistence sectors in `.pio/persistence-backups/`; write the newest file back to `0x08004000` with a DfuSe-aware tool (for example `dfu-util -a 0 -s 0x08004000 -D <backup>.bin`) to restore settings and presets.
 
 ### Firmware still does not boot after an update
 

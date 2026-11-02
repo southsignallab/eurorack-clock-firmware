@@ -65,7 +65,8 @@ void UiController::handleShortEncoderPress(const std::uint32_t nowMs) {
             return;
 
         case Screen::ChannelQuickSelect:
-            if (state_.operatingMode == OperatingMode::Independent) {
+            if (state_.operatingMode == OperatingMode::Independent &&
+                navigation_.cursor < kChannelCount) {
                 navigation_.selectedChannel = navigation_.cursor;
             }
             navigation_.screen = Screen::Performance;
@@ -295,7 +296,8 @@ void UiController::handleLongEncoderPress(const std::uint32_t nowMs) {
         return;
     }
     if (origin == Screen::ChannelQuickSelect &&
-        state_.operatingMode == OperatingMode::Independent) {
+        state_.operatingMode == OperatingMode::Independent &&
+        navigation_.cursor < kChannelCount) {
         navigation_.selectedChannel = navigation_.cursor;
     }
     navigation_.settingsExitScreen = origin;

@@ -175,11 +175,7 @@ void ClockApplication::runOnce() {
         return;
     }
 #endif
-    TransportState externalTransport{};
-    if (externalSyncController_.consumeTransportTransition(externalTransport)) {
-        state_.transport = externalTransport;
-        uiController_.invalidate();
-    }
+    adoptExternalTransportTransition();
 
     std::uint32_t externalTapTimestampUs = 0U;
     if (externalSyncController_.consumeTapRequest(externalTapTimestampUs)) {
@@ -203,14 +199,15 @@ void ClockApplication::runOnce() {
     // already uses the faster synchronous dirty-page path.
     (void)display_.service();
     // STM32F4 stalls instruction/data fetches from Flash while a sector is being
-    // erased or programmed. Never start a persistence commit while PLAYING;
-    // queued CURRENT/preset writes are flushed once transport is PAUSED/STOPPED.
-    const bool allowFlashWrite = state_.transport != TransportState::Playing;
+    // erased or programmed. Never start a persistence commit while the engine
+    // runs; queued CURRENT/preset writes are flushed once it is PAUSED/STOPPED.
+    // The scheduler ISR can start the engine at any point of this pass, so the
+    // engine itself is asked again immediately before every store.
     // Flush grooves before CURRENT to avoid durable references to unwritten slots.
-    (void)customGrooveStore_.service(allowFlashWrite);
-    persistentState_.service(nowMs, allowFlashWrite);
-    (void)sequencerPatternStore_.service(nowMs, allowFlashWrite);
-    (void)sequencerStepStore_.service(nowMs, allowFlashWrite);
+    (void)customGrooveStore_.service(flashWriteAllowed());
+    persistentState_.service(nowMs, flashWriteAllowed());
+    (void)sequencerPatternStore_.service(nowMs, flashWriteAllowed());
+    (void)sequencerStepStore_.service(nowMs, flashWriteAllowed());
 }
 
 #ifdef CLOCK_SIMULATOR

@@ -182,7 +182,7 @@ The committed `.vscode/settings.json` contains only portable editor preferences.
 In the VSCodium terminal:
 
 ```powershell
-pio run -e blackpill_f401cc_spi_ssd1306
+pio run -e blackpill_f401cc_spi_ssd1315
 ```
 
 The first build takes longer because PlatformIO downloads the pinned STM32 platform, STM32CubeF4 framework, ARM toolchain, and upload utilities.
@@ -211,18 +211,20 @@ SPI is the production display transport. Both profiles use PA5=OLED `CLK`, PA7=O
 
 The project uses a persistence-preserving custom DFU upload command. The ELF is split into the sector-0 boot/vector image and the sectors-3..5 application image; Flash sectors 1 and 2 are never included in either transfer. Do not replace this with PlatformIO's default contiguous `firmware.bin` upload, because that raw image would span and overwrite the persistent A/B sectors.
 
-When upgrading from the pre-A/B layout, the uploader first checks sectors 1/2. If neither contains a valid A/B generation, it reads the former 4 KiB STM32duino EEPROM image from sector 5 and, when it recognizes schema-v3/v4 CURRENT or preset records, wraps that image in the new slot format and commits it to sector 1 **before** sector 5 is reused by the application. Subsequent A/B-era uploads leave both persistence sectors untouched.
+Before any write, the uploader reads sectors 1/2 in full (`0x08004000`, 32 KiB) and keeps the readback as `.pio/persistence-backups/persistence-<timestamp>.bin`. Each 16-KiB slot is validated with the firmware's slot contract (magic, format version, COMMIT marker, header CRC, payload CRC) for every payload size the firmware accepts: 4, 8 and 12 KiB. The log prints the generation and payload size of each valid slot.
+
+Upgrading from the pre-A/B layout is an explicit one-time step: add `upload_flags = --migrate-legacy-eeprom` to the environment (or set `PLATFORMIO_UPLOAD_FLAGS=--migrate-legacy-eeprom`). Only then, and only if neither slot is valid, does the uploader read the former 4 KiB STM32duino EEPROM image from sector 5 and, when it recognizes schema-v3/v4 CURRENT or preset records, wrap that image in the slot format and commit it to sector 1 **before** sector 5 is reused by the application. Without the switch the legacy region is never read, because sector 5 now holds application code.
 
 Put the Black Pill into DFU mode using its BOOT0/NRST procedure, then run:
 
 ```powershell
-pio run -e blackpill_f401cc_spi_ssd1306 -t upload
+pio run -e blackpill_f401cc_spi_ssd1315 -t upload
 ```
 
-For the SPI build:
+For an SSD1306 OLED module:
 
 ```powershell
-pio run -e blackpill_f401cc_spi_ssd1315 -t upload
+pio run -e blackpill_f401cc_spi_ssd1306 -t upload
 ```
 
 If PlatformIO cannot see the device, first verify that Windows sees the board in Device Manager while it is in DFU mode. Do not change firmware pins or upload settings to compensate for a host USB/driver problem.
@@ -366,7 +368,7 @@ pio test -e native
 Upload in DFU mode with:
 
 ```bash
-pio run -e blackpill_f401cc_spi_ssd1306 -t upload
+pio run -e blackpill_f401cc_spi_ssd1315 -t upload
 ```
 
 ## 19. macOS full coverage
@@ -467,7 +469,7 @@ python3 scripts/run_host_tests.py --skip-sanitizers
 python3 scripts/run_host_tests.py --sanitizers-only
 
 # DFU upload
-pio run -e blackpill_f401cc_spi_ssd1306 -t upload
+pio run -e blackpill_f401cc_spi_ssd1315 -t upload
 ```
 
 ---

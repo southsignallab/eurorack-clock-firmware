@@ -1531,3 +1531,116 @@ void testEasterEggGameAndHighScore() {
     CHECK(breakoutLeaderboard.insertAndSave(8000U, ids) >= 0);
     CHECK(eggLeaderboard.insertAndSave(8000U, ids) >= 0);
 }
+
+namespace {
+std::uint8_t expectedWrap(const std::uint8_t index, const int delta, const std::size_t count) {
+    const int modulus = static_cast<int>(count);
+    return static_cast<std::uint8_t>(((static_cast<int>(index) + delta) % modulus + modulus) % modulus);
+}
+}  // namespace
+
+void testUiCursorWrapToleratesFullEncoderDeltaRange() {
+    // F-004: a stalled foreground can deliver up to +/-127 detents in one sample.
+    // Every cyclic cursor must stay inside its list for the whole int8 range.
+    resetFakes();
+    prepareDisplaySuccess();
+    hal::OledDisplay display;
+    CHECK(display.begin());
+    ClockState state = makeDefaultState();
+    hal::GateOutputDriver gates;
+    gates.beginDisabled();
+    engine::ClockEngine engine(gates);
+    engine.begin(state);
+    hal::PersistentStorage storage;
+    hal::PersistentStorage::resetForTest();
+    services::PersistentStateService persistentState(storage);
+    persistentState.begin();
+    services::CustomGrooveStore grooveStore(storage);
+    services::SequencerPatternStore sequencerStore(storage);
+    services::SequencerStepStore sequencerStepStore(storage);
+    CHECK(sequencerStore.begin());
+    CHECK(sequencerStepStore.begin());
+    ui::UiRenderer renderer(
+        display, persistentState, grooveStore, sequencerStore, sequencerStepStore);
+    ui::UiController controller(
+        state, engine, renderer, persistentState, grooveStore, sequencerStore, sequencerStepStore);
+    std::uint32_t now = 100U;
+    CHECK_EQ(state.operatingMode, OperatingMode::Independent);
+
+    // Eight-channel overview.
+    controllerShortPress(controller, now);
+    CHECK_EQ(controller.navigation().screen, ui::Screen::ChannelQuickSelect);
+    for (int delta = -127; delta <= 127; ++delta) {
+        const std::uint8_t before = controller.navigation().cursor;
+        controllerTurn(controller, static_cast<std::int8_t>(delta), now);
+        CHECK(controller.navigation().cursor < kChannelCount);
+        CHECK_EQ(controller.navigation().cursor, expectedWrap(before, delta, kChannelCount));
+    }
+    // Worst case from cursor 0: the historical formula produced 249 here.
+    while (controller.navigation().cursor != 0U) {
+        controllerTurn(controller, 1, now);
+    }
+    controllerTurn(controller, -127, now);
+    CHECK_EQ(controller.navigation().cursor, expectedWrap(0U, -127, kChannelCount));
+    controllerShortPress(controller, now);
+    CHECK_EQ(controller.navigation().screen, ui::Screen::Performance);
+    CHECK(controller.navigation().selectedChannel < kChannelCount);
+
+    // TAP + turn mode carousel inside the overview.
+    controllerShortPress(controller, now);
+    hal::ControlSample sample{};
+    sample.tapButton = pressedEdge();
+    controller.processControls(sample, now++);
+    for (int delta = -127; delta <= 127; ++delta) {
+        const bool first = controller.navigation().screen != ui::Screen::ModeSelect;
+        const std::uint8_t before = controller.navigation().cursor;
+        sample = {};
+        sample.tapButton = heldButton();
+        sample.encoderDelta = static_cast<std::int8_t>(delta);
+        controller.processControls(sample, now++);
+        CHECK_EQ(controller.navigation().screen, ui::Screen::ModeSelect);
+        CHECK(controller.navigation().cursor < ui::kModeFunctions.size());
+        if (!first) {
+            CHECK_EQ(controller.navigation().cursor,
+                     expectedWrap(before, delta, ui::kModeFunctions.size()));
+        }
+    }
+    // Park the carousel on a mode other than the current one so that releasing
+    // TAP asks for confirmation; NO then returns to the carousel screen.
+    const std::uint8_t currentMode =
+        ui::modeFunctionIndexForState(state, controller.navigation().selectedChannel);
+    while (controller.navigation().cursor == currentMode) {
+        sample = {};
+        sample.tapButton = heldButton();
+        sample.encoderDelta = 1;
+        controller.processControls(sample, now++);
+    }
+    sample = {};
+    sample.tapButton = releasedEdge();
+    controller.processControls(sample, now++);
+    CHECK_EQ(controller.navigation().screen, ui::Screen::ModeChangeConfirm);
+    controllerShortPress(controller, now);  // Default NO.
+    CHECK_EQ(controller.navigation().screen, ui::Screen::ModeSelect);
+    for (int delta = -127; delta <= 127; ++delta) {
+        const std::uint8_t before = controller.navigation().cursor;
+        controllerTurn(controller, static_cast<std::int8_t>(delta), now);
+        CHECK(controller.navigation().cursor < ui::kModeFunctions.size());
+        CHECK_EQ(controller.navigation().cursor,
+                 expectedWrap(before, delta, ui::kModeFunctions.size()));
+    }
+
+    // Defensive bound on the Groove page: an out-of-range channel is ignored.
+    std::array<GrooveSettings, kChannelCount> before{};
+    for (std::size_t channel = 0U; channel < kChannelCount; ++channel) {
+        before[channel] = state.channels[channel].common.groove;
+    }
+    ui::SettingsEditor editor(state, engine);
+    editor.adjust(ui::SettingsPage::Groove, 0U, 200U, 1);
+    editor.adjust(ui::SettingsPage::Groove, 1U, static_cast<std::uint8_t>(kChannelCount), -5);
+    for (std::size_t channel = 0U; channel < kChannelCount; ++channel) {
+        const GrooveSettings& now_ = state.channels[channel].common.groove;
+        CHECK_EQ(now_.preset, before[channel].preset);
+        CHECK_EQ(now_.amountPercent, before[channel].amountPercent);
+        CHECK_EQ(now_.rotation, before[channel].rotation);
+    }
+}

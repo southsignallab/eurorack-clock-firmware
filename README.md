@@ -279,13 +279,13 @@ The hidden boot Easter egg is selected at compile time. The shipped/default conf
 
 ### Firmware
 
-The default build and the public release images use the SPI SSD1306-compatible profile; the SSD1315 on the Rev C reference board uses the same command subset exercised by the production OLED HAL:
+The default build and the public release images use the SPI SSD1315 profile of the reference board (Waveshare 24102 OLED module):
 
 ```bash
-pio run -e blackpill_f401cc_spi_ssd1306
+pio run -e blackpill_f401cc_spi_ssd1315
 ```
 
-A dedicated production profile for SPI SSD1315 is also available (`blackpill_f401cc_spi_ssd1315`). The custom linker/upload path protects the Flash sectors reserved for A/B persistence.
+An SPI SSD1306 profile remains available for SSD1306 modules (`blackpill_f401cc_spi_ssd1306`). The custom linker/upload path protects the Flash sectors reserved for A/B persistence.
 
 ### Native tests
 

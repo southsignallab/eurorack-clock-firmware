@@ -566,3 +566,116 @@ void testApplicationAndEntryPoints() {
     // Framework glue functions use the translation-unit static application.
     resetFakes(); prepareDisplaySuccess(); setup(); loop(); CHECK(HardwareTimer::lastInstance!=nullptr);
 }
+
+namespace {
+bool gIsrArmedForNextRead = false;
+std::uint8_t gIsrRunLevel = HIGH;
+
+/** Simulates the scheduler ISR changing the RUN level in the middle of runOnce(). */
+void injectRunLevelIsrDuringForeground() {
+    if (!gIsrArmedForNextRead) {
+        return;
+    }
+    gIsrArmedForNextRead = false;  // The ISR itself reads pins; never re-enter.
+    fakefw::setPin(pinmap::kExternalSyncSignalPin, gIsrRunLevel);
+    HardwareTimer::lastInstance->fire();
+}
+
+void runPasses(app::ClockApplication& application, const std::uint32_t untilMs) {
+    while (fakefw::nowMs < untilMs) {
+        fakefw::nowMs += 5U;
+        application.runOnce();
+    }
+}
+
+void pressStop(app::ClockApplication& application) {
+    fakefw::setPin(pinmap::kResetBackButtonPin, LOW);
+    runPasses(application, fakefw::nowMs + 60U);
+    fakefw::setPin(pinmap::kResetBackButtonPin, HIGH);
+    runPasses(application, fakefw::nowMs + 60U);
+}
+}  // namespace
+
+void testFlashCommitRespectsEngineStartedByIsr() {
+    // F-002: the commit gate must follow the engine, not the foreground transport
+    // field, because the scheduler ISR can start the engine mid-pass.
+    resetFakes();
+    prepareDisplaySuccess();
+    fakefw::delayAdvanceOverrideMs = 333U;
+    fakefw::setPinSilently(pinmap::kExternalSyncSignalPin, LOW);
+    ClockState initial = makeDefaultState();
+    initial.transport = TransportState::Stopped;
+    initial.inputs = {InputFunction::Run, InputFunction::Off};
+    app::ClockApplication application;
+    application.begin(initial);
+    CHECK(HardwareTimer::lastInstance != nullptr);
+    fakefw::digitalReadHook = injectRunLevelIsrDuringForeground;
+    runPasses(application, fakefw::nowMs + 50U);
+    CHECK(!application.enginePlayingForTest());
+
+    // STOP queues a CURRENT/transport write that becomes due after the commit delay.
+    pressStop(application);
+    CHECK_EQ(application.transportForTest(), TransportState::Stopped);
+    const std::uint32_t commitsBefore = hal::PersistentStorage::writeCommitCountForTest();
+    fakefw::nowMs += config::kPersistenceCommitDelayMs + 10U;
+
+    // RUN goes HIGH inside the pass that would flush the write.
+    gIsrRunLevel = HIGH;
+    gIsrArmedForNextRead = true;
+    application.runOnce();
+    CHECK(!gIsrArmedForNextRead);
+    CHECK(application.enginePlayingForTest());
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), commitsBefore);
+
+    // The queued PLAY transition is adopted on the next pass; still no commit.
+    fakefw::nowMs += 5U;
+    application.runOnce();
+    CHECK_EQ(application.transportForTest(), TransportState::Playing);
+    CHECK_EQ(hal::PersistentStorage::writeCommitCountForTest(), commitsBefore);
+
+    // RUN LOW stops the engine; the deferred write is flushed afterwards.
+    gIsrRunLevel = LOW;
+    gIsrArmedForNextRead = true;
+    fakefw::nowMs += 5U;
+    application.runOnce();
+    runPasses(application, fakefw::nowMs + 20U);
+    CHECK(!application.enginePlayingForTest());
+    CHECK_EQ(application.transportForTest(), TransportState::Stopped);
+    runPasses(application, fakefw::nowMs + config::kPersistenceCommitDelayMs + 20U);
+    CHECK(hal::PersistentStorage::writeCommitCountForTest() > commitsBefore);
+    fakefw::digitalReadHook = nullptr;
+}
+
+void testStaleIsrTransitionDoesNotOverrideManualStop() {
+    // F-026: RUN starts the engine at the start of a pass, STOP stops it in the
+    // same pass. The queued PLAY transition is stale and must not show PLAY.
+    resetFakes();
+    prepareDisplaySuccess();
+    fakefw::delayAdvanceOverrideMs = 333U;
+    fakefw::setPinSilently(pinmap::kExternalSyncSignalPin, LOW);
+    ClockState initial = makeDefaultState();
+    initial.transport = TransportState::Stopped;
+    initial.inputs = {InputFunction::Run, InputFunction::Off};
+    app::ClockApplication application;
+    application.begin(initial);
+    fakefw::digitalReadHook = injectRunLevelIsrDuringForeground;
+    runPasses(application, fakefw::nowMs + 50U);
+
+    // Debounced STOP edge arrives in the same pass in which the ISR raises RUN.
+    fakefw::setPin(pinmap::kResetBackButtonPin, LOW);
+    fakefw::nowMs += 5U;
+    application.runOnce();
+    fakefw::nowMs += 30U;
+    gIsrRunLevel = HIGH;
+    gIsrArmedForNextRead = true;
+    application.runOnce();
+    CHECK(!gIsrArmedForNextRead);
+    CHECK(!application.enginePlayingForTest());
+
+    fakefw::nowMs += 5U;
+    application.runOnce();
+    CHECK(!application.enginePlayingForTest());
+    CHECK_EQ(application.transportForTest(), TransportState::Stopped);
+    fakefw::setPin(pinmap::kResetBackButtonPin, HIGH);
+    fakefw::digitalReadHook = nullptr;
+}

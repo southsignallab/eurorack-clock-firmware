@@ -66,24 +66,23 @@ void UiController::handleEncoderDelta(
     }
     if (navigation_.screen == Screen::ChannelQuickSelect && tapPressed) {
         if (!modeTapTurnActive_) {
-            if (state_.operatingMode == OperatingMode::Independent) {
+            if (state_.operatingMode == OperatingMode::Independent &&
+                navigation_.cursor < kChannelCount) {
                 navigation_.selectedChannel = navigation_.cursor;
             }
             openModeSelect(Screen::ChannelQuickSelect);
             modeTapTurnActive_ = true;
         }
-        const int optionCount = static_cast<int>(kModeFunctions.size());
-        navigation_.cursor = static_cast<std::uint8_t>(
-            (static_cast<int>(navigation_.cursor) + optionCount + delta) % optionCount);
+        navigation_.cursor = wrapIndex(
+            navigation_.cursor, delta, static_cast<std::uint8_t>(kModeFunctions.size()));
         invalidate();
         return;
     }
 
     if (navigation_.screen == Screen::ChannelQuickSelect) {
         if (state_.operatingMode == OperatingMode::Independent) {
-            navigation_.cursor = static_cast<std::uint8_t>(
-                (static_cast<int>(navigation_.cursor) + static_cast<int>(kChannelCount) + delta) %
-                static_cast<int>(kChannelCount));
+            navigation_.cursor = wrapIndex(
+                navigation_.cursor, delta, static_cast<std::uint8_t>(kChannelCount));
             invalidate();
         }
         return;
@@ -96,9 +95,8 @@ void UiController::handleEncoderDelta(
     }
 
     if (navigation_.screen == Screen::ModeSelect) {
-        const int optionCount = static_cast<int>(kModeFunctions.size());
-        navigation_.cursor = static_cast<std::uint8_t>(
-            (static_cast<int>(navigation_.cursor) + optionCount + delta) % optionCount);
+        navigation_.cursor = wrapIndex(
+            navigation_.cursor, delta, static_cast<std::uint8_t>(kModeFunctions.size()));
         invalidate();
         return;
     }

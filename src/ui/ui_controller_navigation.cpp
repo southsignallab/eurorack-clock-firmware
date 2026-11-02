@@ -46,6 +46,12 @@ void UiController::openModeSelect(const Screen returnScreen) {
 }
 
 void UiController::commitSelectedMode(const std::uint32_t nowMs) {
+    if (navigation_.cursor >= kModeFunctions.size()) {
+        // Defensive: never index past the carousel; reselect the current mode.
+        navigation_.cursor = modeFunctionIndexForState(state_, navigation_.selectedChannel);
+        invalidate();
+        return;
+    }
     const ModeFunction selectedFunction = kModeFunctions[navigation_.cursor];
     if (selectedModeIsCurrent(selectedFunction)) {
         navigateAfterModeSelection(selectedFunction);

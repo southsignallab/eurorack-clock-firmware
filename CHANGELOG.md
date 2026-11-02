@@ -10,6 +10,28 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 ## [Unreleased]
 
+### Fix: persistence-preserving DFU upload recognizes current slots (#12)
+
+- Validate both A/B slots against the firmware's slot contract for every accepted payload size (4, 8 and 12 KiB). Previously only 4-KiB slots were recognized, so current 12-KiB slots always looked invalid and the uploader fell into the legacy-migration path.
+- Read sectors 1/2 in full before every upload and keep the readback as a timestamped backup in `.pio/persistence-backups/`; the log reports generation and payload size of each valid slot.
+- Run the pre-A/B STM32duino EEPROM migration only with `--migrate-legacy-eeprom`, because sector 5 now holds application code. PlatformIO forwards the switch through `upload_flags` / `PLATFORMIO_UPLOAD_FLAGS` (`$UPLOAD_FLAGS` in `upload_command`).
+- Tests check the uploader constants against `persistent_storage.cpp`, `persistent_storage.h` and `persistent_layout.h`.
+
+### Fix: cyclic cursors stay in range for any encoder delta
+
+- Channel overview and mode carousel wrapped with a negative C++ remainder; a large backward delta (up to −127 detents in one sample after a stalled foreground pass) produced cursor 249 and indexed past `channels[8]` / `kModeFunctions`. All three wrap sites now use `UiController::wrapIndex()`.
+- Defensive bounds: channel selection from the overview only accepts indices below eight, mode commit rejects an out-of-range carousel index, and the Groove settings page ignores an out-of-range channel.
+
+### Fix: no Flash commit while the engine runs; stale ISR transitions ignored
+
+- The commit gate asks the engine (`ClockEngine::isPlaying()`, read under an interrupt lock) immediately before each store, not only the foreground transport field. The scheduler ISR can start the engine mid-pass (RUN level, START/RESTART input, lock acquisition); a sector commit then stalled a running engine.
+- A queued ISR transport transition is adopted only while it still matches the engine, so a front-panel STOP that overtook a RUN start no longer leaves the display on PLAY with a stopped engine.
+- Unchanged in this fix: with RUN HIGH, a manual STOP is still re-overridden by the RUN level at the next scheduler tick (decision D-03, planned separately).
+
+### Build: SSD1315 is the default display profile
+
+- `default_envs`, `release_default` and all `release_*` Easter-egg variants build `blackpill_f401cc_spi_ssd1315`, matching the reference board's Waveshare 24102 OLED module. `blackpill_f401cc_spi_ssd1306` and the `blackpill_f401cc_spi` alias remain available.
+
 ### Hardware alignment: KiCad front panel as the only panel source
 
 - Add `scripts/import_kicad_front_panel.py`. It reads `Simple Frontpanel.kicad_pcb` (Edge.Cuts and F.SilkS) without a KiCad installation and writes the canonical panel artwork `docs/assets/front-panel/clock-front-panel.svg`, a 20 px/mm PNG for web/print, the simulator panel image `sim/panel_background.png`, and the panel size and every control coordinate in `sim/panel_layout.ini`. `--check` verifies the committed files against the KiCad file.

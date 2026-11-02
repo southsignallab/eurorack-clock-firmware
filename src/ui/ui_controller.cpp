@@ -432,4 +432,17 @@ int UiController::clampInt(const int value, const int minimum, const int maximum
     return std::max(minimum, std::min(value, maximum));
 }
 
+std::uint8_t UiController::wrapIndex(
+    const std::uint8_t index,
+    const int delta,
+    const std::uint8_t count) {
+    if (count == 0U) {
+        return 0U;
+    }
+    // C++ % keeps the dividend's sign; fold the remainder back into [0, count).
+    const int modulus = static_cast<int>(count);
+    const int remainder = (static_cast<int>(index) + delta) % modulus;
+    return static_cast<std::uint8_t>(remainder < 0 ? remainder + modulus : remainder);
+}
+
 }  // namespace clockfw::ui

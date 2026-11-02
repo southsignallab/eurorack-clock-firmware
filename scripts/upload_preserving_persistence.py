@@ -12,6 +12,13 @@ A normal raw firmware.bin would fill the address gap and DFU would overwrite the
 persistent sectors. This helper extracts and uploads the two load regions
 separately so firmware updates preserve settings and presets.
 
+Before anything is written, both persistence sectors are read back in full and
+kept as a timestamped backup (default ``.pio/persistence-backups/``). A slot is
+recognized with any payload size the firmware accepts (4, 8 or 12 KiB). The
+one-time migration from the pre-A/B STM32duino EEPROM layout runs only with
+``--migrate-legacy-eeprom``, because that address now belongs to the
+application image.
+
 Author: Axel Napolitano
 License: PolyForm-Noncommercial-1.0.0
 """
@@ -21,6 +28,7 @@ import argparse
 import struct
 import subprocess
 import sys
+import time
 import zlib
 from pathlib import Path
 from typing import Sequence
@@ -32,12 +40,20 @@ APP_CAPACITY = 208 * 1024
 DEFAULT_USB_ID = "0483:df11"
 PERSIST_A_ADDRESS = 0x08004000
 PERSIST_B_ADDRESS = 0x08008000
+PERSIST_SLOT_BYTES = 16 * 1024
 LEGACY_EEPROM_ADDRESS = 0x08020000
-PERSIST_PAYLOAD_BYTES = 4096
+# Payload sizes accepted by PersistentStorage::slotIsValid(): legacy 4 KiB,
+# V1 8 KiB (persistent_layout::kV1ImageBytes) and the current 12 KiB image
+# (persistent_layout::kCurrentImageBytes).
+LEGACY_PAYLOAD_BYTES = 4096
+V1_PAYLOAD_BYTES = 8192
+CURRENT_PAYLOAD_BYTES = 12 * 1024
+PERSIST_PAYLOAD_SIZES = (LEGACY_PAYLOAD_BYTES, V1_PAYLOAD_BYTES, CURRENT_PAYLOAD_BYTES)
 PERSIST_HEADER_BYTES = 32
 PERSIST_SLOT_MAGIC = 0x434C4B50
 PERSIST_FORMAT_VERSION = 1
 PERSIST_COMMIT_MARKER = 0xC10C17ED
+DEFAULT_BACKUP_DIR = Path(__file__).resolve().parents[1] / ".pio" / "persistence-backups"
 
 BOOT_SECTIONS = (".isr_vector", ".flash_boot")
 APP_SECTIONS = (
@@ -94,16 +110,16 @@ def dfu_read_command(
 
 
 def build_slot_image(payload: bytes, generation: int = 1) -> bytes:
-    """Wrap one legacy logical image in the firmware's committed A/B slot format."""
-    if len(payload) != PERSIST_PAYLOAD_BYTES:
-        raise ValueError(f"Expected {PERSIST_PAYLOAD_BYTES} persistence bytes")
+    """Wrap one legacy 4-KiB logical image in the firmware's committed A/B slot format."""
+    if len(payload) != LEGACY_PAYLOAD_BYTES:
+        raise ValueError(f"Expected {LEGACY_PAYLOAD_BYTES} persistence bytes")
     payload_crc = zlib.crc32(payload) & 0xFFFFFFFF
     first_five_words = struct.pack(
         "<IIIII",
         PERSIST_SLOT_MAGIC,
         PERSIST_FORMAT_VERSION,
         generation & 0xFFFFFFFF,
-        PERSIST_PAYLOAD_BYTES,
+        LEGACY_PAYLOAD_BYTES,
         payload_crc,
     )
     header_crc = zlib.crc32(first_five_words) & 0xFFFFFFFF
@@ -118,28 +134,70 @@ def build_slot_image(payload: bytes, generation: int = 1) -> bytes:
     return header + payload
 
 
-def slot_image_is_valid(slot: bytes) -> bool:
-    """Validate one header+payload readback using the firmware's exact slot contract."""
-    if len(slot) < PERSIST_HEADER_BYTES + PERSIST_PAYLOAD_BYTES:
-        return False
+def slot_header(slot: bytes) -> tuple[int, int] | None:
+    """Return (generation, payload_size) for a committed, CRC-valid slot, else None.
+
+    Mirrors PersistentStorage::slotIsValid(): magic, format version, accepted
+    payload size, COMMIT marker, header CRC over the first five words and payload
+    CRC. zlib.crc32 is the same reflected CRC-32 (0xEDB88320) the firmware uses.
+    """
+    if len(slot) < PERSIST_HEADER_BYTES:
+        return None
     words = struct.unpack("<IIIIIIII", slot[:PERSIST_HEADER_BYTES])
-    magic, version, _generation, payload_size, payload_crc, header_crc, _reserved, commit = words
+    magic, version, generation, payload_size, payload_crc, header_crc, _reserved, commit = words
     if (
         magic != PERSIST_SLOT_MAGIC
         or version != PERSIST_FORMAT_VERSION
-        or payload_size != PERSIST_PAYLOAD_BYTES
+        or payload_size not in PERSIST_PAYLOAD_SIZES
         or commit != PERSIST_COMMIT_MARKER
     ):
-        return False
+        return None
     if (zlib.crc32(slot[:20]) & 0xFFFFFFFF) != header_crc:
-        return False
-    payload = slot[PERSIST_HEADER_BYTES:PERSIST_HEADER_BYTES + PERSIST_PAYLOAD_BYTES]
-    return (zlib.crc32(payload) & 0xFFFFFFFF) == payload_crc
+        return None
+    if len(slot) < PERSIST_HEADER_BYTES + payload_size:
+        return None
+    payload = slot[PERSIST_HEADER_BYTES:PERSIST_HEADER_BYTES + payload_size]
+    if (zlib.crc32(payload) & 0xFFFFFFFF) != payload_crc:
+        return None
+    return generation, payload_size
+
+
+def slot_image_is_valid(slot: bytes) -> bool:
+    """Validate one slot readback using the firmware's exact slot contract."""
+    return slot_header(slot) is not None
+
+
+def split_persistence_readback(data: bytes) -> tuple[bytes, bytes]:
+    """Split one contiguous sector-1/sector-2 readback into slot A and slot B."""
+    if len(data) != 2 * PERSIST_SLOT_BYTES:
+        raise RuntimeError(
+            f"Persistence readback is {len(data)} bytes, expected {2 * PERSIST_SLOT_BYTES}")
+    return data[:PERSIST_SLOT_BYTES], data[PERSIST_SLOT_BYTES:]
+
+
+def describe_slot(label: str, slot: bytes) -> str:
+    """Human-readable one-line slot status for the upload log."""
+    header = slot_header(slot)
+    if header is None:
+        return f"{label}: no valid committed image"
+    generation, payload_size = header
+    return f"{label}: valid, generation {generation}, payload {payload_size} bytes"
+
+
+def backup_path(backup_dir: Path, now: float | None = None) -> Path:
+    """Timestamped, collision-free backup file name (dfu-util will not overwrite)."""
+    stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(now))
+    candidate = backup_dir / f"persistence-{stamp}.bin"
+    suffix = 1
+    while candidate.exists():
+        candidate = backup_dir / f"persistence-{stamp}-{suffix}.bin"
+        suffix += 1
+    return candidate
 
 
 def legacy_payload_is_plausible(payload: bytes) -> bool:
     """Recognize the pre-A/B logical image without pretending arbitrary Flash is state."""
-    if len(payload) != PERSIST_PAYLOAD_BYTES or all(byte == 0xFF for byte in payload):
+    if len(payload) != LEGACY_PAYLOAD_BYTES or all(byte == 0xFF for byte in payload):
         return False
     record_magics = (b"CUR3", b"CUR4", b"PRE3", b"PRE4")
     return payload[:4] in record_magics or any(magic in payload for magic in record_magics[2:])
@@ -176,6 +234,17 @@ def main() -> int:
     parser.add_argument("--objcopy", required=True)
     parser.add_argument("--packages-dir", required=True)
     parser.add_argument("--usb-id", default=DEFAULT_USB_ID)
+    parser.add_argument(
+        "--backup-dir",
+        default=str(DEFAULT_BACKUP_DIR),
+        help="directory for the timestamped sector-1/2 backup taken before every upload",
+    )
+    parser.add_argument(
+        "--migrate-legacy-eeprom",
+        action="store_true",
+        help="one-time upgrade from the pre-A/B STM32duino EEPROM layout at 0x08020000; "
+             "only used when neither A/B slot is valid",
+    )
     args = parser.parse_args()
 
     elf = Path(args.elf).resolve()
@@ -185,8 +254,6 @@ def main() -> int:
     build_dir = elf.parent
     boot_bin = build_dir / "firmware-boot.bin"
     app_bin = build_dir / "firmware-app.bin"
-    slot_a_readback = build_dir / ".persist-a-readback.bin"
-    slot_b_readback = build_dir / ".persist-b-readback.bin"
     legacy_readback = build_dir / ".legacy-eeprom-readback.bin"
     migrated_slot = build_dir / ".persist-migration-slot.bin"
 
@@ -199,29 +266,39 @@ def main() -> int:
         ensure_region_size(boot_bin, BOOT_CAPACITY, "boot")
         ensure_region_size(app_bin, APP_CAPACITY, "application")
 
-        # Preserve upgrades from the old sector-5 STM32duino EEPROM layout.
-        # Existing A/B state wins. Only when both new slots are invalid do we
-        # read the old 4-KiB logical image and seed slot A before sector 5 is
-        # reused by the new application image.
-        slot_read_size = PERSIST_HEADER_BYTES + PERSIST_PAYLOAD_BYTES
+        # Read both physical persistence sectors in full and keep the readback
+        # as a backup before anything is written. Both slots are judged on the
+        # complete 16-KiB sector so every accepted payload size is covered.
+        backup_dir = Path(args.backup_dir)
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        backup = backup_path(backup_dir)
         run_checked(dfu_read_command(
-            dfu_util, slot_a_readback, PERSIST_A_ADDRESS, slot_read_size, args.usb_id))
-        run_checked(dfu_read_command(
-            dfu_util, slot_b_readback, PERSIST_B_ADDRESS, slot_read_size, args.usb_id))
-        have_new_persistence = (
-            slot_image_is_valid(slot_a_readback.read_bytes())
-            or slot_image_is_valid(slot_b_readback.read_bytes())
-        )
-        if not have_new_persistence:
+            dfu_util, backup, PERSIST_A_ADDRESS, 2 * PERSIST_SLOT_BYTES, args.usb_id))
+        slot_a, slot_b = split_persistence_readback(backup.read_bytes())
+        print(f"Persistence backup: {backup}")
+        print(describe_slot("Slot A", slot_a))
+        print(describe_slot("Slot B", slot_b))
+        have_new_persistence = slot_image_is_valid(slot_a) or slot_image_is_valid(slot_b)
+
+        # Existing A/B state always wins. The old sector-5 EEPROM image is only
+        # considered on explicit request: sector 5 now holds application code,
+        # so a heuristic match there must never seed slot A on its own.
+        if not have_new_persistence and not args.migrate_legacy_eeprom:
+            print("No valid A/B persistence slot; legacy EEPROM migration skipped "
+                  "(pass --migrate-legacy-eeprom for a pre-A/B upgrade).")
+        if not have_new_persistence and args.migrate_legacy_eeprom:
             run_checked(dfu_read_command(
                 dfu_util,
                 legacy_readback,
                 LEGACY_EEPROM_ADDRESS,
-                PERSIST_PAYLOAD_BYTES,
+                LEGACY_PAYLOAD_BYTES,
                 args.usb_id,
             ))
             legacy_payload = legacy_readback.read_bytes()
-            if legacy_payload_is_plausible(legacy_payload):
+            if not legacy_payload_is_plausible(legacy_payload):
+                print("Legacy EEPROM region holds no recognizable state; nothing migrated.")
+            else:
+                print("Migrating legacy EEPROM image into slot A.")
                 migrated_slot.write_bytes(build_slot_image(legacy_payload))
                 vid, pid = args.usb_id.split(":", maxsplit=1)
                 run_checked([
@@ -267,8 +344,6 @@ def main() -> int:
         for image in (
             boot_bin,
             app_bin,
-            slot_a_readback,
-            slot_b_readback,
             legacy_readback,
             migrated_slot,
         ):

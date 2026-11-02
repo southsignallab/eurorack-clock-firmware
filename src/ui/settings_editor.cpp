@@ -38,7 +38,10 @@ void SettingsEditor::adjust(
     const std::uint8_t rowIndex,
     const std::uint8_t channelIndex,
     const std::int8_t delta) {
-    if (isChannelSettingsPage(page) && channelIndex >= kChannelCount) {
+    // The Groove page edits a per-channel record in Independent mode, so it
+    // needs the same channel bound as the channel pages.
+    if ((isChannelSettingsPage(page) || page == SettingsPage::Groove) &&
+        channelIndex >= kChannelCount) {
         return;
     }
 

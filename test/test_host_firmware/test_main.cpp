@@ -601,9 +601,12 @@ int main() {
     RUN_TEST(testCustomGrooveEditorControllerWorkflow);
     RUN_TEST(testCustomGrooveRecorderControllerWorkflow);
     RUN_TEST(testUiControllerFlows);
+    RUN_TEST(testUiCursorWrapToleratesFullEncoderDeltaRange);
     RUN_TEST(testHighScoreResetAppearsAfterStartAndClearsSafely);
     RUN_TEST(testEasterEggGameAndHighScore);
     RUN_TEST(testApplicationAndEntryPoints);
+    RUN_TEST(testFlashCommitRespectsEngineStartedByIsr);
+    RUN_TEST(testStaleIsrTransitionDoesNotOverrideManualStop);
     std::cout << "Host firmware assertions: " << gChecks << "\n";
     return UNITY_END();
 }

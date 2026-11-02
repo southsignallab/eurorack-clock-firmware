@@ -225,6 +225,11 @@ void ClockEngine::processSchedulerTick() {
     restartPending_ = false;
 }
 
+bool ClockEngine::isPlaying() const {
+    hal::InterruptLock interruptLock;
+    return playing_;
+}
+
 EngineSnapshot ClockEngine::snapshot() const {
     EngineSnapshot result{};
     hal::InterruptLock interruptLock;

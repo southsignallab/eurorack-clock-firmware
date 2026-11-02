@@ -6,9 +6,14 @@ License: PolyForm-Noncommercial-1.0.0
 from __future__ import annotations
 
 import importlib.util
+import re
+import struct
+import sys
 import tempfile
 import unittest
+import zlib
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 MODULE_PATH = ROOT / "scripts" / "upload_preserving_persistence.py"
@@ -17,6 +22,26 @@ if SPEC is None or SPEC.loader is None:
     raise RuntimeError("Unable to load persistence upload helper")
 UPLOAD = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(UPLOAD)
+
+
+def committed_slot(payload: bytes, generation: int = 1, payload_size: int | None = None) -> bytes:
+    """Build one committed 16-KiB physical slot exactly as PersistentStorage writes it."""
+    size = len(payload) if payload_size is None else payload_size
+    words = struct.pack(
+        "<IIIII",
+        UPLOAD.PERSIST_SLOT_MAGIC,
+        UPLOAD.PERSIST_FORMAT_VERSION,
+        generation,
+        size,
+        zlib.crc32(payload) & 0xFFFFFFFF,
+    )
+    header = words + struct.pack(
+        "<III", zlib.crc32(words) & 0xFFFFFFFF, 0xFFFFFFFF, UPLOAD.PERSIST_COMMIT_MARKER)
+    slot = header + payload
+    return slot + b"\xFF" * (UPLOAD.PERSIST_SLOT_BYTES - len(slot))
+
+
+ERASED_SLOT = b"\xFF" * (16 * 1024)
 
 
 class PersistenceUploadTests(unittest.TestCase):
@@ -96,9 +121,9 @@ class PersistenceUploadTests(unittest.TestCase):
         self.assertIn("-U", command)
 
     def test_slot_wrapper_matches_firmware_validation_contract(self) -> None:
-        payload = b"CUR4" + (b"\xFF" * (UPLOAD.PERSIST_PAYLOAD_BYTES - 4))
+        payload = b"CUR4" + (b"\xFF" * (UPLOAD.LEGACY_PAYLOAD_BYTES - 4))
         image = UPLOAD.build_slot_image(payload, generation=7)
-        self.assertEqual(len(image), UPLOAD.PERSIST_HEADER_BYTES + UPLOAD.PERSIST_PAYLOAD_BYTES)
+        self.assertEqual(len(image), UPLOAD.PERSIST_HEADER_BYTES + UPLOAD.LEGACY_PAYLOAD_BYTES)
         self.assertTrue(UPLOAD.slot_image_is_valid(image))
         corrupted = bytearray(image)
         corrupted[-1] ^= 1
@@ -108,9 +133,9 @@ class PersistenceUploadTests(unittest.TestCase):
             UPLOAD.build_slot_image(b"short")
 
     def test_legacy_detection_rejects_blank_or_application_bytes(self) -> None:
-        blank = b"\xFF" * UPLOAD.PERSIST_PAYLOAD_BYTES
-        app = b"APP!" + (b"\x00" * (UPLOAD.PERSIST_PAYLOAD_BYTES - 4))
-        current = b"CUR4" + (b"\xFF" * (UPLOAD.PERSIST_PAYLOAD_BYTES - 4))
+        blank = b"\xFF" * UPLOAD.LEGACY_PAYLOAD_BYTES
+        app = b"APP!" + (b"\x00" * (UPLOAD.LEGACY_PAYLOAD_BYTES - 4))
+        current = b"CUR4" + (b"\xFF" * (UPLOAD.LEGACY_PAYLOAD_BYTES - 4))
         preset = bytearray(blank)
         preset[128:132] = b"PRE3"
         self.assertFalse(UPLOAD.legacy_payload_is_plausible(blank))
@@ -118,6 +143,145 @@ class PersistenceUploadTests(unittest.TestCase):
         self.assertTrue(UPLOAD.legacy_payload_is_plausible(current))
         self.assertTrue(UPLOAD.legacy_payload_is_plausible(bytes(preset)))
         self.assertFalse(UPLOAD.legacy_payload_is_plausible(b"short"))
+
+    def test_every_firmware_payload_size_is_a_valid_slot(self) -> None:
+        # F-001: the firmware writes 12-KiB images; 4 and 8 KiB remain readable.
+        for size in (4096, 8192, 12 * 1024):
+            with self.subTest(size=size):
+                payload = bytes(index & 0xFF for index in range(size))
+                slot = committed_slot(payload, generation=42)
+                self.assertTrue(UPLOAD.slot_image_is_valid(slot))
+                self.assertEqual(UPLOAD.slot_header(slot), (42, size))
+
+    def test_slot_validation_rejects_damaged_or_foreign_slots(self) -> None:
+        payload = bytes(range(256)) * 48  # 12 KiB
+        good = committed_slot(payload)
+        self.assertTrue(UPLOAD.slot_image_is_valid(good))
+        self.assertFalse(UPLOAD.slot_image_is_valid(ERASED_SLOT))
+        corrupt_payload = bytearray(good)
+        corrupt_payload[UPLOAD.PERSIST_HEADER_BYTES + 100] ^= 0x01
+        self.assertFalse(UPLOAD.slot_image_is_valid(bytes(corrupt_payload)))
+        uncommitted = bytearray(good)
+        uncommitted[28:32] = b"\xFF\xFF\xFF\xFF"
+        self.assertFalse(UPLOAD.slot_image_is_valid(bytes(uncommitted)))
+        bad_header_crc = bytearray(good)
+        bad_header_crc[20] ^= 0x01
+        self.assertFalse(UPLOAD.slot_image_is_valid(bytes(bad_header_crc)))
+        unsupported = committed_slot(bytes(2048))
+        self.assertFalse(UPLOAD.slot_image_is_valid(unsupported))
+        self.assertFalse(UPLOAD.slot_image_is_valid(good[:UPLOAD.PERSIST_HEADER_BYTES + 4096]))
+
+    def test_readback_split_requires_two_full_sectors(self) -> None:
+        slot_a = committed_slot(bytes(12 * 1024), generation=3)
+        slot_b = committed_slot(bytes(8192), generation=2)
+        first, second = UPLOAD.split_persistence_readback(slot_a + slot_b)
+        self.assertEqual((first, second), (slot_a, slot_b))
+        with self.assertRaises(RuntimeError):
+            UPLOAD.split_persistence_readback(slot_a)
+
+    def test_backup_names_never_collide(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            first = UPLOAD.backup_path(Path(directory), now=0.0)
+            first.write_bytes(b"x")
+            second = UPLOAD.backup_path(Path(directory), now=0.0)
+            self.assertNotEqual(first, second)
+            self.assertTrue(second.name.startswith("persistence-"))
+
+    def test_slot_contract_matches_firmware_sources(self) -> None:
+        storage = (ROOT / "src" / "hal" / "persistent_storage.cpp").read_text(encoding="utf-8")
+        storage_h = (ROOT / "src" / "hal" / "persistent_storage.h").read_text(encoding="utf-8")
+        layout = (ROOT / "src" / "hal" / "persistent_layout.h").read_text(encoding="utf-8")
+
+        def constant(source: str, name: str) -> str:
+            match = re.search(rf"\b{name}\s*=\s*([^;]+);", source)
+            self.assertIsNotNone(match, name)
+            assert match is not None
+            return match.group(1).strip()
+
+        self.assertEqual(int(constant(storage, "kSlotMagic").rstrip("UL"), 16), UPLOAD.PERSIST_SLOT_MAGIC)
+        self.assertEqual(int(constant(storage, "kSlotFormatVersion").rstrip("U")),
+                         UPLOAD.PERSIST_FORMAT_VERSION)
+        self.assertEqual(int(constant(storage, "kCommitMarker").rstrip("UL"), 16),
+                         UPLOAD.PERSIST_COMMIT_MARKER)
+        self.assertEqual(int(constant(storage, "kSlotHeaderBytes").rstrip("U")),
+                         UPLOAD.PERSIST_HEADER_BYTES)
+        self.assertEqual(int(constant(storage, "kLegacyPayloadBytes").rstrip("U")),
+                         UPLOAD.LEGACY_PAYLOAD_BYTES)
+        self.assertIn("16U * 1024U", constant(storage_h, "kPhysicalSlotBytes"))
+        self.assertEqual(UPLOAD.PERSIST_SLOT_BYTES, 16 * 1024)
+        self.assertEqual(int(constant(layout, "kV1ImageBytes").rstrip("U")), UPLOAD.V1_PAYLOAD_BYTES)
+        self.assertIn("12U * 1024U", constant(layout, "kMaximumImageBytes"))
+        self.assertEqual(constant(layout, "kCurrentImageBytes"), "kMaximumImageBytes")
+        self.assertEqual(UPLOAD.CURRENT_PAYLOAD_BYTES, 12 * 1024)
+        self.assertEqual(
+            sorted(UPLOAD.PERSIST_PAYLOAD_SIZES),
+            [UPLOAD.LEGACY_PAYLOAD_BYTES, UPLOAD.V1_PAYLOAD_BYTES, UPLOAD.CURRENT_PAYLOAD_BYTES],
+        )
+
+    def _run_main(self, persistence: bytes, legacy: bytes, *extra: str) -> tuple[int, list[list[str]], Path]:
+        """Run main() against a fake DFU device; return exit code, commands and backup dir."""
+        commands: list[list[str]] = []
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        base = Path(directory.name)
+        elf = base / "build" / "firmware.elf"
+        elf.parent.mkdir()
+        elf.write_bytes(b"ELF")
+        backups = base / "backups"
+
+        def fake_run(command: list[str]) -> None:
+            commands.append(list(command))
+            if "-U" in command:
+                output = Path(command[command.index("-U") + 1])
+                address = command[command.index("-s") + 1]
+                self.assertFalse(output.exists(), "dfu-util must not overwrite a readback")
+                output.write_bytes(persistence if address.startswith("0x08004000") else legacy)
+            elif command[0] == "objcopy":
+                Path(command[-1]).write_bytes(b"\x00" * 64)
+
+        argv = ["upload", "--elf", str(elf), "--objcopy", "objcopy",
+                "--packages-dir", str(base), "--backup-dir", str(backups), *extra]
+        with mock.patch.object(UPLOAD, "run_checked", side_effect=fake_run), \
+                mock.patch.object(UPLOAD, "find_dfu_tool", side_effect=lambda _p, name: Path(name)), \
+                mock.patch.object(sys, "argv", argv):
+            result = UPLOAD.main()
+        return result, commands, backups
+
+    @staticmethod
+    def _downloads_to(commands: list[list[str]], address: str) -> list[list[str]]:
+        return [c for c in commands if "-D" in c and c[c.index("-s") + 1].startswith(address)]
+
+    def test_upload_keeps_full_backup_and_never_touches_valid_slots(self) -> None:
+        current = committed_slot(bytes(12 * 1024), generation=9)
+        legacy = b"PRE4" + b"\x00" * (UPLOAD.LEGACY_PAYLOAD_BYTES - 4)
+        result, commands, backups = self._run_main(current + ERASED_SLOT, legacy,
+                                                   "--migrate-legacy-eeprom")
+        self.assertEqual(result, 0)
+        reads = [c for c in commands if "-U" in c]
+        self.assertEqual([c[c.index("-s") + 1] for c in reads], ["0x08004000:32768"])
+        self.assertEqual(self._downloads_to(commands, "0x08004000"), [])
+        saved = list(backups.glob("persistence-*.bin"))
+        self.assertEqual(len(saved), 1)
+        self.assertEqual(saved[0].read_bytes(), current + ERASED_SLOT)
+        self.assertEqual(len(self._downloads_to(commands, "0x0800C000")), 1)
+        self.assertEqual(len(self._downloads_to(commands, "0x08000000")), 1)
+
+    def test_legacy_migration_needs_explicit_switch(self) -> None:
+        legacy = b"\x00" * 128 + b"PRE4" + b"\x00" * (UPLOAD.LEGACY_PAYLOAD_BYTES - 132)
+        result, commands, _ = self._run_main(ERASED_SLOT + ERASED_SLOT, legacy)
+        self.assertEqual(result, 0)
+        self.assertEqual(self._downloads_to(commands, "0x08004000"), [])
+        self.assertFalse(any("0x08020000" in " ".join(c) for c in commands))
+
+        result, commands, _ = self._run_main(ERASED_SLOT + ERASED_SLOT, legacy,
+                                             "--migrate-legacy-eeprom")
+        self.assertEqual(result, 0)
+        self.assertEqual(len(self._downloads_to(commands, "0x08004000")), 1)
+
+    def test_platformio_forwards_upload_flags(self) -> None:
+        config = (ROOT / "platformio.ini").read_text(encoding="utf-8")
+        command = next(line for line in config.splitlines() if line.startswith("upload_command"))
+        self.assertIn("$UPLOAD_FLAGS", command)
 
     def test_finds_posix_and_windows_dfu_tools(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

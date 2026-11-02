@@ -33,6 +33,7 @@ MAX_CPP_LINES = 450
 IMPLEMENTATION_COMPANION_HEADERS = {
     "external_sync_controller_inputs.cpp": "external_sync_controller.h",
     "clock_application_preferences.cpp": "clock_application.h",
+    "clock_application_transport.cpp": "clock_application.h",
     "persistent_state_codec.cpp": "persistent_state_service.h",
     "persistent_state_migration.cpp": "persistent_state_service.h",
     "persistent_state_migration_v8.cpp": "persistent_state_service.h",

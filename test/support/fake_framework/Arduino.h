@@ -42,10 +42,13 @@ inline unsigned noInterruptCalls = 0U;
 inline unsigned interruptCalls = 0U;
 inline bool throwOnDelay = false;
 inline std::uint32_t delayAdvanceOverrideMs = 0U;
+/** Optional test hook run on every digitalRead(); lets a test inject an ISR mid-pass. */
+inline voidFuncPtr digitalReadHook = nullptr;
 
 inline void resetArduino() {
     pinModes.clear(); pinValues.clear(); writes.clear(); interruptBindings.clear(); nowMs=0U; nowUs=0U;
     noInterruptCalls=0U; interruptCalls=0U; throwOnDelay=false; delayAdvanceOverrideMs=0U;
+    digitalReadHook=nullptr;
 }
 inline void setPinSilently(std::uint32_t pin, std::uint8_t value) {
     pinValues[pin] = value;
@@ -69,6 +72,7 @@ inline void setPin(std::uint32_t pin, std::uint8_t value) {
 
 inline void pinMode(std::uint32_t pin, std::uint8_t mode) { fakefw::pinModes[pin]=mode; }
 inline int digitalRead(std::uint32_t pin) {
+    if (fakefw::digitalReadHook != nullptr) fakefw::digitalReadHook();
     const auto it=fakefw::pinValues.find(pin);
     return it==fakefw::pinValues.end()?HIGH:it->second;
 }

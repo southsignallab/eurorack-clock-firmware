@@ -194,6 +194,15 @@ public:
     /** @brief Returns interrupt-safe snapshot of the timing state used by the UI. */
     EngineSnapshot snapshot() const;
 
+    /**
+     * @brief Returns whether the scheduler is running, including an active pre-count.
+     *
+     * Read under an interrupt lock. The scheduler ISR can start the engine on its
+     * own (RUN level, START/RESTART input, lock acquisition), so this is the
+     * authority for real-time safety decisions, not the foreground transport field.
+     */
+    bool isPlaying() const;
+
     /** @brief Returns the selected output's nominal event interval in Q32 master-beat units. */
     std::uint64_t nominalIntervalQ32(std::size_t channelIndex) const;
 

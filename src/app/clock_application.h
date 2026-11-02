@@ -59,6 +59,14 @@ public:
     /** @brief Executes one non-real-time application iteration. */
     void runOnce();
 
+#ifdef CLOCK_HOST_TEST
+    /** @brief Returns the foreground transport field for host regression tests. */
+    TransportState transportForTest() const;
+
+    /** @brief Returns whether the real-time engine is running, for host regression tests. */
+    bool enginePlayingForTest() const;
+#endif
+
 #ifdef CLOCK_SIMULATOR
     /** @brief Returns read-only current application state for simulator instrumentation. */
     const ClockState& stateForSimulator() const;
@@ -100,6 +108,17 @@ public:
 private:
     /** @brief Timer ISR thunk used by the HAL periodic-timer callback boundary. */
     static void schedulerInterruptThunk();
+
+    /** @brief Applies the latest ISR transport transition if it still matches the engine. */
+    void adoptExternalTransportTransition();
+
+    /**
+     * @brief Returns true only when a Flash sector commit cannot stall a running engine.
+     *
+     * Evaluated immediately before each store's service() call; the engine state
+     * is read under an interrupt lock because the scheduler ISR may start it.
+     */
+    bool flashWriteAllowed() const;
 
     /** @brief Renders the boot screen and returns true only when encoder push stayed held throughout. */
     bool runBootSequence();

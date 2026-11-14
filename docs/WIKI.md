@@ -48,7 +48,7 @@ Generate the same Wiki tree locally without publishing it:
 ```bash
 python scripts/build_wiki.py \
   --output build/wiki \
-  --repository napolitano/eurorack-clock-firmware \
+  --repository southsignallab/eurorack-clock-firmware \
   --ref main
 ```
 

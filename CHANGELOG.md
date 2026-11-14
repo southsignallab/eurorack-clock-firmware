@@ -320,6 +320,12 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 - Make the manual PDF check reject substitute fonts: with `--require-ubuntu-fonts`, any embedded font outside the Ubuntu family, or any face that is not embedded, fails the check. Menu-path arrows and list bullets in the manual use `›` and `•`, which the Ubuntu family contains; the Windows build had embedded Segoe UI for `→` and `●`.
 - Export the manual PDF without LibreOffice's 300 dpi image reduction, so the screenshots keep their nearest-neighbour pixels.
 - Replace the Ko-fi button image in `README.md`, `README_VCV.md` and `docs/SUPPORT.md` with the existing text link.
+- Read the output of `pdfinfo`, `pdftotext`, `pdffonts`, `fc-match` and `ffprobe` as UTF-8 in `scripts/check_user_manual.py`, `scripts/update_manual_contents.py`, `scripts/prepare_release_manual.py` and `scripts/render_tutorials.py`. On Windows the locale code page (cp1252) aborted the manual build or garbled non-ASCII text unless `PYTHONUTF8=1` was set.
+- Find LibreOffice on Windows in its default install folder (`%ProgramFiles%\LibreOffice\program\soffice.exe`) when it is not on `PATH`. The manual build, the PDF check and the contents update name every missing Poppler tool (`pdfinfo`, `pdftotext`, `pdffonts`) with an install hint; the build does so before the PDF export.
+- Give each `scripts/run_host_tests.py` run mode its own build tree below `build/host_tests/` (`coverage`, `sanitizers`, `focus_<area>`), so a coverage run and a sanitizer run on the same checkout no longer delete each other's tree. A second run of the same mode stops with a message; an operating-system lock that ends with the process guards each tree.
+- Document the Windows prerequisites of the local check suite and the manual build in `docs/DEVELOPER_README.md` (WSL2 for sanitizers, UCRT64 before Git's `mingw64` on `PATH`, Poppler, LibreOffice, Ubuntu fonts).
+- Use `https://github.com/southsignallab/eurorack-clock-firmware` in the maintained manual's source-repository link, the release packaging and release notes, the manual check, the VCV plugin metadata, the Wiki builder default and `docs/WIKI.md`. Frozen release manuals keep the address of their release; the firmware update QR code and the documents that describe it follow with the firmware change.
+- Name the inputs `IN 1` and `IN 2` with their factory roles SYNC and RESET in the introduction of manual chapter 2.
 
 ## [1.1.0] - 2026-09-23
 

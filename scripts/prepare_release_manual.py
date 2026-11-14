@@ -77,6 +77,7 @@ def resolve_font(preferred_style: str, *, allow_substitution: bool) -> str:
     result = subprocess.run(
         ["fc-match", "-f", "%{family}\n%{file}\n", query],
         text=True,
+        encoding="utf-8",
         capture_output=True,
         check=True,
     )

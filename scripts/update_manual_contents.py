@@ -19,6 +19,8 @@ import zipfile
 from pathlib import Path
 from lxml import etree
 
+import check_user_manual
+
 NS = {
     "office": "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
     "text": "urn:oasis:names:tc:opendocument:xmlns:text:1.0",
@@ -32,7 +34,7 @@ def normalize(text: str) -> str:
 
 
 def page_count(pdf: Path) -> int:
-    result = subprocess.run(["pdfinfo", str(pdf)], text=True, capture_output=True, check=True)
+    result = subprocess.run(["pdfinfo", str(pdf)], text=True, encoding="utf-8", capture_output=True, check=True)
     match = re.search(r"^Pages:\s+(\d+)\s*$", result.stdout, re.MULTILINE)
     if match is None:
         raise RuntimeError("Unable to read PDF page count")
@@ -43,6 +45,7 @@ def pdf_page_text(pdf: Path, page: int) -> str:
     result = subprocess.run(
         ["pdftotext", "-f", str(page), "-l", str(page), "-layout", str(pdf), "-"],
         text=True,
+        encoding="utf-8",
         capture_output=True,
         check=True,
     )
@@ -78,6 +81,7 @@ def resolve_pages(pdf: Path, headings: list[str]) -> list[int]:
 
 
 def update(odt: Path, pdf: Path) -> list[int]:
+    check_user_manual.require_poppler_tools(("pdfinfo", "pdftotext"))
     with zipfile.ZipFile(odt, "r") as archive:
         entries = [(info, archive.read(info.filename)) for info in archive.infolist()]
     content_info, content = next((i, d) for i, d in entries if i.filename == "content.xml")

@@ -11,7 +11,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-REPOSITORY_URL = "https://github.com/napolitano/eurorack-clock-firmware"
+REPOSITORY_URL = "https://github.com/southsignallab/eurorack-clock-firmware"
 FIRMWARE_FLAVORS = (
     ("default", "BEATKNECHT (default)"),
     ("pixel-raid", "Pixel Raid"),

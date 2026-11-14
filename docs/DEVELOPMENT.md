@@ -196,6 +196,8 @@ Raw GCC compiler-branch coverage is reported separately because GCC also emits s
 
 Coverage artifacts are written to `coverage/full_coverage.txt` and `coverage/full_coverage.json`.
 
+Each run mode builds in its own tree below `build/host_tests/` (`coverage`, `sanitizers`, `focus_<area>`), so a coverage run and a sanitizer run can run at the same time. A second run of the same mode stops with a message instead of deleting the tree in use. On Windows the sanitizer run needs WSL2; the Windows prerequisites of the full local check suite and the manual build are listed in [`DEVELOPER_README.md`](DEVELOPER_README.md#15b-windows-prerequisites-for-the-full-local-check-suite-and-the-manual-build).
+
 Production headers must not contain executable inline functions. Keeping executable logic in `.cpp` files makes every production function visible to coverage and is enforced by `scripts/check_architecture.py`.
 
 ## Native simulator build

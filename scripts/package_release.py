@@ -36,7 +36,7 @@ DFUSE_VERSION = 1
 DFU_SPECIFICATION = 0x011A
 TOOLCHAIN_VERSION = "7.2.1"
 TOOLCHAIN_PACKAGE = "toolchain-gccarmnoneeabi"
-REPOSITORY_URL = "https://github.com/napolitano/eurorack-clock-firmware"
+REPOSITORY_URL = "https://github.com/southsignallab/eurorack-clock-firmware"
 FIRMWARE_FLAVORS = (
     ("default", "BEATKNECHT"),
     ("pixel-raid", "Pixel Raid"),

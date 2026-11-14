@@ -579,6 +579,216 @@ class ManualPrintLayoutTests(unittest.TestCase):
         self.assertNotIn("→", content)  # no glyph outside the Ubuntu family
         self.assertIn("The screens in this manual are shown dark on light for printing", content)
 
+    def test_panel_chapter_introduction_names_the_inputs_as_engraved(self) -> None:
+        import re
+        import zipfile
+
+        with zipfile.ZipFile(ROOT / "docs" / "manual-source" / "clock-user-manual.odt") as archive:
+            content = archive.read("content.xml").decode("utf-8")
+        start = content.find("Panel, power and boot</text:span></text:h>")
+        self.assertGreater(start, 0)
+        introduction = re.sub(r"<[^>]+>", "", content[start:content.find("<draw:frame", start)])
+        self.assertIn("IN 1 and IN 2 (factory roles SYNC and RESET)", introduction)
+        self.assertNotIn("RST", introduction)
+
+
+# Output of a documentation tool that is not representable in a legacy code
+# page: U+25CF and U+2192 have no cp1252 or ASCII encoding, the path has a
+# non-ASCII letter. Poppler and fontconfig write UTF-8 on every platform.
+UTF8_TOOL_OUTPUT = "Title: Clock \u2192 manual \u25cf \u2022\nPages: 3\n/fonts/\u00fcbuntu/\u25cf.ttf\n"
+
+# Runs one documentation-script call in a child interpreter whose locale
+# encoding is not UTF-8 (Windows: the ANSI code page; POSIX: the C locale with
+# coercion and UTF-8 mode disabled, i.e. ASCII). Every external command is
+# replaced by one that prints ``output`` as UTF-8 bytes, so only the decoding
+# in the code under test is exercised.
+NON_UTF8_CHILD = r"""
+import importlib, json, locale, subprocess, sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+# Hex keeps the arguments ASCII: a C-locale child would decode UTF-8 argv as surrogates.
+output = bytes.fromhex(sys.argv[3])
+real_run = subprocess.run
+def fake_run(command, *args, **kwargs):
+    writer = "import sys; sys.stdout.buffer.write(%r)" % output
+    return real_run([sys.executable, "-c", writer], *args, **kwargs)
+subprocess.run = fake_run
+module = importlib.import_module(sys.argv[2])
+result = eval(sys.argv[4], {"module": module, "Path": Path})
+sys.stdout.buffer.write(json.dumps({
+    "encoding": locale.getpreferredencoding(False),
+    "result": result,
+}).encode("ascii"))
+"""
+
+
+class ManualToolEncodingTests(unittest.TestCase):
+    """F-053: documentation scripts decode tool output as UTF-8, not with the locale."""
+
+    def run_under_non_utf8_locale(self, module: str, call: str, output: str = UTF8_TOOL_OUTPUT):
+        import json
+        import os
+        import subprocess
+
+        environment = {
+            key: value for key, value in os.environ.items()
+            if key not in {"PYTHONUTF8", "PYTHONIOENCODING", "LANG", "LANGUAGE"} and not key.startswith("LC_")
+        }
+        if os.name != "nt":
+            environment.update({"LC_ALL": "C", "PYTHONCOERCECLOCALE": "0"})
+        completed = subprocess.run(
+            [sys.executable, "-X", "utf8=0", "-c", NON_UTF8_CHILD, str(SCRIPTS), module, output.encode("utf-8").hex(), call],
+            capture_output=True,
+            env=environment,
+            cwd=str(ROOT),
+        )
+        self.assertEqual(
+            0, completed.returncode,
+            completed.stderr.decode("utf-8", errors="replace")[-2000:],
+        )
+        payload = json.loads(completed.stdout.decode("ascii"))
+        import codecs
+        self.assertNotEqual(
+            "utf-8", codecs.lookup(payload["encoding"]).name,
+            "the child interpreter must run with a non-UTF-8 locale encoding",
+        )
+        return payload["result"]
+
+    def test_manual_check_reads_pdftotext_output_as_utf8(self) -> None:
+        self.assertEqual(
+            UTF8_TOOL_OUTPUT,
+            self.run_under_non_utf8_locale("check_user_manual", 'module.run_text(["pdftotext", "m.pdf", "-"])'),
+        )
+
+    def test_font_environment_check_reads_fc_match_output_as_utf8(self) -> None:
+        output = "Ubuntu Mono\nRegular Light Bold\n/fonts/\u00fcbuntu/\u25cf.ttf\n"
+        self.assertIsNone(
+            self.run_under_non_utf8_locale(
+                "check_user_manual", "module.validate_ubuntu_font_environment()", output
+            )
+        )
+
+    def test_contents_updater_reads_pdfinfo_and_pdftotext_output_as_utf8(self) -> None:
+        self.assertEqual(
+            3, self.run_under_non_utf8_locale("update_manual_contents", 'module.page_count(Path("m.pdf"))')
+        )
+        self.assertEqual(
+            " ".join(UTF8_TOOL_OUTPUT.split()),
+            self.run_under_non_utf8_locale("update_manual_contents", 'module.pdf_page_text(Path("m.pdf"), 1)'),
+        )
+
+    def test_release_stamping_reads_fc_match_output_as_utf8(self) -> None:
+        output = "Ubuntu\n/fonts/\u00fcbuntu/\u25cf.ttf\n"
+        self.assertEqual(
+            "/fonts/\u00fcbuntu/\u25cf.ttf",
+            self.run_under_non_utf8_locale(
+                "prepare_release_manual",
+                'module.resolve_font("Regular", allow_substitution=False)',
+                output,
+            ),
+        )
+
+    def test_tutorial_renderer_reads_captured_tool_output_as_utf8(self) -> None:
+        self.assertEqual(
+            UTF8_TOOL_OUTPUT,
+            self.run_under_non_utf8_locale(
+                "render_tutorials", 'module.run_checked(["ffprobe", "m.mp4"], capture=True).stdout'
+            ),
+        )
+
+
+class ManualToolDiscoveryTests(unittest.TestCase):
+    """F-051: the manual build finds LibreOffice on Windows and names missing Poppler tools."""
+
+    def test_libreoffice_is_found_in_the_default_windows_install_location(self) -> None:
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as directory:
+            program = Path(directory) / "LibreOffice" / "program"
+            program.mkdir(parents=True)
+            soffice = program / "soffice.exe"
+            soffice.write_bytes(b"")
+            with mock.patch.object(BUILD.shutil, "which", return_value=None):
+                self.assertEqual(
+                    str(soffice),
+                    BUILD.libreoffice_binary(windows=True, environ={"ProgramFiles": directory}),
+                )
+
+    def test_libreoffice_on_the_path_wins_over_the_default_install_location(self) -> None:
+        from unittest import mock
+
+        with mock.patch.object(BUILD.shutil, "which", side_effect=lambda name: f"/usr/bin/{name}"):
+            self.assertEqual(
+                "/usr/bin/libreoffice",
+                BUILD.libreoffice_binary(windows=True, environ={"ProgramFiles": "C:\\Program Files"}),
+            )
+
+    def test_missing_libreoffice_names_the_searched_locations(self) -> None:
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(BUILD.shutil, "which", return_value=None):
+                with self.assertRaises(RuntimeError) as raised:
+                    BUILD.libreoffice_binary(windows=True, environ={"ProgramFiles": directory})
+        message = str(raised.exception)
+        self.assertIn("PATH", message)
+        self.assertIn(str(Path(directory) / "LibreOffice" / "program" / "soffice.exe"), message)
+
+    def test_libreoffice_default_location_is_only_searched_on_windows(self) -> None:
+        from unittest import mock
+
+        with tempfile.TemporaryDirectory() as directory:
+            program = Path(directory) / "LibreOffice" / "program"
+            program.mkdir(parents=True)
+            (program / "soffice.exe").write_bytes(b"")
+            with mock.patch.object(BUILD.shutil, "which", return_value=None):
+                with self.assertRaises(RuntimeError):
+                    BUILD.libreoffice_binary(windows=False, environ={"ProgramFiles": directory})
+
+    def test_missing_poppler_tools_are_named_with_an_install_hint(self) -> None:
+        from unittest import mock
+
+        with mock.patch.object(CHECK.shutil, "which", side_effect=lambda name: None if name != "pdfinfo" else "/bin/pdfinfo"):
+            with self.assertRaises(RuntimeError) as raised:
+                CHECK.require_poppler_tools(("pdfinfo", "pdffonts", "pdftotext"))
+        message = str(raised.exception)
+        self.assertIn("pdffonts, pdftotext", message)
+        self.assertNotIn("pdfinfo,", message)
+        self.assertIn("poppler-utils", message)
+        self.assertIn("mingw-w64-ucrt-x86_64-poppler", message)
+
+    def test_pdf_check_names_missing_poppler_tools(self) -> None:
+        from unittest import mock
+
+        with mock.patch.object(CHECK.shutil, "which", return_value=None):
+            with self.assertRaisesRegex(RuntimeError, r"Poppler tools are missing: pdfinfo, pdftotext, pdffonts"):
+                CHECK.validate_pdf(Path("clock-user-manual.1.1.0.pdf"), "1.1.0", require_ubuntu_fonts=True)
+
+    def test_contents_updater_names_missing_poppler_tools(self) -> None:
+        from unittest import mock
+
+        working = ROOT / "docs" / "manual-source" / "clock-user-manual.odt"
+        with mock.patch.object(CHECK.shutil, "which", return_value=None):
+            with self.assertRaisesRegex(RuntimeError, r"Poppler tools are missing: pdfinfo, pdftotext"):
+                UPDATE_CONTENTS.update(working, Path("clock-user-manual.1.1.0.pdf"))
+
+    def test_manual_build_names_missing_poppler_tools_before_the_pdf_export(self) -> None:
+        import zipfile
+        from unittest import mock
+
+        working = ROOT / "docs" / "manual-source" / "clock-user-manual.odt"
+        with zipfile.ZipFile(working, "r") as archive:
+            version = PREPARE.source_version(
+                archive.read("meta.xml").decode("utf-8"), archive.read("content.xml").decode("utf-8")
+            )
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.object(CHECK.shutil, "which", return_value=None), \
+                    mock.patch.object(BUILD, "libreoffice_binary", return_value="soffice"), \
+                    mock.patch.object(BUILD.subprocess, "run") as export:
+                with self.assertRaisesRegex(RuntimeError, r"Poppler tools are missing: pdfinfo, pdftotext"):
+                    BUILD.build(working, Path(directory), version, require_ubuntu_fonts=False)
+            export.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

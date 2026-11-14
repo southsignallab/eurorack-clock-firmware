@@ -297,7 +297,7 @@ def main() -> int:
     """CLI entry point for local previews and GitHub Actions publication."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--output', default='build/wiki')
-    parser.add_argument('--repository', default=os.environ.get('GITHUB_REPOSITORY', 'napolitano/eurorack-clock-firmware'))
+    parser.add_argument('--repository', default=os.environ.get('GITHUB_REPOSITORY', 'southsignallab/eurorack-clock-firmware'))
     parser.add_argument('--ref', default=os.environ.get('GITHUB_SHA', 'main'))
     parser.add_argument('--server-url', default=os.environ.get('GITHUB_SERVER_URL', 'https://github.com'))
     args = parser.parse_args()

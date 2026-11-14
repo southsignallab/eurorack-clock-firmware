@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import io
 import re
+import shutil
 import subprocess
 import zipfile
 from pathlib import Path
@@ -23,13 +24,16 @@ PNG_VERSION_KEY = "clock_firmware_version"
 ODT_MIMETYPE = b"application/vnd.oasis.opendocument.text"
 VERSION_TEXT_RE = re.compile(r"\b[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?\b")
 ROOT = Path(__file__).resolve().parents[1]
-REPOSITORY_URL = "https://github.com/napolitano/eurorack-clock-firmware"
+REPOSITORY_URL = "https://github.com/southsignallab/eurorack-clock-firmware"
+#: Repository URL in the text and QR code of manuals up to 1.1.0, before the
+#: repository moved to southsignallab; frozen manuals are not rewritten.
+LEGACY_REPOSITORY_URL = "https://github.com/napolitano/eurorack-clock-firmware"
 REPOSITORY_QR = ROOT / "docs" / "manual-source" / "assets" / "repository-qr.png"
 UPDATES_QR = ROOT / "docs" / "manual-source" / "assets" / "updates-qr.png"
 KOFI_SUPPORT_URL = "https://ko-fi.com/southsignallab"
 KOFI_SUPPORT_QR = ROOT / "docs" / "manual-source" / "assets" / "kofi-support-qr.png"
 #: Repository URL encoded by the QR code of manuals up to 1.1.0 (before D-12).
-LEGACY_REPOSITORY_QR_URL = REPOSITORY_URL
+LEGACY_REPOSITORY_QR_URL = LEGACY_REPOSITORY_URL
 LOGO_ASSET = ROOT / "docs" / "manual-source" / "assets" / "south-signal-lab-logo.svg"
 PANEL_FIGURE_ASSET = ROOT / "docs" / "manual-source" / "assets" / "front-panel-anatomy-print.svg"
 COVER_PANEL_ASSET = ROOT / "docs" / "manual-source" / "assets" / "front-panel-print.svg"
@@ -65,8 +69,28 @@ def requires_release_license_section(version: str) -> bool:
 
 
 def run_text(command: list[str]) -> str:
-    result = subprocess.run(command, text=True, capture_output=True, check=True)
+    """Run a documentation tool and return its output.
+
+    Poppler and fontconfig write UTF-8 on every platform; decoding with the
+    locale (cp1252 on Windows) would fail or garble non-ASCII text.
+    """
+    result = subprocess.run(command, text=True, encoding="utf-8", capture_output=True, check=True)
     return result.stdout
+
+
+#: Install hint for the Poppler command-line tools used to read the manual PDF.
+POPPLER_INSTALL_HINT = (
+    "Install Poppler: Debian/Ubuntu 'sudo apt-get install poppler-utils'; "
+    "Windows MSYS2 'pacman -S mingw-w64-ucrt-x86_64-poppler' and put "
+    r"C:\msys64\ucrt64\bin on PATH."
+)
+
+
+def require_poppler_tools(names: tuple[str, ...]) -> None:
+    """Fail with one clear message naming every missing Poppler tool."""
+    missing = [name for name in names if shutil.which(name) is None]
+    if missing:
+        raise RuntimeError(f"Poppler tools are missing: {', '.join(missing)}. {POPPLER_INSTALL_HINT}")
 
 
 def page_images(content_xml: str, archive: zipfile.ZipFile) -> list[str]:
@@ -448,7 +472,7 @@ def validate_odt(path: Path, version: str) -> None:
                 "Third-party license notices",
                 "PolyForm Noncommercial License 1.0.0",
                 "GNU Arm Embedded Toolchain 7.2.1",
-                REPOSITORY_URL,
+                REPOSITORY_URL if is_typeset_manual(content_xml) else LEGACY_REPOSITORY_URL,
             )
             for required in required_release_text:
                 if required not in content_xml:
@@ -547,6 +571,7 @@ def validate_ubuntu_font_environment() -> None:
         result = subprocess.run(
             ["fc-match", "-f", "%{family}\n%{style}\n%{file}\n", f"Ubuntu:style={style}"],
             text=True,
+            encoding="utf-8",
             capture_output=True,
             check=True,
         )
@@ -562,6 +587,7 @@ def validate_ubuntu_font_environment() -> None:
     result = subprocess.run(
         ["fc-match", "-f", "%{family}\n%{file}\n", "Ubuntu Mono"],
         text=True,
+        encoding="utf-8",
         capture_output=True,
         check=True,
     )
@@ -610,9 +636,15 @@ def validate_ubuntu_pdf_fonts(fonts: str) -> None:
         )
 
 
+def pdf_tools(*, require_ubuntu_fonts: bool) -> tuple[str, ...]:
+    """Return the Poppler tools that ``validate_pdf`` runs."""
+    return ("pdfinfo", "pdftotext", "pdffonts") if require_ubuntu_fonts else ("pdfinfo", "pdftotext")
+
+
 def validate_pdf(path: Path, version: str, *, require_ubuntu_fonts: bool) -> None:
     if path.name != f"clock-user-manual.{version}.pdf":
         raise RuntimeError(f"Unexpected manual PDF filename: {path.name}")
+    require_poppler_tools(pdf_tools(require_ubuntu_fonts=require_ubuntu_fonts))
     info = run_text(["pdfinfo", str(path)])
     match = re.search(r"^Pages:\s+(\d+)\s*$", info, re.MULTILINE)
     if match is None or int(match.group(1)) < 1:

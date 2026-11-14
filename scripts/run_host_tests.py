@@ -8,16 +8,23 @@ License: PolyForm-Noncommercial-1.0.0
 from __future__ import annotations
 
 import argparse
+import contextlib
 import gzip
 import json
 import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BUILD_ROOT = ROOT / "build" / "host_tests"
+HOST_TESTS_ROOT = ROOT / "build" / "host_tests"
+#: Build tree of the current run. ``main`` selects one tree per run mode below
+#: ``HOST_TESTS_ROOT``, so a coverage run and a sanitizer run on the same
+#: checkout (for example one on Windows and one in WSL) never delete each other's
+#: build tree.
+BUILD_ROOT = HOST_TESTS_ROOT / "coverage"
 COVERAGE_DIR = ROOT / "coverage"
 FAKE_INCLUDE = ROOT / "test" / "support" / "fake_framework"
 FAKE_UNITY_INCLUDE = ROOT / "test" / "support" / "fake_unity"
@@ -752,6 +759,55 @@ def focused_coverage(focus: str) -> tuple[list[Path], set[str]]:
     raise ValueError(f"unsupported coverage focus: {focus}")
 
 
+class BuildTreeBusyError(RuntimeError):
+    """Another runner process holds the build tree of the requested mode."""
+
+
+def run_mode(args: argparse.Namespace) -> str:
+    """Name the build tree of one run mode (the checks in ``run_selected`` use the same order)."""
+    if args.focus:
+        return f"focus_{args.focus.replace('-', '_')}"
+    if args.sanitizers_only:
+        return "sanitizers"
+    return "coverage"
+
+
+@contextlib.contextmanager
+def exclusive_build_tree(build_root: Path) -> Iterator[None]:
+    """Hold an operating-system lock on ``<build_root>.lock`` for the whole run.
+
+    A second run of the same mode stops instead of deleting the tree in use.
+    The operating system releases the lock when the process ends, also after a
+    crash, so no stale lock file has to be removed by hand. Locks are local to
+    one operating system: a Windows run and a WSL run of the same mode on one
+    checkout do not see each other's lock.
+    """
+    lock_path = build_root.with_name(f"{build_root.name}.lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("a+b") as handle:
+        try:
+            if os.name == "nt":
+                import msvcrt
+
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as error:
+            raise BuildTreeBusyError(
+                f"another run_host_tests.py run is using {build_root}; wait for it to finish "
+                f"(lock file {lock_path})"
+            ) from error
+        try:
+            yield
+        finally:
+            if os.name == "nt":
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+
+
 def main() -> int:
     """Execute all host suites and enforce repository coverage/sanitizer policy."""
     parser = argparse.ArgumentParser()
@@ -802,6 +858,18 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    global BUILD_ROOT
+    BUILD_ROOT = HOST_TESTS_ROOT / run_mode(args)
+    try:
+        with exclusive_build_tree(BUILD_ROOT):
+            return run_selected(args)
+    except BuildTreeBusyError as error:
+        print(f"run_host_tests.py: {error}", file=sys.stderr)
+        return 2
+
+
+def run_selected(args: argparse.Namespace) -> int:
+    """Run the suites selected on the command line in a fresh build tree."""
     if BUILD_ROOT.exists():
         shutil.rmtree(BUILD_ROOT)
     if args.focus:

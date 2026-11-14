@@ -7,11 +7,13 @@ License: PolyForm-Noncommercial-1.0.0
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import tempfile
 import re
 import urllib.parse
+from collections.abc import Mapping
 from pathlib import Path, PurePath
 
 import check_user_manual
@@ -38,12 +40,41 @@ def default_source(version: str) -> Path:
     return ROOT / "build" / "manual" / f"clock-user-manual.{version}.odt"
 
 
-def libreoffice_binary() -> str:
+#: Environment variables that name the Windows program folders the LibreOffice
+#: installer uses by default (64-bit first, then 32-bit).
+WINDOWS_PROGRAM_FOLDERS = ("ProgramFiles", "ProgramW6432", "ProgramFiles(x86)")
+
+
+def windows_libreoffice_candidates(environ: Mapping[str, str]) -> list[Path]:
+    """Return the default ``soffice.exe`` locations of a Windows LibreOffice install."""
+    candidates: list[Path] = []
+    for variable in WINDOWS_PROGRAM_FOLDERS:
+        folder = environ.get(variable)
+        if folder:
+            candidate = Path(folder) / "LibreOffice" / "program" / "soffice.exe"
+            if candidate not in candidates:
+                candidates.append(candidate)
+    return candidates
+
+
+def libreoffice_binary(*, windows: bool = os.name == "nt", environ: Mapping[str, str] = os.environ) -> str:
+    """Find LibreOffice on the PATH or, on Windows, in its default install location.
+
+    The Windows installer does not add LibreOffice to the PATH.
+    """
     for candidate in ("libreoffice", "soffice"):
         resolved = shutil.which(candidate)
         if resolved:
             return resolved
-    raise RuntimeError("LibreOffice/soffice is required to build the manual PDF")
+    searched = windows_libreoffice_candidates(environ) if windows else []
+    for candidate in searched:
+        if candidate.is_file():
+            return str(candidate)
+    locations = "".join(f", {candidate}" for candidate in searched)
+    raise RuntimeError(
+        "LibreOffice/soffice is required to build the manual PDF; searched PATH"
+        f"{locations}. Install LibreOffice or add its program folder to PATH."
+    )
 
 
 def file_url(path: PurePath) -> str:
@@ -70,6 +101,8 @@ def user_installation_argument(profile: PurePath) -> str:
 
 def build(source: Path, output_dir: Path, version: str, *, require_ubuntu_fonts: bool) -> tuple[Path, Path]:
     check_user_manual.validate_odt(source, version)
+    # Name missing Poppler tools before the slow PDF export, not after it.
+    check_user_manual.require_poppler_tools(check_user_manual.pdf_tools(require_ubuntu_fonts=require_ubuntu_fonts))
     if require_ubuntu_fonts:
         check_user_manual.validate_ubuntu_font_environment()
     output_dir.mkdir(parents=True, exist_ok=True)

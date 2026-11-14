@@ -117,6 +117,20 @@ class WikiGenerationTests(unittest.TestCase):
         )
         self.assertIn('https://github.com/owner/clock/raw/deadbeef/docs/manual-source/assets/front-panel-anatomy.svg', rendered)
 
+    def test_local_build_defaults_to_the_southsignallab_repository(self) -> None:
+        import os
+        from unittest import mock
+
+        environment = {key: value for key, value in os.environ.items() if not key.startswith('GITHUB_')}
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / 'wiki'
+            argv = ['build_wiki.py', '--output', str(output)]
+            with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(sys, 'argv', argv):
+                self.assertEqual(0, build_wiki.main())
+            home = (output / 'Home.md').read_text(encoding='utf-8')
+        self.assertIn('https://github.com/southsignallab/eurorack-clock-firmware/', home)
+        self.assertNotIn('/napolitano/', home)
+
 
 if __name__ == '__main__':
     unittest.main()

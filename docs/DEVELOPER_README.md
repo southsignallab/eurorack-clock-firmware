@@ -302,6 +302,24 @@ Panel geometry is separately configurable in `sim/panel_layout.ini`; its committ
 
 For panel controls, virtual time, persistent-state files, macOS/Linux setup, and current limitations, see [`SIMULATOR.md`](SIMULATOR.md).
 
+## 15B. Windows: prerequisites for the full local check suite and the manual build
+
+Running every local check on Windows needs more than the firmware toolchain. These prerequisites were observed on Windows 11 with Git Bash and the Windows Python; GitHub Actions remains the reference.
+
+| Check | Prerequisite on Windows |
+| --- | --- |
+| `pio test -e native`, `scripts/run_host_tests.py --skip-sanitizers` | MSYS2 UCRT64 GCC/G++ and `gcov` (`C:\msys64\ucrt64\bin`) on `PATH`. |
+| `scripts/run_host_tests.py --sanitizers-only` | **WSL2** (Ubuntu, section 15). MinGW GCC cannot link `-fsanitize=address,undefined`. |
+| `ctest --preset simulator-headless` | `C:\msys64\ucrt64\bin` **before** Git for Windows' `mingw64\bin` on `PATH`. Otherwise the test binaries load Git's `libstdc++-6.dll` and stop with `0xc0000139`. |
+| Python tooling tests and manual scripts | The Windows Python **before** `C:\msys64\ucrt64\bin` on `PATH`; MSYS2 installs its own `python` there, which lacks the project's packages. `python -m pip install pillow lxml`. |
+| `scripts/build_user_manual.py` | LibreOffice. The installer does not add it to `PATH`; the build also looks for `soffice.exe` in `%ProgramFiles%\LibreOffice\program`. |
+| PDF checks (`build_user_manual.py`, `check_user_manual.py`, `update_manual_contents.py`) | Poppler `pdfinfo`, `pdftotext` and `pdffonts`, for example `pacman -S mingw-w64-ucrt-x86_64-poppler` in MSYS2 (also installs fontconfig's `fc-match`; about 400 MiB with its dependencies). The scripts name missing tools before the PDF export. |
+| `--require-ubuntu-fonts` | Ubuntu, Ubuntu Light, Ubuntu Bold and Ubuntu Mono installed so that `fc-match` finds them; a per-user font installation is enough. A variable Ubuntu Mono is embedded as a Type 3 font. |
+
+A working order for Git Bash is: Windows Python, then CMake/Ninja, then `/c/msys64/ucrt64/bin`, then LibreOffice's `program` folder, then the rest of `PATH`. The manual scripts read tool output as UTF-8 and do not need `PYTHONUTF8=1`.
+
+`scripts/run_host_tests.py` keeps one build tree per run mode below `build/host_tests/` (`coverage`, `sanitizers`, `focus_<area>`). Runs of different modes can run at the same time, for example coverage on Windows and sanitizers in WSL on the same checkout. A second run of the same mode stops with a message instead of deleting the tree in use. The lock is local to one operating system, so do not start the same mode on Windows and in WSL at the same time.
+
 ---
 
 # macOS

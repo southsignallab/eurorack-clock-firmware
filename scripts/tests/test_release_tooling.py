@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import importlib.util
 import re
 import runpy
@@ -664,6 +665,86 @@ class RepositoryPolicyTests(unittest.TestCase):
             "LICENSE-BSD-3-Clause.txt",
         ):
             self.assertTrue((ROOT / "third_party" / filename).is_file())
+
+
+REPOSITORY_URL = "https://github.com/southsignallab/eurorack-clock-firmware"
+OLD_REPOSITORY_PATTERN = re.compile(r"napolitano/eurorack-clock-firmware|github\.com/napolitano")
+# Places that keep the old address on purpose: release history, frozen
+# manuals and the firmware update QR code with the documents and the check
+# that describe it (changed together in W-310).
+OLD_REPOSITORY_EXCEPTIONS = (
+    "CHANGELOG.md",
+    "docs/releases/",
+    "docs/manual/",
+    "src/",
+    "docs/USER_GUIDE.md",
+    "docs/PROJECT_IDENTITY.md",
+    "scripts/check_documentation.py",
+    "scripts/check_user_manual.py",
+    "scripts/tests/test_release_tooling.py",
+)
+TEXT_SUFFIXES = {".md", ".py", ".json", ".yml", ".yaml", ".cff", ".txt", ".cpp", ".h", ".ini", ".toml", ".cmake", ".html"}
+
+
+def load_script(name: str):
+    spec = importlib.util.spec_from_file_location(f"{name}_repository_test", ROOT / "scripts" / f"{name}.py")
+    if spec is None or spec.loader is None:
+        raise AssertionError(f"Unable to load scripts/{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.path.insert(0, str(ROOT / "scripts"))
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.path.remove(str(ROOT / "scripts"))
+    return module
+
+
+class RepositoryAddressTests(unittest.TestCase):
+    """W-047: tooling, metadata and documentation use the southsignallab repository."""
+
+    def test_release_tooling_links_the_southsignallab_repository(self) -> None:
+        for name in ("package_release", "release_notes", "check_user_manual"):
+            with self.subTest(script=name):
+                self.assertEqual(REPOSITORY_URL, load_script(name).REPOSITORY_URL)
+
+    def test_frozen_manuals_keep_the_repository_address_of_their_release(self) -> None:
+        check = load_script("check_user_manual")
+        self.assertEqual("https://github.com/napolitano/eurorack-clock-firmware", check.LEGACY_REPOSITORY_URL)
+        self.assertEqual(check.LEGACY_REPOSITORY_URL, check.LEGACY_REPOSITORY_QR_URL)
+
+    def test_vcv_plugin_metadata_links_the_southsignallab_repository(self) -> None:
+        plugin = json.loads((ROOT / "vcv" / "plugin.json").read_text(encoding="utf-8"))
+        self.assertEqual(REPOSITORY_URL, plugin["pluginUrl"])
+        self.assertEqual(f"{REPOSITORY_URL}/wiki", plugin["manualUrl"])
+        self.assertEqual(REPOSITORY_URL, plugin["sourceUrl"])
+
+    def test_working_manual_links_the_southsignallab_repository(self) -> None:
+        import zipfile
+
+        with zipfile.ZipFile(ROOT / "docs" / "manual-source" / "clock-user-manual.odt") as archive:
+            content = archive.read("content.xml").decode("utf-8")
+        self.assertIn(f'xlink:href="{REPOSITORY_URL}"', content)
+        self.assertIsNone(OLD_REPOSITORY_PATTERN.search(content))
+
+    def test_old_repository_address_only_remains_in_the_documented_exceptions(self) -> None:
+        excluded_roots = {".git", ".pio", ".rag", ".claude", "build", "coverage", "dist", "node_modules"}
+        offenders = []
+        paths = []
+        for directory, subdirectories, files in os.walk(ROOT):
+            if Path(directory) == ROOT:
+                subdirectories[:] = [name for name in subdirectories if name not in excluded_roots]
+            paths.extend(Path(directory) / name for name in files)
+        for path in sorted(paths):
+            if path.suffix.lower() not in TEXT_SUFFIXES:
+                continue
+            posix = path.relative_to(ROOT).as_posix()
+            if posix.startswith(OLD_REPOSITORY_EXCEPTIONS):
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for number, line in enumerate(text.splitlines(), start=1):
+                if OLD_REPOSITORY_PATTERN.search(line):
+                    offenders.append(f"{posix}:{number}")
+        self.assertEqual([], offenders)
 
 
 if __name__ == "__main__":

@@ -275,7 +275,7 @@ def sha256_text(text: str) -> str:
 
 
 def run_checked(args: list[str], cwd: Path = ROOT, capture: bool = False) -> subprocess.CompletedProcess[str]:
-    result = subprocess.run(args, cwd=cwd, text=True, capture_output=capture, check=False)
+    result = subprocess.run(args, cwd=cwd, text=True, encoding="utf-8", capture_output=capture, check=False)
     if result.returncode != 0:
         details = ""
         if capture:

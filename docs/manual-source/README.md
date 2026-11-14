@@ -46,6 +46,8 @@ python scripts/update_manual_contents.py <odt> <rendered-pdf>  # normally invoke
 
 `prepare_release_manual.py` requires the Ubuntu font family when it stamps the full-page cover images of manuals up to 1.1.0. `--allow-font-substitution` exists only for local non-release previews.
 
+The helpers need LibreOffice, the Poppler tools `pdfinfo`, `pdftotext` and `pdffonts`, and fontconfig's `fc-match`; a missing Poppler tool is named before the PDF export. On Windows `build_user_manual.py` also finds LibreOffice in its default install folder; see [`DEVELOPER_README.md`](../DEVELOPER_README.md#15b-windows-prerequisites-for-the-full-local-check-suite-and-the-manual-build) for the Windows setup.
+
 `build_user_manual.py` exports the PDF without LibreOffice's image-resolution reduction, so the screenshots keep their nearest-neighbour pixels. With `--require-ubuntu-fonts` the PDF check fails if any embedded font is outside the Ubuntu family, for example a substitute that LibreOffice embedded for a glyph Ubuntu does not have.
 
 ## Asset policy

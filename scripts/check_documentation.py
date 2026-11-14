@@ -21,8 +21,6 @@ ROOT = Path(__file__).resolve().parents[1]
 RETIRED_FOOTER = 'From Munich with'
 # Records of completed releases keep their wording; they are not current documentation.
 RETIRED_FOOTER_HISTORY = ('CHANGELOG.md', 'docs/releases/')
-# Component READMEs under test/ and vcv/ change together with their component trees.
-RETIRED_FOOTER_DEFERRED = ('test/README.md', 'vcv/README.md')
 RUNNING_MANUAL = ROOT / 'docs' / 'manual-source' / 'clock-user-manual.odt'
 MARKDOWN_LINK_RE = re.compile(r'!?(?:\[[^\]]*\])\(([^)]+)\)')
 HTML_LINK_RE = re.compile(r'(?:href|src)="([^"]+)"')
@@ -97,7 +95,7 @@ def check_retired_footer(errors: list[str], paths: list[Path] | None = None) -> 
         paths = []
         for path in sorted(candidates):
             relative = path.relative_to(ROOT).as_posix()
-            if relative.startswith(RETIRED_FOOTER_HISTORY) or relative in RETIRED_FOOTER_DEFERRED:
+            if relative.startswith(RETIRED_FOOTER_HISTORY):
                 continue
             paths.append(path)
     for path in paths:

@@ -52,6 +52,12 @@ class RetiredFooterTests(unittest.TestCase):
         check_documentation.check_retired_footer(errors)
         self.assertEqual([], errors)
 
+    def test_component_readmes_are_checked_without_exemption(self) -> None:
+        errors: list[str] = []
+        check_documentation.check_retired_footer(errors, [ROOT / 'test/README.md', ROOT / 'vcv/README.md'])
+        self.assertEqual([], errors)
+        self.assertFalse(hasattr(check_documentation, 'RETIRED_FOOTER_DEFERRED'))
+
     def test_running_manual_footer_has_title_and_page_number_only(self) -> None:
         with zipfile.ZipFile(RUNNING_MANUAL) as archive:
             styles = archive.read('styles.xml').decode('utf-8')

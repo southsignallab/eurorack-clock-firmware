@@ -110,5 +110,3 @@ The first CI job builds a Linux x64 `.vcvplugin` artifact independently of firmw
 For an Actions artifact, extract the workflow artifact first; the contained `.vcvplugin` is the actual Rack package. On Linux x64 it can be copied to `~/.local/share/Rack2/plugins-lin-x64/` and Rack restarted. `make -C vcv install` performs the same placement when building locally.
 
 Once the real Rack SDK build and Rack smoke tests are stable on all target platforms, the normal CLOCK release pipeline can promote VCV packages into `dist/vcv/` and attach them to tagged releases.
-
-<h6 align="center">From Munich with &#9829;</h6>

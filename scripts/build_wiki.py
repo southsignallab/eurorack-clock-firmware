@@ -110,11 +110,6 @@ def repository_url(server_url: str, repository: str, ref: str, path: PurePosixPa
     return f'{server_url.rstrip("/")}/{repository}/{mode}/{ref}/{safe_path}'
 
 
-def strip_repository_footer(text: str) -> str:
-    """Remove a retired centered footer that a source document may still carry."""
-    return FOOTER_RE.sub('', text.rstrip())
-
-
 def resolve_target(source: PurePosixPath, target: str) -> tuple[PurePosixPath, str]:
     """Resolve a relative Markdown target against its source document."""
     path_part, separator, anchor = target.partition('#')
@@ -228,7 +223,7 @@ def render_page(page: WikiPage, version: str, repository: str, ref: str, server_
     source = ROOT / page.source
     if not source.is_file():
         raise SystemExit(f'Wiki source missing: {page.source}')
-    body = strip_repository_footer(source.read_text(encoding='utf-8'))
+    body = source.read_text(encoding='utf-8')
     body = rewrite_links(body, PurePosixPath(page.source), repository, ref, server_url)
     prefix = generated_notice(page, repository, ref, server_url)
     if page.slug in {'Home', 'Manual-and-Downloads'}:

@@ -308,7 +308,7 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 - Remove the decorative badges and the Mermaid colour classes from the README; the roadmap diagram content is unchanged.
 - Remove `scripts/generate_readme_header.py`, `docs/assets/clock-header.svg` and `docs/assets/clock-header.jpg`; nothing else used them.
 - Bundle Ubuntu Sans and Ubuntu Sans Mono (Ubuntu Font Licence 1.0) under `third_party/fonts/ubuntu-sans/` for the hero generator; see `THIRD_PARTY_NOTICES.md`.
-- Remove the centered Munich footer from current Markdown documents, the generated Wiki and the running ODT manual (page footer, cover and back-cover raster, licence page). The manual page footer now reads `CLOCK User Manual` on the left and the page number on the right. `scripts/check_documentation.py` and `scripts/build_wiki.py` now reject the footer instead of requiring it; release history and the frozen release manuals are unchanged.
+- Remove the retired centered footer from all current Markdown documents, including `test/README.md` and `vcv/README.md`, the generated Wiki and the running ODT manual (page footer, cover and back-cover raster, licence page). The manual page footer now reads `CLOCK User Manual` on the left and the page number on the right. `scripts/check_documentation.py` and `scripts/build_wiki.py` now reject the footer instead of requiring it, without per-file exemptions, and `scripts/build_wiki.py` no longer strips it from source documents; release history and the frozen release manuals are unchanged.
 
 ## [1.1.0] - 2026-09-23
 

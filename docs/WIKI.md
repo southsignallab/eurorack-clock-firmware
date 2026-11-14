@@ -19,7 +19,7 @@ The chapter-oriented repository source lives in `docs/user-guide/`. `docs/USER_G
 
 `_Sidebar.md` is generated from the same page manifest so navigation cannot silently drift away from the page set. Repository-relative Markdown links are rewritten either to the corresponding Wiki page or to the exact source commit in the main repository. Direct edits in the GitHub Wiki are intentionally overwritten on the next successful publication.
 
-Generated content pages end without a footer. A retired centered footer still present in a source document is removed during generation.
+Generated content pages end without a footer. Generation fails when a source document still carries the retired centered footer; it is not removed silently.
 
 ## ODT manual download
 

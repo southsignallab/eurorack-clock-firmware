@@ -124,5 +124,3 @@ It executes the complete firmware above the simulator HAL and validates boot, re
 ## Hardware-in-the-loop
 
 Electrical gate timing, comparator behavior, real bus signaling, boot pulse safety, External Sync capture and physical Groove-Record TAP latency/jitter remain a separate HIL layer because those properties cannot be proven by host mocks.
-
-<h6 align="center">From Munich with &#9829;</h6>

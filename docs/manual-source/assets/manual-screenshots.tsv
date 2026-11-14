@@ -1,95 +1,95 @@
-boot-000	Boot screen at power-on
-boot-250	Boot screen at 25 percent
-boot-500	Boot screen at 50 percent
-boot-750	Boot screen at 75 percent
-boot-1000	Boot screen at completion
-performance-independent-clock-play	Independent Clock channel while playing
-performance-independent-clock-pause	Independent Clock channel while paused
-performance-independent-clock-stop	Independent Clock channel while stopped
-performance-independent-off	Independent channel disabled
-performance-independent-euclid-play	Independent Euclid channel while playing
-performance-independent-sequencer-play	Independent 128-step Sequencer 2.0 while playing
-performance-one-clock-play	One Clock mode with Humanize while playing
-performance-pre-count-start	Pre-Count popover at the first beat of a 4/4 count
-performance-pre-count-progress	Pre-Count popover after the second beat of a 4/4 count
-performance-divider-bank-play	Divider Bank in prime-divider mode while playing
-performance-external-unlocked	External clock source before lock
-performance-external-locked	External clock source with lock
-performance-auto-internal	AUTO clock source using the internal master
-performance-auto-external	AUTO clock source locked to external timing
-channel-overview-independent	Independent-mode eight-channel overview
-channel-overview-one-clock	Global overview in One Clock mode
-channel-overview-divider-bank	Global overview in Divider Bank mode
-mode-select-one-clock	Horizontal mode carousel
-mode-select-divider-bank	Horizontal mode carousel
-mode-select-clock	Horizontal mode carousel
-mode-select-euclid	Horizontal mode carousel
-mode-select-sequencer	Horizontal mode carousel
-mode-select-off	Horizontal mode carousel
-mode-change-confirm-no	Mode-change confirmation with safe default NO
-mode-change-confirm-yes	Mode-change confirmation with YES selected
-sequencer-editor	Sequencer 2.0 editor with step expression and live playhead
-templates	Factory template selection
-groove-editor-custom	Custom Groove graphical editor
-groove-record-live	Custom Groove tap recorder while recording
-settings-root	Settings root
-settings-general	General settings
-settings-inputs	Global input-role assignments
-settings-input-config	External input timing configuration
-settings-hardware	Hardware orientation and encoder settings
-settings-master	Master clock settings
-settings-preferences	Preset settings
-settings-screensaver	Screensaver settings
-settings-info	Firmware information
-settings-support	Project support destinations
-settings-licenses	Licensing information
-settings-updates	Scannable update QR code
-settings-channel	Selected-channel group menu
-settings-timing	Selected-channel Timing settings
-settings-output	Selected-channel Output settings
-settings-clock	Clock generator settings
-settings-euclid	Euclid generator settings
-settings-sequencer	Sequencer settings
-settings-sequencer-pattern	Sequencer pattern operations
-settings-one-clock	One Clock group menu
-settings-one-clock-timing	One Clock Timing settings
-settings-one-clock-output	One Clock Output settings
-settings-divider-bank	Divider Bank settings
-settings-info-author-popover	Full read-only author value opened from the truncated Info row
-settings-editing	Settings value while actively editing
-preset-load	User preset load list
-preset-save	User preset save list
-preset-overwrite-confirm	Occupied preset overwrite confirmation
-preset-name-entry	Preset-name character-band editor
-screensaver-clock	Clock screensaver with eight oscilloscope-style channel traces
-screensaver-plug	Plug screensaver with a damped plucked string
-screensaver-heartbeat	Heartbeat screensaver pulse frame
-screensaver-acid	Acid screensaver bouncing and rotating smiley
-screensaver-spectrum	Synthetic spectrum analyser with peak hold and decay
-screensaver-field	Dense smooth scalar-field isocontours around moving attractors
-screensaver-blox	Blox falling triangle-built bodies accumulating on the display
-screensaver-matrix	Original monochrome procedural digital rain
-screensaver-cube-cover	Cube Cover filling the OLED with 8x8 cube tiles
-screensaver-make-music	MAKE MUSIC NOT WAR building character by character and row by row with mid-dots
-screensaver-labyrinth	Random perfect maze on the OLED grid
-screensaver-starfield	Three-depth parallax starfield
-screensaver-fireworks	Pixel rocket exploding in the upper display area
-screensaver-fractal	Fractal screensaver frame
-screensaver-orbit	Orbit screensaver frame
-pixel-raid-intro	Pixel Raid individual retro intro with marquee
-pixel-raid	Pixel Raid boot Easter egg
-formula-1-intro	Formula 1 individual retro intro with marquee
-formula-1	Formula 1 boot Easter egg
-formula-1-crash	Formula 1 visible crash burst state
-breakout-intro	Breakout individual retro intro with marquee
-breakout	Breakout boot Easter egg before Tap launch
-breakout-modifier	Breakout action frame with enlarged paddle and falling speed modifier
-egg-journey-intro	Egg Journey individual retro intro with marquee
-egg-journey	Egg Journey boot Easter egg with jumping egg and incoming asteroid
-egg-journey-broken	Egg Journey crater crash with broken egg shell
-egg-journey-flat	Egg Journey asteroid collision with flattened egg
-beatknecht-intro	BEATKNECHT individual retro intro with marquee
-beatknecht	Eight-channel BEATKNECHT gate-pattern Easter egg
-arcade-name-entry	Shared three-letter initials editor for a qualifying Top-100 score
-arcade-top-100	Scrollable shared Top-100 leaderboard presentation
-power-off	Display appearance while module power is off
+boot-000	boot-000-print	Boot screen at power-on
+boot-250	boot-250-print	Boot screen at 25 percent
+boot-500	boot-500-print	Boot screen at 50 percent
+boot-750	boot-750-print	Boot screen at 75 percent
+boot-1000	boot-1000-print	Boot screen at completion
+performance-independent-clock-play	performance-independent-clock-play-print	Independent Clock channel while playing
+performance-independent-clock-pause	performance-independent-clock-pause-print	Independent Clock channel while paused
+performance-independent-clock-stop	performance-independent-clock-stop-print	Independent Clock channel while stopped
+performance-independent-off	performance-independent-off-print	Independent channel disabled
+performance-independent-euclid-play	performance-independent-euclid-play-print	Independent Euclid channel while playing
+performance-independent-sequencer-play	performance-independent-sequencer-play-print	Independent 128-step Sequencer 2.0 while playing
+performance-one-clock-play	performance-one-clock-play-print	One Clock mode with Humanize while playing
+performance-pre-count-start	performance-pre-count-start-print	Pre-Count popover at the first beat of a 4/4 count
+performance-pre-count-progress	performance-pre-count-progress-print	Pre-Count popover after the second beat of a 4/4 count
+performance-divider-bank-play	performance-divider-bank-play-print	Divider Bank in prime-divider mode while playing
+performance-external-unlocked	performance-external-unlocked-print	External clock source before lock
+performance-external-locked	performance-external-locked-print	External clock source with lock
+performance-auto-internal	performance-auto-internal-print	AUTO clock source using the internal master
+performance-auto-external	performance-auto-external-print	AUTO clock source locked to external timing
+channel-overview-independent	channel-overview-independent-print	Independent-mode eight-channel overview
+channel-overview-one-clock	channel-overview-one-clock-print	Global overview in One Clock mode
+channel-overview-divider-bank	channel-overview-divider-bank-print	Global overview in Divider Bank mode
+mode-select-one-clock	mode-select-one-clock-print	Horizontal mode carousel
+mode-select-divider-bank	mode-select-divider-bank-print	Horizontal mode carousel
+mode-select-clock	mode-select-clock-print	Horizontal mode carousel
+mode-select-euclid	mode-select-euclid-print	Horizontal mode carousel
+mode-select-sequencer	mode-select-sequencer-print	Horizontal mode carousel
+mode-select-off	mode-select-off-print	Horizontal mode carousel
+mode-change-confirm-no	mode-change-confirm-no-print	Mode-change confirmation with safe default NO
+mode-change-confirm-yes	mode-change-confirm-yes-print	Mode-change confirmation with YES selected
+sequencer-editor	sequencer-editor-print	Sequencer 2.0 editor with step expression and live playhead
+templates	templates-print	Factory template selection
+groove-editor-custom	groove-editor-custom-print	Custom Groove graphical editor
+groove-record-live	groove-record-live-print	Custom Groove tap recorder while recording
+settings-root	settings-root-print	Settings root
+settings-general	settings-general-print	General settings
+settings-inputs	settings-inputs-print	Global input-role assignments
+settings-input-config	settings-input-config-print	External input timing configuration
+settings-hardware	settings-hardware-print	Hardware orientation and encoder settings
+settings-master	settings-master-print	Master clock settings
+settings-preferences	settings-preferences-print	Preset settings
+settings-screensaver	settings-screensaver-print	Screensaver settings
+settings-info	settings-info-print	Firmware information
+settings-support	settings-support-print	Project support destinations
+settings-licenses	settings-licenses-print	Licensing information
+settings-updates	settings-updates-print	Scannable update QR code
+settings-channel	settings-channel-print	Selected-channel group menu
+settings-timing	settings-timing-print	Selected-channel Timing settings
+settings-output	settings-output-print	Selected-channel Output settings
+settings-clock	settings-clock-print	Clock generator settings
+settings-euclid	settings-euclid-print	Euclid generator settings
+settings-sequencer	settings-sequencer-print	Sequencer settings
+settings-sequencer-pattern	settings-sequencer-pattern-print	Sequencer pattern operations
+settings-one-clock	settings-one-clock-print	One Clock group menu
+settings-one-clock-timing	settings-one-clock-timing-print	One Clock Timing settings
+settings-one-clock-output	settings-one-clock-output-print	One Clock Output settings
+settings-divider-bank	settings-divider-bank-print	Divider Bank settings
+settings-info-author-popover	settings-info-author-popover-print	Full read-only author value opened from the truncated Info row
+settings-editing	settings-editing-print	Settings value while actively editing
+preset-load	preset-load-print	User preset load list
+preset-save	preset-save-print	User preset save list
+preset-overwrite-confirm	preset-overwrite-confirm-print	Occupied preset overwrite confirmation
+preset-name-entry	preset-name-entry-print	Preset-name character-band editor
+screensaver-clock	screensaver-clock-print	Clock screensaver with eight oscilloscope-style channel traces
+screensaver-plug	screensaver-plug-print	Plug screensaver with a damped plucked string
+screensaver-heartbeat	screensaver-heartbeat-print	Heartbeat screensaver pulse frame
+screensaver-acid	screensaver-acid-print	Acid screensaver bouncing and rotating smiley
+screensaver-spectrum	screensaver-spectrum-print	Synthetic spectrum analyser with peak hold and decay
+screensaver-field	screensaver-field-print	Dense smooth scalar-field isocontours around moving attractors
+screensaver-blox	screensaver-blox-print	Blox falling triangle-built bodies accumulating on the display
+screensaver-matrix	screensaver-matrix-print	Original monochrome procedural digital rain
+screensaver-cube-cover	screensaver-cube-cover-print	Cube Cover filling the OLED with 8x8 cube tiles
+screensaver-make-music	screensaver-make-music-print	MAKE MUSIC NOT WAR building character by character and row by row with mid-dots
+screensaver-labyrinth	screensaver-labyrinth-print	Random perfect maze on the OLED grid
+screensaver-starfield	screensaver-starfield-print	Three-depth parallax starfield
+screensaver-fireworks	screensaver-fireworks-print	Pixel rocket exploding in the upper display area
+screensaver-fractal	screensaver-fractal-print	Fractal screensaver frame
+screensaver-orbit	screensaver-orbit-print	Orbit screensaver frame
+pixel-raid-intro	pixel-raid-intro-print	Pixel Raid individual retro intro with marquee
+pixel-raid	pixel-raid-print	Pixel Raid boot Easter egg
+formula-1-intro	formula-1-intro-print	Formula 1 individual retro intro with marquee
+formula-1	formula-1-print	Formula 1 boot Easter egg
+formula-1-crash	formula-1-crash-print	Formula 1 visible crash burst state
+breakout-intro	breakout-intro-print	Breakout individual retro intro with marquee
+breakout	breakout-print	Breakout boot Easter egg before Tap launch
+breakout-modifier	breakout-modifier-print	Breakout action frame with enlarged paddle and falling speed modifier
+egg-journey-intro	egg-journey-intro-print	Egg Journey individual retro intro with marquee
+egg-journey	egg-journey-print	Egg Journey boot Easter egg with jumping egg and incoming asteroid
+egg-journey-broken	egg-journey-broken-print	Egg Journey crater crash with broken egg shell
+egg-journey-flat	egg-journey-flat-print	Egg Journey asteroid collision with flattened egg
+beatknecht-intro	beatknecht-intro-print	BEATKNECHT individual retro intro with marquee
+beatknecht	beatknecht-print	Eight-channel BEATKNECHT gate-pattern Easter egg
+arcade-name-entry	arcade-name-entry-print	Shared three-letter initials editor for a qualifying Top-100 score
+arcade-top-100	arcade-top-100-print	Scrollable shared Top-100 leaderboard presentation
+power-off	power-off-print	Display appearance while module power is off

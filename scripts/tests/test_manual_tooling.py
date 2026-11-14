@@ -185,6 +185,48 @@ class ManualToolingTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "embedded/subset"):
             CHECK.validate_ubuntu_pdf_fonts(fonts)
 
+    PDFFONTS_HEADER = (
+        "name                                 type              encoding         emb sub uni object ID\n"
+        "------------------------------------ ----------------- ---------------- --- --- --- ---------\n"
+    )
+
+    def test_pdf_font_check_rejects_an_embedded_substitute_font(self) -> None:
+        # Shape of the Windows build output: the Ubuntu faces are present, but
+        # LibreOffice fell back to Segoe UI for some glyphs.
+        fonts = self.PDFFONTS_HEADER + (
+            "BAAAAA+Ubuntu-Light                  TrueType          Identity-H       yes yes yes     10  0\n"
+            "CAAAAA+Ubuntu-Bold                   TrueType          Identity-H       yes yes yes     15  0\n"
+            "DAAAAA+UbuntuMono-Regular            Type 3            Custom           yes yes yes     20  0\n"
+            "EAAAAA+SegoeUI                       TrueType          Identity-H       yes yes yes     25  0\n"
+        )
+        with self.assertRaisesRegex(RuntimeError, "SegoeUI"):
+            CHECK.validate_ubuntu_pdf_fonts(fonts)
+
+    def test_pdf_font_check_rejects_an_unnamed_font(self) -> None:
+        fonts = self.PDFFONTS_HEADER + (
+            "BAAAAA+Ubuntu-Regular                TrueType          Identity-H       yes yes yes     10  0\n"
+            "[none]                               Type 3            Custom           yes no  no      30  0\n"
+        )
+        with self.assertRaisesRegex(RuntimeError, "none"):
+            CHECK.validate_ubuntu_pdf_fonts(fonts)
+
+    def test_pdf_font_check_rejects_an_unembedded_face_beside_embedded_ones(self) -> None:
+        fonts = self.PDFFONTS_HEADER + (
+            "BAAAAA+Ubuntu-Regular                TrueType          Identity-H       yes yes yes     10  0\n"
+            "Ubuntu-Bold                          TrueType          WinAnsi          no  no  no      11  0\n"
+        )
+        with self.assertRaisesRegex(RuntimeError, "Ubuntu-Bold"):
+            CHECK.validate_ubuntu_pdf_fonts(fonts)
+
+    def test_pdf_font_check_accepts_only_ubuntu_family_faces(self) -> None:
+        fonts = self.PDFFONTS_HEADER + (
+            "AAAAAA+Ubuntu                        TrueType          Identity-H       yes yes yes      8  0\n"
+            "BAAAAA+Ubuntu-Light                  TrueType          Identity-H       yes yes yes     10  0\n"
+            "CAAAAA+Ubuntu-Bold                   TrueType          Identity-H       yes yes yes     15  0\n"
+            "DAAAAA+UbuntuMono-Regular            Type 3            Custom           yes yes yes     20  0\n"
+        )
+        CHECK.validate_ubuntu_pdf_fonts(fonts)
+
     def test_release_workflow_publishes_odt_and_pdf(self) -> None:
         workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
         self.assertIn("scripts/generate_manual_screenshots.py", workflow)
@@ -227,12 +269,28 @@ class ManualToolingTests(unittest.TestCase):
         targets = REFRESH.direct_frame_targets(
             self.working, ROOT / "docs" / "manual-source" / "assets"
         )
-        self.assertEqual(len(targets), len(REFRESH.DIRECT_SCREENSHOTS))
+        self.assertEqual(len(targets), len(REFRESH.DIRECT_SCREENSHOTS) + len(REFRESH.DIRECT_ILLUSTRATIONS))
         self.assertIn("ManualImage15", targets)
-        self.assertEqual(REFRESH.DIRECT_SCREENSHOTS["ManualImage15"], "settings-input-config.png")
-        self.assertEqual(REFRESH.DIRECT_SCREENSHOTS["ManualImage23"], "settings-licenses.png")
-        self.assertEqual(REFRESH.DIRECT_SCREENSHOTS["ManualImage24"], "settings-general.png")
-        self.assertEqual(REFRESH.DIRECT_SCREENSHOTS["ManualImage25"], "settings-master.png")
+        self.assertEqual(REFRESH.DIRECT_SCREENSHOTS["ManualImage15"], "settings-input-config-print.png")
+        self.assertEqual(REFRESH.DIRECT_SCREENSHOTS["ManualImage23"], "settings-licenses-print.png")
+        self.assertEqual(REFRESH.DIRECT_SCREENSHOTS["ManualImage24"], "settings-general-print.png")
+        self.assertEqual(REFRESH.DIRECT_SCREENSHOTS["ManualImage25"], "settings-master-print.png")
+        # The manual embeds only print variants (D-12 point 5).
+        self.assertTrue(all(name.endswith("-print.png") for name in REFRESH.DIRECT_SCREENSHOTS.values()))
+        self.assertEqual(REFRESH.DIRECT_ILLUSTRATIONS["ManualImage1"], "front-panel-anatomy-print.svg")
+        self.assertEqual(REFRESH.DIRECT_ILLUSTRATIONS["ManualCoverPanel"], "front-panel-print.svg")
+
+    def test_frozen_manuals_keep_their_screenshot_contract(self) -> None:
+        frozen = ROOT / "docs" / "manual" / "clock-user-manual.1.1.0.odt"
+        self.assertFalse(REFRESH.is_typeset_manual(frozen))
+        self.assertTrue(REFRESH.is_typeset_manual(self.working))
+        self.assertEqual(REFRESH.frame_contract(frozen), REFRESH.LEGACY_DIRECT_SCREENSHOTS)
+        self.assertTrue(all(not name.endswith("-print.png") for name in REFRESH.LEGACY_DIRECT_SCREENSHOTS.values()))
+
+    def test_direct_screenshots_are_not_duplicated(self) -> None:
+        # W-297: every direct screenshot shows a different state.
+        assets = list(REFRESH.DIRECT_SCREENSHOTS.values())
+        self.assertEqual(len(assets), len(set(assets)))
 
     def test_refresh_replaces_direct_frames_and_galleries(self) -> None:
         import zipfile
@@ -243,7 +301,9 @@ class ManualToolingTests(unittest.TestCase):
             direct_count, gallery_count = REFRESH.refresh(
                 self.working, output, ROOT / "docs" / "manual-source" / "assets"
             )
-            self.assertEqual(direct_count, len(REFRESH.DIRECT_SCREENSHOTS))
+            self.assertEqual(
+                direct_count, len(REFRESH.DIRECT_SCREENSHOTS) + len(REFRESH.DIRECT_ILLUSTRATIONS)
+            )
             self.assertEqual(gallery_count, 22)
             with zipfile.ZipFile(output, "r") as archive:
                 root = etree.fromstring(archive.read("content.xml"))
@@ -254,11 +314,11 @@ class ManualToolingTests(unittest.TestCase):
                 href = frame.get(f"{{{ns['xlink']}}}href")
                 self.assertEqual(
                     archive.read(href),
-                    (ROOT / "docs" / "manual-source" / "assets" / "settings-input-config.png").read_bytes(),
+                    (ROOT / "docs" / "manual-source" / "assets" / "settings-input-config-print.png").read_bytes(),
                 )
                 self.assertEqual(
                     archive.read("Pictures/gallery_manualgalleryscreensavers_01_01.png"),
-                    (ROOT / "docs" / "manual-source" / "assets" / "screensaver-clock.png").read_bytes(),
+                    (ROOT / "docs" / "manual-source" / "assets" / "screensaver-clock-print.png").read_bytes(),
                 )
                 licenses = root.xpath(
                     '//draw:frame[@draw:name="ManualImage23"]/draw:image', namespaces=ns
@@ -266,7 +326,12 @@ class ManualToolingTests(unittest.TestCase):
                 licenses_href = licenses.get(f"{{{ns['xlink']}}}href")
                 self.assertEqual(
                     archive.read(licenses_href),
-                    (ROOT / "docs" / "manual-source" / "assets" / "settings-licenses.png").read_bytes(),
+                    (ROOT / "docs" / "manual-source" / "assets" / "settings-licenses-print.png").read_bytes(),
+                )
+                panel = root.xpath('//draw:frame[@draw:name="ManualImage1"]/draw:image', namespaces=ns)[0]
+                self.assertEqual(
+                    archive.read(panel.get(f"{{{ns['xlink']}}}href")),
+                    (ROOT / "docs" / "manual-source" / "assets" / "front-panel-anatomy-print.svg").read_bytes(),
                 )
 
     def test_contents_updater_sees_24_semantic_chapters(self) -> None:
@@ -322,6 +387,15 @@ class ManualToolingTests(unittest.TestCase):
         self.assertEqual(2, source.count("user_installation_argument(Path(profile).resolve())"))
         self.assertNotIn("UserInstallation=file://{", source)
 
+    def test_manual_pdf_export_keeps_screenshot_pixels(self) -> None:
+        # D-12 point 5: LibreOffice's default 300 dpi image reduction would
+        # resample the nearest-neighbour screenshots; every export disables it.
+        source = (ROOT / "scripts" / "build_user_manual.py").read_text(encoding="utf-8")
+        self.assertIn('"ReduceImageResolution":{"type":"boolean","value":"false"}', BUILD.PDF_EXPORT_FILTER)
+        self.assertTrue(BUILD.PDF_EXPORT_FILTER.startswith("pdf:writer_pdf_Export:"))
+        self.assertEqual(2, source.count("PDF_EXPORT_FILTER,"))
+        self.assertNotIn('"--convert-to",\n                "pdf",', source)
+
     def test_manual_screenshot_generator_recovers_from_generator_mismatch(self) -> None:
         generator = load(
             "generate_manual_screenshots_test",
@@ -355,6 +429,155 @@ class ManualToolingTests(unittest.TestCase):
         self.assertIn("clock-user-manual", text)
         self.assertIn("scripts/generate_manual_screenshots.py", text)
         self.assertIn("scripts/refresh_manual_screenshots.py", text)
+
+
+QR = load("generate_manual_qr_codes", ROOT / "scripts" / "generate_manual_qr_codes.py")
+SCREENSHOTS = load("generate_manual_screenshots_print", ROOT / "scripts" / "generate_manual_screenshots.py")
+PANEL = load("generate_front_panel_illustration", ROOT / "scripts" / "generate_front_panel_illustration.py")
+ASSETS = ROOT / "docs" / "manual-source" / "assets"
+
+
+class ManualPrintLayoutTests(unittest.TestCase):
+    """D-12 print contract of the maintained manual (B-04)."""
+
+    def test_qr_encoder_reproduces_the_frozen_release_repository_code(self) -> None:
+        import io
+        import zipfile
+
+        from PIL import Image
+
+        frozen = ROOT / "docs" / "manual" / "clock-user-manual.1.1.0.odt"
+        with zipfile.ZipFile(frozen) as archive, Image.open(
+            io.BytesIO(archive.read("Pictures/repository-qr.png"))
+        ) as image:
+            matrix = QR.matrix_from_image(image)
+        self.assertEqual(QR.encode(CHECK.LEGACY_REPOSITORY_QR_URL), matrix)
+        self.assertNotEqual(QR.encode(QR.REPOSITORY_URL), matrix)
+
+    def test_qr_assets_are_black_and_encode_the_d12_addresses(self) -> None:
+        self.assertEqual(QR.KOFI_URL, "https://ko-fi.com/southsignallab")
+        self.assertEqual(QR.UPDATES_URL, "https://github.com/southsignallab/eurorack-clock-firmware/releases")
+        self.assertEqual(QR.REPOSITORY_URL, "https://github.com/southsignallab/eurorack-clock-firmware")
+        self.assertEqual(QR.generate(ASSETS, check=True), [])
+        CHECK.validate_qr_assets()
+
+    def test_qr_check_rejects_a_coloured_or_wrong_code(self) -> None:
+        from PIL import Image
+
+        image = QR.render(QR.encode(QR.KOFI_URL))
+        self.assertTrue(QR.encodes(image, QR.KOFI_URL))
+        self.assertFalse(QR.encodes(image, "https://example.com/southsignallab"))
+        with tempfile.TemporaryDirectory() as directory:
+            QR.generate(Path(directory), check=False)
+            self.assertEqual(QR.generate(Path(directory), check=True), [])
+            # The former blue update code: same modules, coloured.
+            coloured = Image.new("RGB", image.size, (255, 255, 255))
+            coloured.paste((11, 79, 192), mask=image.convert("L").point(lambda value: 255 - value))
+            coloured.save(Path(directory) / "kofi-support-qr.png")
+            with self.assertRaises(SystemExit):
+                QR.generate(Path(directory), check=True)
+
+    def test_print_variant_inverts_and_scales_pixels_without_resampling(self) -> None:
+        pixels = bytes(255 if (x + y) % 3 == 0 else 0 for y in range(64) for x in range(128))
+        image = SCREENSHOTS.print_variant_image(128, 64, pixels)
+        scale = SCREENSHOTS.PRINT_PIXEL_SCALE
+        left = (image.width - 128 * scale) // 2
+        top = (image.height - 64 * scale) // 2
+        for y in range(0, 64, 7):
+            for x in range(0, 128, 5):
+                expected = 255 - pixels[y * 128 + x]
+                for dy in (0, scale - 1):
+                    for dx in (0, scale - 1):
+                        self.assertEqual(image.getpixel((left + x * scale + dx, top + y * scale + dy)), expected)
+
+    def test_print_variant_is_framed_by_the_display_cutout(self) -> None:
+        width, height, radius = SCREENSHOTS.display_cutout()
+        self.assertEqual((width, height), (25.0, 13.6))
+        self.assertAlmostEqual(radius, 1.4999)
+        image = SCREENSHOTS.print_variant_image(128, 64, bytes(128 * 64))
+        px_per_mm = 128 * SCREENSHOTS.PRINT_PIXEL_SCALE / SCREENSHOTS.OLED_ACTIVE_WIDTH_MM
+        self.assertEqual(image.size, (round(25.12 * px_per_mm), round(13.72 * px_per_mm)))
+        middle_x, middle_y = image.width // 2, image.height // 2
+        stroke_px = round(SCREENSHOTS.PRINT_FRAME_STROKE_MM * px_per_mm)
+        self.assertLess(min(image.getpixel((middle_x, y)) for y in range(stroke_px + 1)), 128)  # top outline
+        self.assertLess(min(image.getpixel((x, middle_y)) for x in range(stroke_px + 1)), 128)  # left outline
+        self.assertEqual(image.getpixel((0, 0)), 255)  # rounded corner stays open
+        self.assertEqual(image.getpixel((middle_x, middle_y)), 255)  # dark OLED pixel prints white
+
+    def test_screenshot_catalog_lists_both_variants(self) -> None:
+        rows = [line.split("\t") for line in (ASSETS / "manual-screenshots.tsv").read_text(encoding="utf-8").splitlines()]
+        self.assertTrue(rows)
+        for name, print_name, _description in rows:
+            self.assertEqual(print_name, f"{name}-print")
+            self.assertTrue((ASSETS / f"{name}.png").is_file(), name)
+            self.assertTrue((ASSETS / f"{print_name}.png").is_file(), print_name)
+        parsed = SCREENSHOTS.parse_manifest(ASSETS / "manual-screenshots.tsv")
+        self.assertEqual(parsed[0], (rows[0][0], rows[0][2]))
+
+    def test_panel_line_drawing_has_no_panel_fill(self) -> None:
+        for callouts in (False, True):
+            svg = PANEL.generate_print(PANEL.DEFAULT_LAYOUT, PANEL.DEFAULT_ARTWORK, callouts=callouts)
+            self.assertIn('<path id="panel" fill="none" stroke="#000"', svg)
+            self.assertIn('<g id="engraving" clip-path="url(#panel-clip)" fill="#000" stroke="#000"', svg)
+            for colour in ("#141414", "#d9d9d9", PANEL.ACCENT):
+                self.assertNotIn(colour, svg)
+            self.assertEqual(svg.count("<text "), 9 if callouts else 0)
+        self.assertEqual(
+            PANEL.generate_print(PANEL.DEFAULT_LAYOUT, PANEL.DEFAULT_ARTWORK, callouts=True),
+            (ASSETS / "front-panel-anatomy-print.svg").read_text(encoding="utf-8"),
+        )
+
+    def test_palette_check_rejects_colour_and_fills(self) -> None:
+        clean = '<style:text-properties fo:color="#222222"/>'
+        CHECK.validate_print_palette(clean, clean)
+        for bad in (
+            '<style:text-properties fo:color="#0b4fc0"/>',
+            '<style:table-cell-properties fo:background-color="#fcebd7"/>',
+            '<style:table-cell-properties fo:border-left="2.25pt solid #f07d1a"/>',
+            '<style:graphic-properties draw:fill="solid" draw:fill-color="#000000"/>',
+        ):
+            with self.assertRaises(RuntimeError, msg=bad):
+                CHECK.validate_print_palette(bad, clean)
+
+    def test_every_figure_needs_a_figure_caption(self) -> None:
+        from xml.etree import ElementTree as ET
+
+        text = "urn:oasis:names:tc:opendocument:xmlns:text:1.0"
+        good = ET.fromstring(
+            f'<r xmlns:text="{text}"><text:p text:style-name="ManualScreenshotP"/>'
+            '<text:p text:style-name="ManualCaptionP">Figure 3.1 — Boot screen.</text:p></r>'
+        )
+        CHECK.validate_figure_captions(good)
+        for following in ('<text:p text:style-name="P16">Body</text:p>',
+                          '<text:p text:style-name="ManualCaptionP">Boot screen.</text:p>', ""):
+            bad = ET.fromstring(
+                f'<r xmlns:text="{text}"><text:p text:style-name="ManualScreenshotP"/>{following}</r>'
+            )
+            with self.assertRaises(RuntimeError):
+                CHECK.validate_figure_captions(bad)
+
+    def test_typeset_cover_is_stamped_through_its_text_line(self) -> None:
+        import zipfile
+
+        working = ROOT / "docs" / "manual-source" / "clock-user-manual.odt"
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "clock-user-manual.1.2.0-beta.1.odt"
+            PREPARE.stamp_odt(working, output, "1.2.0-beta.1", allow_font_substitution=False)
+            with zipfile.ZipFile(output) as archive:
+                content = archive.read("content.xml").decode("utf-8")
+            self.assertIn("Firmware 1.2.0-beta.1 · Digital master clock", content)
+            CHECK.validate_odt(output, "1.2.0-beta.1")
+
+    def test_working_manual_uses_the_d12_support_address(self) -> None:
+        import zipfile
+
+        with zipfile.ZipFile(ROOT / "docs" / "manual-source" / "clock-user-manual.odt") as archive:
+            content = archive.read("content.xml").decode("utf-8")
+        self.assertEqual(CHECK.KOFI_SUPPORT_URL, "https://ko-fi.com/southsignallab")
+        self.assertIn("https://ko-fi.com/southsignallab", content)
+        self.assertNotIn("X8X21EOLQ9", content)
+        self.assertNotIn("→", content)  # no glyph outside the Ubuntu family
+        self.assertIn("The screens in this manual are shown dark on light for printing", content)
 
 
 if __name__ == "__main__":

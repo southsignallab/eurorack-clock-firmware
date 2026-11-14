@@ -70,19 +70,23 @@ Document parameters, return semantics, units, ownership/lifetime, thread/ISR res
 
 ## Typeset manual layout
 
-The maintained ODT under `docs/manual-source/` follows a publication-layout contract in addition to the Markdown content rules:
+The maintained ODT under `docs/manual-source/` follows a publication-layout contract in addition to the Markdown content rules. The manual is set for home printing on 99 × 210 mm pages: black, greys (`#222`, `#555`, `#bbb`, `#e3e3e3`) and white only, no filled areas apart from QR codes and screenshots, and hierarchy from size, weight and white space rather than colour. The typeface is the Ubuntu family (Ubuntu, Ubuntu Light, Ubuntu Bold, Ubuntu Mono).
 
-- the cover prioritizes product identity and the firmware-update QR; author attribution belongs in the Colophon rather than as a dominant cover element;
+- the cover is typeset, not an image: overline `EURORACK · 3U · 10 HP`, `CLOCK`, `User Manual`, a rule, the stamp line `Firmware <version> · Digital master clock`, the front panel as a line drawing without callouts, and below a hairline the South Signal Lab logo with its name and the black firmware-update QR; author attribution belongs in the Colophon;
 - `Contents` is a dedicated page immediately after the cover, uses the normal content-page frame, and keeps its table inside the same horizontal text bounds as the body;
 - Contents page numbers are resolved from the actual exported PDF and written back to the ODT before the final publication export;
-- chapter headings are left-aligned, carry the blue chapter number and black title, and retain semantic outline levels for PDF navigation;
-- intermediate headings are left-aligned, blue and bold, with no inherited list/outline indentation;
+- chapter headings are left-aligned with a thin grey number, a bold black title and a 0.5 pt rule below, and retain semantic outline levels for PDF navigation;
+- intermediate headings are left-aligned, black and bold, with no inherited list/outline indentation;
 - manually numbered headings must not rely on LibreOffice's implicit outline list-tab positioning;
 - direct screenshots and gallery screenshots use explicit, consistent top/bottom spacing styles; captions and neighboring body text must not collapse against the image edge;
-- ordinary data tables use a blue/bold header and consistent dark body typography; special callout/gallery/Contents tables are exempt;
+- screenshots are the generator's print variant: dark on light, framed by the display cut-out of the front panel, at 2.2 : 1; one sentence at the first screenshot explains the inverted display;
+- every figure carries a caption `Figure <chapter>.<n> — …` in 7 pt grey; the panel figure is the KiCad-derived line drawing with numbered callouts;
+- ordinary data tables use a bold header with a 0.5 pt rule and 0.25 pt grey rules between rows, without fills or vertical rules; notes carry a bold keyword and a rule on the left, without a background; special callout/gallery/Contents tables are exempt;
+- numbered lists show the number only, not a bullet as well;
 - long read-only UI overflow is illustrated with a functional/legal value such as `CORE LIC`, not by making personal attribution visually dominant;
 - the source-repository URL/QR receives its own page near the end of the manual;
-- release stamping may update the reserved firmware-version line on the cover but must not overwrite the update QR or manual-license line.
+- release stamping updates the firmware version in the cover's stamp line and in the Colophon; it does not touch the QR codes or the manual-license line;
+- the page footer shows `CLOCK User Manual` and the page number in grey under a hairline.
 
 The frozen files in `docs/manual/` are release-history artifacts. Layout improvements after a release apply to the maintained source and future manuals; published historical ODTs are not silently rewritten.
 

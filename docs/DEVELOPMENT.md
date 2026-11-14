@@ -287,7 +287,7 @@ The release source of truth is:
 src/version.h
 ```
 
-Do not hard-code a second firmware version in workflows or production code. The manual preparation tool reads the same value, stamps it into body text, metadata, and cover/back-cover artwork, and freezes the corresponding release ODT before tagging.
+Do not hard-code a second firmware version in workflows or production code. The manual preparation tool reads the same value, stamps it into body text (including the cover's version line) and metadata, and freezes the corresponding release ODT before tagging.
 
 ## Doxygen
 

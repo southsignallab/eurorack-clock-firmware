@@ -19,8 +19,20 @@ ROOT = Path(__file__).resolve().parents[1]
 MANUAL = ROOT / "docs/manual-source/clock-user-manual.odt"
 ASSETS = ROOT / "docs/manual-source/assets"
 IMAGE_WIDTH_IN = 1.43
+#: Screen variant: the bare 2:1 OLED frame (manuals up to 1.1.0).
 IMAGE_HEIGHT_IN = 0.715
+# Typeset manuals embed the print variant written by
+# scripts/generate_manual_screenshots.py: 1180 x 644 px, the display cut-out
+# outline around the inverted OLED frame.
+PRINT_VARIANT_SIZE_PX = (1180, 644)
+PRINT_IMAGE_HEIGHT_IN = round(IMAGE_WIDTH_IN * PRINT_VARIANT_SIZE_PX[1] / PRINT_VARIANT_SIZE_PX[0], 3)
 TABLE_WIDTH_IN = 3.19
+
+
+def print_variant(filename: str) -> str:
+    """Return the print-variant asset embedded for catalog screenshot *filename*."""
+    stem, suffix = filename.rsplit(".", 1)
+    return f"{stem}-print.{suffix}"
 
 SCREENSAVER_ROWS = (
     (("screensaver-clock.png", "CLOCK - scrolling clock traces"), ("screensaver-plug.png", "PLUG - damped plucked string")),
@@ -120,7 +132,7 @@ def ensure_styles(root: etree._Element) -> None:
         etree.SubElement(style, q("style", "text-properties"), {q("fo", "font-size"): "8pt"})
 
 
-def image_paragraph(template: etree._Element, href: str, name: str) -> etree._Element:
+def image_paragraph(template: etree._Element, href: str, name: str, height_in: float = IMAGE_HEIGHT_IN) -> etree._Element:
     """Clone a screenshot paragraph using the dedicated gallery-spacing style."""
     paragraph = copy.deepcopy(template)
     paragraph.set(q("text", "style-name"), "ManualGalleryScreenshotP")
@@ -129,7 +141,7 @@ def image_paragraph(template: etree._Element, href: str, name: str) -> etree._El
     image.set(q("xlink", "href"), href)
     frame.set(q("draw", "name"), name)
     frame.set(q("svg", "width"), f"{IMAGE_WIDTH_IN:.3f}in")
-    frame.set(q("svg", "height"), f"{IMAGE_HEIGHT_IN:.3f}in")
+    frame.set(q("svg", "height"), f"{height_in:.3f}in")
     return paragraph
 
 
@@ -139,6 +151,7 @@ def gallery_table(
     name: str,
     embedded: dict[str, bytes],
     assets: Path,
+    print_variants: bool = False,
 ) -> etree._Element:
     table = etree.Element(q("table", "table"), {q("table", "name"): name, q("table", "style-name"): "GalleryTableStyle"})
     etree.SubElement(table, q("table", "table-column"), {q("table", "style-name"): "GalleryColumnStyle", q("table", "number-columns-repeated"): "2"})
@@ -151,8 +164,12 @@ def gallery_table(
                 {q("table", "style-name"): "GalleryCellStyle", q("office", "value-type"): "string"},
             )
             archive_name = f"Pictures/gallery_{name.lower()}_{row_number:02d}_{column_number:02d}.png"
-            embedded[archive_name] = (assets / filename).read_bytes()
-            cell.append(image_paragraph(image_template, archive_name, f"{name}Image{row_number:02d}{column_number:02d}"))
+            asset = print_variant(filename) if print_variants else filename
+            embedded[archive_name] = (assets / asset).read_bytes()
+            cell.append(image_paragraph(
+                image_template, archive_name, f"{name}Image{row_number:02d}{column_number:02d}",
+                PRINT_IMAGE_HEIGHT_IN if print_variants else IMAGE_HEIGHT_IN,
+            ))
             caption_p = etree.SubElement(cell, q("text", "p"), {q("text", "style-name"): "GalleryCaptionStyle"})
             caption_p.text = caption
     return table
@@ -169,7 +186,8 @@ def heading_paragraph(template: etree._Element, text: str) -> etree._Element:
     return paragraph
 
 
-def rebuild_odt(manual: Path = MANUAL, assets: Path = ASSETS) -> int:
+def rebuild_odt(manual: Path = MANUAL, assets: Path = ASSETS, *, print_variants: bool = False) -> int:
+    """Rebuild both galleries; *print_variants* embeds the framed print screenshots."""
     # The previous composite-gallery experiment is not part of the source contract.
     for old in assets.glob("gallery-*.png"):
         old.unlink()
@@ -206,13 +224,13 @@ def rebuild_odt(manual: Path = MANUAL, assets: Path = ASSETS) -> int:
     mode_table = children[heading_index + 1]
     insert_at = body.index(mode_table) + 1
     body.insert(insert_at, heading_paragraph(screensaver_heading, "Screensaver gallery"))
-    body.insert(insert_at + 1, gallery_table(SCREENSAVER_ROWS, image_template, "ManualGalleryScreensavers", embedded, assets))
+    body.insert(insert_at + 1, gallery_table(SCREENSAVER_ROWS, image_template, "ManualGalleryScreensavers", embedded, assets, print_variants))
 
     # Insert Easter-egg gallery directly before the Arcade flow explanation.
     children = list(body)
     arcade_index = next(i for i, p in enumerate(children) if direct_text(p) == "Arcade flow")
     body.insert(arcade_index, heading_paragraph(easter_heading, "Easter-egg gallery"))
-    body.insert(arcade_index + 1, gallery_table(EASTER_ROWS, image_template, "ManualGalleryEasterEggs", embedded, assets))
+    body.insert(arcade_index + 1, gallery_table(EASTER_ROWS, image_template, "ManualGalleryEasterEggs", embedded, assets, print_variants))
 
     # Drop stale gallery manifest entries and add the current embedded screenshots.
     path_attr = q("manifest", "full-path")

@@ -76,6 +76,7 @@ CLOCK documentation follows a few explicit rules:
 The SVGs in [`manual-source/assets/`](manual-source/assets/) are deliberately source-controlled plain SVG rather than embedded binary artwork. Current prepared illustrations:
 
 - [`front-panel-anatomy.svg`](manual-source/assets/front-panel-anatomy.svg) — numbered cobalt-blue front-panel key over the KiCad-derived panel artwork ([`assets/front-panel/clock-front-panel.svg`](assets/front-panel/clock-front-panel.svg))
+- [`front-panel-anatomy-print.svg`](manual-source/assets/front-panel-anatomy-print.svg), [`front-panel-print.svg`](manual-source/assets/front-panel-print.svg) — black-on-white line drawings of the same panel for the printed manual, with and without callouts
 - [`operating-modes.svg`](manual-source/assets/operating-modes.svg)
 - [`timing-swing-phase.svg`](manual-source/assets/timing-swing-phase.svg)
 - [`external-sync-flow.svg`](manual-source/assets/external-sync-flow.svg)

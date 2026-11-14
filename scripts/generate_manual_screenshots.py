@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """Build the headless simulator renderer and regenerate manual OLED screenshots.
 
+Every catalog state is written twice: the screen variant (light on dark, as on
+the module; used by README, wiki and simulator documentation) and the print
+variant used by the user manual (dark on light, framed by the display cut-out
+of the front panel).
+
 Author: Axel Napolitano
 License: PolyForm-Noncommercial-1.0.0
 """
@@ -9,7 +14,9 @@ from __future__ import annotations
 
 import argparse
 import binascii
+import configparser
 import json
+import re
 import shutil
 import struct
 import subprocess
@@ -24,6 +31,26 @@ BUILD_DIR = ROOT / "build" / "simulator-headless"
 GENERATOR_BASENAME = "clock-manual-screenshot-generator"
 MANIFEST_NAME = "manual-screenshots.tsv"
 PRESET_NAME = "simulator-headless"
+PANEL_LAYOUT = ROOT / "sim" / "panel_layout.ini"
+PANEL_ARTWORK = ROOT / "docs" / "assets" / "front-panel" / "clock-front-panel.svg"
+
+OLED_WIDTH_PX = 128
+OLED_HEIGHT_PX = 64
+PRINT_SUFFIX = "-print"
+#: Integer nearest-neighbour enlargement of one OLED pixel in the print variant.
+PRINT_PIXEL_SCALE = 8
+# ASSUMPTION: size and position of the active OLED area inside the panel's
+# display cut-out are not part of the KiCad data. Until the display module's
+# drawing provides them, the active area is taken as 21.8 mm x 10.9 mm,
+# centred in the cut-out (D-12 point 5).
+OLED_ACTIVE_WIDTH_MM = 21.8
+OLED_ACTIVE_HEIGHT_MM = 10.9
+#: Printed size of a screenshot figure relative to the panel (D-12 point 10).
+PRINT_FIGURE_SCALE = 2.2
+#: Line width of the display cut-out outline, in panel millimetres.
+PRINT_FRAME_STROKE_MM = 0.12
+#: Supersampling factor used only to antialias the frame outline.
+FRAME_SUPERSAMPLE = 4
 
 
 def run(command: list[str]) -> None:
@@ -140,15 +167,90 @@ def write_scaled_png(path: Path, width: int, height: int, pixels: bytes, scale: 
     path.write_bytes(encoded)
 
 
+def display_cutout() -> tuple[float, float, float]:
+    """Return width, height and corner radius (mm) of the panel's display cut-out.
+
+    Width and height come from ``sim/panel_layout.ini``; the corner radius is
+    read from the cut-out's arc in the KiCad-derived panel artwork. Both files
+    are written by ``scripts/import_kicad_front_panel.py``.
+    """
+    layout = configparser.ConfigParser(interpolation=None)
+    layout.read(PANEL_LAYOUT, encoding="utf-8")
+    x = layout.getfloat("display", "x_mm")
+    y = layout.getfloat("display", "y_mm")
+    width = layout.getfloat("display", "width_mm")
+    height = layout.getfloat("display", "height_mm")
+    artwork = PANEL_ARTWORK.read_text(encoding="utf-8")
+    number = r"([0-9]+(?:\.[0-9]+)?)"
+    for match in re.finditer(rf"M{number} {number} A{number} ", artwork):
+        start_x, start_y, radius = (float(value) for value in match.groups())
+        if abs(start_x - x) < 1e-3 and y < start_y < y + height:
+            return width, height, radius
+    raise RuntimeError(f"Display cut-out arc not found in {PANEL_ARTWORK}")
+
+
+def print_variant_image(width: int, height: int, pixels: bytes):
+    """Return the framed print variant of one OLED frame as a Pillow image.
+
+    OLED pixels are inverted (lit = black) and enlarged by an integer
+    nearest-neighbour factor without any other change. The frame is the
+    display cut-out outline as a hairline; only the frame is antialiased.
+    """
+    from PIL import Image, ImageDraw
+
+    if (width, height) != (OLED_WIDTH_PX, OLED_HEIGHT_PX):
+        raise ValueError(f"Unexpected OLED dimensions: {width}x{height}")
+    cutout_w, cutout_h, radius = display_cutout()
+    px_per_mm = OLED_WIDTH_PX * PRINT_PIXEL_SCALE / OLED_ACTIVE_WIDTH_MM
+    stroke = PRINT_FRAME_STROKE_MM * px_per_mm
+    canvas_w = round((cutout_w + PRINT_FRAME_STROKE_MM) * px_per_mm)
+    canvas_h = round((cutout_h + PRINT_FRAME_STROKE_MM) * px_per_mm)
+
+    big = FRAME_SUPERSAMPLE
+    frame = Image.new("L", (canvas_w * big, canvas_h * big), 255)
+    inset = stroke * big / 2
+    ImageDraw.Draw(frame).rounded_rectangle(
+        (inset, inset, canvas_w * big - inset, canvas_h * big - inset),
+        radius=radius * px_per_mm * big,
+        outline=0,
+        width=max(1, round(stroke * big)),
+    )
+    frame = frame.resize((canvas_w, canvas_h), Image.Resampling.LANCZOS)
+
+    oled = Image.frombytes("L", (width, height), bytes(255 - value for value in pixels))
+    oled = oled.resize(
+        (width * PRINT_PIXEL_SCALE, height * PRINT_PIXEL_SCALE), Image.Resampling.NEAREST
+    )
+    frame.paste(oled, ((canvas_w - oled.width) // 2, (canvas_h - oled.height) // 2))
+    return frame
+
+
+def write_print_png(path: Path, width: int, height: int, pixels: bytes) -> None:
+    """Write the print variant; its DPI gives a natural size of 2.2 : 1 of the panel."""
+    image = print_variant_image(width, height, pixels)
+    px_per_mm = OLED_WIDTH_PX * PRINT_PIXEL_SCALE / OLED_ACTIVE_WIDTH_MM
+    dpi = round(px_per_mm / PRINT_FIGURE_SCALE * 25.4, 3)
+    image.save(path, format="PNG", optimize=True, dpi=(dpi, dpi))
+
+
 def parse_manifest(path: Path) -> list[tuple[str, str]]:
-    """Read the ordered screenshot catalog emitted by the native generator."""
+    """Read the ordered screenshot catalog.
+
+    The native generator writes ``name<TAB>description``; the published
+    catalog adds the print variant: ``name<TAB>print name<TAB>description``.
+    """
     entries: list[tuple[str, str]] = []
     for line in path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
-        name, description = line.split("\t", 1)
-        entries.append((name, description))
+        fields = line.split("\t")
+        entries.append((fields[0], fields[-1]))
     return entries
+
+
+def print_name(name: str) -> str:
+    """Return the catalog name of the print variant of screenshot *name*."""
+    return f"{name}{PRINT_SUFFIX}"
 
 
 DISTINCT_SCREENSHOT_PAIRS = (
@@ -181,9 +283,9 @@ def remove_previous_outputs(output_dir: Path) -> None:
     if not previous_manifest.exists():
         return
     for name, _ in parse_manifest(previous_manifest):
-        candidate = output_dir / f"{name}.png"
-        if candidate.exists():
-            candidate.unlink()
+        for candidate in (output_dir / f"{name}.png", output_dir / f"{print_name(name)}.png"):
+            if candidate.exists():
+                candidate.unlink()
 
 
 def generate(output_dir: Path, scale: int) -> int:
@@ -213,15 +315,21 @@ def generate(output_dir: Path, scale: int) -> int:
             if (width, height) != (128, 64):
                 raise ValueError(f"Unexpected OLED dimensions for {name}: {width}x{height}")
             write_scaled_png(output_dir / f"{name}.png", width, height, pixels, scale)
+            write_print_png(output_dir / f"{print_name(name)}.png", width, height, pixels)
 
-        manifest_text = "".join(f"{name}\t{description}\n" for name, description in entries)
+        manifest_text = "".join(
+            f"{name}\t{print_name(name)}\t{description}\n" for name, description in entries
+        )
         (output_dir / MANIFEST_NAME).write_text(manifest_text, encoding="utf-8", newline="\n")
 
     try:
         shown_output = output_dir.relative_to(ROOT)
     except ValueError:
         shown_output = output_dir
-    print(f"Generated {len(entries)} screenshots in {shown_output} at {scale}x nearest-neighbour scale.")
+    print(
+        f"Generated {len(entries)} screenshots in {shown_output} at {scale}x nearest-neighbour scale, "
+        f"each with a print variant at {PRINT_PIXEL_SCALE}x."
+    )
     return len(entries)
 
 

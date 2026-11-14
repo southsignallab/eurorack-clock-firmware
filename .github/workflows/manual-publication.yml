@@ -13,6 +13,8 @@ on:
       - "scripts/generate_manual_screenshots.py"
       - "scripts/refresh_manual_screenshots.py"
       - "scripts/update_manual_galleries.py"
+      - "scripts/generate_manual_qr_codes.py"
+      - "scripts/generate_front_panel_illustration.py"
       - "test/tools/manual_screenshot_generator.cpp"
       - "src/**"
       - "scripts/build_user_manual.py"

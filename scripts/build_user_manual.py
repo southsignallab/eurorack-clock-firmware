@@ -20,6 +20,10 @@ import update_manual_contents
 ROOT = Path(__file__).resolve().parents[1]
 STABLE_VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 VERSION_RE = re.compile(r'^#define\s+CLOCK_FIRMWARE_VERSION\s+"([^"]+)"\s*$', re.MULTILINE)
+# PDF export filter: keep embedded images at their own resolution. The default
+# reduction to 300 dpi would resample the integer nearest-neighbour OLED
+# screenshots and blur their pixel edges (D-12 point 5).
+PDF_EXPORT_FILTER = 'pdf:writer_pdf_Export:{"ReduceImageResolution":{"type":"boolean","value":"false"}}'
 
 def current_version() -> str:
     text = (ROOT / "src" / "version.h").read_text(encoding="utf-8")
@@ -79,7 +83,7 @@ def build(source: Path, output_dir: Path, version: str, *, require_ubuntu_fonts:
             "--headless",
             user_installation_argument(Path(profile).resolve()),
             "--convert-to",
-            "pdf",
+            PDF_EXPORT_FILTER,
             "--outdir",
             str(output_dir),
             str(odt_out),
@@ -101,7 +105,7 @@ def build(source: Path, output_dir: Path, version: str, *, require_ubuntu_fonts:
                 "--headless",
                 user_installation_argument(Path(profile).resolve()),
                 "--convert-to",
-                "pdf",
+                PDF_EXPORT_FILTER,
                 "--outdir",
                 str(output_dir),
                 str(odt_out),

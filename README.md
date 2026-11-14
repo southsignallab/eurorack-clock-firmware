@@ -345,7 +345,7 @@ The project enforces a 90% decision-branch gate. Production-source architecture 
 | [Release Process](docs/RELEASE_PROCESS.md) | Firmware flavor matrix, manual/licensing payload, provenance and GitHub publication contract |
 | [Doxygen](Doxyfile) | Source-level API documentation |
 
-The curated manual screenshots are generated from the **real production framebuffer**, not redrawn mockups. Their catalog and human-readable descriptions live in [`docs/manual-source/assets/manual-screenshots.tsv`](docs/manual-source/assets/manual-screenshots.tsv).
+The curated manual screenshots are generated from the **real production framebuffer**, not redrawn mockups. Their catalog and human-readable descriptions live in [`docs/manual-source/assets/manual-screenshots.tsv`](docs/manual-source/assets/manual-screenshots.tsv). Each state has a screen variant (light on dark, as on the module) and a print variant for the manual (dark on light, framed by the display cut-out).
 
 ## Hardware target
 
@@ -371,7 +371,7 @@ Every image of the front panel comes from the KiCad front-panel project (`Simple
 - `sim/panel_background.png` — the simulator panel image;
 - the panel size and all control coordinates in [`sim/panel_layout.ini`](sim/panel_layout.ini).
 
-The manual illustration (`scripts/generate_front_panel_illustration.py`) and the VCV Rack panel (`scripts/generate_vcv_panel.py`) are generated from those committed files, so CI checks them without access to the private hardware repository. After a panel change:
+The manual illustrations (`scripts/generate_front_panel_illustration.py`: the numbered panel for the user guide and the black-on-white line drawings for the printed manual) and the VCV Rack panel (`scripts/generate_vcv_panel.py`) are generated from those committed files, so CI checks them without access to the private hardware repository. After a panel change:
 
 ```bash
 python scripts/import_kicad_front_panel.py --kicad "<hardware repo>/Simple Frontpanel/Simple Frontpanel.kicad_pcb"
@@ -387,8 +387,6 @@ CLOCK is developed independently by South Signal Lab. If the firmware, documenta
 
 - [GitHub Sponsors](https://github.com/sponsors/napolitano)
 - [Ko-fi](https://ko-fi.com/southsignallab)
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/southsignallab)
 
 See [`docs/SUPPORT.md`](docs/SUPPORT.md) for the canonical support information used by the repository and generated Wiki.
 

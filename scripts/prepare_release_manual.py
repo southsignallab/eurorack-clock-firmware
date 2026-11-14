@@ -111,6 +111,11 @@ def page_images(content_xml: str, archive: zipfile.ZipFile) -> tuple[str, str]:
     return unique[0], unique[-1]
 
 
+def is_typeset_cover(content_xml: str) -> bool:
+    """Return whether the manual has the typeset cover of D-12 instead of full-page images."""
+    return 'draw:name="ManualCoverPanel"' in content_xml
+
+
 def release_stage_label(version: str) -> str:
     """Return the publication label used on the manual cover for one SemVer stage."""
     lowered = version.lower()
@@ -234,23 +239,27 @@ def stamp_odt(source: Path, destination: Path, version: str, *, allow_font_subst
         raise FileNotFoundError(f"Manual source not found: {source}")
     destination.parent.mkdir(parents=True, exist_ok=True)
 
-    regular_font = resolve_font("Regular", allow_substitution=allow_font_substitution)
-    bold_font = resolve_font("Bold", allow_substitution=allow_font_substitution)
-
     with zipfile.ZipFile(source, "r") as archive:
         if archive.read("mimetype") != ODT_MIMETYPE:
             raise RuntimeError(f"Not an ODT document: {source}")
         content_xml = archive.read("content.xml").decode("utf-8")
         meta_xml = archive.read("meta.xml").decode("utf-8")
         old_version = source_version(meta_xml, content_xml)
-        cover_name, back_name = page_images(content_xml, archive)
 
         replacements: dict[str, bytes] = {
             "content.xml": replace_firmware_version_in_content(content_xml, old_version, version).encode("utf-8"),
             "meta.xml": update_meta_xml(meta_xml, old_version, version).encode("utf-8"),
-            cover_name: stamp_cover(archive.read(cover_name), version, regular_font),
-            back_name: stamp_back(archive.read(back_name), version, bold_font),
         }
+        if not is_typeset_cover(content_xml):
+            # Manuals up to 1.1.0 carry the cover and back page as full-page
+            # images with a reserved version line; stamp that line in the image.
+            # The typeset cover of D-12 carries the version in its text line
+            # "Firmware <version> · Digital master clock", stamped above.
+            regular_font = resolve_font("Regular", allow_substitution=allow_font_substitution)
+            bold_font = resolve_font("Bold", allow_substitution=allow_font_substitution)
+            cover_name, back_name = page_images(content_xml, archive)
+            replacements[cover_name] = stamp_cover(archive.read(cover_name), version, regular_font)
+            replacements[back_name] = stamp_back(archive.read(back_name), version, bold_font)
 
         with tempfile.NamedTemporaryFile(suffix=".odt", delete=False, dir=destination.parent) as temp_file:
             temp_path = Path(temp_file.name)

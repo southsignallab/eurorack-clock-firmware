@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="736" height="885" viewBox="400 65 736 885" role="img" aria-label="South Signal Lab logo">
+  <title>South Signal Lab</title>
+  <desc>Geometric S monogram with two symmetrical circuit trace terminals.</desc>
+  <g fill="#000000">
+    <polygon points="1020,214 771,65 515,215 515,297 924,514 777,589 515,433 515,531 741,667 741,854 687,854 687,734 556,734 556,825 491,825 491,857 592,857 592,773 650,773 650,887 741,887 741,949 795,949 795,887 885,887 885,773 943,773 943,857 1045,857 1045,825 981,825 981,734 848,734 848,854 795,854 795,665 1020,552 1020,466 615,248 770,166 1020,309" />
+    <circle cx="447.4" cy="841.8" r="46.6" />
+    <circle cx="1089.1" cy="841.8" r="46.5" />
+  </g>
+</svg>

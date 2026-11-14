@@ -26,8 +26,19 @@ ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_URL = "https://github.com/napolitano/eurorack-clock-firmware"
 REPOSITORY_QR = ROOT / "docs" / "manual-source" / "assets" / "repository-qr.png"
 UPDATES_QR = ROOT / "docs" / "manual-source" / "assets" / "updates-qr.png"
-KOFI_SUPPORT_URL = "https://ko-fi.com/X8X21EOLQ9"
+KOFI_SUPPORT_URL = "https://ko-fi.com/southsignallab"
 KOFI_SUPPORT_QR = ROOT / "docs" / "manual-source" / "assets" / "kofi-support-qr.png"
+#: Repository URL encoded by the QR code of manuals up to 1.1.0 (before D-12).
+LEGACY_REPOSITORY_QR_URL = REPOSITORY_URL
+LOGO_ASSET = ROOT / "docs" / "manual-source" / "assets" / "south-signal-lab-logo.svg"
+PANEL_FIGURE_ASSET = ROOT / "docs" / "manual-source" / "assets" / "front-panel-anatomy-print.svg"
+COVER_PANEL_ASSET = ROOT / "docs" / "manual-source" / "assets" / "front-panel-print.svg"
+COVER_STAMP_SUFFIX = " \u00b7 Digital master clock"
+
+# Print palette of the maintained manual (D-12 points 1 and 2): black, greys
+# and white only. Area fills are allowed only as "transparent" or white.
+PRINT_COLOURS = {"#000000", "#1a1a1a", "#222222", "#555555", "#6e6e6e", "#6f6f6f", "#bbbbbb",
+                 "#c0c0c0", "#d8d8d8", "#dedede", "#e3e3e3", "#ffffff"}
 
 PRERELEASE_VERSION_RE = re.compile(
     r"\b[0-9]+\.[0-9]+\.[0-9]+-(?:alpha|beta|rc)\.[0-9]+\b",
@@ -192,7 +203,7 @@ def validate_layout_v2(content_xml: str, styles_xml: str) -> None:
             raise RuntimeError(f"Manual chapter heading uses unexpected paragraph style: {flat_text(chapter)!r}")
 
     # P17 is the maintained intermediate-heading style. Every such heading uses
-    # the blue/bold T2 text style and no inherited body-text formatting.
+    # the bold T2 text style and no inherited body-text formatting.
     for element in content_root.iter():
         if element.attrib.get(f"{{{ns['text']}}}style-name") != "P17":
             continue
@@ -204,12 +215,17 @@ def validate_layout_v2(content_xml: str, styles_xml: str) -> None:
 
     # Direct screenshots and gallery images use separate explicit paragraph
     # spacing contracts so figures cannot accidentally inherit zero-margin P8.
+    # ManualImage1 is the chapter 2 panel line drawing, centred in its own style.
     direct_count = gallery_count = 0
     for paragraph in content_root.findall(".//text:p", ns):
         frames = paragraph.findall(".//draw:frame", ns)
         for frame in frames:
             name = frame.attrib.get(f"{{{ns['draw']}}}name", "")
-            if name.startswith("ManualImage"):
+            if name == "ManualImage1":
+                direct_count += 1
+                if paragraph.attrib.get(f"{{{ns['text']}}}style-name") != "ManualPanelFigureP":
+                    raise RuntimeError("Panel figure does not use ManualPanelFigureP: ManualImage1")
+            elif name.startswith("ManualImage"):
                 direct_count += 1
                 if paragraph.attrib.get(f"{{{ns['text']}}}style-name") != "ManualScreenshotP":
                     raise RuntimeError(f"Direct screenshot does not use ManualScreenshotP: {name}")
@@ -222,11 +238,11 @@ def validate_layout_v2(content_xml: str, styles_xml: str) -> None:
             f"Unexpected manual screenshot inventory: direct={direct_count}, gallery={gallery_count}"
         )
 
-    # All ordinary data tables share the same blue header / dark body typography.
+    # All ordinary data tables share the same header / body typography.
     # Callouts, galleries and the custom Contents table are intentionally exempt.
     for table in content_root.findall(".//table:table", ns):
         name = table.attrib.get(f"{{{ns['table']}}}name", "")
-        if name == "ManualContents" or name.startswith("ManualCallout") or name.startswith("ManualGallery"):
+        if name == "ManualContents" or name.startswith(("ManualCallout", "ManualGallery", "ManualCover")):
             continue
         for paragraph in table.findall("./table:table-header-rows//text:p", ns):
             spans = paragraph.findall("text:span", ns)
@@ -286,6 +302,91 @@ def validate_layout_v2(content_xml: str, styles_xml: str) -> None:
         if image.width < 100 or image.height < 100:
             raise RuntimeError("Firmware-update QR asset is unexpectedly small")
 
+    validate_print_palette(content_xml, styles_xml)
+    validate_figure_captions(content_root)
+
+
+def validate_figure_captions(content_root: ET.Element) -> None:
+    """Require a 'Figure n.m' caption directly after every figure paragraph (D-12)."""
+    text_ns = "urn:oasis:names:tc:opendocument:xmlns:text:1.0"
+    draw_ns = "urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
+    style_attr = f"{{{text_ns}}}style-name"
+    for parent in content_root.iter():
+        siblings = list(parent)
+        for index, paragraph in enumerate(siblings):
+            if paragraph.attrib.get(style_attr) not in {"ManualScreenshotP", "ManualPanelFigureP"}:
+                continue
+            following = siblings[index + 1] if index + 1 < len(siblings) else None
+            caption = " ".join("".join(following.itertext()).split()) if following is not None else ""
+            if (following is None or following.attrib.get(style_attr) != "ManualCaptionP"
+                    or re.match(r"Figure [0-9]+\.[0-9]+ \u2014 \S", caption) is None):
+                names = [frame.attrib.get(f"{{{draw_ns}}}name") for frame in paragraph.iter(f"{{{draw_ns}}}frame")]
+                raise RuntimeError(f"Manual figure without 'Figure n.m' caption: {names}")
+
+
+def validate_print_palette(content_xml: str, styles_xml: str) -> None:
+    """Reject colours and filled areas in the maintained manual's styles (D-12)."""
+    for part, xml in (("content.xml", content_xml), ("styles.xml", styles_xml)):
+        # Office theme colours and LibreOffice's unused drawing defaults.
+        xml = re.sub(r"<loext:theme\b.*?</loext:theme>", "", xml, flags=re.DOTALL)
+        xml = re.sub(
+            r'<style:default-style style:family="graphic">.*?</style:default-style>', "", xml, flags=re.DOTALL
+        )
+        for attribute in ("fo:color", "draw:fill-color", "svg:stroke-color"):
+            for value in re.findall(rf'{attribute}="([^"]+)"', xml):
+                if value.lower() not in PRINT_COLOURS:
+                    raise RuntimeError(f"Manual {part} uses a colour outside the print palette: {attribute}={value}")
+        for value in re.findall(r'fo:background-color="([^"]+)"', xml):
+            if value.lower() not in {"transparent", "#ffffff"}:
+                raise RuntimeError(f"Manual {part} fills an area: fo:background-color={value}")
+        for value in re.findall(r'fo:border(?:-[a-z]+)?="([^"]+)"', xml):
+            for colour in re.findall(r"#[0-9a-fA-F]{6}", value):
+                if colour.lower() not in PRINT_COLOURS:
+                    raise RuntimeError(f"Manual {part} uses a coloured rule: {value}")
+        if re.search(r'draw:fill="(?:solid|gradient|hatch|bitmap)"', xml):
+            raise RuntimeError(f"Manual {part} uses a filled drawing style")
+
+
+def validate_qr_assets() -> None:
+    """Require black-on-white QR assets that encode the D-12 addresses."""
+    import generate_manual_qr_codes
+
+    for name, url in generate_manual_qr_codes.QR_CODES.items():
+        path = ROOT / "docs" / "manual-source" / "assets" / name
+        if not path.is_file():
+            raise RuntimeError(f"Canonical QR asset missing: {path}")
+        with Image.open(path) as image:
+            colours = {colour for _count, colour in image.convert("RGB").getcolors(1 << 16) or []}
+            if not colours <= {(0, 0, 0), (255, 255, 255)}:
+                raise RuntimeError(f"QR asset {name} is not black on white")
+            if not generate_manual_qr_codes.encodes(image, url):
+                raise RuntimeError(f"QR asset {name} does not encode {url}")
+
+
+def is_typeset_manual(content_xml: str) -> bool:
+    """Return whether the manual has the typeset cover of D-12 instead of full-page images."""
+    return 'draw:name="ManualCoverPanel"' in content_xml
+
+
+def validate_native_cover(content_xml: str, archive: zipfile.ZipFile, version: str) -> None:
+    """Validate the typeset cover and generated figures of post-1.1.0 manuals (D-12)."""
+    stamp = f"Firmware {version}{COVER_STAMP_SUFFIX}"
+    if stamp not in content_xml:
+        raise RuntimeError(f"Manual cover stamp line is missing: {stamp!r}")
+    for frame, asset in (
+        ("ManualCoverPanel", COVER_PANEL_ASSET),
+        ("ManualCoverUpdatesQR", UPDATES_QR),
+        ("ManualCoverLogo", LOGO_ASSET),
+        ("ManualImage1", PANEL_FIGURE_ASSET),
+    ):
+        match = re.search(rf'draw:name="{frame}"[^>]*>\s*<draw:image[^>]*xlink:href="([^"]+)"', content_xml)
+        if match is None:
+            raise RuntimeError(f"Manual frame is missing: {frame}")
+        if archive.read(match.group(1)) != asset.read_bytes():
+            raise RuntimeError(f"Embedded {frame} does not match the generated asset {asset.name}")
+    if page_images(content_xml, archive):
+        raise RuntimeError("Typeset manual must not carry full-page cover images")
+
 def validate_odt(path: Path, version: str) -> None:
     if path.name != f"clock-user-manual.{version}.odt" and path.name != "clock-user-manual.odt":
         raise RuntimeError(f"Unexpected manual ODT filename: {path.name}")
@@ -310,6 +411,8 @@ def validate_odt(path: Path, version: str) -> None:
                 raise RuntimeError(f"Maintained manual Ko-fi QR payload missing: {support_href}")
             if archive.read(support_href) != KOFI_SUPPORT_QR.read_bytes():
                 raise RuntimeError("Embedded Ko-fi QR does not match the canonical asset")
+            validate_qr_assets()
+            validate_native_cover(content_xml, archive, version)
         if version not in content_xml:
             raise RuntimeError(f"Manual body does not identify firmware {version}")
         if version not in meta_xml:
@@ -363,10 +466,19 @@ def validate_odt(path: Path, version: str) -> None:
             qr_href = qr_match.group(1)
             if qr_href not in archive.namelist():
                 raise RuntimeError(f"Manual repository QR payload missing: {qr_href}")
-            if not REPOSITORY_QR.is_file():
-                raise RuntimeError(f"Canonical repository QR asset missing: {REPOSITORY_QR}")
-            if archive.read(qr_href) != REPOSITORY_QR.read_bytes():
-                raise RuntimeError("Embedded repository QR does not match the canonical asset")
+            if is_typeset_manual(content_xml):
+                if not REPOSITORY_QR.is_file():
+                    raise RuntimeError(f"Canonical repository QR asset missing: {REPOSITORY_QR}")
+                if archive.read(qr_href) != REPOSITORY_QR.read_bytes():
+                    raise RuntimeError("Embedded repository QR does not match the canonical asset")
+            else:
+                # Frozen manuals keep the QR code of their release; it must
+                # still encode the repository address of that time.
+                import generate_manual_qr_codes
+
+                with Image.open(io.BytesIO(archive.read(qr_href))) as image:
+                    if not generate_manual_qr_codes.encodes(image, LEGACY_REPOSITORY_QR_URL):
+                        raise RuntimeError("Embedded repository QR does not encode the repository URL")
 
         if "Grooves and Custom Groove Record" in content_xml:
             content_ns = {
@@ -413,6 +525,10 @@ def validate_odt(path: Path, version: str) -> None:
                         f"Manual direct screenshot frame must be inline/as-char to avoid text overlap: {frame_name}"
                     )
 
+        if is_typeset_manual(content_xml):
+            validate_qr_assets()
+            validate_native_cover(content_xml, archive, version)
+            return
         full_pages = page_images(content_xml, archive)
         if len(full_pages) != 2:
             raise RuntimeError(f"Expected two full-page cover images, found {len(full_pages)}")
@@ -426,7 +542,7 @@ def validate_odt(path: Path, version: str) -> None:
 
 
 def validate_ubuntu_font_environment() -> None:
-    """Require the exact Ubuntu family faces used by the release manual."""
+    """Require the exact Ubuntu family faces used by the release manual, including Ubuntu Mono."""
     for style in ("Regular", "Light", "Bold"):
         result = subprocess.run(
             ["fc-match", "-f", "%{family}\n%{style}\n%{file}\n", f"Ubuntu:style={style}"],
@@ -443,27 +559,54 @@ def validate_ubuntu_font_environment() -> None:
                 f"Ubuntu {style} required for release PDF; fontconfig resolved "
                 f"{family!r} / {resolved_style!r} ({font_file})"
             )
+    result = subprocess.run(
+        ["fc-match", "-f", "%{family}\n%{file}\n", "Ubuntu Mono"],
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    if len(lines) < 2 or "Ubuntu Mono" not in lines[0]:
+        raise RuntimeError(f"Ubuntu Mono required for release PDF; fontconfig resolved {lines!r}")
+
+
+# PDF BaseFont name of an Ubuntu-family face, optionally with the six-letter
+# subset tag LibreOffice adds: ``Ubuntu``, ``Ubuntu-Light``, ``UbuntuMono-Regular``.
+UBUNTU_PDF_FONT_RE = re.compile(r"^(?:[A-Z]{6}\+)?Ubuntu(?:Mono)?(?:-[A-Za-z]+)?$")
+PDFFONTS_ROW_RE = re.compile(r"^(?P<name>\S+)\s.*?\s(?P<emb>yes|no)\s+(?P<sub>yes|no)\s+(?P<uni>yes|no)\s+\d+\s+\d+\s*$")
 
 
 def validate_ubuntu_pdf_fonts(fonts: str) -> None:
-    """Validate that the PDF contains an embedded Ubuntu-family Unicode subset.
+    """Validate that every font in the PDF is an embedded Ubuntu-family face.
 
     Poppler reports PDF BaseFont names, which do not reliably preserve the
     source face/style name.  In particular, LibreOffice may emit an Ubuntu
     Light face as a subset named simply ``AAAAAA+Ubuntu``.  Exact style
-    availability is therefore checked with fontconfig before conversion; the
-    PDF check only verifies that the Ubuntu family made it into the artifact
-    and is embedded.
+    availability is therefore checked with fontconfig before conversion.  The
+    PDF check rejects any font outside the Ubuntu family, so a substitute that
+    LibreOffice embedded for missing glyphs (for example Segoe UI on Windows)
+    fails the check, and it rejects any font that is not embedded.
     """
-    ubuntu_rows = [
-        line for line in fonts.splitlines()
-        if re.search(r"\bUbuntu\b", line, re.IGNORECASE)
-    ]
-    if not ubuntu_rows:
+    rows = []
+    for line in fonts.splitlines():
+        if not line.strip() or line.startswith("name ") or line.startswith("---"):
+            continue
+        match = PDFFONTS_ROW_RE.match(line)
+        if match is None:
+            raise RuntimeError(f"Unexpected pdffonts row: {line!r}")
+        rows.append(match)
+    if not any(UBUNTU_PDF_FONT_RE.match(row["name"]) for row in rows):
         raise RuntimeError("Release PDF does not contain Ubuntu-family fonts")
-    if not any(re.search(r"\byes\s+yes\s+yes\s+", line, re.IGNORECASE) for line in ubuntu_rows):
+    foreign = sorted({row["name"] for row in rows if not UBUNTU_PDF_FONT_RE.match(row["name"])})
+    if foreign:
         raise RuntimeError(
-            "Release PDF contains Ubuntu-family font references but no embedded/subset Unicode face"
+            "Release PDF embeds fonts outside the Ubuntu family: " + ", ".join(foreign)
+        )
+    unembedded = sorted({row["name"] for row in rows if row["emb"] != "yes"})
+    if unembedded:
+        raise RuntimeError(
+            "Release PDF contains Ubuntu-family fonts that are not embedded/subset: "
+            + ", ".join(unembedded)
         )
 
 

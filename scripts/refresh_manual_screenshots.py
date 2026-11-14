@@ -29,9 +29,40 @@ NS = {
     "xlink": "http://www.w3.org/1999/xlink",
 }
 
-# Stable ODT frame names are the publication contract.  The archive-side image
+# Stable ODT frame names are the publication contract. The manual embeds the
+# print variants (dark on light, framed by the display cut-out) written by
+# scripts/generate_manual_screenshots.py.  The archive-side image
 # names are intentionally irrelevant: LibreOffice may rename them at any time.
 DIRECT_SCREENSHOTS: dict[str, str] = {
+    "ManualImage2": "boot-1000-print.png",
+    "ManualImage3": "performance-one-clock-play-print.png",
+    "ManualImage4": "performance-independent-clock-play-print.png",
+    "ManualImage5": "performance-independent-euclid-play-print.png",
+    "ManualImage6": "performance-independent-sequencer-play-print.png",
+    "ManualImage7": "channel-overview-independent-print.png",
+    "ManualImage8": "mode-select-euclid-print.png",
+    "ManualImage9": "mode-change-confirm-no-print.png",
+    "ManualImage10": "settings-euclid-print.png",
+    "ManualImage11": "sequencer-editor-print.png",
+    "ManualImage12": "settings-one-clock-timing-print.png",
+    "ManualImage13": "performance-divider-bank-play-print.png",
+    "ManualImage14": "settings-root-print.png",
+    "ManualImage15": "settings-input-config-print.png",
+    "ManualImage16": "preset-name-entry-print.png",
+    "ManualImage17": "settings-screensaver-print.png",
+    "ManualImage18": "arcade-name-entry-print.png",
+    "ManualImage19": "beatknecht-print.png",
+    "ManualImage20": "groove-editor-custom-print.png",
+    "ManualImage21": "groove-record-live-print.png",
+    "ManualImage22": "performance-pre-count-progress-print.png",
+    "ManualImage23": "settings-licenses-print.png",
+    "ManualImage24": "settings-general-print.png",
+    "ManualImage25": "settings-master-print.png",
+}
+
+# Manuals up to 1.1.0 (full-page cover images) keep their original contract:
+# screen variants in the frames of that layout.
+LEGACY_DIRECT_SCREENSHOTS: dict[str, str] = {
     "ManualImage2": "boot-1000.png",
     "ManualImage3": "performance-one-clock-play.png",
     "ManualImage4": "performance-independent-clock-play.png",
@@ -58,6 +89,14 @@ DIRECT_SCREENSHOTS: dict[str, str] = {
     "ManualImage25": "settings-master.png",
 }
 
+# Generated line drawings embedded in the manual: frame name -> asset. The
+# refresh step replaces their payloads like the screenshots, so the printed
+# panel can never drift from the KiCad-derived artwork.
+DIRECT_ILLUSTRATIONS: dict[str, str] = {
+    "ManualImage1": "front-panel-anatomy-print.svg",
+    "ManualCoverPanel": "front-panel-print.svg",
+}
+
 
 def generated_asset_names(assets: Path) -> set[str]:
     manifest = assets / "manual-screenshots.tsv"
@@ -67,14 +106,30 @@ def generated_asset_names(assets: Path) -> set[str]:
     for raw in manifest.read_text(encoding="utf-8").splitlines():
         if not raw.strip():
             continue
-        name, _description = raw.split("\t", 1)
-        names.add(f"{name}.png")
+        # name<TAB>print name<TAB>description: both variants are generated assets.
+        for name in raw.split("\t")[:-1]:
+            names.add(f"{name}.png")
     return names
 
 
+def is_typeset_manual(source: Path) -> bool:
+    """Return whether *source* has the typeset cover of D-12 (print screenshots)."""
+    with zipfile.ZipFile(source, "r") as archive:
+        return b'draw:name="ManualCoverPanel"' in archive.read("content.xml")
+
+
+def frame_contract(source: Path) -> dict[str, str]:
+    """Return frame name -> asset for the layout generation of *source*."""
+    if is_typeset_manual(source):
+        return {**DIRECT_SCREENSHOTS, **DIRECT_ILLUSTRATIONS}
+    return dict(LEGACY_DIRECT_SCREENSHOTS)
+
+
 def direct_frame_targets(source: Path, assets: Path) -> dict[str, tuple[str, Path]]:
+    """Map every refreshed frame (screenshots and line drawings) to its href and asset."""
     generated = generated_asset_names(assets)
-    missing_assets = sorted(set(DIRECT_SCREENSHOTS.values()) - generated)
+    contract = frame_contract(source)
+    missing_assets = sorted({name for name in contract.values() if name.endswith(".png")} - generated)
     if missing_assets:
         raise RuntimeError(
             "Direct manual screenshot contract references assets not emitted by the current generator: "
@@ -88,7 +143,7 @@ def direct_frame_targets(source: Path, assets: Path) -> dict[str, tuple[str, Pat
         seen: set[str] = set()
         for frame in frames:
             frame_name = frame.get(f"{{{NS['draw']}}}name")
-            if frame_name not in DIRECT_SCREENSHOTS:
+            if frame_name not in contract:
                 continue
             if frame_name in seen:
                 raise RuntimeError(f"Manual frame occurs more than once: {frame_name}")
@@ -99,12 +154,12 @@ def direct_frame_targets(source: Path, assets: Path) -> dict[str, tuple[str, Pat
             href = images[0].get(f"{{{NS['xlink']}}}href")
             if not href or not href.startswith("Pictures/"):
                 raise RuntimeError(f"Manual frame {frame_name} has an invalid embedded image href: {href!r}")
-            asset = assets / DIRECT_SCREENSHOTS[frame_name]
+            asset = assets / contract[frame_name]
             if not asset.is_file():
-                raise FileNotFoundError(f"Missing generated screenshot asset: {asset}")
+                raise FileNotFoundError(f"Missing generated manual asset: {asset}")
             targets[frame_name] = (href, asset)
 
-    missing_frames = sorted(set(DIRECT_SCREENSHOTS) - seen)
+    missing_frames = sorted(set(contract) - seen)
     if missing_frames:
         raise RuntimeError(
             "Manual screenshot frames are missing from the publication ODT: "
@@ -137,6 +192,7 @@ def replace_direct_screenshots(source: Path, destination: Path, assets: Path) ->
 
 def verify_refreshed_manual(manual: Path, assets: Path) -> tuple[int, int]:
     targets = direct_frame_targets(manual, assets)
+    typeset = is_typeset_manual(manual)
     direct_count = 0
     gallery_count = 0
     with zipfile.ZipFile(manual, "r") as archive:
@@ -158,7 +214,9 @@ def verify_refreshed_manual(manual: Path, assets: Path) -> tuple[int, int]:
                         f"Pictures/gallery_{gallery_name.lower()}_"
                         f"{row_number:02d}_{column_number:02d}.png"
                     )
-                    if archive.read(archive_name) != (assets / filename).read_bytes():
+                    asset_name = update_manual_galleries.print_variant(filename) if typeset else filename
+                    expected = assets / asset_name
+                    if archive.read(archive_name) != expected.read_bytes():
                         raise RuntimeError(
                             f"Embedded gallery screenshot is stale after refresh: {archive_name}"
                         )
@@ -168,7 +226,7 @@ def verify_refreshed_manual(manual: Path, assets: Path) -> tuple[int, int]:
 
 def refresh(source: Path, destination: Path, assets: Path) -> tuple[int, int]:
     replace_direct_screenshots(source, destination, assets)
-    update_manual_galleries.rebuild_odt(destination, assets)
+    update_manual_galleries.rebuild_odt(destination, assets, print_variants=is_typeset_manual(destination))
     return verify_refreshed_manual(destination, assets)
 
 

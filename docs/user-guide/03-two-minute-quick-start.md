@@ -15,5 +15,3 @@ For a first patch:
 
 > [!TIP]
 > Start with One Clock until the transport and navigation feel natural. Independent mode is where CLOCK becomes an eight-channel rhythm tool; Divider Bank is the fastest way to obtain conventional clock divisions.
-
-<h6 align="center">From Munich with &#9829;</h6>

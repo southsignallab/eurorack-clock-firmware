@@ -514,5 +514,3 @@ If the VCV plugin is ever sold rather than distributed free of charge, this lice
 - Rack user folder and command-line options: <https://vcvrack.com/manual/Installing>
 - Rack licensing and plugin exception: <https://github.com/VCVRack/Rack/blob/v2/LICENSE.md>
 - Rack SDK archive: <https://vcvrack.com/downloads/>
-
-<h6 align="center">From Munich with &#9829;</h6>

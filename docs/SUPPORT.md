@@ -12,5 +12,3 @@ CLOCK is developed independently by South Signal Lab. If the firmware, hardware 
 The firmware remains licensed under the terms stated in [`LICENSE.md`](../LICENSE.md). Sponsorship does not change the software license, grant commercial-use rights, or create a support entitlement.
 
 On the hardware module, open **SETTINGS → SUPPORT CLOCK** to display the same GitHub Sponsors and Ko-fi destinations. The publication manual also includes the Ko-fi QR code for convenient access from a phone.
-
-<h6 align="center">From Munich with &#9829;</h6>

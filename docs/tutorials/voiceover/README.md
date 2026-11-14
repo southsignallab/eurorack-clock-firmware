@@ -61,5 +61,3 @@ See [`TIMING.md`](TIMING.md) for the timing model and the Eight Independent Cloc
 - **Groove Editor Walkthrough** — `12-groove-editor-walkthrough.txt`
 - **Getting to Know CLOCK** — `13-getting-to-know-clock.txt`
 - **External Sync, Reset & General Settings** — `14-external-sync-reset-general-settings.txt`
-
-<h6 align="center">From Munich with &#9829;</h6>

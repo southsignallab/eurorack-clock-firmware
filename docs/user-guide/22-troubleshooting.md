@@ -18,5 +18,3 @@
 Work from the outside inward: **topology → transport → selected channel/mode → MUTE/OFF/PROBABILITY → rate → clock source**. This prevents chasing timing parameters when the real issue is simply that no event is eligible to reach the output.
 
 For external timing, separate the questions: first verify that a conditioned edge arrives, then verify that the correct input owns the SYNC role, then verify SOURCE/PPQN/EDGE, and only then tune FILTER, SMOOTHING or TIMEOUT.
-
-<h6 align="center">From Munich with &#9829;</h6>

@@ -108,7 +108,7 @@ class CommittedFrontPanelTests(unittest.TestCase):
         self.assertTrue((ROOT / "sim/panel_background.png").is_file())
 
     def test_derived_panel_files_are_current(self) -> None:
-        for script in ("generate_front_panel_illustration.py", "generate_vcv_panel.py", "generate_readme_header.py"):
+        for script in ("generate_front_panel_illustration.py", "generate_vcv_panel.py"):
             subprocess.run([sys.executable, str(ROOT / "scripts" / script), "--check"], cwd=ROOT, check=True)
 
 

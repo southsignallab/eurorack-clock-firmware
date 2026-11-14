@@ -97,5 +97,3 @@ The following invariants are release requirements:
 Host tests prove the state-machine and scheduling contract: fixed-point timing, gate lengths, SYNC/RST semantics, TIM4-style wrapping encoder accumulation/detent recovery, I2C transaction bounds, latest-frame-wins behavior, and SPI/I2C build equivalence. Physical encoder contact behavior remains a HIL concern.
 
 Only HIL can establish actual edge jitter, IRQ latency, SPI electrical behavior, comparator thresholds, and the final timing distribution at the jacks. The required bench matrix is defined in [`HIL_TEST_PLAN.md`](HIL_TEST_PLAN.md).
-
-<h6 align="center">From Munich with &#9829;</h6>

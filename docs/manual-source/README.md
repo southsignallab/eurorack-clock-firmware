@@ -151,5 +151,3 @@ The editable manual follows development continuously. A release-frozen manual mu
 ## Release-version contract
 
 The editable `clock-user-manual.odt` may follow ongoing development without a frozen copy for every intermediate source revision. For Alpha, Beta and RC publication the release workflow creates the versioned ODT transiently from the maintained source. A final stable release requires the committed `docs/manual/clock-user-manual.<version>.odt`, validates that ODT, converts it to PDF, validates the PDF, and publishes both artifacts. `docs/manual/` contains no working copy, artwork, README, prerelease snapshots, or transient files: only stable `X.Y.Z` ODT files with matching curated release records under `docs/releases/<version>/`.
-
-<h6 align="center">From Munich with &#9829;</h6>

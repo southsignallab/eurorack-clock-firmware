@@ -38,5 +38,3 @@ python scripts/analyze_hil_capture.py compare idle.csv stress.csv --signal OUT1 
 ```
 
 A failed analyzer command exits with status `2`; malformed or insufficient evidence exits with status `1`.
-
-<h6 align="center">From Munich with &#9829;</h6>

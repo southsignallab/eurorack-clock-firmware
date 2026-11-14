@@ -97,5 +97,3 @@ Phase 1 ships 13 didactic stories under [`stories/`](stories/README.md). The imp
 ### Readability and focus overlays
 
 The publication renderer treats the large OLED as the primary readable CLOCK UI. The right side is split into a magnified **CONTROL DETAIL** crop and a smaller **LOCATION** view of the complete module. Real encoder/button/patch actions automatically highlight the relevant hardware. Stories may add presentation-only `focus` actions for explanatory arrows, including arbitrary regions of the canonical 128x64 OLED framebuffer. Burned-in subtitles use a configurable lower safe margin so common video-player controls do not cover them.
-
-<h6 align="center">From Munich with &#9829;</h6>

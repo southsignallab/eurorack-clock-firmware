@@ -52,5 +52,3 @@ Polymeter therefore comes from different pattern lengths; polyrhythm comes from 
 ## Persistence qualification boundary
 
 The 12-KiB logical-image source configuration consumes 4 KiB more static staging RAM than released 1.1.0. Host migration and power-loss tests do not prove the target RAM budget. A real STM32F401 ELF must pass the repository memory gate before this layout is release-approved.
-
-<h6 align="center">From Munich with &#9829;</h6>

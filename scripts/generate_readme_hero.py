@@ -40,8 +40,8 @@ from version import VERSION_RE, read_define  # noqa: E402  (shared version sourc
 
 VERSION_HEADER = ROOT / "src" / "version.h"
 FONT_DIR = ROOT / "third_party" / "fonts" / "ubuntu-sans"
-SANS_FONT = FONT_DIR / "UbuntuSans-VF-latin.woff2"
-MONO_FONT = FONT_DIR / "UbuntuSansMono-VF-latin.woff2"
+SANS_FONT = FONT_DIR / "UbuntuSans[wdth,wght]-latin.woff2"
+MONO_FONT = FONT_DIR / "UbuntuSansMono[wght]-latin.woff2"
 RENDER = ROOT / "docs" / "assets" / "readme" / "clock-approved-render-ui.webp"
 OUTPUT_DIR = ROOT / "docs" / "assets" / "readme"
 OUTPUT_NAME = "clock-firmware-hero-{theme}.webp"

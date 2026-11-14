@@ -37,5 +37,3 @@ All three change **when** an output edge occurs, but they solve different musica
 Swing is the simplest choice when the desired feel is a regular alternating shuffle. Groove is for a repeatable timing fingerprint that can span more than two events, including early as well as late Custom-Groove steps. Humanize is different again: it slightly separates otherwise coincident One Clock outputs without becoming part of the Groove pattern. The common restart/downbeat remains exact.
 
 The layers can be combined. CLOCK first shapes the nominal event with Swing and Groove, then applies the bounded One Clock Humanize displacement. Safety limits reduce effective displacement when necessary so adjacent events remain ordered and at least one scheduler quantum apart.
-
-<h6 align="center">From Munich with &#9829;</h6>

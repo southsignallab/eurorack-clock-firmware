@@ -38,6 +38,10 @@ CI must fail if the embedded PlatformIO environment returns to `framework = ardu
 
 The firmware embeds only the native-resolution 1-bit numeral/dash raster data required by the OLED UI. The repository does not distribute a font file. Apache-2.0 attribution remains in `THIRD_PARTY_NOTICES.md`.
 
+## Ubuntu Sans fonts (documentation tooling)
+
+`third_party/fonts/ubuntu-sans/` holds Canonical's unmodified Ubuntu Sans and Ubuntu Sans Mono Latin web-font subsets with `LICENCE.txt` (Ubuntu Font Licence 1.0). `scripts/generate_readme_hero.py` uses them to render the README hero images; CI needs them to run `--check`. They are not part of the firmware, the simulator, the VCV plugin or release packages. File provenance and hashes are listed in `THIRD_PARTY_NOTICES.md`. The fonts must stay unmodified and must be distributed together with their licence; `scripts/check_embedded_dependencies.py` enforces both.
+
 ## Native simulator
 
 The optional desktop simulator links SDL3 under the zlib license. SDL is not linked into STM32 firmware and does not alter the embedded runtime license set.

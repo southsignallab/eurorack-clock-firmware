@@ -21,5 +21,3 @@ Only the value currently being edited is inverted. Whole-row inversion is avoide
 | START/PAUSE | Play / pause | — | Sequencer editor: play / pause |
 | TAP TEMPO short | Tap Tempo | Modifier | Sequencer editor: previous 8-step viewport |
 | STOP/BACK | Stop + global reset | Back / cancel | Back / cancel |
-
-<h6 align="center">From Munich with &#9829;</h6>

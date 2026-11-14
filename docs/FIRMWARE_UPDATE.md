@@ -197,5 +197,3 @@ The normal CLOCK update paths are designed to preserve them. If they are gone, c
 ### Firmware still does not boot after an update
 
 Use ST-LINK/SWD to program the address-aware ELF and debug the target. Do not repeatedly erase the whole device merely to retry an update; that destroys persistence without providing better diagnostic information.
-
-<h6 align="center">From Munich with &#9829;</h6>

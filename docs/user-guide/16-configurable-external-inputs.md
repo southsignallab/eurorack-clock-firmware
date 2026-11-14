@@ -84,5 +84,3 @@ An explicit user STOP or PAUSE has priority; incoming clock cannot silently undo
 Global reset still respects each Independent channel's local `RESET` policy: `GLOBAL` channels re-anchor; `FREE` channels preserve their local cycle relationship according to the channel reset contract. Transport roles (`RUN / START / STOP / RESTART`) remain separate from the RESET role.
 
 Both physical comparator paths are captured by GPIO EXTI with TIM5 microsecond timestamps and consumed by the deterministic scheduler. Host tests cover this digital role/state-machine contract; actual LM393 thresholds, propagation, jack-level timing and output jitter remain HIL evidence.
-
-<h6 align="center">From Munich with &#9829;</h6>

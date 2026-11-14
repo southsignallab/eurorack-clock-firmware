@@ -291,7 +291,7 @@ Do not hard-code a second firmware version in workflows or production code. The 
 
 ## Doxygen
 
-A repository `Doxyfile` is provided for generated API documentation. The documentation-quality checker validates repository-local links, README footers, fenced Markdown blocks, SVG accessibility metadata, and current-version identity before Doxygen generation.
+A repository `Doxyfile` is provided for generated API documentation. The documentation-quality checker validates repository-local links, the absence of the retired README footer, fenced Markdown blocks, SVG accessibility metadata, and current-version identity before Doxygen generation.
 
 ```bash
 python scripts/check_documentation.py

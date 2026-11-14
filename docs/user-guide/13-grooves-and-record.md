@@ -57,5 +57,3 @@ Front-panel TAP capture preserves the high-resolution physical press timestamp t
 ### Custom Groove library
 
 The frozen 1.1.0 storage scope is **10 named Custom Groove slots**. The normal Groove page exposes `LOAD >`; saved Grooves can also be overwritten, renamed, or deleted with explicit safe confirmations. The Performance screen uses the stored name rather than a generic `CUSTOM` label. The earlier 99-slot idea remains a later storage target and is not part of the 1.1.0 release contract.
-
-<h6 align="center">From Munich with &#9829;</h6>

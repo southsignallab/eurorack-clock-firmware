@@ -34,5 +34,3 @@ Tie and Ratchet are mutually exclusive because one requests continuous HIGH whil
 The lower status area shows the selected step/length, channel rate and only the traversal-direction pictogram (`FORWARD`, `REVERSE`, `PINGPONG`, or `RANDOM`). `LOOP / ONCE` remains editable in Sequencer settings and is not duplicated in the live editor.
 
 Pattern Operations provide pattern-wide transforms such as invert/clear/fill and copy/paste. Rate, Swing and Groove remain shared channel-timing controls. At `×1`, Sequencer steps use the established sixteenth-note grid, so 16 steps span one 4/4 bar. Per-step microtiming is deliberately not duplicated here: deterministic displacement belongs to Swing/Groove.
-
-<h6 align="center">From Munich with &#9829;</h6>

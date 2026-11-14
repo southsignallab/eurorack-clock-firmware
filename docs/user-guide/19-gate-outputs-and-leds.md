@@ -15,5 +15,3 @@ Gate length is selected in milliseconds: **1 / 2 / 5 / 10 / 20 / 50 / 100 ms**. 
 The front-panel LEDs are activity indicators for OUT 1–8. When troubleshooting, `GENERAL SETTINGS → DIAGNOSTICS → OUTPUTS` shows the eight logical gate-source states independently of the external patch. This helps distinguish a configuration/timing problem from wiring or downstream-module behavior.
 
 CLOCK always boots in STOP and keeps the eight gate-source GPIOs LOW through initialization. The final hardware has no MCU-controlled common output-enable line; safe startup is therefore enforced directly at the source GPIOs.
-
-<h6 align="center">From Munich with &#9829;</h6>

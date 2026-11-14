@@ -18,5 +18,3 @@ Use the channel overview to select an output, then open its settings. Generator 
 | `MUTE` | Suppresses output without discarding the generator state. |
 
 The dedicated [Clock](09-clock-mode.md), [Euclid](10-euclid-mode.md), and [Sequencer](11-sequencer-mode.md) chapters describe the generator-specific pages.
-
-<h6 align="center">From Munich with &#9829;</h6>

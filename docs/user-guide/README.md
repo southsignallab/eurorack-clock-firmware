@@ -28,6 +28,3 @@ The browser-readable guide is split along the same 24-chapter structure as the p
 - [22 Troubleshooting](22-troubleshooting.md)
 - [23 Firmware installation and updates](23-firmware-installation-and-updates.md)
 - [24 Technical status and specifications](24-technical-status-and-specifications.md)
-
-
-<h6 align="center">From Munich with &#9829;</h6>

@@ -14,5 +14,3 @@ All editable examples reference both files through `publication.intro_video` and
 Generated tutorial videos, WebM files, retained frame trees, voice-over renders, subtitle sidecars and publication manifests are workstation artifacts. `.gitignore` rejects them globally and explicitly re-allows only these two approved bumper MP4s.
 
 Do not add rendered tutorial output to this directory merely to bypass the ignore rules.
-
-<h6 align="center">From Munich with &#9829;</h6>

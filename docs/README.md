@@ -66,7 +66,7 @@ CLOCK documentation follows a few explicit rules:
 6. OLED screenshots must come from the production renderer/framebuffer and use nearest-neighbor enlargement. Every screenshot needs meaningful alt text or an adjacent caption that tells the reader what state is visible and why it matters.
 7. Mechanical drawings must distinguish **conceptual/manual artwork** from manufacturing drawings.
 8. Source API documentation is Doxygen-compatible; public declarations carry a concise `@brief` plus parameters/return semantics where relevant.
-9. Every README-style document ends with the same project footer.
+9. README-style documents end without a footer.
 
 > [!IMPORTANT]
 > Documentation must not turn unmeasured hardware characteristics into verified facts. The final PA8/PA9 GPIO routing and interrupt-driven digital SYNC/RST firmware path are implemented; comparator thresholds, external-SYNC capture latency/jitter, electrical output levels, and related bench behavior remain HIL measurements on representative hardware. Timer Input Capture remains an escalation path only if measured timing justifies it.
@@ -90,5 +90,3 @@ Additional engineering references:
 - [`qualification/V1_BENCH_MATRIX.md`](qualification/V1_BENCH_MATRIX.md) - repeatable V1 bench configurations.
 - [`qualification/HIL_CAPTURE_FORMAT.md`](qualification/HIL_CAPTURE_FORMAT.md) - normalized edge-capture format and analyzer workflow.
 - [`qualification/v1_qualification.json`](qualification/v1_qualification.json) - machine-readable physical qualification ledger.
-
-<h6 align="center">From Munich with &#9829;</h6>

@@ -13,5 +13,3 @@ Storybook rendering is deterministic and does not depend on system font substitu
 - `CLOCK Mono` — fixed advance for counters, scope labels and technical text.
 
 Each theme font entry is a mapping with `family` and `size_px`. `size_px` must be a positive multiple of 7 so glyph scaling remains integer and reproducible. A requested family that is not in the registry is a hard validation/rendering error.
-
-<h6 align="center">From Munich with &#9829;</h6>

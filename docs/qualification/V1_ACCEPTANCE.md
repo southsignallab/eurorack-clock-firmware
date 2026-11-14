@@ -42,5 +42,3 @@ For the 50-µs criteria above the repository analyzer uses worst observed absolu
 ## Release semantics
 
 All builds validate ledger structure, status vocabulary, PASS evidence references, and test-plan completeness. Incomplete physical qualification is intentionally **advisory through 1.4.x**, so `PENDING` and `BLOCKED` entries do not stop an automated release build. Starting with release candidates and stable releases at **1.5.0**, every normative HIL test must be `PASS` with evidence. CI/release tooling enforces this with `scripts/check_hil_qualification.py --require-pass-from 1.5.0`. Alpha and beta development builds remain advisory even at or beyond that threshold.
-
-<h6 align="center">From Munich with &#9829;</h6>

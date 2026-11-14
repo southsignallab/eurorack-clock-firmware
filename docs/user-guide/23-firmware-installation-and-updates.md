@@ -16,5 +16,3 @@ pio run -e release_default -t upload
 The project upload helper writes the application and vector-table regions separately and preserves Flash sectors 1 and 2, which hold settings, presets and arcade high scores. Do not replace the supported update path with a flat contiguous `firmware.bin`.
 
 The complete step-by-step procedure, including ST-LINK wiring, STM32CubeProgrammer, alternate Easter-egg variants, PlatformIO installation links, USB-only post-update testing and troubleshooting, is maintained in [`FIRMWARE_UPDATE.md`](../FIRMWARE_UPDATE.md).
-
-<h6 align="center">From Munich with &#9829;</h6>

@@ -44,5 +44,3 @@ Use this short workflow when the musical feel matters more than drawing offsets 
 6. Open `EDITOR >` for precise marker correction and **SAVE** to a named Custom Groove slot.
 
 Recorder Count-In is local to Groove Record and is independent from the global transport Pre-Count. In `ENDLESS`, later passes overwrite only steps that receive a new TAP.
-
-<h6 align="center">From Munich with &#9829;</h6>

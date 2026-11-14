@@ -626,6 +626,20 @@ class RepositoryPolicyTests(unittest.TestCase):
         for name in ("ci.yml", "release.yml", "vcv.yml"):
             self.assertIn("python scripts/check_vcv_runtime_coverage.py", workflows[name], name)
 
+    def test_windows_simulator_job_provisions_ucrt64_toolchain(self) -> None:
+        ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        job = ci.split("  native-simulator:\n", 1)[1].split("\n  simulator-sdl-build:", 1)[0]
+        self.assertIn("windows-latest", job)
+        configure = job.index("cmake --preset simulator-headless")
+        provision = job.find("uses: msys2/setup-msys2@v2")
+        self.assertNotEqual(provision, -1, "Windows simulator job must install MSYS2 UCRT64")
+        self.assertLess(provision, configure)
+        self.assertIn("msystem: UCRT64", job)
+        self.assertIn("mingw-w64-ucrt-x86_64-gcc", job)
+        self.assertIn("mingw-w64-ucrt-x86_64-ninja", job)
+        self.assertIn("CLOCK_UCRT64_ROOT=", job)
+        self.assertIn("GITHUB_PATH", job)
+
     def test_polyform_license_is_present_and_identified(self) -> None:
         license_text = (ROOT / "LICENSE.md").read_text(encoding="utf-8")
         readme = (ROOT / "README.md").read_text(encoding="utf-8")

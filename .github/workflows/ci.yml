@@ -98,6 +98,27 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
+      # The Windows presets use cmake/toolchains/clock-host.cmake, which requires
+      # MSYS2 UCRT64 GCC/G++; Ninja comes from the same environment.
+      - name: Install MSYS2 UCRT64 toolchain
+        if: runner.os == 'Windows'
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: false
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-ninja
+
+      - name: Expose UCRT64 toolchain to CMake
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $root = Join-Path '${{ steps.msys2.outputs.msys2-location }}' 'ucrt64'
+          "CLOCK_UCRT64_ROOT=$root" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          (Join-Path $root 'bin') | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
       - name: Configure headless simulator
         run: cmake --preset simulator-headless
 

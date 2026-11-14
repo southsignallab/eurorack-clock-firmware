@@ -13,5 +13,3 @@ Divider Bank is intentionally simple: choose one divider family and one shared g
 | `PRIME` | ×1, ÷2, ÷3, ÷5, ÷7, ÷11, ÷13, ÷17 |
 
 There are no fake per-channel settings in this topology because the outputs are intentionally derived from one shared divider source.
-
-<h6 align="center">From Munich with &#9829;</h6>

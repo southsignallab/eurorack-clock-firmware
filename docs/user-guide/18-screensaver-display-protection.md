@@ -63,5 +63,3 @@ Four additional visual modes are available: **MAKE MUSIC** builds `MAKE·MUSIC·
 <td align="center"><img src="../manual-source/assets/power-off.png" alt="OLED OFF display-protection state with the panel blank." width="220"><br><sub>OLED OFF — final display-protection stage</sub></td>
 </tr>
 </table>
-
-<h6 align="center">From Munich with &#9829;</h6>

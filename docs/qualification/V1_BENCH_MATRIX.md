@@ -135,5 +135,3 @@ Use at least two active channels: one `RESET=GLOBAL`, one `RESET=FREE`. While PL
 Purpose: HIL-BOOT-001 and HIL-BOOT-002 plus persisted-PLAY safety.
 
 Repeat at least 100 complete power cycles while monitoring outputs. Include OLED connected/disconnected and the supported USB-power combinations defined by the hardware setup. Repeat after PLAY, PAUSE and STOP were the last user-visible transport states. The expected boot state is always STOP and all outputs LOW until explicit PLAY.
-
-<h6 align="center">From Munich with &#9829;</h6>

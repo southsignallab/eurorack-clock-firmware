@@ -32,5 +32,3 @@ If a RUN or START signal arrives during the short Flash write, playback starts r
 **SAVE ERROR** on the Performance screen means a Flash write failed. Your changes stay in memory and CLOCK retries automatically after 1, 2, 4, 8, 16, 32 and then every 60 seconds. If the message keeps returning, the Flash sector may be worn; changes made since the last successful write are lost when power is removed.
 
 **SAVE LOCKED** means the Flash holds settings written by a newer firmware in a format this firmware does not know, typically after a downgrade. CLOCK still runs with the newest settings it can read but writes nothing, so the newer data stays intact for a later upgrade. Either install the newer firmware again or confirm **FACTORY RESET** (`INFO`), which replaces the stored data with factory settings and lifts the lock.
-
-<h6 align="center">From Munich with &#9829;</h6>

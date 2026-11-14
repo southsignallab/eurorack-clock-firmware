@@ -21,5 +21,3 @@ That boundary protects both signal quality and DIY buildability. A quality eight
 This is therefore **not a missing V1 feature**. CLOCK concentrates on what eight digital event outputs can do well: coherent clocks, Euclidean rhythms, gate sequences, ratios, phase, probability, reset semantics, and robust synchronization. Later firmware may add deeper internal event relationships without requiring an analog modulation subsystem.
 
 For the frozen V1/post-1.0 boundary, see [`ROADMAP.md`](../ROADMAP.md).
-
-<h6 align="center">From Munich with &#9829;</h6>

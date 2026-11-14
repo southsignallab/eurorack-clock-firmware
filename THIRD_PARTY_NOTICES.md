@@ -24,6 +24,19 @@ The native-resolution 1-bit tempo glyphs in `src/hal/display_font.cpp` are raste
 
 License text: `third_party/LICENSE-Apache-2.0.txt`
 
+## Ubuntu Sans and Ubuntu Sans Mono (README hero generator only)
+
+`scripts/generate_readme_hero.py` sets the text of the README hero images in Ubuntu Sans and Ubuntu Sans Mono. The repository carries Canonical's published Latin web-font subsets unmodified and under their original file names in `third_party/fonts/ubuntu-sans/`:
+
+| File | Upstream repository | Commit | Upstream path | SHA-256 |
+| --- | --- | --- | --- | --- |
+| `UbuntuSans[wdth,wght]-latin.woff2` | `canonical/Ubuntu-Sans-fonts` | `9554af00fb9d438a12c916df8451c10dcedc9b7e` | `fonts/webfont-subsets/` | `d319bf6e5712fa3f356e026ff1ed5d6f1acdf53872e51d36134b9bd3be6e48b2` |
+| `UbuntuSansMono[wght]-latin.woff2` | `canonical/Ubuntu-Sans-Mono-fonts` | `c57353c1772eb8aaab9c539e3d42c971a03a5fcd` | `fonts/webfont-subsets/` | `3ab421639b246ddb80c35953eaf959050afbb4ab144d2cf55bd4f20da58047d1` |
+
+The fonts are licensed under the Ubuntu Font Licence 1.0. They are not linked into firmware, the simulator or the VCV plugin and are not part of release packages.
+
+License text: `third_party/fonts/ubuntu-sans/LICENCE.txt`
+
 ## SDL3 (native simulator only)
 
 The optional desktop simulator uses SDL3 under the zlib license. SDL3 is not linked into STM32 firmware.

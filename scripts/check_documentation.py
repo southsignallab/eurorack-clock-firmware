@@ -13,11 +13,17 @@ import subprocess
 import sys
 import tempfile
 import xml.etree.ElementTree as ET
+import zipfile
 from pathlib import Path
 from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
-README_FOOTER = '<h6 align="center">From Munich with &#9829;</h6>'
+RETIRED_FOOTER = 'From Munich with'
+# Records of completed releases keep their wording; they are not current documentation.
+RETIRED_FOOTER_HISTORY = ('CHANGELOG.md', 'docs/releases/')
+# Component READMEs under test/ and vcv/ change together with their component trees.
+RETIRED_FOOTER_DEFERRED = ('test/README.md', 'vcv/README.md')
+RUNNING_MANUAL = ROOT / 'docs' / 'manual-source' / 'clock-user-manual.odt'
 MARKDOWN_LINK_RE = re.compile(r'!?(?:\[[^\]]*\])\(([^)]+)\)')
 HTML_LINK_RE = re.compile(r'(?:href|src)="([^"]+)"')
 STABLE_VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
@@ -84,14 +90,28 @@ def check_fences(errors: list[str]) -> None:
             errors.append(f'{path.relative_to(ROOT)}: unbalanced triple-backtick code fence')
 
 
-def check_readme_footers(errors: list[str]) -> None:
-    """Require the canonical centered text-heart footer on every README-style document."""
-    for path in sorted(ROOT.rglob('*.md')):
-        if 'readme' not in path.name.lower():
-            continue
-        text = path.read_text(encoding='utf-8').rstrip()
-        if not text.endswith(README_FOOTER):
-            errors.append(f'{path.relative_to(ROOT)}: missing canonical README footer')
+def check_retired_footer(errors: list[str], paths: list[Path] | None = None) -> None:
+    """Reject the retired centered footer sentence in current Markdown documentation."""
+    if paths is None:
+        candidates = set(markdown_files()) | set((ROOT / 'vcv').rglob('*.md'))
+        paths = []
+        for path in sorted(candidates):
+            relative = path.relative_to(ROOT).as_posix()
+            if relative.startswith(RETIRED_FOOTER_HISTORY) or relative in RETIRED_FOOTER_DEFERRED:
+                continue
+            paths.append(path)
+    for path in paths:
+        if RETIRED_FOOTER in path.read_text(encoding='utf-8'):
+            name = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
+            errors.append(f'{name}: retired footer "{RETIRED_FOOTER} ..." must not appear in current documentation')
+
+
+def check_running_manual_footer(errors: list[str], path: Path = RUNNING_MANUAL) -> None:
+    """Reject the retired footer sentence in the running ODT manual source."""
+    with zipfile.ZipFile(path) as archive:
+        for member in ('styles.xml', 'content.xml'):
+            if RETIRED_FOOTER in archive.read(member).decode('utf-8'):
+                errors.append(f'{path.name}/{member}: retired footer "{RETIRED_FOOTER} ..." must not appear')
 
 
 def check_manual_svgs(errors: list[str]) -> None:
@@ -131,6 +151,15 @@ def check_generated_front_panel(errors: list[str]) -> None:
     if result.returncode != 0:
         detail = (result.stderr or result.stdout).strip()
         errors.append(f'docs/manual-source/assets/front-panel-anatomy.svg: generated illustration is stale ({detail})')
+
+
+def check_generated_readme_hero(errors: list[str]) -> None:
+    """Keep the README hero images synchronized with the firmware version and their inputs."""
+    command = [sys.executable, str(ROOT / 'scripts' / 'generate_readme_hero.py'), '--check']
+    result = subprocess.run(command, text=True, capture_output=True)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        errors.append(f'docs/assets/readme: generated README hero is stale ({detail})')
 
 
 def check_version_identity(errors: list[str]) -> None:
@@ -385,8 +414,8 @@ def check_wiki_publication_contract(errors: list[str]) -> None:
             return
         home = (output / 'Home.md').read_text(encoding='utf-8')
         manual = (output / 'Manual-and-Downloads.md').read_text(encoding='utf-8')
-        if 'From Munich with &#9829;' not in home or 'From Munich with &#9829;' not in manual:
-            errors.append('generated Wiki: canonical Munich footer missing')
+        if RETIRED_FOOTER in home or RETIRED_FOOTER in manual:
+            errors.append('generated Wiki: retired footer must not appear')
         version_header = (ROOT / 'src/version.h').read_text(encoding='utf-8')
         match = VERSION_RE.search(version_header)
         if match and f'clock-user-manual.{match.group(1)}.odt' not in manual:
@@ -424,9 +453,11 @@ def main() -> int:
     errors: list[str] = []
     check_links(errors)
     check_fences(errors)
-    check_readme_footers(errors)
+    check_retired_footer(errors)
+    check_running_manual_footer(errors)
     check_manual_svgs(errors)
     check_generated_front_panel(errors)
+    check_generated_readme_hero(errors)
     check_version_identity(errors)
     check_v1_scope_contract(errors)
     check_hil_qualification_contract(errors)
@@ -443,7 +474,7 @@ def main() -> int:
     print('Documentation check passed.')
     print(f'  Markdown files checked: {len(markdown_files())}')
     print(f'  Manual SVGs checked: {len(list((ROOT / "docs/manual-source/assets").glob("*.svg")))}')
-    print('  README footer, local links, fences, SVG accessibility, version identity, and citation metadata: PASS')
+    print('  Retired footer, local links, fences, SVG accessibility, version identity, and citation metadata: PASS')
     return 0
 
 

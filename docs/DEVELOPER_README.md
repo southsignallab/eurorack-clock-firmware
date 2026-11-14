@@ -769,5 +769,3 @@ If all commands pass, the workstation is functionally equivalent to the reposito
 - PlatformIO system requirements: https://docs.platformio.org/en/stable/core/installation/requirements.html
 - PlatformIO shell commands/PATH: https://docs.platformio.org/en/stable/core/installation/shell-commands.html
 - PlatformIO environment variables: https://docs.platformio.org/en/stable/envvars.html
-
-<h6 align="center">From Munich with &#9829;</h6>

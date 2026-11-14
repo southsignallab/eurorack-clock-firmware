@@ -1,24 +1,32 @@
 <!-- Author: Axel Napolitano | License: PolyForm-Noncommercial-1.0.0 -->
 
-<p align="center">
-  <img src="docs/assets/clock-header.svg" alt="CLOCK digital master clock: wordmark, eight gate traces and the engraved 10 HP front panel" width="100%">
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/clock-firmware-hero-dark.webp">
+  <img src="docs/assets/readme/clock-firmware-hero-light.webp" width="100%" alt="CLOCK firmware by South Signal Lab, version 1.1.0, with a render of the Revision C hardware">
+</picture>
 
-[![CI](https://github.com/napolitano/eurorack-clock-firmware/actions/workflows/ci.yml/badge.svg)](https://github.com/napolitano/eurorack-clock-firmware/actions/workflows/ci.yml)
-[![Manual publication](https://github.com/napolitano/eurorack-clock-firmware/actions/workflows/manual-publication.yml/badge.svg)](https://github.com/napolitano/eurorack-clock-firmware/actions/workflows/manual-publication.yml)
-[![Release](https://img.shields.io/github/v/release/napolitano/eurorack-clock-firmware?include_prereleases&sort=semver&label=release)](https://github.com/napolitano/eurorack-clock-firmware/releases)
-[![PlatformIO](https://img.shields.io/badge/PlatformIO-STM32F401-orange?logo=platformio&logoColor=white)](platformio.ini)
-[![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus&logoColor=white)](CMakeLists.txt)
-[![Coverage gates](https://img.shields.io/badge/coverage%20gates-95%2F95%2F90-2ea44f)](docs/TEST_COVERAGE.md)
-[![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-blue)](LICENSE.md)
+# CLOCK Firmware
 
-# CLOCK
-
-**Eight-channel Eurorack master clock, rhythm generator and gate sequencer by South Signal Lab.**
-
-CLOCK is the firmware and reference design for our own **10 HP, eight-output Eurorack clock module** built around the STM32F401CCU6 Black Pill. It combines a deterministic master timeline with three ways of using the outputs: eight independent rhythmic channels, one shared clock on all outputs, or an eight-output divider bank.
+Firmware for CLOCK, the eight-channel Eurorack master clock and gate sequencer in 10&nbsp;HP by South Signal Lab: eight independent rhythmic channels with Clock, Euclid and Sequencer, one shared clock, or an eight-output divider bank, all on one deterministic timeline. This repository holds the firmware, the simulator, the tests and the user documentation. The hardware design files are maintained in a separate repository.
 
 The project is deliberately DIY-oriented: commonly obtainable parts, a compact physical interface, reproducible builds, a native simulator, strong automated tests, and documentation that is meant to be useful at the workbench rather than merely satisfy a release checklist.
+
+**[Download firmware 1.1.0](https://github.com/southsignallab/eurorack-clock-firmware/releases/latest)** · [User manual](https://github.com/southsignallab/eurorack-clock-firmware/wiki/Manual-and-Downloads) · [Product page](https://southsignallab.com/hardware/clock/)
+
+[![CI](https://github.com/southsignallab/eurorack-clock-firmware/actions/workflows/ci.yml/badge.svg)](https://github.com/southsignallab/eurorack-clock-firmware/actions/workflows/ci.yml) [![Manual publication](https://github.com/southsignallab/eurorack-clock-firmware/actions/workflows/manual-publication.yml/badge.svg)](https://github.com/southsignallab/eurorack-clock-firmware/actions/workflows/manual-publication.yml) [![Release](https://img.shields.io/github/v/release/southsignallab/eurorack-clock-firmware?include_prereleases&sort=semver&label=release)](https://github.com/southsignallab/eurorack-clock-firmware/releases)
+
+## Revision B on the bench
+
+Revision B is the assembled development module the firmware runs on today. It was used to test the two-board through-hole build, the mechanics and several displays before the final panel revision. The current reference design is Revision C; its panel differs from the one shown here.
+
+<table>
+<tr>
+<td align="center"><img src="docs/assets/readme/clock-rev-b-front.webp" height="300" alt="Front bench photograph of the assembled CLOCK Revision B module"><br><sub>Front</sub></td>
+<td align="center"><img src="docs/assets/readme/clock-rev-b-isometric.webp" height="300" alt="Isometric bench photograph of the assembled CLOCK Revision B module"><br><sub>Isometric</sub></td>
+<td align="center"><img src="docs/assets/readme/clock-rev-b-side.webp" height="300" alt="Side bench photograph showing the stacked boards of the CLOCK Revision B module"><br><sub>Stacked boards</sub></td>
+<td align="center"><img src="docs/assets/readme/clock-rev-b-rear.webp" height="300" alt="Rear bench photograph showing the CLOCK Revision B main board and controller"><br><sub>Main board</sub></td>
+</tr>
+</table>
 
 > [!IMPORTANT]
 > **Stable firmware: `1.1.0`.** This release makes Grooves a first-class timing tool, adds Pre-Count and configurable digital-input roles, and expands Custom Grooves with graphical editing, live TAP recording, named storage, the horizontal Channel Mode carousel, and the related UI/persistence work.
@@ -75,19 +83,6 @@ CLOCK reached **1.0** by stabilizing and qualifying the product that already exi
 flowchart LR
     V1["1.0.1<br/>Stable baseline"] --> G["1.1.0<br/>Stable<br/>Grooves + Pre-Count"] --> S["NOW<br/>1.2 dev<br/>Sequencer 2.0"] --> E["1.3<br/>Euclid Fill<br/>Conditions"] --> R["1.4<br/>Ratchet / Burst"] --> N["1.5<br/>Structured Random<br/>Hard HIL gate"] --> I["1.6<br/>Channel Interaction"] --> P["1.7<br/>Scenes + Phase"]
     V1 -. separate track .-> VCV["VCV Rack<br/>Development preview"]
-
-    classDef current fill:#0B4FC0,color:#ffffff,stroke:#062F75,stroke-width:2px;
-    classDef stable fill:#197A5A,color:#ffffff,stroke:#0B513A,stroke-width:2px;
-    classDef planned fill:#EAF0FF,color:#12213A,stroke:#0B4FC0,stroke-width:1.5px;
-    classDef gate fill:#F4E8C1,color:#2A2416,stroke:#9D771B,stroke-width:1.5px;
-    classDef virtual fill:#EEE7F7,color:#221832,stroke:#74509A,stroke-width:1.5px;
-
-    class V1 stable;
-    class G stable;
-    class S current;
-    class E,R,I,P planned;
-    class N gate;
-    class VCV virtual;
 ```
 
 The hard physical-HIL release gate deliberately starts at **1.5.0**; before then HIL remains visible and evidence-checked but advisory to release automation. The detailed roadmap documents scope, dependencies, constraints and exit criteria for each milestone: **[`docs/ROADMAP.md`](docs/ROADMAP.md)**.
@@ -376,13 +371,12 @@ Every image of the front panel comes from the KiCad front-panel project (`Simple
 - `sim/panel_background.png` — the simulator panel image;
 - the panel size and all control coordinates in [`sim/panel_layout.ini`](sim/panel_layout.ini).
 
-The manual illustration (`scripts/generate_front_panel_illustration.py`), the VCV Rack panel (`scripts/generate_vcv_panel.py`) and the README header (`scripts/generate_readme_header.py`) are generated from those committed files, so CI checks them without access to the private hardware repository. After a panel change:
+The manual illustration (`scripts/generate_front_panel_illustration.py`) and the VCV Rack panel (`scripts/generate_vcv_panel.py`) are generated from those committed files, so CI checks them without access to the private hardware repository. After a panel change:
 
 ```bash
 python scripts/import_kicad_front_panel.py --kicad "<hardware repo>/Simple Frontpanel/Simple Frontpanel.kicad_pcb"
 python scripts/generate_front_panel_illustration.py
 python scripts/generate_vcv_panel.py
-python scripts/generate_readme_header.py
 ```
 
 `--check` on the importer proves that the committed files still match the KiCad file (same Pillow version assumed for the PNG outputs).
@@ -405,5 +399,3 @@ The canonical software identity is **South Signal Lab CLOCK**. Citation metadata
 Firmware source is licensed under the **PolyForm Noncommercial License 1.0.0**; see [`LICENSE.md`](LICENSE.md). The manual and its publication assets have their own documentation license described under [`docs/manual-source/LICENSE.md`](docs/manual-source/LICENSE.md). Third-party components retain their respective upstream licenses.
 
 Because PolyForm Noncommercial restricts commercial use, this repository is **source-available**, not OSI open-source. That distinction is intentional and documented rather than hidden behind a generic "open source" label.
-
-<h6 align="center">From Munich with &#9829;</h6>

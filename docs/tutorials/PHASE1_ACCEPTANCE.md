@@ -56,5 +56,3 @@ The canonical Phase-1 catalog contains exactly 13 stories. `storybook_reference_
 ## Publication and generated-output policy
 
 Generated frames, subtitle sidecars, manifests, probes, MP4/WebM files and internal verification output remain build/publication artifacts. They are excluded from delivered source bundles.
-
-<h6 align="center">From Munich with &#9829;</h6>

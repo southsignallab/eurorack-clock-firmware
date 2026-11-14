@@ -20,5 +20,3 @@ qualification/evidence/
 ```
 
 Do not commit captures containing unrelated personal or machine-identifying data. Raw oscilloscope screenshots are useful supporting evidence, but edge CSV plus analyzer output should be preferred for timing claims because it is reviewable and reproducible.
-
-<h6 align="center">From Munich with &#9829;</h6>

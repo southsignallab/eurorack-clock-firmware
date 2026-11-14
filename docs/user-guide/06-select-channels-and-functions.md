@@ -38,5 +38,3 @@ Releasing TAP TEMPO does not silently mutate the running setup. If the highlight
 ![Mode-change confirmation dialog showing CHANGE MODE? with NO selected as the safe default.](../manual-source/assets/mode-change-confirm-no.png)
 
 After confirmation CLOCK opens the most useful destination: Euclid goes to algorithm settings, Sequencer to its editor, One Clock to shared settings, Divider Bank to divider-family settings, while Clock and Off return to Performance.
-
-<h6 align="center">From Munich with &#9829;</h6>

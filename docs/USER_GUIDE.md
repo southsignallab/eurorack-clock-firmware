@@ -663,5 +663,3 @@ These software safeguards do not replace physical validation. Representative har
 ## 25. License
 
 Firmware source is licensed under the **PolyForm Noncommercial License 1.0.0**. The Required Notice is `Required Notice: Copyright © 2026 Axel Napolitano.` See [`../LICENSE.md`](../LICENSE.md), [`../NOTICE.txt`](../NOTICE.txt), and [`LICENSING.md`](LICENSING.md). The publication manual and documentation artwork use the documentation license described in [`manual-source/LICENSE.md`](manual-source/LICENSE.md). Third-party components retain their upstream licenses and notices.
-
-<h6 align="center">From Munich with &#9829;</h6>

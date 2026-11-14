@@ -19,7 +19,7 @@ The chapter-oriented repository source lives in `docs/user-guide/`. `docs/USER_G
 
 `_Sidebar.md` is generated from the same page manifest so navigation cannot silently drift away from the page set. Repository-relative Markdown links are rewritten either to the corresponding Wiki page or to the exact source commit in the main repository. Direct edits in the GitHub Wiki are intentionally overwritten on the next successful publication.
 
-Every generated content page ends with the canonical centered **From Munich with ♥** project footer.
+Generated content pages end without a footer. A retired centered footer still present in a source document is removed during generation.
 
 ## ODT manual download
 
@@ -52,6 +52,4 @@ python scripts/build_wiki.py \
   --ref main
 ```
 
-The generator validates the complete page inventory, the current-version ODT link, source-of-truth notices, and the canonical Munich footer before returning success.
-
-<h6 align="center">From Munich with &#9829;</h6>
+The generator validates the complete page inventory, the current-version ODT link, source-of-truth notices, and the absence of the retired footer before returning success.

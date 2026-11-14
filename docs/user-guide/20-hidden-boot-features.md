@@ -41,5 +41,3 @@ After a ranked Easter egg has been launched at least once, the Settings root gai
 </table>
 
 Pixel Raid, Formula 1, Breakout, and Egg Journey keep all gate source GPIOs muted. BEATKNECHT is the deliberate exception: its intro is started with PLAY, it allows gate HIGH requests only while transport is PLAYING, drives the rhythm gates, forces all channels LOW on PAUSE, and returns all channels LOW plus mutes gate output on STOP or confirmed exit. Opening the exit confirmation also silences the gates; cancelling restores the prior PLAY/PAUSE/STOP state. Normal firmware resumes in STOP.
-
-<h6 align="center">From Munich with &#9829;</h6>

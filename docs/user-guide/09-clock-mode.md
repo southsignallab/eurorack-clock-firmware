@@ -19,5 +19,3 @@ Clock produces a regular derived trigger/clock on one output. Its channel owns:
 Integer and rational rates use fixed/integer timing with remainder retention. CLOCK does not repeatedly truncate fractional intervals, so ratios such as `2:3`, `3:2`, `4:5`, or `5:4` do not accumulate long-term drift simply because an event interval is not an integer number of scheduler quanta.
 
 `GLOBAL` means a global reset re-anchors the channel. `FREE` allows its local cycle position to survive that global reset.
-
-<h6 align="center">From Munich with &#9829;</h6>

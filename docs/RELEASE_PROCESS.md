@@ -75,5 +75,3 @@ git push origin v<version>
 ```
 
 The workflow validates that the tag matches `src/version.h`, runs all release gates, builds the five ARM images, creates the manual and legal payload, uploads the complete `dist/` directory as a workflow artifact, and only then creates the GitHub Release.
-
-<h6 align="center">From Munich with &#9829;</h6>

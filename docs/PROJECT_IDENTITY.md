@@ -69,5 +69,3 @@ The primary machine-readable keywords are intentionally descriptive rather than 
 `eurorack`, `modular synthesizer`, `clock generator`, `trigger sequencer`, `gate sequencer`, `euclidean rhythm`, `rhythm generator`, `STM32F401`, `embedded firmware`, `PlatformIO`, `music technology`.
 
 These should also guide the eventual GitHub repository description and Topics so search-engine, GitHub, DataCite/Zenodo, and software-catalog terminology remain aligned.
-
-<h6 align="center">From Munich with &#9829;</h6>

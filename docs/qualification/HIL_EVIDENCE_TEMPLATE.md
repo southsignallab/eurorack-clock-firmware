@@ -47,5 +47,3 @@ Record measured values, event/sample count, analyzer status and any discarded sa
 - **Result:** `PASS` / `FAIL` / `BLOCKED`
 - **Reason:**
 - **Follow-up:**
-
-<h6 align="center">From Munich with &#9829;</h6>

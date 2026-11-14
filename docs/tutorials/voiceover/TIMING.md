@@ -87,8 +87,6 @@ Every setting actually shown on screen receives its own explanation and narratio
 
 The final scope view demonstrates the two actual edits: channel 4 at ×2 with a 20-ms gate while the other seven Clock channels retain their original settings.
 
-<h6 align="center">From Munich with &#9829;</h6>
-
 ## Groove Editor Walkthrough
 
 Groove Editor Walkthrough deliberately continues the teaching sequence from Eight Independent Clocks Walkthrough without requiring the viewer to have watched it. The opening names Eight Independent Clocks Walkthrough, restates only the minimum Independent/channel-selection path, and then treats the Groove Editor as the sole subject.

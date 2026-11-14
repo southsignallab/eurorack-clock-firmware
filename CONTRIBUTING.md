@@ -57,5 +57,3 @@ Do not commit build directories, `.pio`, coverage output, simulator state, gener
 ## Generated Wiki
 
 The GitHub Wiki is generated from canonical repository Markdown by `scripts/build_wiki.py` and published by `.github/workflows/wiki.yml` after pushes to the default branch. Do not maintain duplicate Wiki-only documentation. When changing documentation structure, update the generator page manifest and run `python scripts/build_wiki.py --output build/wiki-preview` locally. The Wiki manual page must always expose the version-frozen ODT manual for the current firmware version.
-
-<h6 align="center">From Munich with &#9829;</h6>

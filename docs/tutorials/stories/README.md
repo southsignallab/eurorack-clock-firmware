@@ -52,5 +52,3 @@ These operations still drive the production control path; they are not direct na
 `storybook_reference_stories_tests` parses and semantically validates all 13 files, rejects duplicate IDs, executes every story twice on independent `SimulatorRuntime` instances, compares the complete logical traces and verifies the intended final production state. The normal `simulator-headless` CTest run therefore validates the full authored catalog on all native-simulator CI operating systems.
 
 The `examples/` directory contains schema fixtures and deliberate failure cases. It is not part of the canonical publication sequence.
-
-<h6 align="center">From Munich with &#9829;</h6>

@@ -54,14 +54,14 @@ class WikiGenerationTests(unittest.TestCase):
         self.assertLess(sidebar.index('01 Start here'), sidebar.index('15 Settings map'))
         self.assertLess(sidebar.index('15 Settings map'), sidebar.index('24 Technical status and specifications'))
 
-    def test_every_content_page_has_exactly_one_munich_footer(self) -> None:
+    def test_no_content_page_carries_the_retired_footer(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / 'wiki'
             build_wiki.build(output, 'owner/clock', 'deadbeef', 'https://github.com')
             for page in build_wiki.PAGES:
                 text = (output / f'{page.slug}.md').read_text(encoding='utf-8')
-                self.assertEqual(1, text.count(build_wiki.CANONICAL_FOOTER), page.slug)
-                self.assertTrue(text.rstrip().endswith(build_wiki.CANONICAL_FOOTER), page.slug)
+                self.assertNotIn('From Munich', text, page.slug)
+                self.assertNotIn('<h6', text, page.slug)
 
     def test_manual_page_links_exact_version_frozen_odt(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -25,7 +25,6 @@ FOOTER_RE = re.compile(
     r'\n*<h6\s+align="center">From Munich with (?:&#9829;|♥)</h6>\s*$',
     re.IGNORECASE,
 )
-CANONICAL_FOOTER = '<h6 align="center">From Munich with &#9829;</h6>'
 
 
 @dataclass(frozen=True)
@@ -112,7 +111,7 @@ def repository_url(server_url: str, repository: str, ref: str, path: PurePosixPa
 
 
 def strip_repository_footer(text: str) -> str:
-    """Remove an existing repository footer so the Wiki adds exactly one footer."""
+    """Remove a retired centered footer that a source document may still carry."""
     return FOOTER_RE.sub('', text.rstrip())
 
 
@@ -234,7 +233,7 @@ def render_page(page: WikiPage, version: str, repository: str, ref: str, server_
     prefix = generated_notice(page, repository, ref, server_url)
     if page.slug in {'Home', 'Manual-and-Downloads'}:
         prefix += manual_download_notice(version, repository, ref, server_url)
-    return f'{prefix}{body.rstrip()}\n\n{CANONICAL_FOOTER}\n'
+    return f'{prefix}{body.rstrip()}\n'
 
 
 def render_sidebar(version: str) -> str:
@@ -267,8 +266,8 @@ def validate_output(output: Path, version: str) -> None:
         raise SystemExit(f'Generated Wiki contains unexpected pages: {", ".join(unexpected)}')
     for page in PAGES:
         text = (output / f'{page.slug}.md').read_text(encoding='utf-8')
-        if not text.rstrip().endswith(CANONICAL_FOOTER):
-            raise SystemExit(f'{page.slug}.md: canonical Munich footer is missing')
+        if FOOTER_RE.search(text):
+            raise SystemExit(f'{page.slug}.md: retired footer must not appear')
         if 'generated from' not in text[:1200]:
             raise SystemExit(f'{page.slug}.md: generated-source notice is missing')
     manual = (output / 'Manual-and-Downloads.md').read_text(encoding='utf-8')

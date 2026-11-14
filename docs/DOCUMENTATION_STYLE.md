@@ -94,10 +94,4 @@ When a feature is not implemented, say so explicitly. Do not describe the intend
 
 ## README footer
 
-README-style documents end with the same small centered footer:
-
-```html
-<h6 align="center">From Munich with &#9829;</h6>
-```
-
-The HTML entity renders a text heart rather than a colored emoji glyph, keeping the heart the same monochrome color as the surrounding text.
+README-style documents end without a footer.

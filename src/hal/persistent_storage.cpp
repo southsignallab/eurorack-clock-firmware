@@ -1,225 +1,20 @@
 /**
  * @file persistent_storage.cpp
- * @brief Power-loss-safe A/B Flash storage implementation for STM32F401 and host tests.
+ * @brief Power-loss-safe A/B Flash storage API for STM32F401 and host tests.
  * @author Axel Napolitano
  * @copyright 2026 Axel Napolitano
  * @license PolyForm-Noncommercial-1.0.0
  */
 
 #include "hal/persistent_storage.h"
+
 #include <algorithm>
-#include <array>
-#include <cstdint>
 #include <cstring>
-#ifndef CLOCK_HOST_TEST
-#include <stm32f4xx_hal.h>
-#endif
+
+#include "hal/persistent_storage_slots.h"
 
 namespace clockfw::hal {
-namespace {
-constexpr std::uint8_t kErasedByte = 0xFFU;
-constexpr std::uint32_t kSlotMagic = 0x434C4B50UL;      // "CLKP"
-constexpr std::uint32_t kSlotFormatVersion = 1U;
-constexpr std::uint32_t kCommitMarker = 0xC10C17EDUL;
-constexpr std::uint32_t kCrcPolynomial = 0xEDB88320UL;
-constexpr std::uint32_t kCrcInitialValue = 0xFFFFFFFFUL;
-constexpr std::size_t kSlotHeaderBytes = 32U;
-constexpr std::size_t kHeaderWordCount = kSlotHeaderBytes / sizeof(std::uint32_t);
-constexpr std::size_t kCommitWordIndex = kHeaderWordCount - 1U;
-constexpr std::size_t kPayloadOffset = kSlotHeaderBytes;
-constexpr std::size_t kLegacyPayloadBytes = 4096U;
-constexpr std::size_t kV1PayloadBytes = persistent_layout::kV1ImageBytes;
-static_assert(
-    kSlotHeaderBytes + PersistentStorage::kMaximumImageBytes <=
-        PersistentStorage::kPhysicalSlotBytes,
-    "12-KiB persistent-image policy must fit inside one 16-KiB slot");
-static_assert((PersistentStorage::kCapacityBytes % 4U) == 0U, "Flash image must be word-aligned");
-struct SlotHeader final {
-    std::uint32_t magic = kSlotMagic;
-    std::uint32_t formatVersion = kSlotFormatVersion;
-    std::uint32_t generation = 0U;
-    std::uint32_t payloadSize = static_cast<std::uint32_t>(PersistentStorage::kCapacityBytes);
-    std::uint32_t payloadCrc32 = 0U;
-    std::uint32_t headerCrc32 = 0U;
-    std::uint32_t reserved = 0xFFFFFFFFUL;
-    std::uint32_t commitMarker = 0xFFFFFFFFUL;
-};
-static_assert(sizeof(SlotHeader) == kSlotHeaderBytes, "Unexpected slot-header padding");
-std::uint32_t calculateCrc32(const std::uint8_t* const data, const std::size_t size) {
-    std::uint32_t crc = kCrcInitialValue;
-    for (std::size_t index = 0U; index < size; ++index) {
-        crc ^= data[index];
-        for (std::uint8_t bit = 0U; bit < 8U; ++bit) {
-            const bool lowBit = (crc & 1U) != 0U;
-            crc >>= 1U;
-            if (lowBit) {
-                crc ^= kCrcPolynomial;
-            }
-        }
-    }
-    return crc ^ kCrcInitialValue;
-}
-std::uint32_t headerCrc32(const SlotHeader& header) {
-    // The first five words are immutable metadata. headerCrc/reserved/commit are excluded.
-    return calculateCrc32(
-        reinterpret_cast<const std::uint8_t*>(&header),
-        5U * sizeof(std::uint32_t));
-}
-bool generationIsNewer(const std::uint32_t candidate, const std::uint32_t reference) {
-    return static_cast<std::int32_t>(candidate - reference) > 0;
-}
-
-#ifdef CLOCK_HOST_TEST
-std::array<std::array<std::uint8_t, PersistentStorage::kPhysicalSlotBytes>, 2U> gHostSlots = [] {
-    std::array<std::array<std::uint8_t, PersistentStorage::kPhysicalSlotBytes>, 2U> slots{};
-    for (auto& slot : slots) {
-        slot.fill(kErasedByte);
-    }
-    return slots;
-}();
-std::uint32_t gHostWriteCommitCount = 0U;
-bool gFailNextRead = false;
-bool gFailNextWrite = false;
-bool gPowerLossBeforeCommit = false;
-const std::uint8_t* slotBase(const std::size_t slotIndex) {
-    return gHostSlots[slotIndex].data();
-}
-std::uint8_t* mutableSlotBase(const std::size_t slotIndex) {
-    return gHostSlots[slotIndex].data();
-}
-#else
-constexpr std::uintptr_t kSlotAddresses[2U] = {0x08004000UL, 0x08008000UL};
-constexpr std::uint32_t kSlotSectors[2U] = {FLASH_SECTOR_1, FLASH_SECTOR_2};
-const std::uint8_t* slotBase(const std::size_t slotIndex) {
-    return reinterpret_cast<const std::uint8_t*>(kSlotAddresses[slotIndex]);
-}
-#endif
-
-bool readHeader(const std::size_t slotIndex, SlotHeader& header) {
-    std::memcpy(&header, slotBase(slotIndex), sizeof(header));
-    return true;
-}
-bool slotIsValid(const std::size_t slotIndex, SlotHeader& header) {
-    (void)readHeader(slotIndex, header);
-    if (header.magic != kSlotMagic ||
-        header.formatVersion != kSlotFormatVersion ||
-        (header.payloadSize != PersistentStorage::kCapacityBytes &&
-         header.payloadSize != kV1PayloadBytes &&
-         header.payloadSize != kLegacyPayloadBytes) ||
-        header.commitMarker != kCommitMarker ||
-        header.headerCrc32 != headerCrc32(header)) {
-        return false;
-    }
-    return header.payloadCrc32 == calculateCrc32(
-        slotBase(slotIndex) + kPayloadOffset,
-        static_cast<std::size_t>(header.payloadSize));
-}
-int newestValidSlot(SlotHeader* const newestHeader = nullptr) {
-    SlotHeader first{};
-    SlotHeader second{};
-    const bool firstValid = slotIsValid(0U, first);
-    const bool secondValid = slotIsValid(1U, second);
-    if (!firstValid && !secondValid) {
-        return -1;
-    }
-    std::size_t newest = 0U;
-    SlotHeader selected = first;
-    if (!firstValid || (secondValid && generationIsNewer(second.generation, first.generation))) {
-        newest = 1U;
-        selected = second;
-    }
-    if (newestHeader != nullptr) {
-        *newestHeader = selected;
-    }
-    return static_cast<int>(newest);
-}
-#ifndef CLOCK_HOST_TEST
-bool eraseSlotUnlocked(const std::size_t slotIndex) {
-    FLASH_EraseInitTypeDef erase{};
-    erase.TypeErase = FLASH_TYPEERASE_SECTORS;
-    erase.Sector = kSlotSectors[slotIndex];
-    erase.NbSectors = 1U;
-    erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-    std::uint32_t sectorError = 0U;
-    return HAL_FLASHEx_Erase(&erase, &sectorError) == HAL_OK;
-}
-bool programWordUnlocked(const std::uintptr_t address, const std::uint32_t value) {
-    return HAL_FLASH_Program(
-        FLASH_TYPEPROGRAM_WORD,
-        static_cast<std::uint32_t>(address),
-        static_cast<std::uint64_t>(value)) == HAL_OK;
-}
-bool programWordsUnlocked(
-    const std::uintptr_t address,
-    const std::uint8_t* const bytes,
-    const std::size_t size) {
-    if ((size % sizeof(std::uint32_t)) != 0U) {
-        return false;
-    }
-    for (std::size_t offset = 0U; offset < size; offset += sizeof(std::uint32_t)) {
-        std::uint32_t word = 0U;
-        std::memcpy(&word, bytes + offset, sizeof(word));
-        if (!programWordUnlocked(address + offset, word)) {
-            return false;
-        }
-    }
-    return true;
-}
-#endif
-
-bool commitImage(
-    const std::size_t targetSlot,
-    const std::uint32_t generation,
-    const std::array<std::uint8_t, PersistentStorage::kCapacityBytes>& image) {
-    SlotHeader header{};
-    header.generation = generation;
-    header.payloadCrc32 = calculateCrc32(image.data(), image.size());
-    header.headerCrc32 = headerCrc32(header);
-
-#ifdef CLOCK_HOST_TEST
-    auto& slot = gHostSlots[targetSlot];
-    slot.fill(kErasedByte);
-    std::memcpy(slot.data(), &header, kCommitWordIndex * sizeof(std::uint32_t));
-    std::copy(image.begin(), image.end(), slot.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset));
-    if (gPowerLossBeforeCommit) {
-        gPowerLossBeforeCommit = false;
-        return false;
-    }
-    std::memcpy(
-        slot.data() + static_cast<std::ptrdiff_t>(kCommitWordIndex * sizeof(std::uint32_t)),
-        &kCommitMarker,
-        sizeof(kCommitMarker));
-#else
-    if (HAL_FLASH_Unlock() != HAL_OK) {
-        return false;
-    }
-    // A stale error flag would make FLASH_WaitForLastOperation() fail the next erase.
-    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_EOP | FLASH_FLAG_OPERR | FLASH_FLAG_WRPERR |
-                           FLASH_FLAG_PGAERR | FLASH_FLAG_PGPERR | FLASH_FLAG_PGSERR);
-#ifdef FLASH_FLAG_RDERR
-    __HAL_FLASH_CLEAR_FLAG(FLASH_FLAG_RDERR);
-#endif
-    const std::uintptr_t base = kSlotAddresses[targetSlot];
-    const bool programmed =
-        eraseSlotUnlocked(targetSlot) &&
-        programWordsUnlocked(
-            base,
-            reinterpret_cast<const std::uint8_t*>(&header),
-            kCommitWordIndex * sizeof(std::uint32_t)) &&
-        programWordsUnlocked(base + kPayloadOffset, image.data(), image.size()) &&
-        // COMMIT is deliberately the last programmed word. Until this succeeds,
-        // boot validation must continue to prefer the previous generation.
-        programWordUnlocked(base + kCommitWordIndex * sizeof(std::uint32_t), kCommitMarker);
-    (void)HAL_FLASH_Lock();
-    if (!programmed) {
-        return false;
-    }
-#endif
-
-    SlotHeader verified{};
-    return slotIsValid(targetSlot, verified) && verified.generation == generation;
-}
-}  // namespace
+namespace slots = persistent_slots;
 
 bool PersistentStorage::readBytes(
     const std::size_t offset,
@@ -229,56 +24,79 @@ bool PersistentStorage::readBytes(
         return false;
     }
 #ifdef CLOCK_HOST_TEST
-    if (gFailNextRead) {
-        gFailNextRead = false;
+    ++slots::hostFaults().reads;
+    if (slots::hostFaults().failNextRead) {
+        slots::hostFaults().failNextRead = false;
         return false;
     }
 #endif
-
-    const int activeSlot = newestValidSlot();
-    if (activeSlot < 0) {
-        std::fill_n(destination, size, kErasedByte);
+    std::fill_n(destination, size, slots::kErasedByte);
+    const slots::SlotScan& current = slots::scan();
+    if (current.active < 0) {
         return true;
     }
-    SlotHeader activeHeader{};
-    (void)readHeader(static_cast<std::size_t>(activeSlot), activeHeader);
-    const std::size_t payloadSize = static_cast<std::size_t>(activeHeader.payloadSize);
-    std::fill_n(destination, size, kErasedByte);
+    const std::size_t activeSlot = static_cast<std::size_t>(current.active);
+    const std::size_t payloadSize = static_cast<std::size_t>(current.headers[activeSlot].payloadSize);
     if (offset < payloadSize) {
         const std::size_t readable = std::min<std::size_t>(size, payloadSize - offset);
-        std::memcpy(
-            destination,
-            slotBase(static_cast<std::size_t>(activeSlot)) + kPayloadOffset + offset,
-            readable);
+        std::memcpy(destination, slots::slotBase(activeSlot) + slots::kPayloadOffset + offset, readable);
     }
     return true;
 }
+
+std::uint32_t PersistentStorage::contentRevision() {
+    return slots::contentRevision();
+}
+
+bool PersistentStorage::writeLocked() const {
+    return slots::scan().writeLocked();
+}
+
+void PersistentStorage::openUpdate(const bool replacement) {
+    const slots::SlotScan& current = slots::scan();
+    // The next generation follows the newest committed slot of any format and
+    // goes to the other slot. Without a foreign slot this is the classic A/B
+    // alternation against the active slot.
+    if (current.newestCommitted < 0) {
+        stagedTargetSlot_ = 0U;
+        stagedGeneration_ = 1U;
+    } else {
+        const std::size_t newest = static_cast<std::size_t>(current.newestCommitted);
+        stagedTargetSlot_ = newest == 0U ? 1U : 0U;
+        stagedGeneration_ = current.headers[newest].generation + 1U;
+    }
+    stagingImage_.fill(slots::kErasedByte);
+    if (!replacement && current.active >= 0) {
+        const std::size_t activeSlot = static_cast<std::size_t>(current.active);
+        const std::size_t previousSize = std::min<std::size_t>(
+            stagingImage_.size(), static_cast<std::size_t>(current.headers[activeSlot].payloadSize));
+        std::memcpy(stagingImage_.data(), slots::slotBase(activeSlot) + slots::kPayloadOffset, previousSize);
+    }
+    updateOpen_ = true;
+    updateDirty_ = replacement;
+    replacement_ = replacement;
+}
+
 bool PersistentStorage::beginUpdate() {
 #ifdef CLOCK_HOST_TEST
-    if (gFailNextRead) {
-        gFailNextRead = false;
+    if (slots::hostFaults().failNextRead) {
+        slots::hostFaults().failNextRead = false;
         return false;
     }
 #endif
-    SlotHeader activeHeader{};
-    const int activeSlot = newestValidSlot(&activeHeader);
-    stagingImage_.fill(kErasedByte);
-    if (activeSlot >= 0) {
-        const std::size_t previousSize = std::min<std::size_t>(
-            stagingImage_.size(), static_cast<std::size_t>(activeHeader.payloadSize));
-        std::memcpy(
-            stagingImage_.data(),
-            slotBase(static_cast<std::size_t>(activeSlot)) + kPayloadOffset,
-            previousSize);
-        stagedGeneration_ = activeHeader.generation;
-    } else {
-        stagedGeneration_ = 0U;
+    if (slots::scan().writeLocked()) {
+        lastOutcome_ = CommitOutcome::Locked;
+        return false;
     }
-    stagedActiveSlot_ = static_cast<std::int8_t>(activeSlot);
-    updateOpen_ = true;
-    updateDirty_ = false;
+    openUpdate(false);
     return true;
 }
+
+bool PersistentStorage::beginFullReplacement() {
+    openUpdate(true);
+    return true;
+}
+
 bool PersistentStorage::stageBytes(
     const std::size_t offset,
     const std::uint8_t* const source,
@@ -293,6 +111,7 @@ bool PersistentStorage::stageBytes(
     }
     return true;
 }
+
 bool PersistentStorage::stageFill(
     const std::size_t offset,
     const std::size_t size,
@@ -308,41 +127,56 @@ bool PersistentStorage::stageFill(
     }
     return true;
 }
+
 bool PersistentStorage::commitUpdate() {
     if (!updateOpen_) {
         return false;
     }
-#ifdef CLOCK_HOST_TEST
-    if (gFailNextWrite) {
-        gFailNextWrite = false;
-        cancelUpdate();
-        return false;
-    }
-#endif
     if (!updateDirty_) {
         cancelUpdate();
+        lastOutcome_ = CommitOutcome::Unchanged;
         return true;
     }
-    const std::size_t targetSlot = stagedActiveSlot_ == 0 ? 1U : 0U;
-    const std::uint32_t generation = stagedActiveSlot_ < 0
-        ? 1U
-        : stagedGeneration_ + 1U;
-    const bool committed = commitImage(targetSlot, generation, stagingImage_);
-    cancelUpdate();
-    if (!committed) {
+    if (!replacement_ && slots::scan().writeLocked()) {
+        cancelUpdate();
+        lastOutcome_ = CommitOutcome::Locked;
+        return false;
+    }
+    // The gate is consulted after all staging work and immediately before the
+    // erase, so the window between the engine check and Flash access is minimal.
+    if (commitGate_ != nullptr && !commitGate_->tryOpenCommitWindow()) {
+        cancelUpdate();
+        lastOutcome_ = CommitOutcome::Deferred;
         return false;
     }
 #ifdef CLOCK_HOST_TEST
-    ++gHostWriteCommitCount;
+    ++slots::hostFaults().commitAttempts;
+    const bool injectedFailure = slots::hostFaults().failNextWrite || slots::hostFaults().failAllWrites;
+    slots::hostFaults().failNextWrite = false;
+    const bool committed =
+        !injectedFailure && slots::commitImage(stagedTargetSlot_, stagedGeneration_, stagingImage_);
+#else
+    const bool committed = slots::commitImage(stagedTargetSlot_, stagedGeneration_, stagingImage_);
 #endif
-    return true;
+    if (commitGate_ != nullptr) {
+        commitGate_->closeCommitWindow();
+    }
+    cancelUpdate();
+    lastOutcome_ = committed ? CommitOutcome::Committed : CommitOutcome::Failed;
+#ifdef CLOCK_HOST_TEST
+    if (committed) {
+        ++slots::hostFaults().commitCount;
+    }
+#endif
+    return committed;
 }
+
 void PersistentStorage::cancelUpdate() {
     updateOpen_ = false;
     updateDirty_ = false;
-    stagedActiveSlot_ = -1;
-    stagedGeneration_ = 0U;
+    replacement_ = false;
 }
+
 bool PersistentStorage::writeBytes(
     const std::size_t offset,
     const std::uint8_t* const source,
@@ -359,88 +193,112 @@ bool PersistentStorage::writeBytes(
     }
     return commitUpdate();
 }
+
 #ifdef CLOCK_HOST_TEST
-void PersistentStorage::resetForTest() {
-    for (auto& slot : gHostSlots) {
-        slot.fill(kErasedByte);
+namespace {
+bool seedHostSlot(
+    const std::size_t slotIndex,
+    const slots::SlotHeader& header,
+    const std::uint8_t* const payload,
+    const std::size_t payloadSize) {
+    std::uint8_t* const slot = slots::mutableSlotBase(slotIndex);
+    std::fill_n(slot, PersistentStorage::kPhysicalSlotBytes, slots::kErasedByte);
+    std::memcpy(slot, &header, sizeof(header));
+    if (payload != nullptr) {
+        std::memcpy(slot + slots::kPayloadOffset, payload, payloadSize);
     }
-    gHostWriteCommitCount = 0U;
-    gFailNextRead = false;
-    gFailNextWrite = false;
-    gPowerLossBeforeCommit = false;
+    slots::invalidateScan();
+    return true;
+}
+}  // namespace
+
+void PersistentStorage::resetForTest() {
+    slots::eraseHostSlots();
+    slots::hostFaults() = slots::HostFaults{};
+}
+void PersistentStorage::simulateRebootForTest() {
+    slots::invalidateScan();
+    slots::hostFaults().payloadValidations = 0U;
+    slots::hostFaults().reads = 0U;
 }
 std::uint32_t PersistentStorage::writeCommitCountForTest() {
-    return gHostWriteCommitCount;
+    return slots::hostFaults().commitCount;
+}
+std::uint32_t PersistentStorage::payloadValidationCountForTest() {
+    return slots::hostFaults().payloadValidations;
+}
+std::uint32_t PersistentStorage::readCountForTest() {
+    return slots::hostFaults().reads;
 }
 void PersistentStorage::failNextReadForTest() {
-    gFailNextRead = true;
+    slots::hostFaults().failNextRead = true;
 }
 void PersistentStorage::failNextWriteForTest() {
-    gFailNextWrite = true;
+    slots::hostFaults().failNextWrite = true;
+}
+void PersistentStorage::failAllWritesForTest(const bool fail) {
+    slots::hostFaults().failAllWrites = fail;
+}
+std::uint32_t PersistentStorage::commitAttemptCountForTest() {
+    return slots::hostFaults().commitAttempts;
 }
 void PersistentStorage::powerLossBeforeCommitForTest() {
-    gPowerLossBeforeCommit = true;
+    slots::hostFaults().powerLossBeforeCommit = true;
 }
 void PersistentStorage::corruptNewestPayloadByteForTest(const std::size_t offset) {
-    if (offset >= kCapacityBytes) {
+    const int activeSlot = slots::scan().active;
+    if (offset >= kCapacityBytes || activeSlot < 0) {
         return;
     }
-    const int activeSlot = newestValidSlot();
-    if (activeSlot >= 0) {
-        mutableSlotBase(static_cast<std::size_t>(activeSlot))[kPayloadOffset + offset] ^= 0x01U;
-    }
+    slots::mutableSlotBase(static_cast<std::size_t>(activeSlot))[slots::kPayloadOffset + offset] ^= 0x01U;
+    slots::invalidateScan();
 }
 void PersistentStorage::corruptNewestHeaderWordForTest(
     const std::size_t wordIndex,
     const std::uint32_t value) {
-    if (wordIndex >= kHeaderWordCount) {
-        return;
-    }
-    const int activeSlot = newestValidSlot();
-    if (activeSlot < 0) {
+    const int activeSlot = slots::scan().active;
+    if (wordIndex >= slots::kHeaderWordCount || activeSlot < 0) {
         return;
     }
     std::memcpy(
-        mutableSlotBase(static_cast<std::size_t>(activeSlot)) +
-            wordIndex * sizeof(std::uint32_t),
+        slots::mutableSlotBase(static_cast<std::size_t>(activeSlot)) + wordIndex * sizeof(std::uint32_t),
         &value,
         sizeof(value));
+    slots::invalidateScan();
 }
 bool PersistentStorage::seedLegacyImageForTest(const std::uint8_t* const image, const std::size_t size) {
-    if (image == nullptr || size != kLegacyPayloadBytes) {
+    if (image == nullptr || size != slots::kLegacyPayloadBytes) {
         return false;
     }
     resetForTest();
-    SlotHeader header{};
-    header.generation = 7U;
-    header.payloadSize = static_cast<std::uint32_t>(kLegacyPayloadBytes);
-    header.payloadCrc32 = calculateCrc32(image, size);
-    header.headerCrc32 = headerCrc32(header);
-    header.commitMarker = kCommitMarker;
-    auto& slot = gHostSlots[0U];
-    slot.fill(kErasedByte);
-    std::memcpy(slot.data(), &header, sizeof(header));
-    std::memcpy(slot.data() + static_cast<std::ptrdiff_t>(kPayloadOffset), image, size);
-    SlotHeader verified{};
-    return slotIsValid(0U, verified) && verified.payloadSize == kLegacyPayloadBytes;
+    (void)seedHostSlot(0U, slots::sealedHeader(7U, image, size), image, size);
+    return slots::scan().active == 0 && slots::scan().headers[0].payloadSize == size;
 }
 bool PersistentStorage::seedV1ImageForTest(const std::uint8_t* const image, const std::size_t size) {
-    if (image == nullptr || size != kV1PayloadBytes) {
+    if (image == nullptr || size != slots::kV1PayloadBytes) {
         return false;
     }
     resetForTest();
-    SlotHeader header{};
-    header.generation = 8U;
-    header.payloadSize = static_cast<std::uint32_t>(kV1PayloadBytes);
-    header.payloadCrc32 = calculateCrc32(image, size);
-    header.headerCrc32 = headerCrc32(header);
-    header.commitMarker = kCommitMarker;
-    auto& slot = gHostSlots[0U];
-    slot.fill(kErasedByte);
-    std::memcpy(slot.data(), &header, sizeof(header));
-    std::memcpy(slot.data() + static_cast<std::ptrdiff_t>(kPayloadOffset), image, size);
-    SlotHeader verified{};
-    return slotIsValid(0U, verified) && verified.payloadSize == kV1PayloadBytes;
+    (void)seedHostSlot(0U, slots::sealedHeader(8U, image, size), image, size);
+    return slots::scan().active == 0 && slots::scan().headers[0].payloadSize == size;
+}
+void PersistentStorage::seedForeignSlotForTest(
+    const std::size_t slotIndex,
+    const std::uint32_t formatVersion,
+    const std::uint32_t generation,
+    const bool intactHeaderCrc,
+    const std::uint32_t payloadSize) {
+    if (slotIndex >= slots::kSlotCount) {
+        return;
+    }
+    slots::SlotHeader header{};
+    header.formatVersion = formatVersion;
+    header.generation = generation;
+    header.payloadSize = payloadSize;
+    header.payloadCrc32 = 0x12345678UL;
+    header.headerCrc32 = slots::headerCrc32(header) ^ (intactHeaderCrc ? 0U : 1U);
+    header.commitMarker = slots::kCommitMarker;
+    (void)seedHostSlot(slotIndex, header, nullptr, 0U);
 }
 #endif
 

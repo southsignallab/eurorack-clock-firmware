@@ -86,6 +86,9 @@ enum class ModeFunction : std::uint8_t {
 /** @brief Operation being performed on the explicit user preset slots. */
 enum class PresetSlotAction : std::uint8_t { Load, Save };
 
+/** @brief Persistence notice shown on the Performance screen (F-021, F-045). */
+enum class PersistenceNotice : std::uint8_t { None, SaveError, SaveLocked };
+
 /** @brief Operation being performed on Custom Groove slots. */
 enum class GrooveSlotAction : std::uint8_t { LoadEditor, Activate, Save, Rename, Delete };
 
@@ -126,6 +129,8 @@ struct NavigationState {
     std::uint8_t tapIndicatorFrame = 0U;
     /** True while the "tempo is set externally" notice is shown on the Performance screen. */
     bool externalTempoNotice = false;
+    /** Persistence failure notice; takes precedence over the EXTERNAL CLOCK notice. */
+    PersistenceNotice persistenceNotice = PersistenceNotice::None;
     /** True when the selected ranked Easter egg has created a durable leaderboard record. */
     bool highScoreResetAvailable = false;
     PresetSlotAction presetSlotAction = PresetSlotAction::Load;

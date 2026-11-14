@@ -321,6 +321,8 @@ enum class TextId : std::uint16_t {
     NotAvailable,
     ExternalClockNotice,
     Autostart,
+    SaveErrorNotice,
+    SaveLockedNotice,
     Count
 };
 
@@ -372,7 +374,7 @@ inline constexpr TextCatalog kEnglishUs{{
     "SUPPORT CLOCK", "GITHUB SPONSORS", "KO-FI", "FORWARD", "REVERSE", "PINGPONG", "RANDOM", "LOOP", "ONCE",
     "github.com/sponsors/napolitano", "ko-fi.com/X8X21EOLQ9", "SEQ C%u P%u %u-%u", "S%03u/%03u", "P%u",
     "STEP %u C%u P%u", "RATCHET", "TIE", "DEFAULT", "N/A",
-    "EXTERNAL CLOCK", "AUTOSTART"
+    "EXTERNAL CLOCK", "AUTOSTART", "SAVE ERROR", "SAVE LOCKED"
 }};
 
 /** Musical qualifier pool used for generated Custom Groove default names. */

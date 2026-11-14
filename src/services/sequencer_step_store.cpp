@@ -8,6 +8,8 @@
 
 #include "services/sequencer_step_store.h"
 
+#include "hal/crc32.h"
+
 #include <algorithm>
 
 #include "config.h"
@@ -17,8 +19,6 @@ namespace {
 constexpr std::uint32_t kMagic = 0x53513253UL;  // "S2QS" little-endian; format-scoped magic.
 constexpr std::size_t kCrcOffset = 8U;
 constexpr std::size_t kPayloadOffset = SequencerStepStore::kHeaderBytes;
-constexpr std::uint32_t kCrcPolynomial = 0xEDB88320UL;
-constexpr std::uint32_t kCrcInitialValue = 0xFFFFFFFFUL;
 constexpr std::uint16_t kKeyReservedMask = 0xE000U;
 }
 
@@ -78,18 +78,7 @@ std::uint32_t SequencerStepStore::read32(const std::uint8_t* const source) {
 std::uint32_t SequencerStepStore::calculateCrc32(
     const std::uint8_t* const data,
     const std::size_t size) {
-    std::uint32_t crc = kCrcInitialValue;
-    for (std::size_t index = 0U; index < size; ++index) {
-        crc ^= data[index];
-        for (std::uint8_t bit = 0U; bit < 8U; ++bit) {
-            const bool lowBit = (crc & 1U) != 0U;
-            crc >>= 1U;
-            if (lowBit) {
-                crc ^= kCrcPolynomial;
-            }
-        }
-    }
-    return crc ^ kCrcInitialValue;
+    return hal::crc32(data, size);
 }
 
 std::size_t SequencerStepStore::findKey(const std::uint16_t key) const {
@@ -102,17 +91,15 @@ std::size_t SequencerStepStore::findKey(const std::uint16_t key) const {
 }
 
 void SequencerStepStore::markDirty(const std::uint32_t nowMs) {
-    if (!dirty_) {
-        dirtySinceMs_ = nowMs;
-    }
+    (void)nowMs;
     dirty_ = true;
+    ++changeRevision_;
 }
 
 void SequencerStepStore::resetDefaults() {
     keys_.fill(kUnusedKey);
     words_.fill(0U);
     count_ = 0U;
-    dirtySinceMs_ = 0U;
     dirty_ = false;
 }
 
@@ -191,7 +178,6 @@ bool SequencerStepStore::begin() {
         return true;
     }
     dirty_ = false;
-    dirtySinceMs_ = 0U;
     return true;
 }
 
@@ -354,25 +340,33 @@ bool SequencerStepStore::replacePatternWords(
     return true;
 }
 
-bool SequencerStepStore::service(const std::uint32_t nowMs, const bool allowFlashWrite) {
-    if (!dirty_ || !allowFlashWrite ||
-        nowMs - dirtySinceMs_ < config::kPersistenceCommitDelayMs) {
+bool SequencerStepStore::stage() {
+    if (!dirty_) {
         return true;
     }
-    return flush();
+    std::array<std::uint8_t, kStorageBytes> bytes{};
+    encodeStore(bytes);
+    return storage_.stageBytes(kStorageOffset, bytes.data(), bytes.size());
+}
+
+void SequencerStepStore::markCommitted() {
+    dirty_ = false;
+}
+
+void SequencerStepStore::resetToFactory() {
+    resetDefaults();
+    dirty_ = false;
 }
 
 bool SequencerStepStore::flush() {
     if (!dirty_) {
         return true;
     }
-    std::array<std::uint8_t, kStorageBytes> bytes{};
-    encodeStore(bytes);
-    if (!storage_.writeBytes(kStorageOffset, bytes.data(), bytes.size())) {
+    if (!storage_.beginUpdate() || !stage() || !storage_.commitUpdate()) {
+        storage_.cancelUpdate();
         return false;
     }
-    dirty_ = false;
-    dirtySinceMs_ = 0U;
+    markCommitted();
     return true;
 }
 

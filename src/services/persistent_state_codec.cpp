@@ -6,6 +6,8 @@
  * @license PolyForm-Noncommercial-1.0.0
  */
 #include "services/persistent_state_service.h"
+
+#include "hal/crc32.h"
 #include "services/persistent_state_validation.h"
 #include <algorithm>
 #include <cstring>
@@ -16,10 +18,6 @@ namespace {
 constexpr std::uint32_t kCurrentMagic = 0x33315543UL;
 /** Four-byte preset magic value "PR13" stored little-endian. */
 constexpr std::uint32_t kPresetMagic = 0x33315250UL;
-/** Reflected CRC-32 polynomial used by Ethernet/ZIP and many embedded formats. */
-constexpr std::uint32_t kCrcPolynomial = 0xEDB88320UL;
-/** CRC-32 initialization/final-XOR value. */
-constexpr std::uint32_t kCrcInitialValue = 0xFFFFFFFFUL;
 /** Fixed byte offset at which CURRENT payload begins. */
 constexpr std::size_t kCurrentPayloadOffset = 8U;
 
@@ -401,18 +399,7 @@ bool PersistentStateService::deserializePresetRecord(
 std::uint32_t PersistentStateService::calculateCrc32(
     const std::uint8_t* const data,
     const std::size_t size) {
-    std::uint32_t crc = kCrcInitialValue;
-    for (std::size_t index = 0U; index < size; ++index) {
-        crc ^= data[index];
-        for (std::uint8_t bit = 0U; bit < 8U; ++bit) {
-            const bool leastSignificantBitSet = (crc & 1U) != 0U;
-            crc >>= 1U;
-            if (leastSignificantBitSet) {
-                crc ^= kCrcPolynomial;
-            }
-        }
-    }
-    return crc ^ kCrcInitialValue;
+    return hal::crc32(data, size);
 }
 
 bool PersistentStateService::isStateValid(const ClockState& state) {

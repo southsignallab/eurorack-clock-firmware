@@ -71,11 +71,20 @@ public:
         const std::array<SequencerStepMetadataWord, kSequencerMaximumSteps>& words,
         std::uint32_t nowMs);
 
-    /** @brief Commits pending changes after the normal coalescing delay when Flash is safe. */
-    bool service(std::uint32_t nowMs, bool allowFlashWrite);
-
-    /** @brief Forces an immediate durable commit of pending step expression. */
+    /** @brief Forces an immediate durable commit of pending step expression in its own transaction. */
     bool flush();
+
+    /** @brief Stages the dirty sparse image into the storage update the caller opened (D-04). */
+    bool stage();
+
+    /** @brief Marks the staged image as durable after a successful commit. */
+    void markCommitted();
+
+    /** @brief Increments with every accepted mutation; drives the central debounce. */
+    std::uint32_t changeRevision() const { return changeRevision_; }
+
+    /** @brief Restores the all-DEFAULT image after ERASE ALL DATA; nothing remains pending (F-008). */
+    void resetToFactory();
 
     /** @brief Returns the number of non-default sparse records currently held in RAM. */
     std::size_t overrideCount() const { return count_; }
@@ -107,7 +116,7 @@ private:
     static std::uint32_t read32(const std::uint8_t* source);
     /** @brief Finds one record index or returns kMaximumOverrides when absent. */
     std::size_t findKey(std::uint16_t key) const;
-    /** @brief Marks the in-memory image dirty while retaining the first-edit timestamp. */
+    /** @brief Records one accepted mutation; commit timing is owned by PersistenceCoordinator. */
     void markDirty(std::uint32_t nowMs);
     /** @brief Restores an empty sparse store. */
     void resetDefaults();
@@ -120,7 +129,7 @@ private:
     std::array<std::uint16_t, kMaximumOverrides> keys_{};
     std::array<SequencerStepMetadataWord, kMaximumOverrides> words_{};
     std::size_t count_ = 0U;
-    std::uint32_t dirtySinceMs_ = 0U;
+    std::uint32_t changeRevision_ = 0U;
     bool dirty_ = false;
 };
 

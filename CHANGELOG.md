@@ -10,6 +10,26 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 ## [Unreleased]
 
+### Changed: one coordinated Flash commit path
+
+- All settings stores (CURRENT, presets, Custom Grooves, Sequencer patterns and step expression) now commit through one coordinator in **one** Flash transaction, so one sector erase covers every pending change instead of up to four.
+- Ordinary edits are written 3 s after the **last** change, but no later than 30 s after the first unsaved change. Previously the Sequencer banks committed 3 s after the first change even while editing continued, which erased a sector about every 3 s during long edits. Explicit saves (presets, Custom Grooves) are still written at the next opportunity.
+- A failed commit is no longer repeated in every foreground pass. Retries back off 1 → 2 → 4 → 8 → 16 → 32 → 60 s; the Performance screen shows **SAVE ERROR** after each failure. Pending changes stay in memory.
+- Immediately before a sector erase, the scheduler interlock checks the engine and opens a commit window under one interrupt lock. A RUN/START/RESTART edge or an auto-start on lock inside that window starts transport right after the commit instead of during it.
+
+### Changed: faster boot
+
+- Both Flash slots are validated once per boot; the result is cached until the next commit, which re-validates only the slot it wrote. All persistent records use one table-driven CRC-32 that is bit-identical to the previous bitwise implementation. Previously every record read recomputed the CRC over both 12-KiB slots (22–94 times before the first image; estimated up to about 2.5 s). The 1-s boot screen is unchanged. Not yet measured on hardware.
+- Custom Groove names shown on the Performance screen are served from RAM instead of being read from Flash in every frame.
+
+### Fix: downgrade no longer overwrites newer settings
+
+- A Flash slot with an intact header in an unknown format or size (written by newer firmware) was treated as empty, so the first autosave after a downgrade overwrote it. Such a slot now blocks every write while it holds the newest generation; the Performance screen shows **SAVE LOCKED**, and the firmware keeps running with the newest settings it can read. Only the confirmed **FACTORY RESET** replaces it.
+
+### Fix: factory reset clears every store
+
+- **FACTORY RESET** now also discards queued Custom Groove writes, both Sequencer banks in RAM and the engine's Groove and Sequencer copies. Previously an edited pattern kept playing and was written back to Flash a few seconds after the reset.
+
 ### Changed: no autostart after power-up; new SYNC setting AUTOSTART
 
 - CLOCK no longer starts transport on its own when the first SYNC lock after power-up is acquired. New `INPUT CONFIG` row **AUTOSTART** (`OFF / ON`, factory `OFF`): with `ON`, a lock may start transport, including the first one after power-up. Switching it while stopped applies to the next lock.
@@ -30,7 +50,7 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 ### Fix: failed boot migration commit is retried, not ignored
 
-- When the commit of a schema migration failed at boot, the next autosave wrote current-schema records over the older layout and could destroy presets. The migration is now retried (3 s interval) inside the same transaction as, and before, any other write of the settings store; presets are served from the older layout until then.
+- When the commit of a schema migration failed at boot, the next autosave wrote current-schema records over the older layout and could destroy presets. The migration is now retried (with the commit coordinator's backoff) inside the same transaction as, and before, any other write of the settings store; presets are served from the older layout until then.
 - Stale STM32 Flash error flags are cleared before every sector erase (a stale flag made the first commit after reset fail).
 
 ### Fix: persistence-preserving DFU upload recognizes current slots (#12)

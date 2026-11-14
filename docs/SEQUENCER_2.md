@@ -20,7 +20,7 @@ This document separates the implemented post-1.1 development state from later Se
 - Only traversal direction is duplicated in the live editor status as a compact forward, reverse, ping-pong or random pictogram. LOOP/ONCE remains editable in the Sequencer settings but is not repeated in the editor because normal looping does not need a second live-state symbol.
 - Persistent pattern bank: fixed 2-KiB extension at logical offset 8192, explicit records + CRC, global rather than duplicated in CURRENT/eight presets.
 - Legacy migration: each channel's released 1.1 64-bit Sequencer state becomes P1; P2–P8 keep clean defaults.
-- Flash writes are coalesced and are not committed while transport is PLAYING.
+- Flash writes are coalesced by the central persistence coordinator (3-s quiet period, 30-s ceiling, one transaction with all other stores) and are not committed while transport is PLAYING.
 
 ## CURRENT step expression
 

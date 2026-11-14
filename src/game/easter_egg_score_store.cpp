@@ -7,13 +7,13 @@
  */
 #include "game/easter_egg_score_store.h"
 
+#include "hal/crc32.h"
+
 #include <array>
 
 namespace clockfw::game {
 namespace {
 constexpr std::uint8_t kVersion = 1U;
-constexpr std::uint32_t kCrcPolynomial = 0xEDB88320UL;
-constexpr std::uint32_t kCrcInitialValue = 0xFFFFFFFFUL;
 
 void write32(std::uint8_t* const destination, const std::uint32_t value) {
     destination[0] = static_cast<std::uint8_t>(value & 0xFFU);
@@ -91,16 +91,7 @@ bool EasterEggScoreStore::save(const HighScoreEntry& entry) {
 }
 
 std::uint32_t EasterEggScoreStore::calculateCrc32(const std::uint8_t* const data, const std::size_t size) {
-    std::uint32_t crc = kCrcInitialValue;
-    for (std::size_t index = 0U; index < size; ++index) {
-        crc ^= data[index];
-        for (std::uint8_t bit = 0U; bit < 8U; ++bit) {
-            const bool lowBit = (crc & 1U) != 0U;
-            crc >>= 1U;
-            if (lowBit) crc ^= kCrcPolynomial;
-        }
-    }
-    return crc ^ kCrcInitialValue;
+    return hal::crc32(data, size);
 }
 
 }  // namespace clockfw::game

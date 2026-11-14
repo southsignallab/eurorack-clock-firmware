@@ -33,8 +33,20 @@ public:
     /** @brief Constructs the fixed-record store around the shared persistent image. */
     explicit CustomGrooveStore(hal::PersistentStorage& storage, bool deferredWrites = false);
 
-    /** @brief Commits queued groove mutations only when transport permits Flash writes. */
+    /** @brief Commits queued groove mutations in their own transaction when Flash writes are allowed. */
     bool service(bool allowFlashWrite);
+
+    /** @brief True while at least one slot mutation awaits a durable commit. */
+    bool hasPendingCommit() const;
+
+    /** @brief Stages every queued slot into the storage update the caller opened (D-04). */
+    bool stage();
+
+    /** @brief Marks the staged queue as durable after a successful commit. */
+    void markCommitted();
+
+    /** @brief Drops queued mutations and cached names after ERASE ALL DATA (F-008). */
+    void resetToFactory();
 
     /** @brief Loads one validated slot; returns false for empty/corrupt/out-of-range slots. */
     bool load(
@@ -52,7 +64,12 @@ public:
     /** @brief Returns true when a slot contains one valid current-format record. */
     bool exists(std::uint8_t slotIndex) const;
 
-    /** @brief Copies a slot name or an empty string for absent/corrupt slots. */
+    /**
+     * @brief Copies a slot name or an empty string for absent/corrupt slots.
+     *
+     * Served from a RAM cache filled on first use and refreshed on save, clear,
+     * and factory reset, so the performance screen never reads Flash per frame (F-018).
+     */
     void name(std::uint8_t slotIndex, char* destination, std::size_t destinationSize) const;
 
 private:
@@ -65,6 +82,9 @@ private:
     /** @brief Copies and sanitizes one bounded persistent Custom Groove name. */
     static void normalizeName(const char* source, char* destination);
 
+    /** @brief Fills the name/existence cache entry of one slot on first use. */
+    void cacheSlot(std::uint8_t slotIndex) const;
+
     /** @brief Writes a validated/erased record immediately or queues it for a safe commit. */
     bool writeRecord(std::uint8_t slotIndex, const std::array<std::uint8_t, kRecordBytes>& record);
 
@@ -72,6 +92,16 @@ private:
     bool deferredWrites_ = false;
     std::array<std::array<std::uint8_t, kRecordBytes>, kCustomGrooveSlotCount> queuedRecords_{};
     std::array<bool, kCustomGrooveSlotCount> queuedSlots_{};
+
+    /** @brief Cached name and existence of one slot. */
+    struct SlotCache final {
+        bool cached = false;
+        bool exists = false;
+        std::array<char, kNameLength + 1U> name{};
+    };
+    mutable std::array<SlotCache, kCustomGrooveSlotCount> slotCache_{};
+    /** Flash content revision the cache was filled against; any other writer invalidates it. */
+    mutable std::uint32_t cacheContentRevision_ = 0U;
 };
 
 static_assert(

@@ -38,6 +38,7 @@ __pycache__/
 .env.*
 !.env.example
 *.local
+*.local.md
 *.secret
 secrets/
 credentials/

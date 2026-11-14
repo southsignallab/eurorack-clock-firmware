@@ -27,6 +27,7 @@
 #include "services/sequencer_step_store.h"
 #include "services/custom_groove_store.h"
 #include "services/external_sync_controller.h"
+#include "services/persistence_coordinator.h"
 #include "ui/ui_controller.h"
 #include "ui/ui_renderer.h"
 
@@ -60,6 +61,12 @@ public:
     void runOnce();
 
 #ifdef CLOCK_HOST_TEST
+    /** @brief Returns the persistence coordinator for host integration tests. */
+    const services::PersistenceCoordinator& persistenceForTest() const { return persistenceCoordinator_; }
+
+    /** @brief Returns UI navigation state for host integration tests. */
+    const ui::NavigationState& navigationForTest() const { return uiController_.navigation(); }
+
     /** @brief Returns the foreground transport field for host regression tests. */
     TransportState transportForTest() const;
 
@@ -115,10 +122,13 @@ private:
     /**
      * @brief Returns true only when a Flash sector commit cannot stall a running engine.
      *
-     * Evaluated immediately before each store's service() call; the engine state
-     * is read under an interrupt lock because the scheduler ISR may start it.
+     * Foreground precondition of the persistence coordinator. The storage commit
+     * gate (ExternalSyncController) re-checks the engine atomically before erase.
      */
     bool flashWriteAllowed() const;
+
+    /** @brief Runs the persistence coordinator and forwards new failures to the UI. */
+    void servicePersistence(std::uint32_t nowMs);
 
     /** @brief Renders the boot screen and returns true only when encoder push stayed held throughout. */
     bool runBootSequence();
@@ -180,6 +190,8 @@ private:
     services::SequencerStepStore sequencerStepStore_;
     engine::ClockEngine engine_;
     services::ExternalSyncController externalSyncController_;
+    services::PersistenceCoordinator persistenceCoordinator_;
+    std::uint32_t announcedPersistenceNotice_ = 0U;
     ui::UiRenderer renderer_;
     ui::UiController uiController_;
     bool appliedEncoderDirectionReversed_ = false;

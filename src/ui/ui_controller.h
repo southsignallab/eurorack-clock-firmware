@@ -128,6 +128,9 @@ public:
     /** @brief Feeds an externally captured TAP edge into the normal Tap Tempo estimator. */
     void registerExternalTapTempo(std::uint32_t timestampMs);
 
+    /** @brief Shows SAVE ERROR or SAVE LOCKED on the Performance screen for a few seconds. */
+    void showPersistenceNotice(PersistenceNotice notice, std::uint32_t nowMs);
+
     /** @brief Seeds pseudo-random human-readable default names for this boot session. */
     void seedGeneratedNames(std::uint32_t seed);
 
@@ -189,6 +192,12 @@ private:
 
     /** @brief Hides the EXTERNAL CLOCK notice once its display time has elapsed. */
     void serviceExternalTempoNotice(std::uint32_t nowMs);
+
+    /** @brief Installs the active pattern and step expression of every channel into the engine. */
+    void reloadSequencerBanksIntoEngine();
+
+    /** @brief Hides the SAVE ERROR / SAVE LOCKED notice once its display time has elapsed. */
+    void servicePersistenceNotice(std::uint32_t nowMs);
 
     /** @brief Opens a text settings page at a specific row and resets edit/scroll state. */
     void openSettingsPage(SettingsPage page, std::uint8_t initialCursor = 0U);
@@ -418,6 +427,7 @@ private:
     std::uint32_t lastTapVisualAtMs_ = 0U;
     std::uint32_t tapIndicatorStartedAtMs_ = 0U;
     std::uint32_t externalTempoNoticeShownAtMs_ = 0U;
+    std::uint32_t persistenceNoticeShownAtMs_ = 0U;
 
     bool renderDirty_ = true;
     std::uint32_t lastRenderAtMs_ = 0U;

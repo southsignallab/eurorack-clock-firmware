@@ -17,6 +17,35 @@
 namespace clockfw::hal {
 
 /**
+ * @brief Interlock between a physical Flash commit and the real-time scheduler (D-04).
+ *
+ * STM32F4 stalls instruction fetch while a sector is erased or programmed. The
+ * gate is asked immediately before the erase; it must refuse while the engine
+ * runs and, once open, defer every scheduler-initiated start until close().
+ */
+class FlashCommitGate {
+public:
+    /** @brief Atomically checks the engine and opens the commit window; false keeps Flash untouched. */
+    virtual bool tryOpenCommitWindow() = 0;
+    /** @brief Closes the window and executes any start deferred while it was open. */
+    virtual void closeCommitWindow() = 0;
+
+protected:
+    /** @brief Non-virtual by design: gates are never deleted through this interface. */
+    ~FlashCommitGate() = default;
+};
+
+/** @brief Outcome of the most recent commitUpdate()/writeBytes() call. */
+enum class CommitOutcome : std::uint8_t {
+    None,       ///< No commit attempted yet.
+    Committed,  ///< A new generation is durable and verified.
+    Unchanged,  ///< Staged image equals the active one; Flash untouched.
+    Deferred,   ///< The commit gate refused because the engine runs; retry later, not an error.
+    Locked,     ///< Newest slot is in an unknown, newer format; writes are blocked, see F-045.
+    Failed,     ///< Erase, program, or verify failed; the previous generation remains.
+};
+
+/**
  * @brief Provides a small byte-addressed persistence API backed by two independent
  * STM32F401 16-KiB Flash erase sectors.
  *
@@ -39,6 +68,9 @@ public:
 
     /**
      * @brief Reads one range from the newest valid committed logical image.
+     *
+     * Slot validation (two payload CRCs) runs once per boot and after each
+     * commit; every further read is a bounded memcpy (F-009).
      * @param offset Byte offset inside the logical image.
      * @param destination Destination buffer.
      * @param size Number of bytes to read.
@@ -62,6 +94,16 @@ public:
      */
     bool beginUpdate();
 
+    /**
+     * @brief Starts a whole-image replacement from an erased staging image.
+     *
+     * The only path that may overwrite a slot in an unknown format (F-045). It is
+     * reserved for the guarded ERASE ALL DATA flow; the caller stages every byte
+     * it wants to keep. The commit always writes, even when the staged image
+     * happens to equal the active one, so the lock is cleared durably.
+     */
+    bool beginFullReplacement();
+
     /** @brief Applies one byte range to the currently staged image. */
     bool stageBytes(std::size_t offset, const std::uint8_t* source, std::size_t size);
 
@@ -73,6 +115,23 @@ public:
 
     /** @brief Discards a staged image without touching Flash. */
     void cancelUpdate();
+
+    /** @brief True while the newest committed slot is in a format this firmware must not overwrite. */
+    bool writeLocked() const;
+
+    /** @brief Outcome of the most recent commit attempt through this instance. */
+    CommitOutcome lastCommitOutcome() const { return lastOutcome_; }
+
+    /**
+     * @brief Changes whenever Flash content may have changed (commit, test seed).
+     *
+     * Lets RAM caches of stored records stay coherent with every writer of the
+     * shared image without re-reading Flash while it is unchanged.
+     */
+    static std::uint32_t contentRevision();
+
+    /** @brief Installs the scheduler interlock consulted before every physical commit. */
+    void setCommitGate(FlashCommitGate* gate) { commitGate_ = gate; }
 
 #ifdef CLOCK_HOST_TEST
     /** @brief Resets both simulated Flash sectors to the erased value 0xFF. */
@@ -86,6 +145,12 @@ public:
 
     /** @brief Makes the next write fail before touching the inactive slot. */
     static void failNextWriteForTest();
+
+    /** @brief Makes every write fail until cleared, like a worn-out sector (F-021 tests). */
+    static void failAllWritesForTest(bool fail);
+
+    /** @brief Number of commits that reached the physical stage (successful or failed). */
+    static std::uint32_t commitAttemptCountForTest();
 
     /** @brief Simulates power loss after erase/payload programming but before COMMIT. */
     static void powerLossBeforeCommitForTest();
@@ -101,6 +166,23 @@ public:
 
     /** @brief Seeds one valid historical 8-KiB committed slot for extension-migration tests. */
     static bool seedV1ImageForTest(const std::uint8_t* image, std::size_t size);
+
+    /** @brief Writes a committed slot with an intact header in a foreign format (F-045 tests). */
+    static void seedForeignSlotForTest(
+        std::size_t slotIndex,
+        std::uint32_t formatVersion,
+        std::uint32_t generation,
+        bool intactHeaderCrc = true,
+        std::uint32_t payloadSize = kCapacityBytes);
+
+    /** @brief Forgets the cached slot scan and zeroes the counters, like a cold boot. */
+    static void simulateRebootForTest();
+
+    /** @brief Number of full-payload CRC validations since the last reset/reboot. */
+    static std::uint32_t payloadValidationCountForTest();
+
+    /** @brief Number of readBytes() calls since the last reset/reboot. */
+    static std::uint32_t readCountForTest();
 #endif
 
 private:
@@ -109,11 +191,17 @@ private:
 
     // Deliberately permanent scratch storage: the 12-KiB BSS allocation is predictable
     // and avoids multi-kilobyte stack frames during whole-image A/B commits.
+    /** @brief Opens an update after the target slot and generation are fixed. */
+    void openUpdate(bool replacement);
+
     std::array<std::uint8_t, kCapacityBytes> stagingImage_{};
+    FlashCommitGate* commitGate_ = nullptr;
     std::uint32_t stagedGeneration_ = 0U;
-    std::int8_t stagedActiveSlot_ = -1;
+    std::uint8_t stagedTargetSlot_ = 0U;
+    CommitOutcome lastOutcome_ = CommitOutcome::None;
     bool updateOpen_ = false;
     bool updateDirty_ = false;
+    bool replacement_ = false;
 };
 
 }  // namespace clockfw::hal

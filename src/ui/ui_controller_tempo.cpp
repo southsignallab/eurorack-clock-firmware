@@ -36,6 +36,20 @@ void UiController::serviceExternalTempoNotice(const std::uint32_t nowMs) {
     }
 }
 
+void UiController::showPersistenceNotice(const PersistenceNotice notice, const std::uint32_t nowMs) {
+    navigation_.persistenceNotice = notice;
+    persistenceNoticeShownAtMs_ = nowMs;
+    invalidate();
+}
+
+void UiController::servicePersistenceNotice(const std::uint32_t nowMs) {
+    if (navigation_.persistenceNotice != PersistenceNotice::None &&
+        nowMs - persistenceNoticeShownAtMs_ >= config::kPersistenceNoticeMs) {
+        navigation_.persistenceNotice = PersistenceNotice::None;
+        invalidate();
+    }
+}
+
 void UiController::registerExternalTapTempo(const std::uint32_t timestampMs) {
     // A TAP input cannot override an external clock either; ignore it silently.
     if (masterTempoIsExternal()) {

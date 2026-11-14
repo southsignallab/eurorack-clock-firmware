@@ -73,11 +73,20 @@ public:
         bool enabled,
         std::uint32_t nowMs);
 
-    /** @brief Commits pending changes once the normal delay elapsed and Flash writes are allowed. */
-    bool service(std::uint32_t nowMs, bool allowFlashWrite);
-
-    /** @brief Forces an immediate commit of a dirty bank; primarily useful for controlled tests/tools. */
+    /** @brief Commits a dirty bank immediately in its own transaction (tools/tests). */
     bool flush();
+
+    /** @brief Stages the dirty bank into the storage update the caller opened (D-04). */
+    bool stage();
+
+    /** @brief Marks the staged bank as durable after a successful commit. */
+    void markCommitted();
+
+    /** @brief Increments with every accepted bank mutation; drives the central debounce. */
+    std::uint32_t changeRevision() const { return changeRevision_; }
+
+    /** @brief Restores clean defaults after ERASE ALL DATA; nothing remains pending (F-008). */
+    void resetToFactory();
 
     /** @brief Returns whether RAM differs from the durable pattern bank. */
     bool dirty() const { return dirty_; }
@@ -112,7 +121,10 @@ private:
     hal::PersistentStorage& storage_;
     std::array<SequencerPatternV2, kPatternCount> patterns_{};
     std::array<std::uint8_t, kChannelCount> activeSlots_{};
-    std::uint32_t dirtySinceMs_ = 0U;
+    /** @brief Records one accepted mutation. */
+    void markDirty();
+
+    std::uint32_t changeRevision_ = 0U;
     bool dirty_ = false;
     bool hasDurableBank_ = false;
 };

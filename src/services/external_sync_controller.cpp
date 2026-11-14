@@ -346,25 +346,6 @@ void ExternalSyncController::drainInput(const int inputIndex) {
     }
 }
 
-void ExternalSyncController::requestPlayFromInput() {
-    autoTransportArmed_ = true;
-    engine_.play();
-    pendingTransportTransition_ = static_cast<std::uint8_t>(TransportState::Playing);
-}
-
-void ExternalSyncController::requestStopFromInput() {
-    autoTransportArmed_ = false;
-    engine_.stop();
-    pendingTransportTransition_ = static_cast<std::uint8_t>(TransportState::Stopped);
-}
-
-void ExternalSyncController::requestRestartFromInput() {
-    autoTransportArmed_ = true;
-    engine_.stop();
-    engine_.play();
-    pendingTransportTransition_ = static_cast<std::uint8_t>(TransportState::Playing);
-}
-
 void ExternalSyncController::loseExternalLockFromIsr() {
     const bool wasLocked = externalLocked_;
     externalLocked_ = false;
@@ -379,8 +360,7 @@ void ExternalSyncController::loseExternalLockFromIsr() {
         return;
     }
 
-    engine_.stop();
-    pendingTransportTransition_ = static_cast<std::uint8_t>(TransportState::Stopped);
+    stopFromIsr();
 }
 
 void ExternalSyncController::startOnLockAcquisitionFromIsr() {
@@ -389,8 +369,7 @@ void ExternalSyncController::startOnLockAcquisitionFromIsr() {
         return;
     }
 
-    engine_.play();
-    pendingTransportTransition_ = static_cast<std::uint8_t>(TransportState::Playing);
+    startOrDeferFromIsr();
 }
 
 bool ExternalSyncController::selectedSyncEdge(const bool high) const {

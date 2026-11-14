@@ -1,6 +1,6 @@
 /**
  * @file clock_application_transport.cpp
- * @brief Foreground transport reconciliation and the Flash-commit gate of the CLOCK composition root.
+ * @brief Foreground transport reconciliation and persistence servicing of the CLOCK composition root.
  * @author Axel Napolitano
  * @copyright 2026 Axel Napolitano
  * @license PolyForm-Noncommercial-1.0.0
@@ -28,6 +28,19 @@ void ClockApplication::adoptExternalTransportTransition() {
 
 bool ClockApplication::flashWriteAllowed() const {
     return state_.transport != TransportState::Playing && !engine_.isPlaying();
+}
+
+void ClockApplication::servicePersistence(const std::uint32_t nowMs) {
+    (void)persistenceCoordinator_.service(nowMs, flashWriteAllowed());
+    if (persistenceCoordinator_.noticeRevision() == announcedPersistenceNotice_) {
+        return;
+    }
+    announcedPersistenceNotice_ = persistenceCoordinator_.noticeRevision();
+    uiController_.showPersistenceNotice(
+        persistenceCoordinator_.status() == services::PersistenceCoordinator::Status::SaveLocked
+            ? ui::PersistenceNotice::SaveLocked
+            : ui::PersistenceNotice::SaveError,
+        nowMs);
 }
 
 #ifdef CLOCK_HOST_TEST

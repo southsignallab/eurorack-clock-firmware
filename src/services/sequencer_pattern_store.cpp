@@ -8,6 +8,8 @@
 
 #include "services/sequencer_pattern_store.h"
 
+#include "hal/crc32.h"
+
 #include <algorithm>
 
 #include "config.h"
@@ -17,8 +19,6 @@ namespace {
 constexpr std::uint32_t kMagic = 0x50325153UL;  // "SQ2P" little-endian.
 constexpr std::size_t kCrcOffset = 8U;
 constexpr std::size_t kPayloadOffset = SequencerPatternStore::kHeaderBytes;
-constexpr std::uint32_t kCrcPolynomial = 0xEDB88320UL;
-constexpr std::uint32_t kCrcInitialValue = 0xFFFFFFFFUL;
 }
 
 SequencerPatternStore::SequencerPatternStore(hal::PersistentStorage& storage) : storage_(storage) {
@@ -48,18 +48,7 @@ std::uint32_t SequencerPatternStore::read32(const std::uint8_t* const source) {
 std::uint32_t SequencerPatternStore::calculateCrc32(
     const std::uint8_t* const data,
     const std::size_t size) {
-    std::uint32_t crc = kCrcInitialValue;
-    for (std::size_t index = 0U; index < size; ++index) {
-        crc ^= data[index];
-        for (std::uint8_t bit = 0U; bit < 8U; ++bit) {
-            const bool lowBit = (crc & 1U) != 0U;
-            crc >>= 1U;
-            if (lowBit) {
-                crc ^= kCrcPolynomial;
-            }
-        }
-    }
-    return crc ^ kCrcInitialValue;
+    return hal::crc32(data, size);
 }
 
 void SequencerPatternStore::encodePattern(
@@ -110,7 +99,6 @@ void SequencerPatternStore::resetDefaults() {
     }
     activeSlots_.fill(0U);
     dirty_ = false;
-    dirtySinceMs_ = 0U;
     hasDurableBank_ = false;
 }
 
@@ -176,9 +164,19 @@ bool SequencerPatternStore::begin() {
         return true;
     }
     dirty_ = false;
-    dirtySinceMs_ = 0U;
     hasDurableBank_ = true;
     return true;
+}
+
+void SequencerPatternStore::markDirty() {
+    dirty_ = true;
+    ++changeRevision_;
+}
+
+void SequencerPatternStore::resetToFactory() {
+    resetDefaults();
+    dirty_ = false;
+    hasDurableBank_ = false;
 }
 
 const SequencerPatternV2& SequencerPatternStore::pattern(
@@ -206,10 +204,8 @@ bool SequencerPatternStore::setActiveSlot(
         return true;
     }
     activeSlots_[channelIndex] = slotIndex;
-    if (!dirty_) {
-        dirtySinceMs_ = nowMs;
-    }
-    dirty_ = true;
+    (void)nowMs;
+    markDirty();
     return true;
 }
 
@@ -232,8 +228,8 @@ bool SequencerPatternStore::seedLegacyPatternOnes(
         clampSequencerPattern(migrated);
         patterns_[flatIndex(channelIndex, 0U)] = migrated;
     }
-    dirtySinceMs_ = nowMs;
-    dirty_ = true;
+    (void)nowMs;
+    markDirty();
     return true;
 }
 
@@ -249,10 +245,8 @@ bool SequencerPatternStore::updatePattern(
     SequencerPatternV2 candidate = patternValue;
     clampSequencerPattern(candidate);
     patterns_[flatIndex(channelIndex, slotIndex)] = candidate;
-    if (!dirty_) {
-        dirtySinceMs_ = nowMs;
-    }
-    dirty_ = true;
+    (void)nowMs;
+    markDirty();
     return true;
 }
 
@@ -271,26 +265,31 @@ bool SequencerPatternStore::setGate(
     return updatePattern(channelIndex, slotIndex, candidate, nowMs);
 }
 
-bool SequencerPatternStore::service(const std::uint32_t nowMs, const bool allowFlashWrite) {
-    if (!dirty_ || !allowFlashWrite ||
-        nowMs - dirtySinceMs_ < config::kPersistenceCommitDelayMs) {
+bool SequencerPatternStore::stage() {
+    if (!dirty_) {
         return true;
     }
-    return flush();
+    std::array<std::uint8_t, kStorageBytes> bytes{};
+    encodeBank(bytes);
+    return storage_.stageBytes(kStorageOffset, bytes.data(), bytes.size());
+}
+
+void SequencerPatternStore::markCommitted() {
+    if (dirty_) {
+        dirty_ = false;
+        hasDurableBank_ = true;
+    }
 }
 
 bool SequencerPatternStore::flush() {
     if (!dirty_) {
         return true;
     }
-    std::array<std::uint8_t, kStorageBytes> bytes{};
-    encodeBank(bytes);
-    if (!storage_.writeBytes(kStorageOffset, bytes.data(), bytes.size())) {
+    if (!storage_.beginUpdate() || !stage() || !storage_.commitUpdate()) {
+        storage_.cancelUpdate();
         return false;
     }
-    dirty_ = false;
-    dirtySinceMs_ = 0U;
-    hasDurableBank_ = true;
+    markCommitted();
     return true;
 }
 

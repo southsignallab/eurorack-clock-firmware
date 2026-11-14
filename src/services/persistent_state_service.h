@@ -110,6 +110,27 @@ public:
      */
     void service(std::uint32_t nowMs, bool allowFlashCommit = true);
 
+    /** @brief True when CURRENT, a preset, or a boot migration still awaits a durable commit. */
+    bool hasPendingCommit() const;
+
+    /** @brief True for pending work that is committed without debounce (preset edits, migration). */
+    bool hasUrgentCommit() const;
+
+    /** @brief Increments with every accepted change of pending durable content. */
+    std::uint32_t changeRevision() const { return changeRevision_; }
+
+    /**
+     * @brief Stages every pending record into the storage update the caller opened.
+     * @param includeCurrent Also stage a pending CURRENT record.
+     */
+    bool stagePendingRecords(bool includeCurrent = true);
+
+    /** @brief Marks everything staged by stagePendingRecords() as durable. */
+    void commitSucceeded();
+
+    /** @brief Records a failed commit; schedules the standalone migration retry. */
+    void commitFailed(std::uint32_t nowMs);
+
     /** @brief Returns true when a valid CURRENT record was loaded or written. */
     bool hasStoredCurrentState() const;
 
@@ -544,6 +565,12 @@ private:
 
     /** @brief Delay between retries of a failed boot migration commit. */
     static constexpr std::uint32_t kMigrationRetryIntervalMs = 3000U;
+
+    /** @brief True while at least one preset slot has a staged edit. */
+    bool presetWritePending() const;
+
+    std::uint32_t changeRevision_ = 0U;
+    bool currentStaged_ = false;
 
     hal::PersistentStorage& storage_;
     ClockState storedCurrentState_{};

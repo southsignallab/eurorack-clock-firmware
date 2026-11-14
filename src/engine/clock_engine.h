@@ -220,6 +220,16 @@ public:
 #ifdef CLOCK_HOST_TEST
     /** @brief Returns how many full runtime resets were executed in deterministic host tests. */
     std::uint32_t resetRuntimeCountForTest() const;
+
+    /** @brief Returns the engine's in-RAM copy of one Custom Groove library slot. */
+    const CustomGroovePattern& customGrooveSlotForTest(std::uint8_t slotIndex) const {
+        return customGrooves_[slotIndex < kCustomGrooveSlotCount ? slotIndex : 0U];
+    }
+
+    /** @brief Returns the engine's active Sequencer 2.0 pattern of one channel. */
+    const SequencerPatternV2& sequencerPatternForTest(std::size_t channelIndex) const {
+        return sequencerPatterns_[channelIndex < kChannelCount ? channelIndex : 0U];
+    }
 #endif
 
 private:

@@ -44,6 +44,7 @@ void UiController::noteUserActivity(const std::uint32_t nowMs) {
 void UiController::serviceRendering(const std::uint32_t nowMs) {
     serviceTapTempoFeedback(nowMs);
     serviceExternalTempoNotice(nowMs);
+    servicePersistenceNotice(nowMs);
     if (serviceStopModeDisplay(nowMs)) {
         return;
     }

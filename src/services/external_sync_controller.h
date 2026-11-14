@@ -12,6 +12,7 @@
 #include "domain/clock_types.h"
 #include "engine/clock_engine.h"
 #include "hal/external_input_capture.h"
+#include "hal/persistent_storage.h"
 
 namespace clockfw::services {
 
@@ -23,7 +24,7 @@ namespace clockfw::services {
  * timestamped edges; all role interpretation and engine mutation happens at the
  * deterministic scheduler boundary.
  */
-class ExternalSyncController final {
+class ExternalSyncController final : public hal::FlashCommitGate {
 public:
     /** @brief Binds the conditioned input capture to the clock engine. */
     ExternalSyncController(
@@ -51,9 +52,32 @@ public:
      */
     bool consumeTapRequest(std::uint32_t& timestampUs);
 
+    /**
+     * @brief Opens the Flash commit window only while the engine is stopped (D-04).
+     *
+     * Checked and set inside one interrupt lock, so no scheduler tick can start
+     * the engine between the check and the erase. While open, RUN/START/RESTART
+     * and AUTOSTART on lock are recorded instead of executed.
+     */
+    bool tryOpenCommitWindow() override;
+
+    /** @brief Closes the window and executes the latest deferred start, if any. */
+    void closeCommitWindow() override;
+
+#ifdef CLOCK_HOST_TEST
+    /** @brief True while a start is recorded inside an open commit window. */
+    bool startDeferredForTest() const { return deferredStart_; }
+#endif
+
 private:
     /** Sentinel used when no input-driven transport transition is pending. */
     static constexpr std::uint8_t kNoPendingTransportTransition = 0xFFU;
+
+    /** @brief Starts the engine now, or records the start while a Flash commit runs. */
+    void startOrDeferFromIsr();
+
+    /** @brief Stops the engine and drops a start recorded during a commit window. */
+    void stopFromIsr();
 
     /** @brief Processes the input assigned to RESET. */
     void processResetEdges();
@@ -125,6 +149,8 @@ private:
     bool autoTransportArmed_ = true;
     volatile std::uint8_t pendingTransportTransition_ = kNoPendingTransportTransition;
     volatile bool pendingTap_ = false;
+    bool commitWindowOpen_ = false;
+    bool deferredStart_ = false;
     volatile std::uint32_t pendingTapTimestampUs_ = 0U;
 };
 

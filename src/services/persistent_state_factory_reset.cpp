@@ -10,7 +10,9 @@
 
 namespace clockfw::services {
 bool PersistentStateService::factoryReset(const ClockState& factoryState) {
-    if (!isStateValid(factoryState) || !storage_.beginUpdate()) {
+    // A full replacement is the only write allowed over a slot in a newer,
+    // unknown format (F-045): ERASE ALL DATA is the user's explicit consent.
+    if (!isStateValid(factoryState) || !storage_.beginFullReplacement()) {
         return false;
     }
 
@@ -31,6 +33,7 @@ bool PersistentStateService::factoryReset(const ClockState& factoryState) {
     // The whole image was rewritten in the current schema.
     migrationPending_ = false;
     migrationRetryScheduled_ = false;
+    currentStaged_ = false;
     pendingPresetWrites_.fill(false);
     pendingPresetWillExist_.fill(false);
     for (std::size_t slot = 0U; slot < kUserPresetSlotCount; ++slot) {

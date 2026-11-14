@@ -92,6 +92,9 @@ private:
     /** @brief Draws the transient EXTERNAL CLOCK notice over the tempo area. */
     void drawExternalTempoNotice();
 
+    /** @brief Draws one centered full-width notice banner across the tempo area. */
+    void drawNoticeBanner(const char* notice);
+
     /** @brief Returns the one-character O/C/E/S status abbreviation for one channel mode. */
     static char statusModeCharacter(ChannelMode mode);
 

@@ -2,7 +2,7 @@
 
 # South Signal Lab CLOCK Test Coverage — stable v1.1.0
 
-The stable-release test policy is repository-wide rather than limited to `clock_core`. Stable 1.1.0 shipped with 497 named Native cases. The current post-1.1 development tree adds the focused `test_sequencer2` suite plus current Sequencer expression/UI and realtime gate regressions for a **538-case** working inventory, while `run_host_tests.py` remains the authoritative variant/sanitizer/coverage matrix.
+The stable-release test policy is repository-wide rather than limited to `clock_core`. Stable 1.1.0 shipped with 497 named Native cases. The current post-1.1 development tree adds the focused `test_sequencer2` suite plus current Sequencer expression/UI, realtime gate and persistence-coordinator regressions for a **555-case** working inventory, while `run_host_tests.py` remains the authoritative variant/sanitizer/coverage matrix.
 
 ## Hard CI gates
 
@@ -65,6 +65,14 @@ Executable lines:  10485/10993 (95.38%)
 Functions:            899/916   (98.14%)
 Decision branches:   6492/7208 (90.07%)
 Compiler branches:   6493/8464 (76.71%, informational only)
+```
+
+The aggregate after the persistence-coordinator work (one commit path, slot-validation cache, table CRC, downgrade lock, commit window, complete factory reset) is:
+
+```text
+Executable lines:  10909/11423 (95.50%)
+Functions:            990/1007  (98.31%)
+Decision branches:   6841/7591 (90.12%)
 ```
 
 The r47f aggregate passes the unchanged 95/95/90 gate. ASan/UBSan, simulator and VCV adapter qualification remain separate gates; none of these host results substitute for the still-open STM32F401 ELF/RAM memory-gate evidence for the 12-KiB development persistence image.

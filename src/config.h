@@ -138,6 +138,18 @@ inline constexpr std::uint32_t kEncoderLongPressMs = 650UL;
 /** Delay before a changed transport state is committed to Flash. */
 inline constexpr std::uint32_t kPersistenceCommitDelayMs = 3000UL;
 
+/** Upper bound from the first unsaved change to its commit while Flash writes are allowed (D-04). */
+inline constexpr std::uint32_t kPersistenceMaximumLatencyMs = 30000UL;
+
+/** First retry delay after a failed commit; doubles per further failure (F-021). */
+inline constexpr std::uint32_t kPersistenceRetryInitialMs = 1000UL;
+
+/** Retry delay ceiling after repeated commit failures (F-021). */
+inline constexpr std::uint32_t kPersistenceRetryMaximumMs = 60000UL;
+
+/** Display time of the SAVE ERROR / SAVE LOCKED notice on the Performance screen. */
+inline constexpr std::uint32_t kPersistenceNoticeMs = 3000UL;
+
 /** Absolute firmware-supported lower master-tempo bound. User limits may be stricter. */
 inline constexpr std::uint16_t kSupportedMinimumBpm = 1U;
 

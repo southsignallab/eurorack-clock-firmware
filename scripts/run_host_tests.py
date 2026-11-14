@@ -162,6 +162,7 @@ def realtime_sources() -> list[Path]:
         "src/hal/system_clock.cpp",
         "src/services/external_sync_controller.cpp",
         "src/services/external_sync_controller_inputs.cpp",
+        "src/services/external_sync_controller_transport.cpp",
         "src/services/groove_recorder.cpp",
     ]
     return [ROOT / item for item in relative]
@@ -309,7 +310,9 @@ def sequencer2_sources() -> list[Path]:
     return [
         ROOT / "src/domain/sequencer_pattern.cpp",
         ROOT / "src/domain/sequencer_step_metadata.cpp",
+        ROOT / "src/hal/crc32.cpp",
         ROOT / "src/hal/persistent_storage.cpp",
+        ROOT / "src/hal/persistent_storage_slots.cpp",
         ROOT / "src/services/sequencer_pattern_store.cpp",
         ROOT / "src/services/sequencer_step_store.cpp",
     ]
@@ -371,7 +374,9 @@ def easter_egg_sources() -> list[Path]:
         ROOT / "src/hal/oled_display.cpp",
         ROOT / "src/hal/oled_display_transport.cpp",
         ROOT / "src/hal/platform_io.cpp",
+        ROOT / "src/hal/crc32.cpp",
         ROOT / "src/hal/persistent_storage.cpp",
+        ROOT / "src/hal/persistent_storage_slots.cpp",
         ROOT / "src/game/easter_egg_score_store.cpp",
         ROOT / "src/game/arcade_leaderboard_store.cpp",
         ROOT / "src/game/arcade_shell.cpp",
@@ -685,6 +690,7 @@ def focused_coverage(focus: str) -> tuple[list[Path], set[str]]:
                 "external_input_capture.cpp",
                 "external_sync_controller.cpp",
                 "external_sync_controller_inputs.cpp",
+                "external_sync_controller_transport.cpp",
             }
         }
         return [compile_sync_behavior_suite()], selected

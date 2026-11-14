@@ -67,6 +67,6 @@ Long read-only information is shortened with `...` in the row and can be opened 
 
 <p align="center"><img src="../manual-source/assets/settings-licenses.png" alt="License information page showing CORE LIC overflow." width="360"></p>
 
-`PHASE RESET` is non-destructive. `FACTORY RESET`, by contrast, is the final guarded INFO action and clears CURRENT, named presets and score data before restoring factory configuration.
+`PHASE RESET` is non-destructive. `FACTORY RESET`, by contrast, is the final guarded INFO action and clears CURRENT, named presets, Custom Grooves, the Sequencer banks and score data before restoring factory configuration.
 
 <h6 align="center">From Munich with &#9829;</h6>

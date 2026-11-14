@@ -8,6 +8,8 @@
 
 #include "services/custom_groove_store.h"
 
+#include "hal/crc32.h"
+
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -20,8 +22,6 @@ constexpr std::size_t kHeaderBytes = 8U;
 constexpr std::size_t kNameOffset = kHeaderBytes;
 constexpr std::size_t kOffsetsOffset = kNameOffset + CustomGrooveStore::kNameLength;
 constexpr std::size_t kCrcOffset = CustomGrooveStore::kRecordBytes - 4U;
-constexpr std::uint32_t kCrcPolynomial = 0xEDB88320UL;
-constexpr std::uint32_t kCrcInitialValue = 0xFFFFFFFFUL;
 
 void write32(std::uint8_t* const destination, const std::uint32_t value) {
     destination[0] = static_cast<std::uint8_t>(value & 0xFFU);
@@ -44,6 +44,7 @@ CustomGrooveStore::CustomGrooveStore(
 
 bool CustomGrooveStore::writeRecord(
     const std::uint8_t slotIndex, const std::array<std::uint8_t, kRecordBytes>& record) {
+    slotCache_[slotIndex].cached = false;
     if (!deferredWrites_) {
         return storage_.writeBytes(slotOffset(slotIndex), record.data(), record.size());
     }
@@ -52,31 +53,62 @@ bool CustomGrooveStore::writeRecord(
     return true;
 }
 
-bool CustomGrooveStore::service(const bool allowFlashWrite) {
-    if (!deferredWrites_ || !allowFlashWrite) {
-        return true;
-    }
-    if (std::none_of(queuedSlots_.begin(), queuedSlots_.end(), [](const bool queued) {
-            return queued;
-        })) {
-        return true;
-    }
-    if (!storage_.beginUpdate()) {
-        return false;
-    }
+bool CustomGrooveStore::hasPendingCommit() const {
+    return std::any_of(queuedSlots_.begin(), queuedSlots_.end(), [](const bool queued) { return queued; });
+}
+
+bool CustomGrooveStore::stage() {
     for (std::uint8_t index = 0U; index < kCustomGrooveSlotCount; ++index) {
-        if (queuedSlots_[index] && !storage_.stageBytes(
-            slotOffset(index), queuedRecords_[index].data(), kRecordBytes)) {
-            storage_.cancelUpdate();
+        if (queuedSlots_[index] &&
+            !storage_.stageBytes(slotOffset(index), queuedRecords_[index].data(), kRecordBytes)) {
             return false;
         }
     }
-    if (!storage_.commitUpdate()) {
+    return true;
+}
+
+void CustomGrooveStore::markCommitted() {
+    queuedSlots_.fill(false);
+}
+
+void CustomGrooveStore::resetToFactory() {
+    queuedSlots_.fill(false);
+    for (SlotCache& entry : slotCache_) {
+        entry = SlotCache{};
+    }
+}
+
+bool CustomGrooveStore::service(const bool allowFlashWrite) {
+    if (!deferredWrites_ || !allowFlashWrite || !hasPendingCommit()) {
+        return true;
+    }
+    if (!storage_.beginUpdate() || !stage() || !storage_.commitUpdate()) {
         storage_.cancelUpdate();
         return false;
     }
-    queuedSlots_.fill(false);
+    markCommitted();
     return true;
+}
+
+void CustomGrooveStore::cacheSlot(const std::uint8_t slotIndex) const {
+    if (cacheContentRevision_ != hal::PersistentStorage::contentRevision()) {
+        // Another writer (factory reset, a second store instance) changed Flash.
+        for (SlotCache& stale : slotCache_) {
+            stale.cached = false;
+        }
+        cacheContentRevision_ = hal::PersistentStorage::contentRevision();
+    }
+    SlotCache& entry = slotCache_[slotIndex];
+    if (entry.cached) {
+        return;
+    }
+    entry.name.fill('\0');
+    CustomGroovePattern ignored{};
+    entry.exists = load(slotIndex, ignored, entry.name.data(), entry.name.size());
+    if (!entry.exists) {
+        entry.name.fill('\0');
+    }
+    entry.cached = true;
 }
 
 std::size_t CustomGrooveStore::slotOffset(const std::uint8_t slotIndex) {
@@ -180,8 +212,11 @@ bool CustomGrooveStore::clear(const std::uint8_t slotIndex) {
 }
 
 bool CustomGrooveStore::exists(const std::uint8_t slotIndex) const {
-    CustomGroovePattern ignored{};
-    return load(slotIndex, ignored);
+    if (slotIndex >= kCustomGrooveSlotCount) {
+        return false;
+    }
+    cacheSlot(slotIndex);
+    return slotCache_[slotIndex].exists;
 }
 
 void CustomGrooveStore::name(
@@ -192,25 +227,22 @@ void CustomGrooveStore::name(
         return;
     }
     destination[0] = '\0';
-    CustomGroovePattern ignored{};
-    (void)load(slotIndex, ignored, destination, destinationSize);
+    if (slotIndex >= kCustomGrooveSlotCount) {
+        return;
+    }
+    cacheSlot(slotIndex);
+    const std::size_t count = std::min<std::size_t>(kNameLength, destinationSize - 1U);
+    std::copy_n(slotCache_[slotIndex].name.data(), count, destination);
+    destination[count] = '\0';
+    for (std::size_t index = std::strlen(destination); index > 0U && destination[index - 1U] == ' '; --index) {
+        destination[index - 1U] = '\0';
+    }
 }
 
 std::uint32_t CustomGrooveStore::calculateCrc32(
     const std::uint8_t* const data,
     const std::size_t size) {
-    std::uint32_t crc = kCrcInitialValue;
-    for (std::size_t index = 0U; index < size; ++index) {
-        crc ^= data[index];
-        for (std::uint8_t bit = 0U; bit < 8U; ++bit) {
-            const bool lowBit = (crc & 1U) != 0U;
-            crc >>= 1U;
-            if (lowBit) {
-                crc ^= kCrcPolynomial;
-            }
-        }
-    }
-    return crc ^ kCrcInitialValue;
+    return hal::crc32(data, size);
 }
 
 }  // namespace clockfw::services

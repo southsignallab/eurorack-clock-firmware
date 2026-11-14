@@ -308,19 +308,20 @@ void testSparseStepStoreCapacityValidationAndReservedSongRegion() {
     TEST_ASSERT_FALSE(store.replacePatternWords(kChannelCount, 0U, {}, 0U));
 }
 
-void testSparseStepStoreDelayedCommitAndReadWriteFailures() {
+void testSparseStepStoreCommitAndReadWriteFailures() {
     hal::PersistentStorage storage;
     services::SequencerStepStore store(storage);
     TEST_ASSERT_TRUE(store.begin());
     SequencerStepMetadata metadata{};
     metadata.gateProfile = SequencerGateProfile::Gate20Ms;
+    const std::uint32_t revisionBefore = store.changeRevision();
     TEST_ASSERT_TRUE(store.updateMetadata(0U, 0U, 4U, metadata, 100U));
-    TEST_ASSERT_TRUE(store.service(100U + config::kPersistenceCommitDelayMs - 1U, true));
-    TEST_ASSERT_TRUE(store.dirty());
-    TEST_ASSERT_TRUE(store.service(100U + config::kPersistenceCommitDelayMs, false));
+    // Commit timing belongs to PersistenceCoordinator (D-04); the store only
+    // reports the change and keeps it dirty until a commit succeeds.
+    TEST_ASSERT_TRUE(store.changeRevision() != revisionBefore);
     TEST_ASSERT_TRUE(store.dirty());
     hal::PersistentStorage::failNextWriteForTest();
-    TEST_ASSERT_FALSE(store.service(100U + config::kPersistenceCommitDelayMs, true));
+    TEST_ASSERT_FALSE(store.flush());
     TEST_ASSERT_TRUE(store.dirty());
     TEST_ASSERT_TRUE(store.flush());
     TEST_ASSERT_FALSE(store.dirty());
@@ -530,7 +531,7 @@ void testLegacyChannelSequencesSeedPatternOneOnly() {
     TEST_ASSERT_FALSE(restored.seedLegacyPatternOnes(state, 999U));
 }
 
-void testPersistentBankRoundTripAndDelayedCommit() {
+void testPersistentBankRoundTripAndExplicitCommit() {
     hal::PersistentStorage storage;
     services::SequencerPatternStore store(storage);
     TEST_ASSERT_TRUE(store.begin());
@@ -548,9 +549,7 @@ void testPersistentBankRoundTripAndDelayedCommit() {
     TEST_ASSERT_TRUE(store.dirty());
     TEST_ASSERT_EQUAL_UINT32(0U, hal::PersistentStorage::writeCommitCountForTest());
 
-    TEST_ASSERT_TRUE(store.service(100U + config::kPersistenceCommitDelayMs - 1U, true));
-    TEST_ASSERT_EQUAL_UINT32(0U, hal::PersistentStorage::writeCommitCountForTest());
-    TEST_ASSERT_TRUE(store.service(100U + config::kPersistenceCommitDelayMs, true));
+    TEST_ASSERT_TRUE(store.flush());
     TEST_ASSERT_EQUAL_UINT32(1U, hal::PersistentStorage::writeCommitCountForTest());
     TEST_ASSERT_FALSE(store.dirty());
 
@@ -672,14 +671,22 @@ void testStoreRejectsInvalidRequestsAndDefersWhenWritesAreBlocked() {
     TEST_ASSERT_EQUAL_UINT8(16U, store.pattern(kChannelCount, 0U).length);
     TEST_ASSERT_EQUAL_UINT8(16U, store.pattern(0U, kSequencerPatternSlotsPerChannel).length);
 
-    TEST_ASSERT_TRUE(store.setGate(0U, 0U, 127U, true, 10U));
+    const std::uint32_t revisionBefore = store.changeRevision();
+    // Toggle a real bit: an unchanged bank is not written at all, so an injected
+    // write failure would never be reached.
+    const bool firstGate = (store.pattern(0U, 0U).gates[0] & 1ULL) != 0ULL;
+    TEST_ASSERT_TRUE(store.setGate(0U, 0U, 0U, !firstGate, 10U));
     TEST_ASSERT_TRUE(store.dirty());
-    TEST_ASSERT_TRUE(store.service(10U + config::kPersistenceCommitDelayMs + 1U, false));
+    TEST_ASSERT_TRUE(store.changeRevision() != revisionBefore);
+    hal::PersistentStorage::failNextWriteForTest();
+    TEST_ASSERT_FALSE(store.flush());
     TEST_ASSERT_TRUE(store.dirty());
-    TEST_ASSERT_TRUE(store.service(10U, true));
-    TEST_ASSERT_TRUE(store.dirty());
-    TEST_ASSERT_TRUE(store.service(10U + config::kPersistenceCommitDelayMs, true));
+    TEST_ASSERT_TRUE(store.flush());
     TEST_ASSERT_FALSE(store.dirty());
+    store.resetToFactory();
+    TEST_ASSERT_FALSE(store.dirty());
+    TEST_ASSERT_FALSE(store.hasDurableBank());
+    TEST_ASSERT_TRUE(store.pattern(0U, 0U).gates[0] == SequencerPatternV2{}.gates[0]);
 }
 
 void testStoreReadFailureAndCorruptHeadersFallBackToDefaults() {
@@ -769,11 +776,11 @@ int main(int, char**) {
     RUN_TEST(testStepMetadataPackingProfilesAndInvalidWords);
     RUN_TEST(testSparseStepStoreRoundTripRemovalAndPatternCopy);
     RUN_TEST(testSparseStepStoreCapacityValidationAndReservedSongRegion);
-    RUN_TEST(testSparseStepStoreDelayedCommitAndReadWriteFailures);
+    RUN_TEST(testSparseStepStoreCommitAndReadWriteFailures);
     RUN_TEST(testSparseStepStoreDefensiveDecodeAndNoOpBranches);
     RUN_TEST(testSparseStepStoreReplaceCapacityAndMixedPatternBranches);
     RUN_TEST(testLegacyChannelSequencesSeedPatternOneOnly);
-    RUN_TEST(testPersistentBankRoundTripAndDelayedCommit);
+    RUN_TEST(testPersistentBankRoundTripAndExplicitCommit);
     RUN_TEST(testStoreRejectsInvalidRequestsAndDefersWhenWritesAreBlocked);
     RUN_TEST(testStoreReadFailureAndCorruptHeadersFallBackToDefaults);
     RUN_TEST(testStoreRejectsInvalidPatternRecordWithValidBankCrc);

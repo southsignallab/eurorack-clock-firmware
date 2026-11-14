@@ -38,6 +38,7 @@ void PersistentStateService::requestCurrentState(
         pendingCurrentState_ = durableState;
         pendingSinceMs_ = nowMs;
         writePending_ = true;
+        ++changeRevision_;
     }
 }
 
@@ -58,8 +59,74 @@ void PersistentStateService::requestTransportState(
     // wear-coalescing deadline indefinitely. Restart only when the value changed.
     if (!writePending_ || preferenceChanged) {
         pendingSinceMs_ = nowMs;
+        ++changeRevision_;
     }
     writePending_ = true;
+}
+
+bool PersistentStateService::presetWritePending() const {
+    return std::any_of(pendingPresetWrites_.begin(), pendingPresetWrites_.end(), [](const bool pending) {
+        return pending;
+    });
+}
+
+bool PersistentStateService::hasUrgentCommit() const {
+    return migrationPending_ || presetWritePending();
+}
+
+bool PersistentStateService::hasPendingCommit() const {
+    return writePending_ || hasUrgentCommit();
+}
+
+bool PersistentStateService::stagePendingRecords(const bool includeCurrent) {
+    // A pending boot migration always rides in the same transaction as, and
+    // underneath, every other accepted mutation.
+    bool staged = !migrationPending_ || stageMigratedRecords();
+    currentStaged_ = includeCurrent && writePending_;
+    if (staged && currentStaged_) {
+        const std::array<std::uint8_t, kCurrentRecordSize> currentRecord =
+            serializeCurrentRecord(pendingCurrentState_);
+        staged = storage_.stageBytes(kCurrentRecordOffset, currentRecord.data(), currentRecord.size());
+    }
+    // Pending flags are cleared only by commitSucceeded(); a failed stage or
+    // commit leaves every slot retryable.
+    for (std::uint8_t slot = 0U; staged && slot < kUserPresetSlotCount; ++slot) {
+        if (pendingPresetWrites_[slot]) {
+            staged = storage_.stageBytes(
+                presetOffset(slot), pendingPresetRecords_[slot].data(), pendingPresetRecords_[slot].size());
+        }
+    }
+    return staged;
+}
+
+void PersistentStateService::commitFailed(const std::uint32_t nowMs) {
+    if (migrationPending_) {
+        migrationRetryScheduled_ = true;
+        migrationRetryAtMs_ = nowMs + kMigrationRetryIntervalMs;
+    }
+}
+
+void PersistentStateService::commitSucceeded() {
+    migrationPending_ = false;
+    migrationRetryScheduled_ = false;
+    if (currentStaged_) {
+        storedCurrentState_ = pendingCurrentState_;
+        persistedTransportPreference_ = storedCurrentState_.transport;
+        hasStoredCurrentState_ = true;
+        writePending_ = false;
+        currentStaged_ = false;
+    }
+    for (std::uint8_t slot = 0U; slot < kUserPresetSlotCount; ++slot) {
+        if (!pendingPresetWrites_[slot]) {
+            continue;
+        }
+        presetValid_[slot] = pendingPresetWillExist_[slot];
+        presetNames_[slot].fill('\0');
+        if (pendingPresetWillExist_[slot]) {
+            std::copy_n(pendingPresetNames_[slot].begin(), kPresetNameLength, presetNames_[slot].begin());
+        }
+        pendingPresetWrites_[slot] = false;
+    }
 }
 
 void PersistentStateService::service(
@@ -73,74 +140,21 @@ void PersistentStateService::service(
         static_cast<std::int32_t>(nowMs - migrationRetryAtMs_) < 0) {
         return;
     }
-
-    bool currentRecordReady = writePending_ &&
-        nowMs - pendingSinceMs_ >= config::kPersistenceCommitDelayMs;
-    const bool hasPendingPresets = std::any_of(
-        pendingPresetWrites_.begin(), pendingPresetWrites_.end(), [](const bool pending) {
-            return pending;
-        });
-    if (hasPendingPresets) {
-        // An explicit user save is already a synchronization point. Include a
-        // pending CURRENT record in the same whole-sector Flash commit rather
-        // than causing a second erase/program cycle a few seconds later.
-        currentRecordReady = writePending_;
-    }
+    const bool hasPendingPresets = presetWritePending();
+    // An explicit user save is already a synchronization point. Include a
+    // pending CURRENT record in the same whole-sector Flash commit rather than
+    // causing a second erase/program cycle a few seconds later.
+    const bool currentRecordReady = writePending_ &&
+        (hasPendingPresets || nowMs - pendingSinceMs_ >= config::kPersistenceCommitDelayMs);
     if (!migrate && !currentRecordReady && !hasPendingPresets) {
         return;
     }
-
-    // A pending boot migration always rides in the same transaction as, and
-    // underneath, every other accepted mutation.
-    bool staged = storage_.beginUpdate() && (!migrate || stageMigratedRecords());
-    if (staged && currentRecordReady) {
-        const std::array<std::uint8_t, kCurrentRecordSize> currentRecord =
-            serializeCurrentRecord(pendingCurrentState_);
-        staged = storage_.stageBytes(
-            kCurrentRecordOffset, currentRecord.data(), currentRecord.size());
-    }
-    // A single A/B Flash transaction contains every accepted pending mutation.
-    // Never clear pending flags on a failed stage/commit; all slots stay retryable.
-    for (std::uint8_t slot = 0U; staged && slot < kUserPresetSlotCount; ++slot) {
-        if (pendingPresetWrites_[slot]) {
-            staged = storage_.stageBytes(
-                presetOffset(slot),
-                pendingPresetRecords_[slot].data(),
-                pendingPresetRecords_[slot].size());
-        }
-    }
-
-    if (!staged || !storage_.commitUpdate()) {
+    if (!storage_.beginUpdate() || !stagePendingRecords(currentRecordReady) || !storage_.commitUpdate()) {
         storage_.cancelUpdate();
-        if (migrate) {
-            migrationRetryScheduled_ = true;
-            migrationRetryAtMs_ = nowMs + kMigrationRetryIntervalMs;
-        }
+        commitFailed(nowMs);
         return;
     }
-
-    migrationPending_ = false;
-    migrationRetryScheduled_ = false;
-    if (currentRecordReady) {
-        storedCurrentState_ = pendingCurrentState_;
-        persistedTransportPreference_ = storedCurrentState_.transport;
-        hasStoredCurrentState_ = true;
-        writePending_ = false;
-    }
-    for (std::uint8_t slot = 0U; slot < kUserPresetSlotCount; ++slot) {
-        if (!pendingPresetWrites_[slot]) {
-            continue;
-        }
-        presetValid_[slot] = pendingPresetWillExist_[slot];
-        presetNames_[slot].fill('\0');
-        if (pendingPresetWillExist_[slot]) {
-            std::copy_n(
-                pendingPresetNames_[slot].begin(),
-                kPresetNameLength,
-                presetNames_[slot].begin());
-        }
-        pendingPresetWrites_[slot] = false;
-    }
+    commitSucceeded();
 }
 
 bool PersistentStateService::hasStoredCurrentState() const {
@@ -166,6 +180,7 @@ bool PersistentStateService::savePreset(
     pendingPresetRecords_[slotIndex] = serializePresetRecord(name, state);
     pendingPresetWillExist_[slotIndex] = true;
     pendingPresetWrites_[slotIndex] = true;
+    ++changeRevision_;
 
     char normalizedName[kPresetNameLength + 1U]{};
     normalizePresetName(name, normalizedName);
@@ -236,6 +251,7 @@ bool PersistentStateService::clearPreset(const std::uint8_t slotIndex) {
     pendingPresetNames_[slotIndex].fill('\0');
     pendingPresetWillExist_[slotIndex] = false;
     pendingPresetWrites_[slotIndex] = true;
+    ++changeRevision_;
     return true;
 }
 

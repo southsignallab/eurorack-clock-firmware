@@ -254,6 +254,10 @@ Firmware budget: **224 KiB**. Persistence: **2 × 16 KiB**. Released 1.1.0 uses 
 
 `PersistentStateService` serializes fields explicitly, validates ranges, checks CRC, and migrates supported prior schemas. The storage layer writes the inactive slot and programs COMMIT last.
 
+Slot validation (one table-driven CRC-32 per slot) runs once per boot; the result is cached until the next commit, which re-validates only the slot it wrote. Every later read is a bounded copy. A committed slot with an intact header in an unknown format or size marks Flash as written by newer firmware: while such a slot holds the newest generation, every write is refused (`SAVE LOCKED`) and only the guarded factory reset replaces it. Future slot formats must keep the first six header words and the COMMIT word at offset 28 so that this detection keeps working.
+
+`PersistenceCoordinator` is the only foreground commit path. It collects CURRENT, presets, Custom Grooves and both Sequencer banks into one A/B transaction (one sector erase), restarts a 3-s quiet period on every change with a 30-s ceiling from the first unsaved change, commits explicit saves immediately, and retries failures with exponential backoff from 1 s to 60 s (`SAVE ERROR`). Immediately before each erase, `PersistentStorage` asks its `FlashCommitGate` (`ExternalSyncController`): under one interrupt lock it refuses while the engine runs and otherwise opens a commit window in which RUN/START/RESTART and auto-start on lock are recorded rather than executed; the latest recorded start runs when the window closes.
+
 The DFU upload helper emits separated firmware regions so ordinary firmware updates do not overwrite sectors 1/2.
 
 ## Configurable external-input boundary

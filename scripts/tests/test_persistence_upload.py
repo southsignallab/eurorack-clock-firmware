@@ -188,7 +188,8 @@ class PersistenceUploadTests(unittest.TestCase):
             self.assertTrue(second.name.startswith("persistence-"))
 
     def test_slot_contract_matches_firmware_sources(self) -> None:
-        storage = (ROOT / "src" / "hal" / "persistent_storage.cpp").read_text(encoding="utf-8")
+        # The slot format constants live in the internal slot header since P2 (F-009/F-045).
+        storage = (ROOT / "src" / "hal" / "persistent_storage_slots.h").read_text(encoding="utf-8")
         storage_h = (ROOT / "src" / "hal" / "persistent_storage.h").read_text(encoding="utf-8")
         layout = (ROOT / "src" / "hal" / "persistent_layout.h").read_text(encoding="utf-8")
 

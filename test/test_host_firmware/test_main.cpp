@@ -38,6 +38,7 @@
 #include "game/pixel_raid_game.h"
 #include "game/beatknecht.h"
 #include "hal/control_panel.h"
+#include "hal/crc32.h"
 #include "hal/display_font.h"
 #include "hal/external_input_capture.h"
 #include "hal/gate_output_driver.h"
@@ -48,7 +49,11 @@
 #include "hal/persistent_storage.h"
 #include "hal/system_clock.h"
 #include "pin_map.h"
+#include "services/external_sync_controller.h"
+#include "services/persistence_coordinator.h"
 #include "services/persistent_state_service.h"
+#include "services/sequencer_pattern_store.h"
+#include "services/sequencer_step_store.h"
 #include "services/custom_groove_store.h"
 #include "services/persistent_state_validation.h"
 #include "services/tap_tempo.h"
@@ -584,6 +589,7 @@ hal::ButtonSample heldButton() { return {hal::ButtonEdge::None, true}; }
 #include "cases/rendering_ui.inc"
 #include "cases/ui_games.inc"
 #include "cases/groove_application.inc"
+#include "cases/persistence_coordinator.inc"
 
 } // namespace
 
@@ -636,6 +642,23 @@ int main() {
     RUN_TEST(testApplicationAndEntryPoints);
     RUN_TEST(testFlashCommitRespectsEngineStartedByIsr);
     RUN_TEST(testStaleIsrTransitionDoesNotOverrideManualStop);
+    RUN_TEST(testTableCrcMatchesHistoricalBitwiseCrc);
+    RUN_TEST(testBootValidatesEachSlotOnlyOnce);
+    RUN_TEST(testCommitVerifiesOnlyTheWrittenSlot);
+    RUN_TEST(testForeignSlotFormatLocksWritesUntilFactoryReset);
+    RUN_TEST(testForeignSlotLockFollowsGenerationAndHeaderCrc);
+    RUN_TEST(testCoordinatorBundlesEveryStoreIntoOneCommit);
+    RUN_TEST(testCoordinatorDebounceRestartsOnEveryChangeWithMaximumLatency);
+    RUN_TEST(testCoordinatorBacksOffOnPersistentWriteFailure);
+    RUN_TEST(testCommitGateRefusalIsDeferredNotFailure);
+    RUN_TEST(testCommitWindowDefersScheduledStartUntilClosed);
+    RUN_TEST(testCustomGrooveNamesAreServedFromRam);
+    RUN_TEST(testFactoryResetClearsEveryStoreAndEngineCopy);
+    RUN_TEST(testPersistenceNoticeIsShownAndExpires);
+    RUN_TEST(testApplicationAnnouncesSaveErrorFromCoordinator);
+    RUN_TEST(testPersistenceEdgePaths);
+    RUN_TEST(testFactoryResetFailureAndStorelessController);
+    RUN_TEST(testApplicationAnnouncesSaveLockedAtBoot);
     std::cout << "Host firmware assertions: " << gChecks << "\n";
     return UNITY_END();
 }

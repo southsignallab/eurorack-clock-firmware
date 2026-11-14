@@ -61,8 +61,13 @@ ClockApplication::ClockApplication()
       sequencerStepStore_(persistentStorage_),
       engine_(gateOutputs_),
       externalSyncController_(externalInputs_, engine_),
+      persistenceCoordinator_(
+          persistentStorage_, persistentState_, customGrooveStore_, sequencerPatternStore_, sequencerStepStore_),
       renderer_(display_, persistentState_, customGrooveStore_, sequencerPatternStore_, sequencerStepStore_),
-      uiController_(state_, engine_, renderer_, persistentState_, customGrooveStore_, sequencerPatternStore_, sequencerStepStore_, selectedLeaderboard_, &externalInputs_, &gateOutputs_) {}
+      uiController_(state_, engine_, renderer_, persistentState_, customGrooveStore_, sequencerPatternStore_, sequencerStepStore_, selectedLeaderboard_, &externalInputs_, &gateOutputs_) {
+    // Every physical commit, from any store or game, passes the scheduler interlock (D-04).
+    persistentStorage_.setCommitGate(&externalSyncController_);
+}
 
 
 void ClockApplication::loadCustomGrooveLibrary() {
@@ -199,15 +204,9 @@ void ClockApplication::runOnce() {
     // already uses the faster synchronous dirty-page path.
     (void)display_.service();
     // STM32F4 stalls instruction/data fetches from Flash while a sector is being
-    // erased or programmed. Never start a persistence commit while the engine
-    // runs; queued CURRENT/preset writes are flushed once it is PAUSED/STOPPED.
-    // The scheduler ISR can start the engine at any point of this pass, so the
-    // engine itself is asked again immediately before every store.
-    // Flush grooves before CURRENT to avoid durable references to unwritten slots.
-    (void)customGrooveStore_.service(flashWriteAllowed());
-    persistentState_.service(nowMs, flashWriteAllowed());
-    (void)sequencerPatternStore_.service(nowMs, flashWriteAllowed());
-    (void)sequencerStepStore_.service(nowMs, flashWriteAllowed());
+    // erased or programmed. One coordinator commits all stores in one transaction
+    // and never while the engine runs (D-04).
+    servicePersistence(nowMs);
 }
 
 #ifdef CLOCK_SIMULATOR

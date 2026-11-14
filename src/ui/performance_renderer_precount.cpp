@@ -105,6 +105,10 @@ void PerformanceRenderer::drawPreCountOverlay(
 }
 
 void PerformanceRenderer::drawExternalTempoNotice() {
+    drawNoticeBanner(text::get(text::TextId::ExternalClockNotice));
+}
+
+void PerformanceRenderer::drawNoticeBanner(const char* const notice) {
     // One calm full-width banner across the tempo area; same black box with a
     // one-pixel white border as the Pre-Count popover.
     constexpr std::int16_t kNoticeX = 4;
@@ -115,7 +119,6 @@ void PerformanceRenderer::drawExternalTempoNotice() {
     display_.drawRectangle(kNoticeX, kNoticeY, kNoticeWidth, kNoticeHeight, hal::PixelColor::White);
     display_.setFont(hal::DisplayFont::Small);
     display_.setTextColor(hal::PixelColor::White);
-    const char* const notice = text::get(text::TextId::ExternalClockNotice);
     const hal::TextBounds bounds = display_.measureText(notice, 0, 0);
     const std::int16_t textX = static_cast<std::int16_t>(
         (static_cast<int>(hal::OledDisplay::kWidth) - static_cast<int>(bounds.width)) / 2);
@@ -129,8 +132,14 @@ void PerformanceRenderer::presentPerformanceFrame(
     const NavigationState& navigation,
     const engine::EngineSnapshot& engineSnapshot) {
     drawPreCountOverlay(state, engineSnapshot);
-    if (navigation.externalTempoNotice && !engineSnapshot.preCountActive) {
-        drawExternalTempoNotice();
+    if (!engineSnapshot.preCountActive) {
+        if (navigation.persistenceNotice == PersistenceNotice::SaveError) {
+            drawNoticeBanner(text::get(text::TextId::SaveErrorNotice));
+        } else if (navigation.persistenceNotice == PersistenceNotice::SaveLocked) {
+            drawNoticeBanner(text::get(text::TextId::SaveLockedNotice));
+        } else if (navigation.externalTempoNotice) {
+            drawExternalTempoNotice();
+        }
     }
     display_.present();
 }

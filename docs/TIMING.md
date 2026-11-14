@@ -88,7 +88,7 @@ The following invariants are release requirements:
 - TIM4 encoder transitions must continue accumulating while foreground display work is active, and foreground detent conversion must not lose a complete mechanical detent;
 - conditioned SYNC/RST edges must remain capturable while OLED traffic is active;
 - legacy I2C regression builds may lower visual frame rate or skip stale frames under load;
-- persistence writes remain prohibited while the engine runs because STM32F4 Flash programming can stall instruction/data fetches; the gate reads the engine state under an interrupt lock immediately before each store commit, because the scheduler ISR can start the engine during a foreground pass;
+- persistence writes remain prohibited while the engine runs because STM32F4 Flash programming can stall instruction/data fetches; immediately before each erase the commit gate checks the engine and opens a commit window under one interrupt lock, and scheduler-initiated starts (RUN/START/RESTART, auto-start on lock) inside that window are deferred until the commit has finished;
 - Groove/Swing offsets must preserve monotonic event order and cannot move a rising event beyond its neighboring event boundary;
 - Groove Record must preserve the physical TAP press timestamp through debounce and must never route a recorder TAP into Tap Tempo.
 

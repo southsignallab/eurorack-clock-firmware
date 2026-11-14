@@ -11,7 +11,8 @@ import shutil
 import subprocess
 import tempfile
 import re
-from pathlib import Path
+import urllib.parse
+from pathlib import Path, PurePath
 
 import check_user_manual
 import update_manual_contents
@@ -41,6 +42,28 @@ def libreoffice_binary() -> str:
     raise RuntimeError("LibreOffice/soffice is required to build the manual PDF")
 
 
+def file_url(path: PurePath) -> str:
+    """Return a file URL for an absolute POSIX or Windows path.
+
+    Built from ``as_posix()`` so that a Windows path such as ``C:\\Temp`` becomes
+    ``file:///C:/Temp`` instead of ``file://C:\\Temp``; ``PurePath.as_uri()`` is
+    deprecated from Python 3.14.
+    """
+    if not path.is_absolute():
+        raise ValueError(f"A file URL needs an absolute path: {path}")
+    posix = path.as_posix()
+    if posix.startswith("//"):
+        return "file:" + urllib.parse.quote(posix, safe="/:")
+    if not posix.startswith("/"):
+        posix = "/" + posix
+    return "file://" + urllib.parse.quote(posix, safe="/:")
+
+
+def user_installation_argument(profile: PurePath) -> str:
+    """Return the LibreOffice option that selects an isolated user profile."""
+    return f"-env:UserInstallation={file_url(profile)}"
+
+
 def build(source: Path, output_dir: Path, version: str, *, require_ubuntu_fonts: bool) -> tuple[Path, Path]:
     check_user_manual.validate_odt(source, version)
     if require_ubuntu_fonts:
@@ -54,7 +77,7 @@ def build(source: Path, output_dir: Path, version: str, *, require_ubuntu_fonts:
         command = [
             libreoffice_binary(),
             "--headless",
-            f"-env:UserInstallation=file://{Path(profile).resolve()}",
+            user_installation_argument(Path(profile).resolve()),
             "--convert-to",
             "pdf",
             "--outdir",
@@ -76,7 +99,7 @@ def build(source: Path, output_dir: Path, version: str, *, require_ubuntu_fonts:
             command = [
                 libreoffice_binary(),
                 "--headless",
-                f"-env:UserInstallation=file://{Path(profile).resolve()}",
+                user_installation_argument(Path(profile).resolve()),
                 "--convert-to",
                 "pdf",
                 "--outdir",

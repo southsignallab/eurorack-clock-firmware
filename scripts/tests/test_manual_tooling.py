@@ -9,7 +9,7 @@ import importlib.util
 import tempfile
 import unittest
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
@@ -284,6 +284,43 @@ class ManualToolingTests(unittest.TestCase):
         source = (ROOT / "scripts" / "build_user_manual.py").read_text(encoding="utf-8")
         self.assertIn("update_manual_contents.update(odt_out, pdf_out)", source)
         self.assertIn("clock-lo-profile-toc-", source)
+
+    def test_libreoffice_profile_url_is_a_file_url_for_windows_paths(self) -> None:
+        cases = {
+            r"C:\Users\clock\AppData\Local\Temp\clock-lo-profile-abc":
+                "file:///C:/Users/clock/AppData/Local/Temp/clock-lo-profile-abc",
+            r"C:\Users\Clock User\Temp\clock-lo-profile-abc":
+                "file:///C:/Users/Clock%20User/Temp/clock-lo-profile-abc",
+            r"\\server\share\clock-lo-profile-abc":
+                "file://server/share/clock-lo-profile-abc",
+        }
+        for path, url in cases.items():
+            with self.subTest(path=path):
+                self.assertEqual(
+                    f"-env:UserInstallation={url}",
+                    BUILD.user_installation_argument(PureWindowsPath(path)),
+                )
+
+    def test_libreoffice_profile_url_is_a_file_url_for_posix_paths(self) -> None:
+        cases = {
+            "/tmp/clock-lo-profile-abc": "file:///tmp/clock-lo-profile-abc",
+            "/tmp/clock lo/clock-lo-profile-abc": "file:///tmp/clock%20lo/clock-lo-profile-abc",
+        }
+        for path, url in cases.items():
+            with self.subTest(path=path):
+                self.assertEqual(
+                    f"-env:UserInstallation={url}",
+                    BUILD.user_installation_argument(PurePosixPath(path)),
+                )
+
+    def test_libreoffice_profile_url_rejects_relative_paths(self) -> None:
+        with self.assertRaises(ValueError):
+            BUILD.user_installation_argument(PurePosixPath("clock-lo-profile-abc"))
+
+    def test_manual_builder_uses_the_profile_url_helper_for_every_export(self) -> None:
+        source = (ROOT / "scripts" / "build_user_manual.py").read_text(encoding="utf-8")
+        self.assertEqual(2, source.count("user_installation_argument(Path(profile).resolve())"))
+        self.assertNotIn("UserInstallation=file://{", source)
 
     def test_manual_screenshot_generator_recovers_from_generator_mismatch(self) -> None:
         generator = load(

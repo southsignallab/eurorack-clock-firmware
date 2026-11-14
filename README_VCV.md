@@ -85,6 +85,6 @@ The canonical project documentation remains [`README.md`](README.md) and [`docs/
 
 ## Support CLOCK
 
-The VCV Rack edition is part of the same South Signal Lab CLOCK project. Ongoing development can be supported through [GitHub Sponsors](https://github.com/sponsors/napolitano) or [Ko-fi](https://ko-fi.com/X8X21EOLQ9).
+The VCV Rack edition is part of the same South Signal Lab CLOCK project. Ongoing development can be supported through [GitHub Sponsors](https://github.com/sponsors/napolitano) or [Ko-fi](https://ko-fi.com/southsignallab).
 
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X8X21EOLQ9)
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/southsignallab)

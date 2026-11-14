@@ -372,7 +372,7 @@ void testMenuModelConditionalRowsCoverBothStates(){
     TEST_ASSERT_TRUE(row.expandableInformation);
     row = ui::buildMenuRow(ui::SettingsPage::Support, 1U, 0U, h.state, false);
     TEST_ASSERT_TRUE(std::strcmp("KO-FI", row.label) == 0);
-    TEST_ASSERT_TRUE(std::strcmp("ko-fi.com/X8X21EOLQ9", row.value) == 0);
+    TEST_ASSERT_TRUE(std::strcmp("ko-fi.com/southsignallab", row.value) == 0);
 
     h.state.device.encoderDirectionReversed = true;
     row = ui::buildMenuRow(ui::SettingsPage::Hardware, 0U, 0U, h.state);

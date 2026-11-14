@@ -57,7 +57,7 @@ One Clock exposes shared **TIMING** (rate, Swing, Groove, Humanize) and **OUTPUT
 <p align="center"><img src="../manual-source/assets/settings-support.png" alt="Support CLOCK page with GitHub Sponsors and Ko-fi entries." width="360"></p>
 
 - **GITHUB SPONSORS** — `github.com/sponsors/napolitano`
-- **KO-FI** — `ko-fi.com/X8X21EOLQ9`
+- **KO-FI** — `ko-fi.com/southsignallab`
 
 The publication manual also carries the Ko-fi QR code. The canonical repository links are maintained in [`../SUPPORT.md`](../SUPPORT.md).
 

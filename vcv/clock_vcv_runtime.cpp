@@ -9,16 +9,88 @@
 
 #include <algorithm>
 #include <cmath>
+#include <exception>
 
 #include "config.h"
+#include "simulator_persistence.h"
 
 namespace clockfw::vcv {
 
 ClockVcvRuntime::ClockVcvRuntime(std::filesystem::path persistencePath)
-    : runtime_(std::move(persistencePath)) {}
+    : runtime_(persistencePath), persistencePath_(std::move(persistencePath)) {
+    // processSample() runs on Rack's audio thread, so no file I/O may be reachable from it.
+    // The worker owns every write of the host mirror file (#10).
+    runtime_.setPersistenceFileWrites(false);
+}
+
+ClockVcvRuntime::~ClockVcvRuntime() {
+    {
+        const std::lock_guard<std::mutex> lock(workerMutex_);
+        workerStop_ = true;
+    }
+    workerWake_.notify_one();
+    if (worker_.joinable()) {
+        worker_.join();
+    }
+}
 
 void ClockVcvRuntime::begin() {
     runtime_.begin();
+    {
+        const std::lock_guard<std::mutex> lock(publishedMutex_);
+        publishedImage_ = runtime_.persistenceImage();
+        ++publishedSequence_;
+    }
+    publishedRevision_ = runtime_.persistenceImageRevision();
+    publicationPending_ = false;
+    if (!worker_.joinable()) {
+        worker_ = std::thread([this] { runPersistenceWorker(); });
+    }
+}
+
+void ClockVcvRuntime::publishPersistenceImage() {
+    snapshotScratch_ = runtime_.persistenceImage();
+    std::unique_lock<std::mutex> lock(publishedMutex_, std::try_to_lock);
+    if (!lock.owns_lock()) {
+        publicationPending_ = true;
+        return;
+    }
+    publishedImage_ = snapshotScratch_;
+    ++publishedSequence_;
+    publicationPending_ = false;
+    secondsSincePublication_ = 0.0;
+}
+
+void ClockVcvRuntime::runPersistenceWorker() {
+    std::uint64_t writtenSequence = 0U;
+    PersistenceImage image{};
+    bool stop = false;
+    while (!stop) {
+        {
+            std::unique_lock<std::mutex> lock(workerMutex_);
+            workerWake_.wait_for(lock, kMirrorPeriod, [this] { return workerStop_; });
+            stop = workerStop_;
+        }
+        std::uint64_t sequence = 0U;
+        {
+            const std::lock_guard<std::mutex> lock(publishedMutex_);
+            sequence = publishedSequence_;
+            if (sequence != writtenSequence) {
+                image = publishedImage_;
+            }
+        }
+        if (sequence == writtenSequence) {
+            continue;
+        }
+        try {
+            sim::SimulatorPersistence::writeImageFile(persistencePath_, image);
+            writtenSequence = sequence;
+            mirrorFailed_.store(false, std::memory_order_relaxed);
+        } catch (const std::exception&) {
+            // The Rack patch holds the authoritative image; retry on the next period.
+            mirrorFailed_.store(true, std::memory_order_relaxed);
+        }
+    }
 }
 
 void ClockVcvRuntime::InputTransitionBridge::disconnect() noexcept {
@@ -116,6 +188,18 @@ void ClockVcvRuntime::processSample(
         runtime_.advanceMicroseconds(config::kSchedulerTickUs);
         pendingSchedulerUs_ -= schedulerQuantumUs;
     }
+
+    // Publish the patch image when persistent content may have changed, and periodically
+    // as a fallback. Both stay on this thread and never block (#9).
+    secondsSincePublication_ += sampleTimeSeconds;
+    const std::uint64_t revision = runtime_.persistenceImageRevision();
+    if (revision != publishedRevision_) {
+        publishedRevision_ = revision;
+        publicationPending_ = true;
+    }
+    if (publicationPending_ || secondsSincePublication_ >= kSnapshotPeriodSeconds) {
+        publishPersistenceImage();
+    }
 }
 
 void ClockVcvRuntime::setPanelControls(const PanelControls& controls) {
@@ -158,13 +242,25 @@ ClockVcvRuntime::framebuffer() const {
 
 std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>
 ClockVcvRuntime::persistenceImage() const {
-    return runtime_.persistenceImage();
+    const std::lock_guard<std::mutex> lock(publishedMutex_);
+    return publishedImage_;
 }
 
 void ClockVcvRuntime::restorePersistenceImage(
     const std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>& image) {
+    // Rack calls dataFromJson() under an exclusive engine lock: processSample() is not
+    // running concurrently, so the runtime may reboot here.
     runtime_.restorePersistenceImage(image);
     pendingSchedulerUs_ = 0.0;
+    {
+        const std::lock_guard<std::mutex> lock(publishedMutex_);
+        publishedImage_ = runtime_.persistenceImage();
+        ++publishedSequence_;
+    }
+    publishedRevision_ = runtime_.persistenceImageRevision();
+    publicationPending_ = false;
+    secondsSincePublication_ = 0.0;
+    workerWake_.notify_one();
 }
 
 bool ClockVcvRuntime::running() const {
@@ -181,6 +277,10 @@ std::uint64_t ClockVcvRuntime::resetPulseCountForTest() const {
 
 bool ClockVcvRuntime::generalSettingsOpenForTest() const {
     return runtime_.generalSettingsOpen();
+}
+
+std::uint16_t ClockVcvRuntime::bpmForTest() const {
+    return runtime_.state().bpm;
 }
 
 bool ClockVcvRuntime::updateInputLevel(const float voltage, const bool previousLevel) {

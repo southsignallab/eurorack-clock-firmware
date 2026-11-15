@@ -2,11 +2,10 @@
 
 # Support CLOCK
 
-CLOCK is developed independently by South Signal Lab. If the firmware, hardware documentation, simulator, VCV Rack edition, testing work, or user documentation is useful to you, you can support ongoing development through either of these channels:
+CLOCK is developed independently by South Signal Lab. If the firmware, hardware documentation, simulator, VCV Rack edition, testing work, or user documentation is useful to you, you can support ongoing development through Ko-fi:
 
-- [GitHub Sponsors](https://github.com/sponsors/napolitano)
 - [Ko-fi](https://ko-fi.com/southsignallab)
 
-The firmware remains licensed under the terms stated in [`LICENSE.md`](../LICENSE.md). Sponsorship does not change the software license, grant commercial-use rights, or create a support entitlement.
+The firmware remains licensed under the terms stated in [`LICENSE.md`](../LICENSE.md). Support does not change the software license, grant commercial-use rights, or create a support entitlement.
 
-On the hardware module, open **SETTINGS → SUPPORT CLOCK** to display the same GitHub Sponsors and Ko-fi destinations. The publication manual also includes the Ko-fi QR code for convenient access from a phone.
+On the hardware module, open **SETTINGS → SUPPORT CLOCK** to display the same Ko-fi destination. The publication manual also includes the Ko-fi QR code for convenient access from a phone.

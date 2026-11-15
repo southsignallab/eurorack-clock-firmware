@@ -121,6 +121,9 @@ public:
     /** @brief Returns current virtual MCU time in microseconds. */
     std::uint64_t nowMicroseconds() const;
 
+    /** @brief Scheduler ticks executed since the last power-up, for host regression tests. */
+    std::uint64_t schedulerTicksForTest() const;
+
     /** @brief Returns transport transition timing used by the developer scope timebase. */
     TransportTelemetry transportTelemetry() const;
 
@@ -193,8 +196,19 @@ public:
     /** @brief Drives the conditioned RST input from an external host container. */
     void setExternalResetInput(bool connected, bool high);
 
-    /** @brief Exports the complete logical persistence image for embedding in a host patch. */
+    /**
+     * @brief Exports the complete logical persistence image for embedding in a host patch.
+     *
+     * While the module runs, the image includes live durable settings and accepted pending
+     * operations that the firmware has not committed yet (commits wait for STOP, D-04).
+     */
     std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes> persistenceImage() const;
+
+    /** @brief Changes whenever persistenceImage() may return different bytes. */
+    std::uint64_t persistenceImageRevision() const;
+
+    /** @brief Enables or disables all persistence file writes (see SimulatorPersistence). */
+    void setPersistenceFileWrites(bool enabled);
 
     /** @brief Replaces the logical persistence image and reboots from it like real power-up. */
     void restorePersistenceImage(
@@ -243,6 +257,8 @@ private:
     std::array<std::uint8_t, hal::OledDisplay::kFramebufferSize> poweredOffFramebuffer_{};
     std::array<ChannelTelemetry, kChannelCount> telemetry_{};
     std::size_t processedWriteCount_ = 0U;
+    /** @brief Virtual time since the last scheduler tick; always below one 50-us quantum. */
+    std::uint64_t schedulerAccumulatorUs_ = 0ULL;
     std::uint64_t foregroundAccumulatorUs_ = 0ULL;
     std::uint64_t persistenceAccumulatorUs_ = 0ULL;
     int pendingEncoderDetents_ = 0;

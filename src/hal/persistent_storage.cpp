@@ -177,6 +177,17 @@ void PersistentStorage::cancelUpdate() {
     replacement_ = false;
 }
 
+#ifdef CLOCK_SIMULATOR
+bool PersistentStorage::copyStagedImageForSimulator(
+    std::array<std::uint8_t, kCapacityBytes>& destination) const {
+    if (!updateOpen_) {
+        return false;
+    }
+    destination = stagingImage_;
+    return true;
+}
+#endif
+
 bool PersistentStorage::writeBytes(
     const std::size_t offset,
     const std::uint8_t* const source,

@@ -679,3 +679,116 @@ void testStaleIsrTransitionDoesNotOverrideManualStop() {
     fakefw::setPin(pinmap::kResetBackButtonPin, HIGH);
     fakefw::digitalReadHook = nullptr;
 }
+
+namespace {
+constexpr std::uint32_t kTapPassMs = 5U;
+
+/** Advances SysTick milliseconds and TIM5 microseconds independently, like the hardware. */
+void runPassesOnBothClocks(app::ClockApplication& application, const std::uint32_t untilMs) {
+    while (fakefw::nowMs < untilMs) {
+        fakefw::nowMs += kTapPassMs;
+        fakefw::nowUs += kTapPassMs * 1000U;
+        HardwareTimer::lastInstance->fire();
+        application.runOnce();
+    }
+}
+
+/** Boots with INPUT 1 = TAP at 90 BPM and moves both clocks to the requested uptime. */
+void bootTapApplication(
+    app::ClockApplication& application,
+    const std::uint32_t uptimeMs,
+    const std::uint32_t timerUs) {
+    resetFakes();
+    prepareDisplaySuccess();
+    fakefw::setPinSilently(pinmap::kExternalSyncSignalPin, LOW);
+    ClockState initial = makeDefaultState();
+    initial.transport = TransportState::Stopped;
+    initial.bpm = 90U;
+    initial.inputs = {InputFunction::Tap, InputFunction::Off};
+    application.begin(initial);
+    CHECK(HardwareTimer::lastInstance != nullptr);
+    fakefw::nowMs = uptimeMs;
+    fakefw::nowUs = timerUs;
+    runPassesOnBothClocks(application, fakefw::nowMs + 50U);
+    CHECK_EQ(application.bpmForTest(), 90U);
+}
+
+/** One 10-ms INPUT 1 pulse; the EXTI capture stamps the rising edge with TIM5 time. */
+void inputTapPulse(app::ClockApplication& application) {
+    fakefw::setPin(pinmap::kExternalSyncSignalPin, HIGH);
+    runPassesOnBothClocks(application, fakefw::nowMs + 10U);
+    fakefw::setPin(pinmap::kExternalSyncSignalPin, LOW);
+}
+
+/** Front-panel TAP whose 25-ms debounced release is recognized at @p releaseMs (+ one pass). */
+void panelTapReleasedAt(app::ClockApplication& application, const std::uint32_t releaseMs) {
+    fakefw::setPin(pinmap::kTapTempoButtonPin, LOW);
+    runPassesOnBothClocks(application, releaseMs - 25U);
+    fakefw::setPin(pinmap::kTapTempoButtonPin, HIGH);
+}
+
+/**
+ * Four taps 500 ms apart starting at @p uptimeMs / @p timerUs. @p panelMask selects which
+ * taps come from the front panel (bit n = tap n); the rest arrive on INPUT 1.
+ */
+std::uint16_t tempoAfterFourTaps(
+    const std::uint32_t uptimeMs,
+    const std::uint32_t timerUs,
+    const std::uint8_t panelMask) {
+    app::ClockApplication application;
+    bootTapApplication(application, uptimeMs, timerUs);
+    const std::uint32_t firstTapMs = fakefw::nowMs + 100U;
+    for (std::uint32_t tap = 0U; tap < 4U; ++tap) {
+        const std::uint32_t tapMs = firstTapMs + tap * 500U;
+        if ((panelMask & (1U << tap)) != 0U) {
+            runPassesOnBothClocks(application, tapMs - 100U);
+            panelTapReleasedAt(application, tapMs);
+            runPassesOnBothClocks(application, tapMs + 100U);
+        } else {
+            runPassesOnBothClocks(application, tapMs);
+            inputTapPulse(application);
+        }
+    }
+    runPassesOnBothClocks(application, fakefw::nowMs + 100U);
+    return application.bpmForTest();
+}
+}  // namespace
+
+/**
+ * @brief Issue #8: external TAP must keep working after the 32-bit microsecond wrap.
+ *
+ * SysTick milliseconds and TIM5 microseconds run as independent counters. Before the
+ * wrap (~71.6 min) both views agree; afterwards the input timestamp is far below the
+ * millisecond time. Every case must still turn 90 BPM into 120 BPM.
+ */
+void testExternalTapTempoSurvivesMicrosecondWrap() {
+    constexpr std::uint32_t kWrapUs = 0xFFFFF000U;
+    // Before the wrap: both time bases agree.
+    CHECK_EQ(tempoAfterFourTaps(10000U, 10000000U, 0x0U), 120U);
+    // The issue's reproduction: uptime 4,296,000,000 us, just after the wrap.
+    CHECK_EQ(tempoAfterFourTaps(4296000U, static_cast<std::uint32_t>(4296000000ULL), 0x0U), 120U);
+    // Taps that straddle the wrap: the timer starts 4096 us before 2^32.
+    CHECK_EQ(tempoAfterFourTaps(kWrapUs / 1000U, kWrapUs - 200000U, 0x0U), 120U);
+    // Well after the wrap: 150 min uptime, more than two timer wraps.
+    CHECK_EQ(tempoAfterFourTaps(9000000U, static_cast<std::uint32_t>(9000000000ULL), 0x0U), 120U);
+}
+
+/**
+ * @brief Panel and INPUT 1 taps form one sequence in one time base, also after the wrap.
+ *
+ * The panel release is recognized within one 5-ms foreground pass, so the mixed tempo may
+ * deviate by one BPM; it must be identical before and well after the timer wraps.
+ */
+void testMixedPanelAndInputTapsShareOneTimeBase() {
+    for (const std::uint8_t mask :
+         {std::uint8_t{0x5U}, std::uint8_t{0xAU}, std::uint8_t{0x3U}, std::uint8_t{0xFU}}) {
+        // SysTick and TIM5 are independent counters: give them an arbitrary offset, as
+        // after boot or after SysTick ticks lost during a Flash commit (F-046).
+        constexpr std::uint32_t kTimerOffsetUs = 0x12345678U;
+        const std::uint16_t beforeWrap = tempoAfterFourTaps(10000U, 10000000U + kTimerOffsetUs, mask);
+        const std::uint16_t afterWrap = tempoAfterFourTaps(
+            9000000U, static_cast<std::uint32_t>(9000000000ULL) + kTimerOffsetUs, mask);
+        CHECK(beforeWrap >= 119U && beforeWrap <= 121U);
+        CHECK_EQ(afterWrap, beforeWrap);
+    }
+}

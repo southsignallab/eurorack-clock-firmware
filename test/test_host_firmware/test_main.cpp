@@ -630,6 +630,7 @@ int main() {
     RUN_TEST(testTapIndicatorRendersFourShrinkingEightPixelFramesThenClears);
     RUN_TEST(testTapIndicatorSequenceResetsAfterConfiguredMinimumBpmInterval);
     RUN_TEST(testTapIndicatorIsExclusiveToPerformanceTapTempo);
+    RUN_TEST(testTapSequenceStalenessUsesMicrosecondTimeBase);
     RUN_TEST(testScreensaverRenderingAndPolicy);
     RUN_TEST(testNestedGroupNavigationCoverage);
     RUN_TEST(testCustomGrooveEditorControllerWorkflow);
@@ -642,6 +643,8 @@ int main() {
     RUN_TEST(testApplicationAndEntryPoints);
     RUN_TEST(testFlashCommitRespectsEngineStartedByIsr);
     RUN_TEST(testStaleIsrTransitionDoesNotOverrideManualStop);
+    RUN_TEST(testExternalTapTempoSurvivesMicrosecondWrap);
+    RUN_TEST(testMixedPanelAndInputTapsShareOneTimeBase);
     RUN_TEST(testTableCrcMatchesHistoricalBitwiseCrc);
     RUN_TEST(testBootValidatesEachSlotOnlyOnce);
     RUN_TEST(testCommitVerifiesOnlyTheWrittenSlot);
@@ -650,12 +653,16 @@ int main() {
     RUN_TEST(testCoordinatorBundlesEveryStoreIntoOneCommit);
     RUN_TEST(testCoordinatorDebounceRestartsOnEveryChangeWithMaximumLatency);
     RUN_TEST(testCoordinatorBacksOffOnPersistentWriteFailure);
+    RUN_TEST(testCoordinatorStopsRetryingAfterTheSixthRetry);
+    RUN_TEST(testExhaustedRetriesResumeOnEveryKindOfChange);
     RUN_TEST(testCommitGateRefusalIsDeferredNotFailure);
+    RUN_TEST(testPendingSavesInDifferentSlotsAllReachFlash);
     RUN_TEST(testCommitWindowDefersScheduledStartUntilClosed);
     RUN_TEST(testCustomGrooveNamesAreServedFromRam);
     RUN_TEST(testFactoryResetClearsEveryStoreAndEngineCopy);
     RUN_TEST(testPersistenceNoticeIsShownAndExpires);
     RUN_TEST(testApplicationAnnouncesSaveErrorFromCoordinator);
+    RUN_TEST(testExhaustedSaveErrorReturnsOnEveryControlAction);
     RUN_TEST(testPersistenceEdgePaths);
     RUN_TEST(testFactoryResetFailureAndStorelessController);
     RUN_TEST(testApplicationAnnouncesSaveLockedAtBoot);

@@ -60,9 +60,12 @@ DIRECT_SCREENSHOTS: dict[str, str] = {
     "ManualImage25": "settings-master-print.png",
 }
 
-# Manuals up to 1.1.0 (full-page cover images) keep their original contract:
-# screen variants in the frames of that layout.
-LEGACY_DIRECT_SCREENSHOTS: dict[str, str] = {
+# Contract of the working manual before the typeset cover (full-page cover
+# image, screen variants in frames 2-25). No frozen release manual matches it:
+# 1.0.0 and 1.0.1 end at ManualImage19 and 1.1.0 at ManualImage23, so their
+# refresh stops on the missing frames. A released version is rebuilt from its
+# tag, never from a later source.
+PRE_TYPESET_SCREENSHOTS: dict[str, str] = {
     "ManualImage2": "boot-1000.png",
     "ManualImage3": "performance-one-clock-play.png",
     "ManualImage4": "performance-independent-clock-play.png",
@@ -122,7 +125,7 @@ def frame_contract(source: Path) -> dict[str, str]:
     """Return frame name -> asset for the layout generation of *source*."""
     if is_typeset_manual(source):
         return {**DIRECT_SCREENSHOTS, **DIRECT_ILLUSTRATIONS}
-    return dict(LEGACY_DIRECT_SCREENSHOTS)
+    return dict(PRE_TYPESET_SCREENSHOTS)
 
 
 def direct_frame_targets(source: Path, assets: Path) -> dict[str, tuple[str, Path]]:

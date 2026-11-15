@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 
 #include "hal/persistent_storage.h"
@@ -27,9 +28,11 @@ namespace clockfw::services {
  * config::kPersistenceMaximumLatencyMs after the first unsaved change. Explicit
  * user saves (presets, Custom Grooves) and a pending boot migration commit at the
  * next allowed pass. A failed attempt keeps every pending change and retries with
- * exponential backoff between config::kPersistenceRetryInitialMs and
- * config::kPersistenceRetryMaximumMs. A refusal by the commit gate (engine
- * started) is not a failure and is retried without backoff.
+ * exponential backoff from config::kPersistenceRetryInitialMs, at most
+ * config::kPersistenceRetryCount times; after the last retry fails, nothing is
+ * attempted until the stored data changes again or the module restarts (W-031).
+ * A refusal by the commit gate (engine started) is not a failure and is retried
+ * without backoff.
  */
 class PersistenceCoordinator final {
 public:
@@ -69,12 +72,39 @@ public:
     /** @brief Consecutive failed or locked attempts since the last success. */
     std::uint8_t consecutiveFailures() const { return consecutiveFailures_; }
 
+    /**
+     * @brief True after the first attempt and all config::kPersistenceRetryCount
+     * retries failed; no attempt follows until the stored data changes again.
+     */
+    bool retriesExhausted() const { return retriesExhausted_; }
+
     /** @brief Delay before the next attempt after @p failures consecutive failures. */
     static std::uint32_t retryDelayMs(std::uint8_t failures);
+
+#ifdef CLOCK_SIMULATOR
+    /**
+     * @brief Builds the image that a commit at this moment would make durable (simulator hosts).
+     *
+     * Stages every pending store exactly like a commit, copies the staged image and cancels
+     * the update: Flash, pending flags, debounce and retry state stay untouched, so the
+     * hardware commit policy (D-04) is unchanged. Without pending work, or while writes are
+     * locked, the committed image is returned.
+     * @param image Receives the complete logical image.
+     * @return False only when the committed image cannot be read.
+     */
+    bool snapshotImageForSimulator(
+        std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>& image);
+
+    /** @brief Changes whenever the snapshot may differ: store revisions, pending state, Flash. */
+    std::uint64_t snapshotRevisionForSimulator() const;
+#endif
 
 private:
     /** @brief Sum of all store change revisions; any difference restarts the quiet timer. */
     std::uint32_t combinedRevision() const;
+
+    /** @brief combinedRevision() plus Custom Groove mutations; any difference ends a retry pause. */
+    std::uint32_t storedDataRevision() const;
 
     /** @brief True for pending work that bypasses the debounce. */
     bool hasUrgentCommit() const;
@@ -95,10 +125,12 @@ private:
     std::uint32_t lastRevision_ = 0U;
     std::uint32_t retryAtMs_ = 0U;
     std::uint32_t noticeRevision_ = 0U;
+    std::uint32_t exhaustedRevision_ = 0U;
     Status status_ = Status::Ok;
     std::uint8_t consecutiveFailures_ = 0U;
     bool debounceActive_ = false;
     bool retryScheduled_ = false;
+    bool retriesExhausted_ = false;
 };
 
 }  // namespace clockfw::services

@@ -256,6 +256,15 @@ private:
     std::uint8_t customGroovePreviewAmount_[kChannelCount]{};
     std::uint8_t customGroovePreviewRotation_[kChannelCount]{};
     bool customGroovePreviewActive_[kChannelCount]{};
+    /**
+     * @brief Cached smallest adjacent Custom Groove event spacing per channel (Q16 of one interval).
+     *
+     * Computed in the foreground whenever the channel configuration, a library slot, or a
+     * preview changes, and installed inside the same critical section as that change.
+     * The scheduler only reads it; it is tempo-independent. Zero (no Humanize headroom)
+     * until begin() installs the first configuration.
+     */
+    std::uint32_t customGrooveSpacingQ16_[kChannelCount]{};
 
     /** @brief Mutable scheduling state for one output channel. */
     struct ChannelRuntime {
@@ -303,8 +312,17 @@ private:
     /** @brief Calculates one channel interval in real microseconds for gate-length limiting. */
     std::uint64_t calculateBaseIntervalUs(std::size_t channelIndex) const;
 
-    /** @brief Returns the shortest safely scheduled interval after Swing, Groove, and Humanize. */
-    std::uint64_t calculateShortestActualIntervalUs(std::size_t channelIndex) const;
+    /**
+     * @brief Computes the Custom Groove spacing cache value for one channel configuration.
+     * @param channelIndex Zero-based channel whose preview state and library slot apply.
+     * @param channel Channel configuration that will be active after the pending change.
+     * @param previewActive True when the channel's runtime preview will drive the groove.
+     * @return Q16 spacing; kCustomGrooveSpacingQ16One when no Custom Groove is active.
+     */
+    std::uint32_t calculateCustomGrooveSpacingQ16(
+        std::size_t channelIndex,
+        const ChannelConfig& channel,
+        bool previewActive) const;
 
     /** @brief Returns the safely capped ONE CLOCK humanization amount for one output. */
     std::uint16_t effectiveHumanizeUs(std::size_t channelIndex) const;
@@ -364,6 +382,18 @@ private:
 
     /** @brief Copies master and channel configuration without entering a critical section. */
     void copyConfigurationUnsafe(const ClockState& state);
+
+    /**
+     * @brief Computes the Custom Groove spacing cache for every channel of one state (foreground).
+     * @param state Application state that the following configuration swap installs.
+     * @param spacingQ16 Receives one Q16 spacing per physical output.
+     */
+    void calculateCustomGrooveSpacingsQ16(
+        const ClockState& state,
+        std::uint32_t (&spacingQ16)[kChannelCount]) const;
+
+    /** @brief Installs precomputed spacings; caller holds the configuration-swap critical section. */
+    void installCustomGrooveSpacingsUnsafe(const std::uint32_t (&spacingQ16)[kChannelCount]);
 
     hal::GateOutputDriver& gateOutputs_;
     EngineConfiguration configuration_{};

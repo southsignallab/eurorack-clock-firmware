@@ -288,6 +288,12 @@ private:
         snapshot_.externalLocked = true;
         snapshot_.externalBpmMilli = 128000U;
         renderCurrent("performance-auto-external", "AUTO clock source locked to external timing");
+
+        reset();
+        navigation_.persistenceNotice = ui::PersistenceNotice::SaveError;
+        renderCurrent("performance-save-error", "SAVE ERROR notice after a failed Flash write");
+        navigation_.persistenceNotice = ui::PersistenceNotice::SaveLocked;
+        renderCurrent("performance-update-firmware", "UPDATE FIRMWARE notice for settings from newer firmware");
     }
 
     void renderNavigationStates() {
@@ -424,7 +430,7 @@ private:
             "Preset settings",
             "Screensaver settings",
             "Firmware information",
-            "Project support destinations",
+            "Project support destination",
             "Licensing information",
             "Scannable update QR code",
             "Selected-channel group menu",

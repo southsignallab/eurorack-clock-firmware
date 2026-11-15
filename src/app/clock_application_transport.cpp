@@ -32,7 +32,14 @@ bool ClockApplication::flashWriteAllowed() const {
 
 void ClockApplication::servicePersistence(const std::uint32_t nowMs) {
     (void)persistenceCoordinator_.service(nowMs, flashWriteAllowed());
-    if (persistenceCoordinator_.noticeRevision() == announcedPersistenceNotice_) {
+    // W-311: once no retry is left, every front-panel action brings SAVE ERROR
+    // back for the normal notice time until the stored data changes again.
+    const std::uint32_t controlActivity = uiController_.controlActivityRevision();
+    const bool remindSaveError = persistenceCoordinator_.retriesExhausted() &&
+        persistenceCoordinator_.status() == services::PersistenceCoordinator::Status::SaveError &&
+        controlActivity != remindedControlActivity_;
+    remindedControlActivity_ = controlActivity;
+    if (persistenceCoordinator_.noticeRevision() == announcedPersistenceNotice_ && !remindSaveError) {
         return;
     }
     announcedPersistenceNotice_ = persistenceCoordinator_.noticeRevision();
@@ -48,8 +55,23 @@ TransportState ClockApplication::transportForTest() const {
     return state_.transport;
 }
 
+std::uint16_t ClockApplication::bpmForTest() const {
+    return state_.bpm;
+}
+
 bool ClockApplication::enginePlayingForTest() const {
     return engine_.isPlaying();
+}
+#endif
+
+#ifdef CLOCK_SIMULATOR
+bool ClockApplication::persistenceSnapshotForSimulator(
+    std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>& image) {
+    return persistenceCoordinator_.snapshotImageForSimulator(image);
+}
+
+std::uint64_t ClockApplication::persistenceSnapshotRevisionForSimulator() const {
+    return persistenceCoordinator_.snapshotRevisionForSimulator();
 }
 #endif
 }  // namespace clockfw::app

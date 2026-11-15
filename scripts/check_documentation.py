@@ -32,7 +32,7 @@ CANONICAL_AUTHOR = 'Axel Napolitano'
 CANONICAL_PUBLISHER = 'South Signal Lab'
 CANONICAL_LICENSE = 'PolyForm-Noncommercial-1.0.0'
 CODEMETA_CONTEXT = 'https://w3id.org/codemeta/3.0'
-UPDATE_URL = 'https://github.com/napolitano'
+UPDATE_URL = 'https://southsignallab.com/clock/firmware'
 
 
 

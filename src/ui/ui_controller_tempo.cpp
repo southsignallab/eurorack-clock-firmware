@@ -50,27 +50,30 @@ void UiController::servicePersistenceNotice(const std::uint32_t nowMs) {
     }
 }
 
-void UiController::registerExternalTapTempo(const std::uint32_t timestampMs) {
+void UiController::registerExternalTapTempo(
+    const std::uint32_t timestampUs,
+    const std::uint32_t nowMs) {
     // A TAP input cannot override an external clock either; ignore it silently.
     if (masterTempoIsExternal()) {
         return;
     }
-    registerTapTempo(timestampMs);
+    registerTapTempo(nowMs, timestampUs);
 }
 
-void UiController::registerTapTempo(const std::uint32_t nowMs) {
+void UiController::registerTapTempo(const std::uint32_t nowMs, const std::uint32_t tapUs) {
     if (masterTempoIsExternal()) {
         showExternalTempoNotice(nowMs);
         return;
     }
-    const std::uint32_t sequenceIntervalMs =
-        services::TapTempo::maximumSequenceIntervalMs(state_.tempoRange.minimumBpm);
+    // One time base for every tap (F-013): microseconds, unsigned differences.
+    const std::uint32_t sequenceIntervalUs =
+        services::TapTempo::maximumSequenceIntervalUs(state_.tempoRange.minimumBpm);
     const bool sequenceContinues =
-        tapVisualSequenceActive_ && sequenceIntervalMs > 0U &&
-        nowMs - lastTapVisualAtMs_ <= sequenceIntervalMs;
+        tapVisualSequenceActive_ && sequenceIntervalUs > 0U &&
+        tapUs - lastTapAtUs_ <= sequenceIntervalUs;
 
-    lastTapVisualAtMs_ = nowMs;
-    tapVisualSequenceActive_ = sequenceIntervalMs > 0U;
+    lastTapAtUs_ = tapUs;
+    tapVisualSequenceActive_ = sequenceIntervalUs > 0U;
     if (sequenceContinues) {
         tapIndicatorStartedAtMs_ = nowMs;
         navigation_.tapIndicatorFrame = 1U;
@@ -80,7 +83,7 @@ void UiController::registerTapTempo(const std::uint32_t nowMs) {
     }
 
     const std::uint16_t estimatedBpm = tapTempo_.registerTap(
-        nowMs, state_.tempoRange.minimumBpm, state_.tempoRange.maximumBpm);
+        tapUs, state_.tempoRange.minimumBpm, state_.tempoRange.maximumBpm);
     if (estimatedBpm == 0U) {
         return;
     }

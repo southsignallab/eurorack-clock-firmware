@@ -383,9 +383,8 @@ python scripts/generate_vcv_panel.py
 
 ## Supporting the project
 
-CLOCK is developed independently by South Signal Lab. If the firmware, documentation or engineering work is useful to you, you can support ongoing development through **GitHub Sponsors** or **Ko-fi**. GitHub also exposes both channels through [`.github/FUNDING.yml`](.github/FUNDING.yml).
+CLOCK is developed independently by South Signal Lab. If the firmware, documentation or engineering work is useful to you, you can support ongoing development through **Ko-fi**. GitHub also shows this channel through [`.github/FUNDING.yml`](.github/FUNDING.yml).
 
-- [GitHub Sponsors](https://github.com/sponsors/napolitano)
 - [Ko-fi](https://ko-fi.com/southsignallab)
 
 See [`docs/SUPPORT.md`](docs/SUPPORT.md) for the canonical support information used by the repository and generated Wiki.

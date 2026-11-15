@@ -8,12 +8,17 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <cmath>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "clock_vcv_runtime.h"
@@ -21,8 +26,17 @@
 #include "domain/default_configuration.h"
 #include "hal/persistent_storage.h"
 #include "services/persistent_state_service.h"
+#include "simulator_persistence.h"
 
 namespace {
+
+/** @brief Fails the test binary independently of NDEBUG. */
+void require(const bool condition, const char* const message) {
+    if (!condition) {
+        std::cerr << "clock-vcv-runtime test failed: " << message << '\n';
+        std::exit(1);
+    }
+}
 
 void advance(clockfw::vcv::ClockVcvRuntime& runtime, const double seconds, const double sampleRate) {
     const std::size_t samples = static_cast<std::size_t>(seconds * sampleRate);
@@ -93,6 +107,95 @@ makeUnifiedSwingPersistenceImage(const std::uint8_t swingPercent) {
     std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes> image{};
     assert(storage.readBytes(0U, image.data(), image.size()));
     return image;
+}
+
+using PersistenceImage = std::array<std::uint8_t, clockfw::hal::PersistentStorage::kCapacityBytes>;
+
+/** @brief Reads the host mirror file, or an empty vector while it does not exist. */
+std::vector<std::uint8_t> readMirror(const std::filesystem::path& path) {
+    std::ifstream stream(path, std::ios::binary);
+    return std::vector<std::uint8_t>(
+        std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>());
+}
+
+/**
+ * @brief Issue #10: the audio-rate path never touches the filesystem.
+ *
+ * A STOP-state edit commits after the coalescing delay. The host mirror must still be
+ * written, but by a thread other than the one calling processSample().
+ */
+void assertAudioThreadPerformsNoFileWrites(const double sampleRate) {
+    const auto statePath = std::filesystem::temp_directory_path() / "ssl-clock-vcv-io-test.bin";
+    std::error_code ignored;
+    std::filesystem::remove(statePath, ignored);
+    {
+        clockfw::vcv::ClockVcvRuntime runtime(statePath);
+        runtime.begin();
+        const std::uint64_t writesBefore =
+            clockfw::sim::SimulatorPersistence::fileWritesOnThisThreadForTest();
+        advance(runtime, 1.100, sampleRate);
+        runtime.rotateEncoder(3);
+        advance(runtime, 0.100, sampleRate);
+        // Past the three-second commit delay and several 500-ms host flush periods.
+        advance(runtime, 4.000, sampleRate);
+        require(clockfw::sim::SimulatorPersistence::fileWritesOnThisThreadForTest() == writesBefore,
+                "processSample() must not write the persistence mirror");
+
+        const PersistenceImage expected = runtime.persistenceImage();
+        bool mirrored = false;
+        for (int attempt = 0; attempt < 100 && !mirrored; ++attempt) {
+            const std::vector<std::uint8_t> file = readMirror(statePath);
+            mirrored = file.size() == expected.size() &&
+                std::equal(file.begin(), file.end(), expected.begin());
+            if (!mirrored) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            }
+        }
+        require(mirrored, "the persistence worker must mirror the committed image to disk");
+    }
+    std::filesystem::remove(statePath, ignored);
+}
+
+/**
+ * @brief Issue #9: a patch saved during PLAY carries the live settings.
+ *
+ * Rack calls dataToJson() on its own thread while process() keeps running (Engine::toJson
+ * share-locks like stepBlock()), so the export runs concurrently with audio processing.
+ */
+void assertPatchSaveCarriesLiveSettings(const double sampleRate) {
+    const auto statePath = std::filesystem::temp_directory_path() / "ssl-clock-vcv-patch-test.bin";
+    std::error_code ignored;
+    std::filesystem::remove(statePath, ignored);
+    {
+        clockfw::vcv::ClockVcvRuntime runtime(statePath);
+        runtime.begin();
+        advance(runtime, 1.100, sampleRate);
+        const std::uint16_t startBpm = runtime.bpmForTest();
+        click(runtime, &clockfw::vcv::PanelControls::playPressed, sampleRate);
+        runtime.rotateEncoder(5);
+        advance(runtime, 5.000, sampleRate);
+        const std::uint16_t liveBpm = runtime.bpmForTest();
+        require(liveBpm == startBpm + 5U, "five detents change the live tempo by five BPM");
+
+        PersistenceImage saved{};
+        std::thread saver([&] { saved = runtime.persistenceImage(); });
+        advance(runtime, 0.050, sampleRate);
+        saver.join();
+        runtime.restorePersistenceImage(saved);
+        advance(runtime, 1.100, sampleRate);
+        require(runtime.bpmForTest() == liveBpm, "a patch saved during PLAY restores the live tempo");
+
+        // Right after an edit in STOP, before the commit delay.
+        runtime.rotateEncoder(-2);
+        advance(runtime, 0.020, sampleRate);
+        const std::uint16_t editedBpm = runtime.bpmForTest();
+        require(editedBpm == liveBpm - 2U, "two detents back lower the tempo by two BPM");
+        const PersistenceImage edited = runtime.persistenceImage();
+        runtime.restorePersistenceImage(edited);
+        advance(runtime, 1.100, sampleRate);
+        require(runtime.bpmForTest() == editedBpm, "a patch saved right after an edit restores it");
+    }
+    std::filesystem::remove(statePath, ignored);
 }
 
 void assertSwingOneClockGates(const double sampleRate, const char* suffix) {
@@ -200,6 +303,8 @@ int main() {
     assertSwingOneClockGates(44100.0, "44100");
     assertSwingOneClockGates(48000.0, "48000");
     assertSwingOneClockGates(96000.0, "96000");
+    assertAudioThreadPerformsNoFileWrites(kSampleRate);
+    assertPatchSaveCarriesLiveSettings(kSampleRate);
     const auto statePath = std::filesystem::temp_directory_path() / "ssl-clock-vcv-runtime-test.bin";
     std::error_code ignored;
     std::filesystem::remove(statePath, ignored);

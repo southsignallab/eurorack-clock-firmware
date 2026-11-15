@@ -11,7 +11,7 @@ Hold **TAP TEMPO** and press the encoder from Performance to open the root Setti
 | **GENERAL SETTINGS** | Global CLOCK, INPUTS, SCREENSAVER, DIAGNOSTICS and HARDWARE pages. |
 | **CHANNEL SETTINGS** | The currently selected Independent channel or the active One Clock / Divider Bank topology. |
 | **PRESETS** | CURRENT recovery, Load/Save Preset, and factory Templates. |
-| **SUPPORT CLOCK** | GitHub Sponsors and Ko-fi destinations for supporting ongoing CLOCK development. |
+| **SUPPORT CLOCK** | Ko-fi destination for supporting ongoing CLOCK development. |
 | **INFO** | Product/version information, licenses, update QR and guarded Factory Reset. |
 | **PHASE RESET** | Immediate non-destructive global musical phase reset. |
 
@@ -52,16 +52,17 @@ One Clock exposes shared **TIMING** (rate, Swing, Groove, Humanize) and **OUTPUT
 
 ### SUPPORT CLOCK
 
-`SUPPORT CLOCK` is an informational page with the current project-support destinations. It does not alter firmware behavior or licensing.
+`SUPPORT CLOCK` is an informational page with the current project-support destination. It does not alter firmware behavior or licensing.
 
-<p align="center"><img src="../manual-source/assets/settings-support.png" alt="Support CLOCK page with GitHub Sponsors and Ko-fi entries." width="360"></p>
+<p align="center"><img src="../manual-source/assets/settings-support.png" alt="Support CLOCK page with the Ko-fi entry." width="360"></p>
 
-- **GITHUB SPONSORS** — `github.com/sponsors/napolitano`
 - **KO-FI** — `ko-fi.com/southsignallab`
 
 The publication manual also carries the Ko-fi QR code. The canonical repository links are maintained in [`../SUPPORT.md`](../SUPPORT.md).
 
 ### INFO and read-only overflow
+
+`INFO → UPDATES` shows a full-screen QR code for the firmware update address `https://southsignallab.com/clock/firmware`, which leads to the firmware releases.
 
 Long read-only information is shortened with `...` in the row and can be opened in full. The license page is the canonical example: `CORE LIC` may display a truncated `BSD-3-Cl...` row while preserving the complete identifier in the full-value view.
 

@@ -17,17 +17,21 @@ namespace clockfw::simfw {
 inline void (*timerCallback)() = nullptr;
 inline std::uint32_t timerFrequencyHz = 0U;
 inline bool timerRunning = false;
+/** @brief Scheduler callbacks actually executed since the last resetTimer(), for host tests. */
+inline std::uint64_t timerFireCount = 0ULL;
 
 /** @brief Resets the simulated timer peripheral to its MCU power-on state. */
 inline void resetTimer() {
     timerCallback = nullptr;
     timerFrequencyHz = 0U;
     timerRunning = false;
+    timerFireCount = 0ULL;
 }
 
 /** @brief Fires the registered scheduler callback once when the virtual timer is running. */
 inline void fireTimer() {
     if (timerRunning && timerCallback != nullptr && interruptDisableDepth == 0U) {
+        ++timerFireCount;
         timerCallback();
     }
 }

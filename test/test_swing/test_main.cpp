@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <iterator>
 #include <vector>
 #include <unity.h>
 #include <Arduino.h>
@@ -479,6 +480,185 @@ void testCustomGrooveLongGatesPreserveEveryRisingEdge() {
     }
 }
 
+struct GateEdges {
+    std::vector<std::uint32_t> rising;
+    std::vector<std::uint32_t> falling;
+};
+
+/** Records channel-1 GPIO transitions; @p action runs once before tick @p actionTick. */
+template <typename Action>
+GateEdges collectChannelOneEdges(
+    engine::ClockEngine& engine,
+    const std::uint32_t ticks,
+    const std::uint32_t actionTick,
+    Action action) {
+    GateEdges edges{};
+    for (std::uint32_t tick = 0U; tick < ticks; ++tick) {
+        if (tick == actionTick) {
+            action();
+        }
+        fakefw::writes.clear();
+        engine.processSchedulerTick();
+        for (const auto& write : fakefw::writes) {
+            if (write.pin == pinmap::kGateChannelPins[0]) {
+                (write.value == HIGH ? edges.rising : edges.falling).push_back(tick);
+            }
+        }
+    }
+    return edges;
+}
+
+ClockState makeIssueSixState() {
+    ClockState state{};
+    initializeFactoryDefaults(state);
+    state.operatingMode = OperatingMode::Independent;
+    state.source = ClockSource::Internal;
+    state.bpm = 120U;
+    for (auto& configuredChannel : state.channels) {
+        configuredChannel.common.mode = ChannelMode::Off;
+    }
+    auto& channel = state.channels[0];
+    channel.common.mode = ChannelMode::Clock;
+    channel.common.probabilityPercent = 100U;
+    channel.common.rate = {ClockRatioMode::Multiply, 1U, 1U, 1U};
+    channel.common.gateLengthMs = 100U;
+    channel.common.swingPercent = 0U;
+    channel.common.phasePercent = 0U;
+    channel.common.groove = {GroovePreset::Custom, 100U, 0U, 0U};
+    return state;
+}
+
+/** Every rising edge after the first must follow a LOW of the previous pulse. */
+void assertDistinctPulses(const GateEdges& edges) {
+    for (std::size_t index = 1U; index < edges.rising.size(); ++index) {
+        TEST_ASSERT_TRUE(edges.rising[index] > edges.rising[index - 1U]);
+        TEST_ASSERT_TRUE(std::any_of(
+            edges.falling.begin(), edges.falling.end(), [&](const std::uint32_t offTick) {
+                return offTick > edges.rising[index - 1U] && offTick <= edges.rising[index];
+            }));
+    }
+}
+
+/**
+ * @brief Issue #6 exactly as reported: two rising edges at ~734.4 ms and ~765.6 ms.
+ *
+ * 120 BPM, CLOCK x1, Gate 100 ms, Swing 0, Custom Groove [-120, +120] at 100 %.
+ * A 100 ms gate on the first edge would cover the second; the pulse must shorten.
+ */
+void testIssueSixCustomGrooveProducesTwoRisingEdges() {
+    CustomGroovePattern pattern{};
+    pattern.length = 2U;
+    pattern.offsets256[0] = -120;
+    pattern.offsets256[1] = 120;
+    hal::GateOutputDriver gates;
+    gates.beginDisabled();
+    gates.enableOutputStage();
+    engine::ClockEngine engine(gates);
+    engine.updateCustomGrooveSlot(0U, pattern, false);
+    engine.begin(makeIssueSixState());
+    engine.play();
+    const GateEdges edges = collectChannelOneEdges(engine, 20000U, UINT32_MAX, [] {});
+
+    // 500 ms + 120/256 x 500 ms = 734.375 ms; 1000 ms - 234.375 ms = 765.625 ms (50 us ticks).
+    std::vector<std::uint32_t> window;
+    std::copy_if(edges.rising.begin(), edges.rising.end(), std::back_inserter(window),
+                 [](const std::uint32_t tick) { return tick >= 14000U && tick < 16000U; });
+    TEST_ASSERT_EQUAL_UINT32(2U, static_cast<std::uint32_t>(window.size()));
+    TEST_ASSERT_TRUE(window[0] >= 14686U && window[0] <= 14689U);
+    TEST_ASSERT_TRUE(window[1] >= 15311U && window[1] <= 15314U);
+    assertDistinctPulses(edges);
+}
+
+/**
+ * @brief A live Custom Groove change while playing keeps every event a distinct pulse.
+ *
+ * The pattern changes from straight to fully opposed offsets between two events, while
+ * the previous gate is already LOW, then back again. Each switch reschedules the channel.
+ */
+void testCustomGroovePatternChangeDuringPlaybackKeepsDistinctPulses() {
+    CustomGroovePattern straight{};
+    straight.length = 2U;
+    CustomGroovePattern opposed = straight;
+    opposed.offsets256[0] = -120;
+    opposed.offsets256[1] = 120;
+    for (const bool backToStraight : {false, true}) {
+        hal::GateOutputDriver gates;
+        gates.beginDisabled();
+        gates.enableOutputStage();
+        engine::ClockEngine engine(gates);
+        engine.updateCustomGrooveSlot(0U, straight, false);
+        engine.begin(makeIssueSixState());
+        engine.play();
+        // Straight events at 0, 10000, 20000 ticks; a 100 ms gate is LOW again at 12000.
+        GateEdges edges = collectChannelOneEdges(engine, 13000U, 12500U, [] {});
+        const std::size_t risesBefore = edges.rising.size();
+        TEST_ASSERT_EQUAL_UINT32(2U, static_cast<std::uint32_t>(risesBefore));
+        const GateEdges after = collectChannelOneEdges(engine, 60000U, 0U, [&] {
+            engine.updateCustomGrooveSlot(0U, opposed, true);
+        });
+        assertDistinctPulses(after);
+        // Three seconds after the switch, serials 2..6 each produce their own rising edge,
+        // including the opposed pairs 3/4 and 5/6 only ~31 ms apart. Ticks are relative to
+        // the switch at 13000; this test does not judge whether serial 1, which fired before
+        // the switch, may be emitted again at its new position.
+        for (const std::uint32_t expectedTick : {2312U, 21687U, 22312U, 41687U, 42312U}) {
+            TEST_ASSERT_TRUE(std::any_of(
+                after.rising.begin(), after.rising.end(), [expectedTick](const std::uint32_t tick) {
+                    return tick + 2U >= expectedTick && tick <= expectedTick + 2U;
+                }));
+        }
+        if (backToStraight) {
+            const GateEdges straightAgain = collectChannelOneEdges(engine, 40000U, 0U, [&] {
+                engine.updateCustomGrooveSlot(0U, straight, true);
+            });
+            assertDistinctPulses(straightAgain);
+            // Straight serials 8..11 at 80000 .. 110000 ticks.
+            TEST_ASSERT_EQUAL_UINT32(4U, static_cast<std::uint32_t>(straightAgain.rising.size()));
+        }
+    }
+}
+
+/** @brief The cached Custom Groove spacing bound against hand-calculated Q16 values. */
+void testCustomGrooveMinimumSpacingQ16() {
+    constexpr std::uint32_t kOne = kCustomGrooveSpacingQ16One;
+    CustomGroovePattern pattern{};
+    pattern.length = 2U;
+    pattern.offsets256[0] = -120;
+    pattern.offsets256[1] = 120;
+    // Opposed extremes: 1 - 2 x 120/256 = 1/16 of an interval.
+    TEST_ASSERT_EQUAL_UINT32(kOne / 16U, customGrooveMinimumSpacingQ16(pattern, 100U, 0U, 0U));
+    // Rotation swaps the pair; the bound of the cycle stays 1/16.
+    TEST_ASSERT_EQUAL_UINT32(kOne / 16U, customGrooveMinimumSpacingQ16(pattern, 100U, 1U, 0U));
+    // Swing 50 delays the odd +120 event to the half-interval clamp: 1 - 1/2 - 120/256.
+    TEST_ASSERT_EQUAL_UINT32(kOne - kOne / 2U - 120U * 256U,
+                             customGrooveMinimumSpacingQ16(pattern, 100U, 0U, 50U));
+    // Swing above 50 is clamped like the scheduler does.
+    TEST_ASSERT_EQUAL_UINT32(customGrooveMinimumSpacingQ16(pattern, 100U, 0U, 50U),
+                             customGrooveMinimumSpacingQ16(pattern, 100U, 0U, 99U));
+    // Amount 50 halves the offsets: 1 - 2 x 60/256.
+    TEST_ASSERT_EQUAL_UINT32(kOne - 120U * 256U, customGrooveMinimumSpacingQ16(pattern, 50U, 0U, 0U));
+    // Amount 0 or an invalid pattern leaves only Swing: 1 - 25 % (rounded up = conservative).
+    const std::uint32_t swingOnly = kOne - (25U * kOne + 99U) / 100U;
+    TEST_ASSERT_EQUAL_UINT32(swingOnly, customGrooveMinimumSpacingQ16(pattern, 0U, 0U, 25U));
+    CustomGroovePattern invalid = pattern;
+    invalid.length = 0U;
+    TEST_ASSERT_EQUAL_UINT32(swingOnly, customGrooveMinimumSpacingQ16(invalid, 100U, 0U, 25U));
+    TEST_ASSERT_EQUAL_UINT32(kOne, customGrooveMinimumSpacingQ16(invalid, 100U, 0U, 0U));
+    // Odd length: swing parity repeats after two passes; [0, +120, -120] has its tightest pair
+    // between the +120 and the -120 step: 1 - 240/256.
+    CustomGroovePattern odd{};
+    odd.length = 3U;
+    odd.offsets256[1] = 120;
+    odd.offsets256[2] = -120;
+    TEST_ASSERT_EQUAL_UINT32(kOne - 240U * 256U, customGrooveMinimumSpacingQ16(odd, 100U, 0U, 0U));
+    // A constant negative offset is clamped at the epoch for serial 0 only: the first
+    // interval shrinks to 1 - 120/256 although every later interval stays one full interval.
+    CustomGroovePattern early{};
+    early.length = 1U;
+    early.offsets256[0] = -120;
+    TEST_ASSERT_EQUAL_UINT32(kOne - 120U * 256U, customGrooveMinimumSpacingQ16(early, 100U, 0U, 0U));
+}
+
 void testCustomGrooveDefensiveAndRescheduleBranches() {
     ClockState state{};
     initializeFactoryDefaults(state);
@@ -747,6 +927,9 @@ int main() {
     RUN_TEST(testCustomGrooveLookupSweepsAllLengthsStepsAndAmounts);
     RUN_TEST(testCustomGrooveEngineMatrixAcrossBpmRatesGridsAndAmounts);
     RUN_TEST(testCustomGrooveLongGatesPreserveEveryRisingEdge);
+    RUN_TEST(testIssueSixCustomGrooveProducesTwoRisingEdges);
+    RUN_TEST(testCustomGroovePatternChangeDuringPlaybackKeepsDistinctPulses);
+    RUN_TEST(testCustomGrooveMinimumSpacingQ16);
     RUN_TEST(testCustomGrooveDefensiveAndRescheduleBranches);
     RUN_TEST(testGrooveRecorderCountInAndOneShotCapture);
     RUN_TEST(testGrooveRecorderEndlessWrapsAndOverwritesTappedStepOnly);

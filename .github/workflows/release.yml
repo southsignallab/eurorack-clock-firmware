@@ -63,6 +63,11 @@ jobs:
         if: github.ref_type == 'tag'
         run: python scripts/version.py --check-tag "${GITHUB_REF_NAME}"
 
+      # A released stable version is reproducible only from its tag: the
+      # release path regenerates the manual screenshots from this checkout.
+      - name: Stop for an already released version
+        run: python scripts/version.py --require-unreleased
+
       - name: Run release-tooling tests
         run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
 

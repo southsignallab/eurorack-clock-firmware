@@ -1026,6 +1026,61 @@ void testTapIndicatorSequenceResetsAfterConfiguredMinimumBpmInterval() {
     CHECK_EQ(controller.navigation().tapIndicatorFrame, 1U);
 }
 
+/**
+ * @brief The Tap Tempo sequence ages in the microsecond tap time base only (F-013).
+ *
+ * Milliseconds stand still here while TIM5 crosses its wrap: the sequence must survive
+ * exactly the configured interval and end one microsecond later.
+ */
+void testTapSequenceStalenessUsesMicrosecondTimeBase() {
+    resetFakes(); prepareDisplaySuccess();
+    hal::OledDisplay display; CHECK(display.begin());
+    ClockState state = makeDefaultState();
+    state.tempoRange.minimumBpm = 20U;
+    hal::GateOutputDriver gates; gates.beginDisabled();
+    engine::ClockEngine engine(gates); engine.begin(state);
+    hal::PersistentStorage::resetForTest(); hal::PersistentStorage storage;
+    services::PersistentStateService persistence(storage); persistence.begin();
+    ui::UiRenderer renderer(display, persistence);
+    ui::UiController controller(state, engine, renderer, persistence);
+
+    constexpr std::uint32_t kNowMs = 5000000U;  // far from any microsecond value used below
+    const std::uint32_t limitUs = services::TapTempo::maximumSequenceIntervalUs(20U);
+    const auto tapAtUs = [&](const std::uint32_t releasedUs) {
+        hal::ControlSample sample{};
+        sample.tapButton = pressedEdge();
+        controller.processControls(sample, kNowMs, releasedUs - 1000U);
+        sample = {};
+        sample.tapButton = releasedEdge();
+        controller.processControls(sample, kNowMs, releasedUs);
+    };
+    const auto idleAtUs = [&](const std::uint32_t nowUs) {
+        controller.processControls(hal::ControlSample{}, kNowMs, nowUs);
+    };
+
+    const std::uint32_t firstUs = 0xFFFFF000U;
+    tapAtUs(firstUs);
+    const std::uint32_t secondUs = firstUs + 500000U;  // wraps past 2^32
+    tapAtUs(secondUs);
+    CHECK_EQ(state.bpm, 120U);
+    CHECK_EQ(controller.navigation().tapIndicatorFrame, 1U);
+
+    idleAtUs(secondUs + limitUs - 1U);
+    CHECK_EQ(controller.navigation().tapIndicatorFrame, 1U);
+    idleAtUs(secondUs + limitUs);
+    CHECK_EQ(controller.navigation().tapIndicatorFrame, 1U);
+    idleAtUs(secondUs + limitUs + 1U);
+    CHECK_EQ(controller.navigation().tapIndicatorFrame, 0U);
+
+    // After the reset the next tap starts a new sequence: no tempo and no indicator yet.
+    const std::uint32_t freshUs = secondUs + limitUs + 2U;
+    tapAtUs(freshUs);
+    CHECK_EQ(controller.navigation().tapIndicatorFrame, 0U);
+    tapAtUs(freshUs + 400000U);
+    CHECK_EQ(state.bpm, 150U);
+    CHECK_EQ(controller.navigation().tapIndicatorFrame, 1U);
+}
+
 void testTapIndicatorIsExclusiveToPerformanceTapTempo() {
     resetFakes(); prepareDisplaySuccess();
     hal::OledDisplay display; CHECK(display.begin());

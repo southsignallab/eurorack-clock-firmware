@@ -31,21 +31,32 @@ public:
     static std::uint32_t maximumSequenceIntervalMs(std::uint16_t minimumBpm);
 
     /**
+     * @brief Microsecond form of maximumSequenceIntervalMs() for the tap time base.
+     * @param minimumBpm Current user-configured lower BPM limit.
+     * @return Maximum valid inter-tap interval in microseconds, or 0 for an invalid limit.
+     */
+    static std::uint32_t maximumSequenceIntervalUs(std::uint16_t minimumBpm);
+
+    /**
      * @brief Processes one tap timestamp.
-     * @param nowMs Monotonic tap time in milliseconds.
+     *
+     * Panel and input taps must share one wrapping 32-bit microsecond time base (TIM5).
+     * Intervals are unsigned differences, so the 2^32-us wrap (~71.6 min) is transparent.
+     *
+     * @param nowUs Tap time in microseconds.
      * @param minimumBpm Lower BPM clamp.
      * @param maximumBpm Upper BPM clamp.
      * @return New BPM when enough valid timing data exists, otherwise 0.
      */
     std::uint16_t registerTap(
-        std::uint32_t nowMs,
+        std::uint32_t nowUs,
         std::uint16_t minimumBpm,
         std::uint16_t maximumBpm);
 
 private:
-    std::uint32_t previousTapAtMs_ = 0U;
+    std::uint32_t previousTapAtUs_ = 0U;
     bool havePreviousTap_ = false;
-    std::array<std::uint32_t, 4U> intervalsMs_{};
+    std::array<std::uint32_t, 4U> intervalsUs_{};
     std::uint8_t intervalCount_ = 0U;
 };
 

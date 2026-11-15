@@ -19,8 +19,11 @@ ClockEngine::ClockEngine(hal::GateOutputDriver& gateOutputs)
     : gateOutputs_(gateOutputs) {}
 
 void ClockEngine::begin(const ClockState& state) {
+    std::uint32_t spacingQ16[kChannelCount]{};
+    calculateCustomGrooveSpacingsQ16(state, spacingQ16);
     hal::InterruptLock interruptLock;
     copyConfigurationUnsafe(state);
+    installCustomGrooveSpacingsUnsafe(spacingQ16);
 
     globalScheduleEpochQ32_ = masterPositionQ32_;
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
@@ -38,9 +41,12 @@ void ClockEngine::begin(const ClockState& state) {
 }
 
 void ClockEngine::updateConfiguration(const ClockState& state, const bool rescheduleChannels) {
+    std::uint32_t spacingQ16[kChannelCount]{};
+    calculateCustomGrooveSpacingsQ16(state, spacingQ16);
     hal::InterruptLock interruptLock;
     const std::uint16_t previousBpm = configuration_.bpm;
     copyConfigurationUnsafe(state);
+    installCustomGrooveSpacingsUnsafe(spacingQ16);
     if (configuration_.bpm != previousBpm) {
         discardFreewheelTempoAfterManualChangeUnsafe();
     }
@@ -82,8 +88,11 @@ void ClockEngine::updateChannel(
         return;
     }
 
+    const std::uint32_t spacingQ16 = calculateCustomGrooveSpacingQ16(
+        channelIndex, channelConfiguration, customGroovePreviewActive_[channelIndex]);
     hal::InterruptLock interruptLock;
     configuration_.channels[channelIndex] = channelConfiguration;
+    customGrooveSpacingQ16_[channelIndex] = spacingQ16;
     if (channelConfiguration.common.mode == ChannelMode::Off ||
         channelConfiguration.common.muted) {
         setGateState(channelIndex, false);

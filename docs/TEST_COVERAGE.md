@@ -2,7 +2,7 @@
 
 # South Signal Lab CLOCK Test Coverage — stable v1.1.0
 
-The stable-release test policy is repository-wide rather than limited to `clock_core`. Stable 1.1.0 shipped with 497 named Native cases. The current post-1.1 development tree adds the focused `test_sequencer2` suite plus current Sequencer expression/UI, realtime gate and persistence-coordinator regressions for a **555-case** working inventory, while `run_host_tests.py` remains the authoritative variant/sanitizer/coverage matrix.
+The stable-release test policy is repository-wide rather than limited to `clock_core`. Stable 1.1.0 shipped with 497 named Native cases. The current post-1.1 development tree adds the focused `test_sequencer2` suite plus current Sequencer expression/UI, realtime gate and persistence-coordinator regressions for a **559-case** working inventory, while `run_host_tests.py` remains the authoritative variant/sanitizer/coverage matrix.
 
 ## Hard CI gates
 

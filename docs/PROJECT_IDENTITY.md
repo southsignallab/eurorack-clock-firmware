@@ -60,7 +60,9 @@ A DOI should be introduced for a publication-quality beta or stable release rath
 
 ### Repository URL policy
 
-The current firmware update QR points to the verified GitHub account URL `https://github.com/napolitano`. A repository-specific `repository-code` / `codeRepository` URL is intentionally omitted from CFF/CodeMeta until the final public repository URL is known and verifiable. Once established, the same exact canonical repository URL should be used in both metadata files and in the firmware update target.
+The firmware update QR code (`INFO → UPDATES`) encodes the module address `https://southsignallab.com/clock/firmware`, which the South Signal Lab website forwards to the firmware releases page. The short address fits a version-3 QR code (29 modules, 58 px at 2 px per module) on the 64-pixel display; the releases URL itself would need version 4 and does not fit. The printed manual links the releases page directly.
+
+The canonical source repository is `https://github.com/southsignallab/eurorack-clock-firmware`. CFF and CodeMeta do not carry a `repository-code` / `codeRepository` entry yet; when one is added, both files must use exactly this repository URL.
 
 ## Discovery vocabulary
 

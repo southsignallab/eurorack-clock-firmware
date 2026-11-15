@@ -8,9 +8,14 @@
 #pragma once
 
 #include <array>
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <mutex>
+#include <thread>
 
 #include "hal/oled_display.h"
 #include "hal/persistent_storage.h"
@@ -41,6 +46,12 @@ public:
 
     /** @brief Creates one runtime using a temporary host persistence mirror. */
     explicit ClockVcvRuntime(std::filesystem::path persistencePath);
+
+    /** @brief Stops the persistence worker. */
+    ~ClockVcvRuntime();
+
+    ClockVcvRuntime(const ClockVcvRuntime&) = delete;
+    ClockVcvRuntime& operator=(const ClockVcvRuntime&) = delete;
 
     /** @brief Boots the real CLOCK application. */
     void begin();
@@ -74,7 +85,13 @@ public:
     /** @brief Returns the exact 128x64 CLOCK framebuffer produced by the real renderer. */
     const std::array<std::uint8_t, hal::OledDisplay::kFramebufferSize>& framebuffer() const;
 
-    /** @brief Exports CLOCK's complete logical persistent image for Rack patch storage. */
+    /**
+     * @brief Exports CLOCK's complete logical persistent image for Rack patch storage.
+     *
+     * Safe to call from Rack's patch-save thread while processSample() runs: it returns the
+     * image last published by the audio thread. That image includes live settings and
+     * accepted pending operations and is at most kSnapshotPeriodSeconds old.
+     */
     std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes> persistenceImage() const;
 
     /** @brief Restores CLOCK's complete logical persistent image and reboots from it. */
@@ -92,6 +109,9 @@ public:
 
     /** @brief Reports General Settings visibility for host adapter regression tests. */
     bool generalSettingsOpenForTest() const;
+
+    /** @brief Returns the live foreground BPM for host adapter regression tests. */
+    std::uint16_t bpmForTest() const;
 
 private:
     /**
@@ -125,11 +145,49 @@ private:
     /** @brief Updates one hysteretic Rack voltage input into a conditioned logic level. */
     static bool updateInputLevel(float voltage, bool previousLevel);
 
+    using PersistenceImage = std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>;
+
+    /** @brief Longest interval between two image publications while nothing signals a change. */
+    static constexpr double kSnapshotPeriodSeconds = 0.1;
+
+    /** @brief Mirror-file write interval of the persistence worker. */
+    static constexpr std::chrono::milliseconds kMirrorPeriod{200};
+
+    /**
+     * @brief Audio thread: builds a fresh image and hands it over without blocking.
+     *
+     * Allocation-free and free of file I/O. The hand-over uses try_lock; while the
+     * patch-save thread or the worker holds the lock, it is retried on the next sample.
+     */
+    void publishPersistenceImage();
+
+    /** @brief Worker thread: mirrors each newly published image to the host file. */
+    void runPersistenceWorker();
+
     sim::SimulatorRuntime runtime_;
+    std::filesystem::path persistencePath_;
     PanelControls controls_{};
     InputTransitionBridge syncBridge_{};
     InputTransitionBridge resetBridge_{};
     double pendingSchedulerUs_ = 0.0;
+
+    // Audio-thread state of the persistence hand-over.
+    PersistenceImage snapshotScratch_{};
+    std::uint64_t publishedRevision_ = 0U;
+    bool publicationPending_ = true;
+    double secondsSincePublication_ = 0.0;
+
+    // Shared with the patch-save thread and the worker; guarded by publishedMutex_.
+    mutable std::mutex publishedMutex_;
+    PersistenceImage publishedImage_{};
+    std::uint64_t publishedSequence_ = 0U;
+
+    // Worker lifecycle.
+    std::mutex workerMutex_;
+    std::condition_variable workerWake_;
+    bool workerStop_ = false;
+    std::atomic<bool> mirrorFailed_{false};
+    std::thread worker_;
 };
 
 }  // namespace clockfw::vcv

@@ -100,30 +100,30 @@ void testDefaultsTemplatesAndServices() {
 
     services::TapTempo tap;
     tap.reset();
-    CHECK_EQ(tap.registerTap(0U, 20U, 300U), 0U);
-    CHECK_EQ(tap.registerTap(500U, 20U, 300U), 120U); // timestamp zero is a valid first tap
+    CHECK_EQ(tap.registerTap(0U * 1000U, 20U, 300U), 0U);
+    CHECK_EQ(tap.registerTap(500U * 1000U, 20U, 300U), 120U); // timestamp zero is a valid first tap
     tap.reset();
-    CHECK_EQ(tap.registerTap(1000U, 300U, 20U), 0U); // invalid clamp range cannot reach std::clamp UB
-    CHECK_EQ(tap.registerTap(1000U, 20U, 300U), 0U);
-    CHECK_EQ(tap.registerTap(1500U, 20U, 300U), 120U);
-    CHECK_EQ(tap.registerTap(2000U, 20U, 300U), 120U);
-    CHECK_EQ(tap.registerTap(2500U, 20U, 300U), 120U);
-    CHECK_EQ(tap.registerTap(3000U, 20U, 300U), 120U);
-    CHECK_EQ(tap.registerTap(3500U, 20U, 300U), 120U); // rolls the four-sample window
-    CHECK_EQ(tap.registerTap(3550U, 20U, 300U), 0U);   // 50 ms: below supported ceiling
+    CHECK_EQ(tap.registerTap(1000U * 1000U, 300U, 20U), 0U); // invalid clamp range cannot reach std::clamp UB
+    CHECK_EQ(tap.registerTap(1000U * 1000U, 20U, 300U), 0U);
+    CHECK_EQ(tap.registerTap(1500U * 1000U, 20U, 300U), 120U);
+    CHECK_EQ(tap.registerTap(2000U * 1000U, 20U, 300U), 120U);
+    CHECK_EQ(tap.registerTap(2500U * 1000U, 20U, 300U), 120U);
+    CHECK_EQ(tap.registerTap(3000U * 1000U, 20U, 300U), 120U);
+    CHECK_EQ(tap.registerTap(3500U * 1000U, 20U, 300U), 120U); // rolls the four-sample window
+    CHECK_EQ(tap.registerTap(3550U * 1000U, 20U, 300U), 0U);   // 50 ms: below supported ceiling
     tap.reset();
-    CHECK_EQ(tap.registerTap(1000U, 1U, 300U), 0U);
-    CHECK_EQ(tap.registerTap(61000U, 1U, 300U), 1U);   // 60 s interval = 1 BPM
-    CHECK_EQ(tap.registerTap(130000U, 1U, 300U), 0U); // sequence timeout/reset
+    CHECK_EQ(tap.registerTap(1000U * 1000U, 1U, 300U), 0U);
+    CHECK_EQ(tap.registerTap(61000U * 1000U, 1U, 300U), 1U);   // 60 s interval = 1 BPM
+    CHECK_EQ(tap.registerTap(130000U * 1000U, 1U, 300U), 0U); // sequence timeout/reset
     tap.reset();
-    CHECK_EQ(tap.registerTap(130000U, 130U, 140U), 0U);
-    CHECK_EQ(tap.registerTap(130461U, 130U, 140U), 130U); // slowest interval still permitted by min BPM
+    CHECK_EQ(tap.registerTap(130000U * 1000U, 130U, 140U), 0U);
+    CHECK_EQ(tap.registerTap(130461U * 1000U, 130U, 140U), 130U); // slowest interval still permitted by min BPM
     tap.reset();
-    CHECK_EQ(tap.registerTap(130500U, 20U, 100U), 0U);
-    CHECK_EQ(tap.registerTap(131000U, 20U, 100U), 100U);  // user maximum still clamps fast taps
+    CHECK_EQ(tap.registerTap(130500U * 1000U, 20U, 100U), 0U);
+    CHECK_EQ(tap.registerTap(131000U * 1000U, 20U, 100U), 100U);  // user maximum still clamps fast taps
     tap.reset();
-    CHECK_EQ(tap.registerTap(1000U, 20U, 999U), 0U);
-    CHECK_EQ(tap.registerTap(1060U, 20U, 999U), 999U);    // 60 ms ~= 1000 BPM, user max clamps to 999
+    CHECK_EQ(tap.registerTap(1000U * 1000U, 20U, 999U), 0U);
+    CHECK_EQ(tap.registerTap(1060U * 1000U, 20U, 999U), 999U);    // 60 ms ~= 1000 BPM, user max clamps to 999
 }
 
 

@@ -1140,8 +1140,8 @@ void testOneClockHumanizeAndTempoLimits() {
     CHECK(std::strcmp(maxRow.value, "999") == 0);
 
     services::TapTempo tap;
-    CHECK_EQ(tap.registerTap(1000U, 20U, 999U), 0U);
-    CHECK_EQ(tap.registerTap(1060U, 20U, 999U), 999U);
+    CHECK_EQ(tap.registerTap(1000U * 1000U, 20U, 999U), 0U);
+    CHECK_EQ(tap.registerTap(1060U * 1000U, 20U, 999U), 999U);
 
     // External sync is not clamped by the user's manual BPM range.
     state.tempoRange = {90U, 110U};

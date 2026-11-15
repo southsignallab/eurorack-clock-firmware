@@ -297,6 +297,7 @@ target_compile_options(clock-storybook-publication-pipeline-tests PRIVATE ${CLOC
 
 add_library(clock-vcv-runtime-adapter STATIC
     vcv/clock_vcv_runtime.cpp
+    vcv/keyboard_controls.cpp
 )
 target_link_libraries(clock-vcv-runtime-adapter PUBLIC clock-simulator-runtime)
 target_compile_definitions(clock-vcv-runtime-adapter PUBLIC
@@ -316,6 +317,12 @@ add_executable(clock-vcv-runtime-tests
 target_link_libraries(clock-vcv-runtime-tests PRIVATE clock-vcv-runtime-adapter)
 target_compile_options(clock-vcv-runtime-tests PRIVATE ${CLOCK_WARNING_FLAGS})
 
+add_executable(clock-vcv-keyboard-tests
+    vcv/tests/keyboard_controls_tests.cpp
+)
+target_link_libraries(clock-vcv-keyboard-tests PRIVATE clock-vcv-runtime-adapter)
+target_compile_options(clock-vcv-keyboard-tests PRIVATE ${CLOCK_WARNING_FLAGS})
+
 add_executable(clock-manual-screenshot-generator test/tools/manual_screenshot_generator.cpp)
 target_link_libraries(clock-manual-screenshot-generator PRIVATE clock-simulator-firmware)
 target_compile_options(clock-manual-screenshot-generator PRIVATE ${CLOCK_WARNING_FLAGS})
@@ -323,6 +330,7 @@ target_compile_options(clock-manual-screenshot-generator PRIVATE ${CLOCK_WARNING
 add_executable(clock-simulator-tests
     sim/simulator_tests.cpp
     sim/simulator_contract_tests.cpp
+    sim/simulator_regression_tests.cpp
 )
 target_link_libraries(clock-simulator-tests PRIVATE
     clock-simulator-runtime
@@ -399,3 +407,4 @@ add_test(
 set_tests_properties(storybook_publication_pipeline_tests PROPERTIES SKIP_RETURN_CODE 77)
 add_test(NAME simulator_runtime_tests COMMAND clock-simulator-tests)
 add_test(NAME vcv_runtime_adapter_tests COMMAND clock-vcv-runtime-tests)
+add_test(NAME vcv_keyboard_controls_tests COMMAND clock-vcv-keyboard-tests)

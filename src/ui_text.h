@@ -301,7 +301,6 @@ enum class TextId : std::uint16_t {
     Recording,
     EditorArrow,
     SupportClock,
-    GithubSponsors,
     Kofi,
     Forward,
     Reverse,
@@ -309,7 +308,6 @@ enum class TextId : std::uint16_t {
     Random,
     Loop,
     Once,
-    GithubSponsorsUrl,
     KofiUrl,
     SequencerEditorHeaderFormat,
     SequencerEditorFooterFormat,
@@ -371,10 +369,10 @@ inline constexpr TextCatalog kEnglishUs{{
     "OVERWRITE GROOVE?", "DISCARD CHANGES?", "GROOVE STORE N/A", "S%02u %+d  L%u", "Z%u",
     "RENAME", "DELETE", "RENAME GROOVE", "DELETE GROOVE", "DELETE GROOVE?",
     "RECORD", "GROOVE RECORD", "RECORD MENU", "ONE SHOT", "ENDLESS", "COUNT IN", "READY", "REC", "EDITOR >",
-    "SUPPORT CLOCK", "GITHUB SPONSORS", "KO-FI", "FORWARD", "REVERSE", "PINGPONG", "RANDOM", "LOOP", "ONCE",
-    "github.com/sponsors/napolitano", "ko-fi.com/southsignallab", "SEQ C%u P%u %u-%u", "S%03u/%03u", "P%u",
+    "SUPPORT CLOCK", "KO-FI", "FORWARD", "REVERSE", "PINGPONG", "RANDOM", "LOOP", "ONCE",
+    "ko-fi.com/southsignallab", "SEQ C%u P%u %u-%u", "S%03u/%03u", "P%u",
     "STEP %u C%u P%u", "RATCHET", "TIE", "DEFAULT", "N/A",
-    "EXTERNAL CLOCK", "AUTOSTART", "SAVE ERROR", "SAVE LOCKED"
+    "EXTERNAL CLOCK", "AUTOSTART", "SAVE ERROR", "UPDATE FIRMWARE"
 }};
 
 /** Musical qualifier pool used for generated Custom Groove default names. */

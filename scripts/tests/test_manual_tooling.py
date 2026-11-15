@@ -280,12 +280,22 @@ class ManualToolingTests(unittest.TestCase):
         self.assertEqual(REFRESH.DIRECT_ILLUSTRATIONS["ManualImage1"], "front-panel-anatomy-print.svg")
         self.assertEqual(REFRESH.DIRECT_ILLUSTRATIONS["ManualCoverPanel"], "front-panel-print.svg")
 
-    def test_frozen_manuals_keep_their_screenshot_contract(self) -> None:
+    def test_untypeset_manuals_use_the_pre_typeset_screen_variant_contract(self) -> None:
+        # F-054: the list is the contract of the working manual before the
+        # typeset cover, not that of a frozen release manual. Frozen 1.1.0 has
+        # fewer frames; a released version is reproducible only from its tag.
+        import re
+        import zipfile
+
         frozen = ROOT / "docs" / "manual" / "clock-user-manual.1.1.0.odt"
         self.assertFalse(REFRESH.is_typeset_manual(frozen))
         self.assertTrue(REFRESH.is_typeset_manual(self.working))
-        self.assertEqual(REFRESH.frame_contract(frozen), REFRESH.LEGACY_DIRECT_SCREENSHOTS)
-        self.assertTrue(all(not name.endswith("-print.png") for name in REFRESH.LEGACY_DIRECT_SCREENSHOTS.values()))
+        self.assertFalse(hasattr(REFRESH, "LEGACY_DIRECT_SCREENSHOTS"))
+        self.assertEqual(REFRESH.frame_contract(frozen), REFRESH.PRE_TYPESET_SCREENSHOTS)
+        self.assertTrue(all(not name.endswith("-print.png") for name in REFRESH.PRE_TYPESET_SCREENSHOTS.values()))
+        with zipfile.ZipFile(frozen) as archive:
+            frames = set(re.findall(r'draw:name="(ManualImage\d+)"', archive.read("content.xml").decode("utf-8")))
+        self.assertEqual({"ManualImage24", "ManualImage25"}, set(REFRESH.PRE_TYPESET_SCREENSHOTS) - frames)
 
     def test_direct_screenshots_are_not_duplicated(self) -> None:
         # W-297: every direct screenshot shows a different state.
@@ -591,6 +601,61 @@ class ManualPrintLayoutTests(unittest.TestCase):
         self.assertIn("IN 1 and IN 2 (factory roles SYNC and RESET)", introduction)
         self.assertNotIn("RST", introduction)
 
+    def working_manual_text(self) -> str:
+        import re
+        import zipfile
+
+        with zipfile.ZipFile(ROOT / "docs" / "manual-source" / "clock-user-manual.odt") as archive:
+            content = archive.read("content.xml").decode("utf-8")
+        return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", content))
+
+    def test_introduction_names_the_inputs_as_engraved(self) -> None:
+        # F-057: chapter 1 uses the panel names with their factory roles.
+        text = self.working_manual_text()
+        self.assertNotIn("dedicated SYNC and RST inputs", text)
+        self.assertIn("Hardware Rev 1 has two digital inputs, IN 1 and IN 2 (factory roles SYNC and RESET),", text)
+
+    def test_specifications_name_the_inputs_and_mark_the_pins_as_diy_build(self) -> None:
+        # F-057: chapter 24 keeps the pin facts, names the inputs as engraved and
+        # marks the pins as those of the DIY build; no other variant is named.
+        import re
+
+        text = self.working_manual_text()
+        match = re.search(r"Inputs (IN 1 .*?) Controls", text)
+        self.assertIsNotNone(match)
+        row = match.group(1)
+        self.assertIn("IN 1 (factory role SYNC) on PA8", row)
+        self.assertIn("IN 2 (factory role RESET) on PA9", row)
+        self.assertIn("DIY", row)
+        for absent in ("RST", "SMD", "PA0", "PA6"):
+            self.assertNotIn(absent, row)
+        self.assertNotIn("SYNC on PA8 and RST on PA9", text)
+
+    def test_qr_codes_on_the_licenses_page_keep_space_to_the_text_above(self) -> None:
+        # F-058: a proportional line height below 100 % lets an inline QR image
+        # rise into the wrapped address above it; the paragraphs holding the
+        # repository and Ko-fi codes need full line height and a top margin.
+        import re
+        import zipfile
+
+        with zipfile.ZipFile(ROOT / "docs" / "manual-source" / "clock-user-manual.odt") as archive:
+            content = archive.read("content.xml").decode("utf-8")
+        for frame in ("RepositoryQR", "KofiSupportQR"):
+            with self.subTest(frame=frame):
+                position = content.index(f'draw:name="{frame}"')
+                paragraph = content.rfind("<text:p ", 0, position)
+                style = re.match(r'<text:p text:style-name="([^"]+)"', content[paragraph:]).group(1)
+                definition = re.search(
+                    rf'<style:style style:name="{re.escape(style)}" style:family="paragraph"[^>]*>(.*?)</style:style>',
+                    content,
+                    re.S,
+                ).group(1)
+                line_height = re.search(r'fo:line-height="(\d+)%"', definition)
+                self.assertTrue(line_height is None or int(line_height.group(1)) >= 100, definition)
+                margin_top = re.search(r'fo:margin-top="([\d.]+)in"', definition)
+                self.assertIsNotNone(margin_top, definition)
+                self.assertGreaterEqual(float(margin_top.group(1)), 0.1)
+
 
 # Output of a documentation tool that is not representable in a legacy code
 # page: U+25CF and U+2192 have no cp1252 or ASCII encoding, the path has a
@@ -788,6 +853,72 @@ class ManualToolDiscoveryTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, r"Poppler tools are missing: pdfinfo, pdftotext"):
                     BUILD.build(working, Path(directory), version, require_ubuntu_fonts=False)
             export.assert_not_called()
+
+
+class FirmwareUpdateQrTests(unittest.TestCase):
+    """W-045: the on-device update QR code is the encoder output for the module address."""
+
+    URL = "https://southsignallab.com/clock/firmware"
+    SOURCE = ROOT / "src" / "ui" / "settings_renderer.cpp"
+
+    def source(self) -> str:
+        return self.SOURCE.read_text(encoding="utf-8")
+
+    def constant(self, name: str) -> int:
+        import re
+
+        match = re.search(rf"constexpr\s+std::int16_t\s+{name}\s*=\s*(\d+);", self.source())
+        self.assertIsNotNone(match, name)
+        return int(match.group(1))
+
+    def test_firmware_rows_match_the_encoder_output_for_the_module_address(self) -> None:
+        import re
+
+        source = self.source()
+        self.assertIn(f"QR payload for exactly: {self.URL}\n", source)
+        match = re.search(r"kUpdateQrRows\{\{(.*?)\}\};", source, re.S)
+        self.assertIsNotNone(match)
+        rows = [int(value, 16) for value in re.findall(r"0x([0-9A-Fa-f]+)UL", match.group(1))]
+        matrix = QR.encode(self.URL)
+        self.assertEqual(29, len(matrix))  # version 3
+        expected = [sum(1 << column for column, dark in enumerate(row) if dark) for row in matrix]
+        self.assertEqual(expected, rows)
+
+    def test_update_qr_fills_the_white_field_with_a_three_pixel_quiet_zone(self) -> None:
+        field_x = self.constant("kFieldX")
+        field_size = self.constant("kFieldSize")
+        scale = self.constant("kScale")
+        modules = 29
+        self.assertEqual(64, field_size)
+        self.assertEqual(2, scale)
+        self.assertEqual(58, modules * scale)
+        self.assertEqual(field_x + 3, self.constant("kQrX"))
+        self.assertEqual(3, self.constant("kQrY"))
+        self.assertEqual(field_size, modules * scale + 2 * 3)
+
+
+class SvgLineEndingTests(unittest.TestCase):
+    """F-056: generated SVGs are compared byte for byte, so checkouts must keep them LF."""
+
+    @unittest.skipUnless((ROOT / ".git").exists(), "needs a Git checkout")
+    def test_every_tracked_svg_is_checked_out_with_lf(self) -> None:
+        import subprocess
+
+        listing = subprocess.run(
+            ["git", "ls-files", "-z", "--", "*.svg"], cwd=ROOT, capture_output=True, check=True
+        ).stdout.decode("utf-8")
+        svgs = [name for name in listing.split("\0") if name]
+        self.assertTrue(svgs)
+        attributes = subprocess.run(
+            ["git", "check-attr", "-z", "text", "eol", "--", *svgs], cwd=ROOT, capture_output=True, check=True
+        ).stdout.decode("utf-8").split("\0")
+        # -z output: path, attribute, value triples.
+        values = {(attributes[i], attributes[i + 1]): attributes[i + 2] for i in range(0, len(attributes) - 2, 3)}
+        offenders = [
+            name for name in svgs
+            if values.get((name, "text")) != "set" or values.get((name, "eol")) != "lf"
+        ]
+        self.assertEqual([], offenders)
 
 
 if __name__ == "__main__":

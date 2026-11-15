@@ -61,6 +61,41 @@ An explicit user STOP or PAUSE has priority; incoming clock cannot silently undo
 | `FREE` | Continue at the last measured external tempo and keep that BPM as the effective/visible tempo after lock loss. |
 | `INTERNAL` | Continue using the configured internal/fallback BPM. |
 
+#### State diagrams: automatic start and tempo ownership
+
+Whether an external clock may start transport is a separate state from transport itself. An incoming clock never undoes a front-panel STOP or PAUSE:
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> NoAutoStart: power-up, AUTOSTART OFF (factory)
+    [*] --> AutoStartArmed: power-up, AUTOSTART ON
+    NoAutoStart --> AutoStartArmed: PLAY on the panel, START or RESTART input, RUN level goes HIGH
+    AutoStartArmed --> NoAutoStart: STOP or PAUSE on the panel, STOP input, RUN level goes LOW
+    NoAutoStart --> AutoStartArmed: AUTOSTART switched ON while stopped
+    AutoStartArmed --> NoAutoStart: AUTOSTART switched OFF while stopped
+    AutoStartArmed --> AutoStartArmed: SYNC lock acquired, transport starts (SOURCE EXTERNAL or AUTO)
+    AutoStartArmed --> AutoStartArmed: lock lost with LOSS STOP, transport stops and restarts on the next lock
+```
+
+Without auto-start a lock never starts transport and a lock loss never stops it. With an assigned `RUN` input, a front-panel PLAY, PAUSE or STOP stays in effect until the RUN level changes the next time.
+
+Tempo ownership with `SOURCE = AUTO`:
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Internal
+    Internal --> Acquiring: first selected SYNC edge
+    Acquiring --> Locked: second valid edge sets period, BPM and phase zero
+    Locked --> Internal: no edge within TIMEOUT, LOSS INTERNAL or STOP
+    Locked --> Freewheel: no edge within TIMEOUT, LOSS FREE
+    Freewheel --> Internal: tempo changed by hand (encoder, TAP or MASTER BPM)
+    Freewheel --> Acquiring: selected SYNC edge
+```
+
+While `Locked`, the encoder and TAP on the Performance screen do not change the tempo and the display shows **EXTERNAL CLOCK**. With `SOURCE = EXTERNAL` the same lock states apply, but the encoder and TAP never change the tempo, and with `LOSS = FREE` the last measured tempo stays until the next lock.
+
 ### PPQN, EDGE, FILTER, SMOOTHING, TIMEOUT and AUTOSTART
 
 | Setting | Meaning |

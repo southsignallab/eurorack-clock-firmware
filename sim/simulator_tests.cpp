@@ -12,6 +12,7 @@
 #include <iostream>
 
 #include "simulator_contract_tests.h"
+#include "simulator_regression_tests.h"
 #include "scope_session.h"
 #include "scope_timeline.h"
 #include "simulator_runtime.h"
@@ -387,6 +388,10 @@ int main() {
     }
 
     std::filesystem::remove(statePath);
+
+    if (clockfw::sim::tests::runRuntimeRegressions() != 0) {
+        return 1;
+    }
 
     std::cout << "simulator runtime tests passed\n";
     return 0;

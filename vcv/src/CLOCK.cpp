@@ -19,10 +19,38 @@
 
 #include "clock_vcv_runtime.h"
 #include "generated_panel_layout.hpp"
+#include "keyboard_controls.h"
 
 namespace {
 
 std::atomic<bool> gHostRuntimeClaimed{false};
+
+/** @brief Maps one GLFW key onto the CLOCK panel control it drives. */
+clockfw::vcv::PanelKey panelKeyFor(const int key) {
+    using clockfw::vcv::PanelKey;
+    switch (key) {
+        case GLFW_KEY_LEFT_SHIFT:
+            return PanelKey::LeftShift;
+        case GLFW_KEY_RIGHT_SHIFT:
+            return PanelKey::RightShift;
+        case GLFW_KEY_UP:
+            return PanelKey::EncoderUp;
+        case GLFW_KEY_DOWN:
+            return PanelKey::EncoderDown;
+        case GLFW_KEY_ENTER:
+        case GLFW_KEY_E:
+            return PanelKey::EncoderPush;
+        case GLFW_KEY_P:
+            return PanelKey::Play;
+        case GLFW_KEY_T:
+            return PanelKey::Tap;
+        case GLFW_KEY_S:
+        case GLFW_KEY_BACKSPACE:
+            return PanelKey::Stop;
+        default:
+            return PanelKey::Unmapped;
+    }
+}
 
 std::string encodeHex(const std::uint8_t* data, const std::size_t size) {
     static constexpr char kHex[] = "0123456789abcdef";
@@ -212,28 +240,26 @@ struct ClockModule final : Module {
         generalSettingsRequested.store(true, std::memory_order_release);
     }
 
-    void setKeyboardShiftHeld(const int key, const bool held) noexcept {
-        if (key == GLFW_KEY_LEFT_SHIFT) {
-            keyboardLeftShiftHeld.store(held, std::memory_order_release);
-        } else if (key == GLFW_KEY_RIGHT_SHIFT) {
-            keyboardRightShiftHeld.store(held, std::memory_order_release);
-        }
+    /** @brief UI thread: returns the virtual controls currently held through the keyboard. */
+    clockfw::vcv::KeyboardHeldControls keyboardHeldControls() const noexcept {
+        clockfw::vcv::KeyboardHeldControls held{};
+        held.leftShift = keyboardLeftShiftHeld.load(std::memory_order_acquire);
+        held.rightShift = keyboardRightShiftHeld.load(std::memory_order_acquire);
+        held.encoder = keyboardEncoderHeld.load(std::memory_order_acquire);
+        held.play = keyboardPlayHeld.load(std::memory_order_acquire);
+        held.tap = keyboardTapHeld.load(std::memory_order_acquire);
+        held.stop = keyboardStopHeld.load(std::memory_order_acquire);
+        return held;
     }
 
-    void setKeyboardTapHeld(const bool held) noexcept {
-        keyboardTapHeld.store(held, std::memory_order_release);
-    }
-
-    void setKeyboardEncoderHeld(const bool held) noexcept {
-        keyboardEncoderHeld.store(held, std::memory_order_release);
-    }
-
-    void setKeyboardPlayHeld(const bool held) noexcept {
-        keyboardPlayHeld.store(held, std::memory_order_release);
-    }
-
-    void setKeyboardStopHeld(const bool held) noexcept {
-        keyboardStopHeld.store(held, std::memory_order_release);
+    /** @brief UI thread: publishes the keyboard-held controls to the audio thread. */
+    void setKeyboardHeldControls(const clockfw::vcv::KeyboardHeldControls& held) noexcept {
+        keyboardLeftShiftHeld.store(held.leftShift, std::memory_order_release);
+        keyboardRightShiftHeld.store(held.rightShift, std::memory_order_release);
+        keyboardEncoderHeld.store(held.encoder, std::memory_order_release);
+        keyboardPlayHeld.store(held.play, std::memory_order_release);
+        keyboardTapHeld.store(held.tap, std::memory_order_release);
+        keyboardStopHeld.store(held.stop, std::memory_order_release);
     }
 
     void endEncoderGesture() noexcept {
@@ -597,71 +623,32 @@ struct ClockWidget final : ModuleWidget {
 
     void onHoverKey(const HoverKeyEvent& event) override {
         ClockModule* const clock = clockModule();
-        if (clock == nullptr) {
+        const clockfw::vcv::PanelKey key = panelKeyFor(event.key);
+        const bool knownAction = event.action == GLFW_PRESS || event.action == GLFW_REPEAT ||
+            event.action == GLFW_RELEASE;
+        if (clock == nullptr || key == clockfw::vcv::PanelKey::Unmapped || !knownAction) {
             ModuleWidget::onHoverKey(event);
             return;
         }
 
-        const bool pressed = event.action == GLFW_PRESS || event.action == GLFW_REPEAT;
-        const bool released = event.action == GLFW_RELEASE;
-        const int nonShiftMods = event.mods & (GLFW_MOD_CONTROL | GLFW_MOD_ALT | GLFW_MOD_SUPER);
-
-        // Shift is CLOCK's virtual second hand: while held, it is the physical TAP/SHIFT button.
-        if (event.key == GLFW_KEY_LEFT_SHIFT || event.key == GLFW_KEY_RIGHT_SHIFT) {
-            if (pressed || released) {
-                clock->setKeyboardShiftHeld(event.key, pressed);
-                event.consume(this);
-            }
-            return;
-        }
-
-        // Preserve Rack's own Ctrl/Alt/Super shortcuts. Shift remains available as a physical
-        // TAP/SHIFT hold so Shift+Enter and Shift+Up/Down reproduce two-control hardware chords.
-        if (nonShiftMods != 0) {
-            ModuleWidget::onHoverKey(event);
-            return;
-        }
-
-        if (event.key == GLFW_KEY_UP || event.key == GLFW_KEY_DOWN) {
-            if (pressed) {
-                clock->queueEncoderDetents(event.key == GLFW_KEY_UP ? 1 : -1);
-            }
+        const clockfw::vcv::KeyAction action = event.action == GLFW_RELEASE
+            ? clockfw::vcv::KeyAction::Release
+            : (event.action == GLFW_REPEAT ? clockfw::vcv::KeyAction::Repeat
+                                           : clockfw::vcv::KeyAction::Press);
+        // Shift is CLOCK's virtual second hand (TAP/SHIFT hold), so Shift+Enter and
+        // Shift+Up/Down reproduce two-control hardware chords. Ctrl/Alt/Super stay Rack's
+        // shortcuts; releases of held controls are handled before that guard (#13).
+        const bool nonShiftModifiers =
+            (event.mods & (GLFW_MOD_CONTROL | GLFW_MOD_ALT | GLFW_MOD_SUPER)) != 0;
+        clockfw::vcv::KeyboardHeldControls held = clock->keyboardHeldControls();
+        const clockfw::vcv::KeyboardEventResult result =
+            clockfw::vcv::applyKeyboardEvent(held, key, action, nonShiftModifiers);
+        clock->setKeyboardHeldControls(held);
+        clock->queueEncoderDetents(result.encoderDetents);
+        if (result.consumed) {
             event.consume(this);
             return;
         }
-
-        if (event.key == GLFW_KEY_ENTER || event.key == GLFW_KEY_E) {
-            if (pressed || released) {
-                clock->setKeyboardEncoderHeld(pressed);
-            }
-            event.consume(this);
-            return;
-        }
-
-        if (event.key == GLFW_KEY_P) {
-            if (pressed || released) {
-                clock->setKeyboardPlayHeld(pressed);
-            }
-            event.consume(this);
-            return;
-        }
-
-        if (event.key == GLFW_KEY_T) {
-            if (pressed || released) {
-                clock->setKeyboardTapHeld(pressed);
-            }
-            event.consume(this);
-            return;
-        }
-
-        if (event.key == GLFW_KEY_S || event.key == GLFW_KEY_BACKSPACE) {
-            if (pressed || released) {
-                clock->setKeyboardStopHeld(pressed);
-            }
-            event.consume(this);
-            return;
-        }
-
         ModuleWidget::onHoverKey(event);
     }
 

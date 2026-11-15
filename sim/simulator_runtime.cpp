@@ -53,14 +53,18 @@ void SimulatorRuntime::advanceMicroseconds(std::uint64_t durationUs) {
         throw std::runtime_error("Scheduler period must be non-zero");
     }
 
-    while (durationUs >= schedulerPeriodUs) {
-        simfw::advanceMicroseconds(schedulerPeriodUs);
+    // The scheduler phase is carried across calls: time that does not complete a
+    // 50-us quantum in this call counts towards the next tick (#11).
+    while (durationUs >= schedulerPeriodUs - schedulerAccumulatorUs_) {
+        const std::uint64_t stepUs = schedulerPeriodUs - schedulerAccumulatorUs_;
+        simfw::advanceMicroseconds(stepUs);
         serviceExternalSync();
         serviceExternalReset();
         simfw::fireTimer();
-        durationUs -= schedulerPeriodUs;
-        foregroundAccumulatorUs_ += schedulerPeriodUs;
-        persistenceAccumulatorUs_ += schedulerPeriodUs;
+        durationUs -= stepUs;
+        schedulerAccumulatorUs_ = 0ULL;
+        foregroundAccumulatorUs_ += stepUs;
+        persistenceAccumulatorUs_ += stepUs;
 
         if (foregroundAccumulatorUs_ >= kForegroundPeriodUs) {
             foregroundAccumulatorUs_ -= kForegroundPeriodUs;
@@ -79,6 +83,7 @@ void SimulatorRuntime::advanceMicroseconds(std::uint64_t durationUs) {
         simfw::advanceMicroseconds(durationUs);
         serviceExternalSync();
         serviceExternalReset();
+        schedulerAccumulatorUs_ += durationUs;
         foregroundAccumulatorUs_ += durationUs;
         persistenceAccumulatorUs_ += durationUs;
     }
@@ -122,7 +127,27 @@ void SimulatorRuntime::flushPersistence() {
 
 std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>
 SimulatorRuntime::persistenceImage() const {
+    std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes> image{};
+    if (poweredOn_ && application_ != nullptr &&
+        application_->persistenceSnapshotForSimulator(image)) {
+        return image;
+    }
     return persistence_.exportImage();
+}
+
+std::uint64_t SimulatorRuntime::persistenceImageRevision() const {
+    if (!poweredOn_ || application_ == nullptr) {
+        return 0U;
+    }
+    return application_->persistenceSnapshotRevisionForSimulator();
+}
+
+std::uint64_t SimulatorRuntime::schedulerTicksForTest() const {
+    return simfw::timerFireCount;
+}
+
+void SimulatorRuntime::setPersistenceFileWrites(const bool enabled) {
+    persistence_.setFileWritesEnabled(enabled);
 }
 
 void SimulatorRuntime::restorePersistenceImage(
@@ -230,6 +255,7 @@ void SimulatorRuntime::setPower(const bool powered) {
     poweredOn_ = true;
     telemetry_ = {};
     processedWriteCount_ = simfw::writes.size();
+    schedulerAccumulatorUs_ = 0ULL;
     foregroundAccumulatorUs_ = 0ULL;
     persistenceAccumulatorUs_ = 0ULL;
     pendingEncoderDetents_ = 0;

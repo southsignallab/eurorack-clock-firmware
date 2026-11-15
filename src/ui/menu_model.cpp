@@ -82,7 +82,7 @@ std::uint8_t settingsPageItemCount(
         case SettingsPage::Preferences: return 4U;
         case SettingsPage::Screensaver: return 4U;
         case SettingsPage::Info: return 6U;
-        case SettingsPage::Support: return 2U;
+        case SettingsPage::Support: return 1U;
         case SettingsPage::Licenses: return 7U;
         case SettingsPage::Updates: return 1U;
         case SettingsPage::Channel: return channelMenuItemCount(mode);
@@ -139,12 +139,9 @@ MenuRow buildMenuRow(
             copyText(row.label, sizeof(row.label), text::TextId::PhaseReset);
         }
     } else if (page == SettingsPage::Support) {
-        copyText(
-            row.label, sizeof(row.label),
-            rowIndex == 0U ? text::TextId::GithubSponsors : text::TextId::Kofi);
-        std::snprintf(
-            row.value, sizeof(row.value), "%s",
-            rowIndex == 0U ? text::get(text::TextId::GithubSponsorsUrl) : text::get(text::TextId::KofiUrl));
+        // Support goes through Ko-fi only; the page keeps its one entry.
+        copyText(row.label, sizeof(row.label), text::TextId::Kofi);
+        std::snprintf(row.value, sizeof(row.value), "%s", text::get(text::TextId::KofiUrl));
         row.expandableInformation = true;
     } else if (page == SettingsPage::General) {
         constexpr text::TextId kLabels[] = {

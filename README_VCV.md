@@ -19,7 +19,7 @@ The VCV Rack version exists so you can try **South Signal Lab CLOCK** before bui
 - One Clock, Independent and Divider Bank operation;
 - Clock, Euclid and Sequencer channel functions;
 - Grooves, Custom Grooves, Pre-Count, presets and the normal CLOCK settings model;
-- CLOCK persistence stored inside the Rack patch.
+- CLOCK persistence stored inside the Rack patch, including settings changed while playing.
 
 The current experimental host layer supports **one active CLOCK instance per Rack process**. Additional instances deliberately stay disabled rather than sharing process-global simulator/HAL state unsafely.
 
@@ -59,6 +59,8 @@ This makes the important hardware chords practical in Rack:
 
 Mouse and keyboard can be mixed. For example, hold `Shift` and use the mouse wheel over the encoder.
 
+`Ctrl`, `Alt` and `Super` combinations stay Rack shortcuts. Releasing a CLOCK key always releases its control, even if one of these modifiers was pressed in between.
+
 ## General Settings from the Rack context menu
 
 Right-click the module and choose **General Settings...**. This opens CLOCK's existing production **GENERAL SETTINGS** page on the OLED. It does not create a Rack-only configuration panel or duplicate CLOCK state.
@@ -85,4 +87,4 @@ The canonical project documentation remains [`README.md`](README.md) and [`docs/
 
 ## Support CLOCK
 
-The VCV Rack edition is part of the same South Signal Lab CLOCK project. Ongoing development can be supported through [GitHub Sponsors](https://github.com/sponsors/napolitano) or [Ko-fi](https://ko-fi.com/southsignallab).
+The VCV Rack edition is part of the same South Signal Lab CLOCK project. Ongoing development can be supported through [Ko-fi](https://ko-fi.com/southsignallab).

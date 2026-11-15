@@ -292,7 +292,7 @@ The same meter definition drives the bar/beat counter and Pre-Count. With extern
 
 The Settings-root **PHASE RESET** command applies that global musical reset immediately without stopping to erase or replace any saved configuration. It is intentionally distinct from **FACTORY RESET**, which is a destructive maintenance action under `INFO`.
 
-The Settings root also contains **SUPPORT CLOCK**. It is read-only and lists the current [GitHub Sponsors](https://github.com/sponsors/napolitano) and [Ko-fi](https://ko-fi.com/southsignallab) destinations; it does not change configuration, licensing, or transport state.
+The Settings root also contains **SUPPORT CLOCK**. It is read-only and shows the current [Ko-fi](https://ko-fi.com/southsignallab) destination; it does not change configuration, licensing, or transport state.
 
 ![Timing reference diagram comparing the ideal grid with Swing and Phase offsets and showing One Clock Humanize as small per-output displacement around the common reference.](manual-source/assets/timing-swing-phase.svg)
 
@@ -450,6 +450,41 @@ An explicit user STOP or PAUSE has priority; incoming clock cannot silently undo
 | `FREE` | Continue at the last measured external tempo and keep that BPM as the effective/visible tempo after lock loss. |
 | `INTERNAL` | Continue using the configured internal/fallback BPM. |
 
+#### State diagrams: automatic start and tempo ownership
+
+Whether an external clock may start transport is a separate state from transport itself. An incoming clock never undoes a front-panel STOP or PAUSE:
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> NoAutoStart: power-up, AUTOSTART OFF (factory)
+    [*] --> AutoStartArmed: power-up, AUTOSTART ON
+    NoAutoStart --> AutoStartArmed: PLAY on the panel, START or RESTART input, RUN level goes HIGH
+    AutoStartArmed --> NoAutoStart: STOP or PAUSE on the panel, STOP input, RUN level goes LOW
+    NoAutoStart --> AutoStartArmed: AUTOSTART switched ON while stopped
+    AutoStartArmed --> NoAutoStart: AUTOSTART switched OFF while stopped
+    AutoStartArmed --> AutoStartArmed: SYNC lock acquired, transport starts (SOURCE EXTERNAL or AUTO)
+    AutoStartArmed --> AutoStartArmed: lock lost with LOSS STOP, transport stops and restarts on the next lock
+```
+
+Without auto-start a lock never starts transport and a lock loss never stops it. With an assigned `RUN` input, a front-panel PLAY, PAUSE or STOP stays in effect until the RUN level changes the next time.
+
+Tempo ownership with `SOURCE = AUTO`:
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> Internal
+    Internal --> Acquiring: first selected SYNC edge
+    Acquiring --> Locked: second valid edge sets period, BPM and phase zero
+    Locked --> Internal: no edge within TIMEOUT, LOSS INTERNAL or STOP
+    Locked --> Freewheel: no edge within TIMEOUT, LOSS FREE
+    Freewheel --> Internal: tempo changed by hand (encoder, TAP or MASTER BPM)
+    Freewheel --> Acquiring: selected SYNC edge
+```
+
+While `Locked`, the encoder and TAP on the Performance screen do not change the tempo and the display shows **EXTERNAL CLOCK**. With `SOURCE = EXTERNAL` the same lock states apply, but the encoder and TAP never change the tempo, and with `LOSS = FREE` the last measured tempo stays until the next lock.
+
 ### PPQN, EDGE, FILTER, SMOOTHING, TIMEOUT and AUTOSTART
 
 | Setting | Meaning |
@@ -503,9 +538,16 @@ CLOCK never writes Flash while transport is PLAY, because the STM32F401 stalls w
 
 If a RUN or START signal arrives during the short Flash write, playback starts right after the write instead of during it.
 
-**SAVE ERROR** on the Performance screen means a Flash write failed. Your changes stay in memory and CLOCK retries automatically after 1, 2, 4, 8, 16, 32 and then every 60 seconds. If the message keeps returning, the Flash sector may be worn; changes made since the last successful write are lost when power is removed.
+**SAVE ERROR** on the Performance screen means a Flash write failed. Your changes stay in memory and CLOCK retries automatically after 1, 2, 4, 8, 16 and 32 seconds. If the last retry fails too, CLOCK stops writing so that a worn Flash sector is not erased again and again; **SAVE ERROR** then appears again for a few seconds after every front-panel action. The next change to your settings, presets, grooves or patterns starts a new series of attempts, and so does switching the module off and on. Changes made since the last successful write are lost when power is removed.
 
-**SAVE LOCKED** means the Flash holds settings written by a newer firmware in a format this firmware does not know, typically after a downgrade. CLOCK still runs with the newest settings it can read but writes nothing, so the newer data stays intact for a later upgrade. Either install the newer firmware again or confirm **FACTORY RESET** (`INFO`), which replaces the stored data with factory settings and lifts the lock.
+**UPDATE FIRMWARE** means the Flash holds settings written by a newer firmware in a format this firmware does not know, typically after a downgrade. CLOCK still runs with the newest settings it can read but writes nothing, so the newer data stays intact for a later upgrade. Either install the newer firmware again or confirm **FACTORY RESET** (`INFO`), which replaces the stored data with factory settings and lifts the lock.
+
+<table>
+<tr>
+<td align="center"><img src="manual-source/assets/performance-save-error.png" alt="Performance screen with the SAVE ERROR notice across the tempo area." width="220"><br><sub>SAVE ERROR</sub></td>
+<td align="center"><img src="manual-source/assets/performance-update-firmware.png" alt="Performance screen with the UPDATE FIRMWARE notice across the tempo area." width="220"><br><sub>UPDATE FIRMWARE</sub></td>
+</tr>
+</table>
 
 ## 20. Device orientation, screensaver, and display protection
 
@@ -621,7 +663,7 @@ Pixel Raid, Formula 1, Breakout, and Egg Journey keep all gate source GPIOs mute
 - **FIRMWARE** — currently running firmware version
 - **AUTHOR** — project attribution; deliberately not treated as primary UI content
 - **LICENSES** — firmware/framework/core/HAL/CMSIS license identifiers
-- **UPDATES** — full-screen QR code for the firmware's canonical project-update URL (`https://github.com/napolitano`)
+- **UPDATES** — full-screen QR code for the firmware update address `https://southsignallab.com/clock/firmware`, which leads to the firmware releases
 
 Long read-only values use a separate overflow rule from editable Settings values. If a value does not fit its row, CLOCK shortens only that informational value with `...`; pressing the row opens the complete value. Editable values keep their normal edit/confirm behavior. The **CORE LIC** row is the canonical example because `BSD-3-Clause` does not fit comfortably in the compact license list.
 
@@ -633,7 +675,7 @@ Long read-only values use a separate overflow rule from editable Settings values
 </tr>
 </table>
 
-**FACTORY RESET** is the final INFO entry so it is not exposed as a routine performance control. Selecting it opens a separate confirmation screen with **NO** selected by default. Confirming **YES** stops transport, clears CURRENT, all eight named presets, all Custom Grooves, both Sequencer pattern and step-expression banks, legacy score data and all Top-100 leaderboards, then restores the documented factory configuration. It also lifts a **SAVE LOCKED** state.
+**FACTORY RESET** is the final INFO entry so it is not exposed as a routine performance control. Selecting it opens a separate confirmation screen with **NO** selected by default. Confirming **YES** stops transport, clears CURRENT, all eight named presets, all Custom Grooves, both Sequencer pattern and step-expression banks, legacy score data and all Top-100 leaderboards, then restores the documented factory configuration. It also lifts an **UPDATE FIRMWARE** lock.
 
 ## 23. Firmware installation and updates
 

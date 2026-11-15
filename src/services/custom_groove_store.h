@@ -39,6 +39,9 @@ public:
     /** @brief True while at least one slot mutation awaits a durable commit. */
     bool hasPendingCommit() const;
 
+    /** @brief Increments with every accepted slot mutation (save or clear). */
+    std::uint32_t changeRevision() const { return changeRevision_; }
+
     /** @brief Stages every queued slot into the storage update the caller opened (D-04). */
     bool stage();
 
@@ -92,6 +95,7 @@ private:
     bool deferredWrites_ = false;
     std::array<std::array<std::uint8_t, kRecordBytes>, kCustomGrooveSlotCount> queuedRecords_{};
     std::array<bool, kCustomGrooveSlotCount> queuedSlots_{};
+    std::uint32_t changeRevision_ = 0U;
 
     /** @brief Cached name and existence of one slot. */
     struct SlotCache final {

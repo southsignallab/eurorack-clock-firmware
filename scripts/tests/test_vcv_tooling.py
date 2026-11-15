@@ -114,7 +114,11 @@ class VcvManifestTests(unittest.TestCase):
         self.assertIn("keyboardLeftShiftHeld", shell)
         self.assertIn("keyboardRightShiftHeld", shell)
         self.assertIn("keyboardTapHeld", shell)
-        self.assertIn("setKeyboardShiftHeld", shell)
+        # Key handling lives in the Rack-independent, host-tested keyboard_controls module.
+        self.assertIn('#include "keyboard_controls.h"', shell)
+        self.assertIn("applyKeyboardEvent", shell)
+        self.assertIn("setKeyboardHeldControls", shell)
+        self.assertNotIn("setKeyboardShiftHeld", shell)
         self.assertNotIn("activityHoldSeconds", shell)
         self.assertNotIn("0.075F", shell)
         self.assertIn("std::abs(event.mouseDelta.y)", shell)

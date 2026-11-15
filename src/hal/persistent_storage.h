@@ -133,6 +133,15 @@ public:
     /** @brief Installs the scheduler interlock consulted before every physical commit. */
     void setCommitGate(FlashCommitGate* gate) { commitGate_ = gate; }
 
+#ifdef CLOCK_SIMULATOR
+    /**
+     * @brief Copies the currently staged image without committing it (simulator hosts).
+     * @param destination Buffer of kCapacityBytes bytes.
+     * @return False when no update is open.
+     */
+    bool copyStagedImageForSimulator(std::array<std::uint8_t, kCapacityBytes>& destination) const;
+#endif
+
 #ifdef CLOCK_HOST_TEST
     /** @brief Resets both simulated Flash sectors to the erased value 0xFF. */
     static void resetForTest();

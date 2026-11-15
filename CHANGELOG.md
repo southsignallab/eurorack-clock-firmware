@@ -14,7 +14,8 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 - All settings stores (CURRENT, presets, Custom Grooves, Sequencer patterns and step expression) now commit through one coordinator in **one** Flash transaction, so one sector erase covers every pending change instead of up to four.
 - Ordinary edits are written 3 s after the **last** change, but no later than 30 s after the first unsaved change. Previously the Sequencer banks committed 3 s after the first change even while editing continued, which erased a sector about every 3 s during long edits. Explicit saves (presets, Custom Grooves) are still written at the next opportunity.
-- A failed commit is no longer repeated in every foreground pass. Retries back off 1 → 2 → 4 → 8 → 16 → 32 → 60 s; the Performance screen shows **SAVE ERROR** after each failure. Pending changes stay in memory.
+- A failed commit is no longer repeated in every foreground pass. Retries follow after 1, 2, 4, 8, 16 and 32 s; the Performance screen shows **SAVE ERROR** after each failure. Pending changes stay in memory.
+- After the last retry fails, CLOCK stops writing until the stored data changes again (settings, presets, Custom Grooves or Sequencer patterns) or the module restarts, so a worn sector is not erased indefinitely; until then **SAVE ERROR** appears for 3 s after every front-panel action. The next change starts a new series with the normal quiet period. Previously the retries continued every 60 s.
 - Immediately before a sector erase, the scheduler interlock checks the engine and opens a commit window under one interrupt lock. A RUN/START/RESTART edge or an auto-start on lock inside that window starts transport right after the commit instead of during it.
 
 ### Changed: faster boot
@@ -24,7 +25,7 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 ### Fix: downgrade no longer overwrites newer settings
 
-- A Flash slot with an intact header in an unknown format or size (written by newer firmware) was treated as empty, so the first autosave after a downgrade overwrote it. Such a slot now blocks every write while it holds the newest generation; the Performance screen shows **SAVE LOCKED**, and the firmware keeps running with the newest settings it can read. Only the confirmed **FACTORY RESET** replaces it.
+- A Flash slot with an intact header in an unknown format or size (written by newer firmware) was treated as empty, so the first autosave after a downgrade overwrote it. Such a slot now blocks every write while it holds the newest generation; the Performance screen shows **UPDATE FIRMWARE**, and the firmware keeps running with the newest settings it can read. Only the confirmed **FACTORY RESET** replaces it.
 
 ### Fix: factory reset clears every store
 
@@ -69,6 +70,22 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 - The commit gate asks the engine (`ClockEngine::isPlaying()`, read under an interrupt lock) immediately before each store, not only the foreground transport field. The scheduler ISR can start the engine mid-pass (RUN level, START/RESTART input, lock acquisition); a sector commit then stalled a running engine.
 - A queued ISR transport transition is adopted only while it still matches the engine, so a front-panel STOP that overtook a RUN start no longer leaves the display on PLAY with a stopped engine.
+
+### Fix: Humanize keeps close Custom Groove events apart (#6)
+
+- ONE CLOCK Humanize derived its safe range from the factory groove table only, so signed Custom Groove offsets were ignored. With a tight Custom Groove (for example `[-120, +120]` at 100 %, Swing 50, at fast rates) two adjacent events could swap order or collapse into one gate. The range now follows the smallest event spacing of the active Custom Groove or editor preview, including Rotation, Amount and the Swing clamp; it is computed when the pattern or configuration changes, never in the scheduler tick.
+- The case reported in #6 (120 BPM, CLOCK ×1, Gate 100 ms, Custom Groove `[-120, +120]` at 100 %) already produced two rising edges; the gate is limited by the actual distance to the next event. A regression test now checks the reported edge times.
+
+### Fix: external TAP after 71.6 minutes (#8)
+
+- Tap Tempo now times panel and input taps in one microsecond time base with unsigned differences. Previously an input tap's microsecond timestamp, which wraps after about 71.6 minutes, was compared with milliseconds; afterwards external TAP pulses no longer set a tempo, and mixed panel and input taps produced wrong intervals.
+
+### Fix: VCV Rack port and simulator (#9, #10, #11, #13)
+
+- VCV: saving a patch stores the live settings, including changes that the firmware has accepted but not yet committed (commits wait for STOP). Previously a patch saved while playing, or right after an edit, could restore older settings.
+- VCV: the persistence mirror file is written by a worker thread; Rack's audio thread performs no file operations.
+- VCV: releasing T, Enter/E, P, S or Backspace while Ctrl, Alt or Super is held now releases the virtual control. Previously TAP, the encoder push, PLAY or STOP could stay held.
+- Simulator: time advances shorter than one 50-µs scheduler tick are carried into the next advance. Previously the remainder was dropped, so wall/input time and engine time drifted apart (1000 × 25 µs fired no scheduler tick).
 
 ### Build: SSD1315 is the default display profile
 
@@ -245,6 +262,7 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 - Add a read-only **SUPPORT CLOCK** root-menu page with the current GitHub Sponsors and Ko-fi destinations.
 - Add a canonical `docs/SUPPORT.md` source and generated Wiki page.
 - Add the user-provided Ko-fi QR code to the maintained development manual without rewriting frozen 1.0/1.1 release manuals.
+- Remove GitHub Sponsors: support goes through Ko-fi only. The **SUPPORT CLOCK** page shows the `KO-FI` row alone; `.github/FUNDING.yml`, `README.md`, `README_VCV.md`, `docs/SUPPORT.md`, the User Guide and the maintained manual no longer name the personal Sponsors page. Release history and frozen release manuals are unchanged.
 - Use `https://ko-fi.com/southsignallab` as the only Ko-fi address: the **SUPPORT CLOCK** page (`KO-FI` row), `.github/FUNDING.yml`, `README.md`, `README_VCV.md`, `docs/SUPPORT.md` and the User Guide. The maintained manual's Ko-fi link and QR code are updated separately; frozen release manuals are unchanged.
 
 ### VCV Rack edition
@@ -326,6 +344,28 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 - Document the Windows prerequisites of the local check suite and the manual build in `docs/DEVELOPER_README.md` (WSL2 for sanitizers, UCRT64 before Git's `mingw64` on `PATH`, Poppler, LibreOffice, Ubuntu fonts).
 - Use `https://github.com/southsignallab/eurorack-clock-firmware` in the maintained manual's source-repository link, the release packaging and release notes, the manual check, the VCV plugin metadata, the Wiki builder default and `docs/WIKI.md`. Frozen release manuals keep the address of their release; the firmware update QR code and the documents that describe it follow with the firmware change.
 - Name the inputs `IN 1` and `IN 2` with their factory roles SYNC and RESET in the introduction of manual chapter 2.
+- Name the inputs the same way in manual chapter 1 and in the specifications table of chapter 24, which marks the pins PA8/PA9 as those of the DIY Blackpill build.
+- Leave space between the wrapped repository and Ko-fi addresses and their QR codes in the manual: the QR paragraphs use full line height, so the images no longer rise into the text above.
+- Point the update address in `scripts/check_documentation.py`, the User Guide and its chapter files and `docs/PROJECT_IDENTITY.md` to `https://southsignallab.com/clock/firmware`; the project identity page names the canonical repository and notes that CFF/CodeMeta do not carry it yet.
+- Describe the display profiles of `platformio.ini` in the Developer Guide: SPI SSD1315 as the default and release profile, SPI SSD1306 and its `blackpill_f401cc_spi` alias, and the base environment with the `config.h` defaults. The guide no longer calls the I2C transport current or SPI planned.
+- Add state diagrams for automatic transport start (AUTOSTART, front-panel and input roles, LOSS STOP) and for tempo ownership with `SOURCE = AUTO` to the User Guide chapter on external inputs.
+- Show the **SAVE ERROR** and **UPDATE FIRMWARE** notices as new screenshots (`performance-save-error`, `performance-update-firmware`) in the User Guide.
+
+### Changed: firmware update QR code
+
+- `INFO → UPDATES` encodes `https://southsignallab.com/clock/firmware` as a version-3 QR code (error correction M, 29 modules at 2 px = 58 px, 3-px quiet zone in the white 64 × 64 field) instead of the version-2 code for `https://github.com/napolitano`. The rows are generated with `scripts/generate_manual_qr_codes.py`; a test compares them with the encoder output. Scanning on the module is not yet verified.
+
+### Changed: downgrade lock text
+
+- The downgrade lock shows **UPDATE FIRMWARE** instead of **SAVE LOCKED**; the text fits the notice banner with margin in the small font.
+
+### Build and release tooling
+
+- The release workflow stops before building when the firmware version is a stable version whose tag `v<version>` already exists on another commit (`python scripts/version.py --require-unreleased`). A released version is rebuilt from its tag.
+- Rename the screenshot contract for untypeset manuals from `LEGACY_DIRECT_SCREENSHOTS` to `PRE_TYPESET_SCREENSHOTS`: it is the contract of the working manual before the typeset cover, not that of a frozen release manual.
+- Add `.gitattributes` with `*.svg text eol=lf`: generated SVGs are compared byte for byte, and a Windows checkout with `core.autocrlf=true` converted them to CRLF and failed the manual checks.
+- Remove the entry for an untracked local folder from `.gitignore`; local-only folders belong in `.git/info/exclude`. The repository-address scan now lists files through Git instead of naming local folders.
+- Add a regression test with several pending saves in different preset and Custom Groove slots across a blocked, a deferred and a failed commit (#7).
 
 ## [1.1.0] - 2026-09-23
 

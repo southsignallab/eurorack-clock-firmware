@@ -1,0 +1,7 @@
+# Author: Axel Napolitano
+# License: PolyForm-Noncommercial-1.0.0
+# Line-ending rules that must hold on every checkout, independent of core.autocrlf.
+
+# Generated SVG assets are compared byte for byte with their generator output
+# and with the copies embedded in the manual, so they stay LF on Windows too.
+*.svg text eol=lf

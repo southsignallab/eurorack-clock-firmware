@@ -75,3 +75,5 @@ git push origin v<version>
 ```
 
 The workflow validates that the tag matches `src/version.h`, runs all release gates, builds the five ARM images, creates the manual and legal payload, uploads the complete `dist/` directory as a workflow artifact, and only then creates the GitHub Release.
+
+A stable version is released once. If its tag `v<version>` already exists on another commit, the workflow stops before any build with `Version <version> is already released as tag v<version>`: the release path regenerates the manual screenshots from the checked-out firmware, so a later source would put screenshots of other firmware into the frozen manual. Rebuild a released version from its tag, or raise `CLOCK_FIRMWARE_VERSION` in `src/version.h` before releasing new work. The same check runs locally with `python scripts/version.py --require-unreleased`. Prerelease versions are not affected.

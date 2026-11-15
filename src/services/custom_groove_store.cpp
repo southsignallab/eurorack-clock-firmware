@@ -45,6 +45,7 @@ CustomGrooveStore::CustomGrooveStore(
 bool CustomGrooveStore::writeRecord(
     const std::uint8_t slotIndex, const std::array<std::uint8_t, kRecordBytes>& record) {
     slotCache_[slotIndex].cached = false;
+    ++changeRevision_;
     if (!deferredWrites_) {
         return storage_.writeBytes(slotOffset(slotIndex), record.data(), record.size());
     }

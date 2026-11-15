@@ -46,4 +46,29 @@ std::int16_t customGrooveOffset256(
     std::uint8_t amountPercent,
     std::uint8_t rotation);
 
+/** One nominal event interval in the Q16 event-spacing scale. */
+inline constexpr std::uint32_t kCustomGrooveSpacingQ16One = 65536U;
+
+/**
+ * @brief Returns the smallest distance between two adjacent shaped Custom Groove events.
+ *
+ * Mirrors the scheduler's Custom Groove shaping: signed offsets scaled by Amount and
+ * rotated, the odd-event Swing delay added, and the combined offset clamped to half an
+ * interval. The first interval after the epoch, where a negative offset is clamped to
+ * the epoch, is included. Rounding is conservative: the scheduled spacing is never
+ * smaller than the returned value. Bounded by 2 x 64 pattern steps; foreground only.
+ *
+ * @param pattern Durable or preview pattern; an invalid pattern contributes no offsets.
+ * @param amountPercent Groove Amount, 0..100 percent (larger values are clamped).
+ * @param rotation Pattern rotation in steps.
+ * @param swingPercent Channel Swing, 0..50 percent (larger values are clamped).
+ * @return Spacing as a fraction of one nominal interval, in units of
+ *         1/kCustomGrooveSpacingQ16One; 0..2 x kCustomGrooveSpacingQ16One.
+ */
+std::uint32_t customGrooveMinimumSpacingQ16(
+    const CustomGroovePattern& pattern,
+    std::uint8_t amountPercent,
+    std::uint8_t rotation,
+    std::uint8_t swingPercent);
+
 }  // namespace clockfw

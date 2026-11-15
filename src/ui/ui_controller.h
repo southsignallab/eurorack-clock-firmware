@@ -125,11 +125,18 @@ public:
     /** @brief Returns current navigation state for diagnostics and tests. */
     const NavigationState& navigation() const;
 
-    /** @brief Feeds an externally captured TAP edge into the normal Tap Tempo estimator. */
-    void registerExternalTapTempo(std::uint32_t timestampMs);
+    /**
+     * @brief Feeds an externally captured TAP edge into the normal Tap Tempo estimator.
+     * @param timestampUs Capture time of the edge in the wrapping TIM5 microsecond time base.
+     * @param nowMs Current monotonic time in milliseconds, for display and persistence timing.
+     */
+    void registerExternalTapTempo(std::uint32_t timestampUs, std::uint32_t nowMs);
 
-    /** @brief Shows SAVE ERROR or SAVE LOCKED on the Performance screen for a few seconds. */
+    /** @brief Shows SAVE ERROR or UPDATE FIRMWARE on the Performance screen for a few seconds. */
     void showPersistenceNotice(PersistenceNotice notice, std::uint32_t nowMs);
+
+    /** @brief Increments with every control sample that carries a front-panel action. */
+    std::uint32_t controlActivityRevision() const { return controlActivityRevision_; }
 
     /** @brief Seeds pseudo-random human-readable default names for this boot session. */
     void seedGeneratedNames(std::uint32_t seed);
@@ -173,8 +180,15 @@ private:
     /** @brief Stops transport and resets the master/global channel phase. */
     void stopTransport(std::uint32_t nowMs);
 
-    /** @brief Feeds one tap timestamp into the rolling tempo estimator and visual tap sequence. */
-    void registerTapTempo(std::uint32_t nowMs);
+    /**
+     * @brief Feeds one tap into the rolling tempo estimator and visual tap sequence.
+     * @param nowMs Current monotonic time in milliseconds, for display and persistence timing.
+     * @param tapUs Tap time in the wrapping microsecond time base shared by panel and input taps.
+     */
+    void registerTapTempo(std::uint32_t nowMs, std::uint32_t tapUs);
+
+    /** @brief Ends a Tap Tempo sequence once its interval limit has passed, in microseconds. */
+    void serviceTapTempoSequence(std::uint32_t nowUs);
 
     /** @brief Advances/clears the non-blocking Performance-screen Tap Tempo animation. */
     void serviceTapTempoFeedback(std::uint32_t nowMs);
@@ -196,7 +210,7 @@ private:
     /** @brief Installs the active pattern and step expression of every channel into the engine. */
     void reloadSequencerBanksIntoEngine();
 
-    /** @brief Hides the SAVE ERROR / SAVE LOCKED notice once its display time has elapsed. */
+    /** @brief Hides the SAVE ERROR / UPDATE FIRMWARE notice once its display time has elapsed. */
     void servicePersistenceNotice(std::uint32_t nowMs);
 
     /** @brief Opens a text settings page at a specific row and resets edit/scroll state. */
@@ -424,7 +438,7 @@ private:
     NavigationState navigation_{};
 
     bool tapVisualSequenceActive_ = false;
-    std::uint32_t lastTapVisualAtMs_ = 0U;
+    std::uint32_t lastTapAtUs_ = 0U;
     std::uint32_t tapIndicatorStartedAtMs_ = 0U;
     std::uint32_t externalTempoNoticeShownAtMs_ = 0U;
     std::uint32_t persistenceNoticeShownAtMs_ = 0U;
@@ -450,6 +464,7 @@ private:
     bool displayDimmed_ = false;
     bool displayPoweredOff_ = false;
     std::uint32_t lastUserActivityAtMs_ = 0U;
+    std::uint32_t controlActivityRevision_ = 0U;
     std::uint32_t lastScreensaverFrameAtMs_ = 0U;
     std::uint32_t screensaverFrameIndex_ = 0U;
     std::uint32_t lastExternalInputActivitySequence_ = 0U;

@@ -40,14 +40,25 @@ std::uint32_t PersistenceCoordinator::combinedRevision() const {
     return state_.changeRevision() + patterns_.changeRevision() + steps_.changeRevision();
 }
 
+std::uint32_t PersistenceCoordinator::storedDataRevision() const {
+    return combinedRevision() + grooves_.changeRevision();
+}
+
 void PersistenceCoordinator::recordFailure(const std::uint32_t nowMs, const bool locked) {
-    if (consecutiveFailures_ < UINT8_MAX) {
-        ++consecutiveFailures_;
+    static_assert(config::kPersistenceRetryCount < UINT8_MAX, "failure counter must not wrap");
+    // Bounded by kPersistenceRetryCount + 1: no attempt follows the last retry.
+    ++consecutiveFailures_;
+    status_ = locked ? Status::SaveLocked : Status::SaveError;
+    ++noticeRevision_;
+    if (consecutiveFailures_ > config::kPersistenceRetryCount) {
+        // W-031: stop erasing a sector that keeps failing; wait for new data.
+        retriesExhausted_ = true;
+        retryScheduled_ = false;
+        exhaustedRevision_ = storedDataRevision();
+        return;
     }
     retryAtMs_ = nowMs + retryDelayMs(consecutiveFailures_);
     retryScheduled_ = true;
-    status_ = locked ? Status::SaveLocked : Status::SaveError;
-    ++noticeRevision_;
 }
 
 bool PersistenceCoordinator::commitAll(const std::uint32_t nowMs) {
@@ -79,10 +90,34 @@ bool PersistenceCoordinator::commitAll(const std::uint32_t nowMs) {
     steps_.markCommitted();
     consecutiveFailures_ = 0U;
     retryScheduled_ = false;
+    retriesExhausted_ = false;
     debounceActive_ = false;
     status_ = Status::Ok;
     return storage_.lastCommitOutcome() == hal::CommitOutcome::Committed;
 }
+
+#ifdef CLOCK_SIMULATOR
+bool PersistenceCoordinator::snapshotImageForSimulator(
+    std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>& image) {
+    if (hasPendingCommit() && !storage_.writeLocked() && storage_.beginUpdate()) {
+        const bool staged =
+            grooves_.stage() && state_.stagePendingRecords(true) && patterns_.stage() && steps_.stage();
+        const bool copied = staged && storage_.copyStagedImageForSimulator(image);
+        storage_.cancelUpdate();
+        if (copied) {
+            return true;
+        }
+    }
+    return storage_.readBytes(0U, image.data(), image.size());
+}
+
+std::uint64_t PersistenceCoordinator::snapshotRevisionForSimulator() const {
+    // A change key, not a counter: any component change changes the value.
+    const std::uint64_t pending = hasPendingCommit() ? 1U : 0U;
+    return (static_cast<std::uint64_t>(hal::PersistentStorage::contentRevision()) << 32U) ^
+        (static_cast<std::uint64_t>(storedDataRevision()) << 1U) ^ pending;
+}
+#endif
 
 bool PersistenceCoordinator::service(const std::uint32_t nowMs, const bool allowFlashWrite) {
     const bool locked = storage_.writeLocked();
@@ -93,6 +128,7 @@ bool PersistenceCoordinator::service(const std::uint32_t nowMs, const bool allow
         status_ = Status::Ok;
         consecutiveFailures_ = 0U;
         retryScheduled_ = false;
+        retriesExhausted_ = false;
     }
 
     if (!hasPendingCommit()) {
@@ -101,8 +137,19 @@ bool PersistenceCoordinator::service(const std::uint32_t nowMs, const bool allow
             status_ = Status::Ok;
             consecutiveFailures_ = 0U;
             retryScheduled_ = false;
+            retriesExhausted_ = false;
         }
         return false;
+    }
+
+    if (retriesExhausted_) {
+        if (storedDataRevision() == exhaustedRevision_) {
+            return false;
+        }
+        // The stored data changed: start a new series with a fresh quiet period.
+        retriesExhausted_ = false;
+        consecutiveFailures_ = 0U;
+        debounceActive_ = false;
     }
 
     const std::uint32_t revision = combinedRevision();

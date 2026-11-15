@@ -255,30 +255,30 @@ std::uint64_t ClockEngine::calculateBaseIntervalUs(const std::size_t channelInde
     return std::max<std::uint64_t>(intervalUs, config::kSchedulerTickUs);
 }
 
-std::uint64_t ClockEngine::calculateShortestActualIntervalUs(
-    const std::size_t channelIndex) const {
-    const ChannelConfig& channel = configuration_.channels[channelIndex];
-    const std::uint64_t baseIntervalUs = calculateBaseIntervalUs(channelIndex);
-    const std::uint8_t swingPercent = std::min<std::uint8_t>(channel.common.swingPercent, 50U);
-    const std::uint64_t swingDelayUs = (baseIntervalUs * swingPercent) / 100ULL;
-    const std::uint16_t groovePermille = groove::maximumDelayPermille(
-        channel.common.groove.preset,
-        channel.common.groove.amountPercent);
-    const std::uint64_t grooveDelayUs = (baseIntervalUs * groovePermille) / 1000ULL;
-    const std::uint64_t deterministicDelayUs = std::min<std::uint64_t>(
-        swingDelayUs + grooveDelayUs,
-        baseIntervalUs > config::kSchedulerTickUs
-            ? baseIntervalUs - config::kSchedulerTickUs
-            : 0U);
-    const std::uint64_t shortestShapedIntervalUs = baseIntervalUs - deterministicDelayUs;
-    const std::uint64_t humanizePairAllowanceUs =
-        static_cast<std::uint64_t>(effectiveHumanizeUs(channelIndex)) * 2ULL;
-    return shortestShapedIntervalUs > humanizePairAllowanceUs
-        ? shortestShapedIntervalUs - humanizePairAllowanceUs
-        : config::kSchedulerTickUs;
+std::uint32_t ClockEngine::calculateCustomGrooveSpacingQ16(
+    const std::size_t channelIndex,
+    const ChannelConfig& channel,
+    const bool previewActive) const {
+    // Same pattern selection as calculateEventPositionQ32(). Foreground only: the
+    // library, previews and channel configuration have no writer in interrupt context.
+    if (previewActive) {
+        return customGrooveMinimumSpacingQ16(
+            customGroovePreviews_[channelIndex],
+            customGroovePreviewAmount_[channelIndex],
+            customGroovePreviewRotation_[channelIndex],
+            channel.common.swingPercent);
+    }
+    const GrooveSettings& grooveSettings = channel.common.groove;
+    if (grooveSettings.preset == GroovePreset::Custom &&
+        grooveSettings.customSlot < kCustomGrooveSlotCount) {
+        return customGrooveMinimumSpacingQ16(
+            customGrooves_[grooveSettings.customSlot],
+            grooveSettings.amountPercent,
+            grooveSettings.rotation,
+            channel.common.swingPercent);
+    }
+    return kCustomGrooveSpacingQ16One;
 }
-
-
 
 std::uint16_t ClockEngine::effectiveHumanizeUs(const std::size_t channelIndex) const {
     if (configuration_.operatingMode != OperatingMode::UnifiedClock ||
@@ -288,18 +288,32 @@ std::uint16_t ClockEngine::effectiveHumanizeUs(const std::size_t channelIndex) c
 
     const ChannelConfig& channel = configuration_.channels[channelIndex];
     const std::uint64_t baseIntervalUs = calculateBaseIntervalUs(channelIndex);
-    const std::uint8_t swingPercent = std::min<std::uint8_t>(channel.common.swingPercent, 50U);
-    const std::uint64_t swingDelayUs = (baseIntervalUs * swingPercent) / 100ULL;
-    const std::uint16_t groovePermille = groove::maximumDelayPermille(
-        channel.common.groove.preset,
-        channel.common.groove.amountPercent);
-    const std::uint64_t grooveDelayUs = (baseIntervalUs * groovePermille) / 1000ULL;
-    const std::uint64_t totalDelayUs = std::min<std::uint64_t>(
-        swingDelayUs + grooveDelayUs,
-        baseIntervalUs > config::kSchedulerTickUs
-            ? baseIntervalUs - config::kSchedulerTickUs
-            : 0U);
-    const std::uint64_t shortestShapedIntervalUs = baseIntervalUs - totalDelayUs;
+    std::uint64_t shortestShapedIntervalUs = baseIntervalUs;
+    const GrooveSettings& grooveSettings = channel.common.groove;
+    if (customGroovePreviewActive_[channelIndex] ||
+        (grooveSettings.preset == GroovePreset::Custom &&
+         grooveSettings.customSlot < kCustomGrooveSlotCount)) {
+        // Custom offsets are signed, so the factory maximum-delay bound does not
+        // apply. The foreground-cached spacing is a Q16 fraction of the interval:
+        // one multiply and one shift, no division in scheduler context.
+        const std::uint64_t spacingQ16 = customGrooveSpacingQ16_[channelIndex];
+        shortestShapedIntervalUs = baseIntervalUs <= UINT64_MAX / (2ULL * kCustomGrooveSpacingQ16One)
+            ? (baseIntervalUs * spacingQ16) >> 16U
+            : (baseIntervalUs >> 16U) * spacingQ16;
+    } else {
+        const std::uint8_t swingPercent = std::min<std::uint8_t>(channel.common.swingPercent, 50U);
+        const std::uint64_t swingDelayUs = (baseIntervalUs * swingPercent) / 100ULL;
+        const std::uint16_t groovePermille = groove::maximumDelayPermille(
+            grooveSettings.preset,
+            grooveSettings.amountPercent);
+        const std::uint64_t grooveDelayUs = (baseIntervalUs * groovePermille) / 1000ULL;
+        const std::uint64_t totalDelayUs = std::min<std::uint64_t>(
+            swingDelayUs + grooveDelayUs,
+            baseIntervalUs > config::kSchedulerTickUs
+                ? baseIntervalUs - config::kSchedulerTickUs
+                : 0U);
+        shortestShapedIntervalUs = baseIntervalUs - totalDelayUs;
+    }
     if (shortestShapedIntervalUs <= config::kSchedulerTickUs) {
         return 0U;
     }

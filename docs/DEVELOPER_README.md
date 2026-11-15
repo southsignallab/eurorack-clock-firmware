@@ -196,13 +196,23 @@ The build must also pass the post-link memory gate:
 
 A memory-budget violation fails the build rather than printing a warning.
 
-## 11. Windows: build the current SPI OLED firmware
+## 11. Windows: display profiles
+
+SPI is the only production display transport. `platformio.ini` provides these firmware environments:
+
+| Environment | Display profile |
+| --- | --- |
+| `blackpill_f401cc_spi_ssd1315` | Default environment (`default_envs`) and base of every `release_*` image: 4-wire SPI with an SSD1315 controller, the Waveshare 24102 OLED module of the reference board |
+| `blackpill_f401cc_spi_ssd1306` | 4-wire SPI with an SSD1306 controller, for other 128 × 64 OLED modules |
+| `blackpill_f401cc_spi` | Backward-compatible alias of `blackpill_f401cc_spi_ssd1306` |
+| `blackpill_f401cc` | Base environment without display flags; `src/config.h` then selects SPI and SSD1306 |
 
 ```powershell
 pio run -e blackpill_f401cc_spi_ssd1315
+pio run -e blackpill_f401cc_spi_ssd1306
 ```
 
-SPI is the production display transport. Both profiles use PA5=OLED `CLK`, PA7=OLED `DIN` (SPI MOSI; `SDA` on the earlier prototype module), PA4=`CS`, PB9=`DC` and PB15=active-low `RES`; `blackpill_f401cc_spi_ssd1306` selects SSD1306 and `blackpill_f401cc_spi_ssd1315` selects SSD1315. The write-only OLED bus keeps SPI1 in the proven normal two-line master mode; only SCK and MOSI are configured as alternate-function pins, so PA6/MISO remains unconfigured and free. The legacy I2C transport remains host-regression code only because PB6/PB7 are dedicated to the encoder on final hardware.
+Both profiles use PA5=OLED `CLK`, PA7=OLED `DIN` (SPI MOSI; `SDA` on the earlier prototype module), PA4=`CS`, PB9=`DC` and PB15=active-low `RES`; `blackpill_f401cc_spi_ssd1306` selects SSD1306 and `blackpill_f401cc_spi_ssd1315` selects SSD1315. The write-only OLED bus keeps SPI1 in the proven normal two-line master mode; only SCK and MOSI are configured as alternate-function pins, so PA6/MISO remains unconfigured and free. The legacy I2C transport remains host-regression code only because PB6/PB7 are dedicated to the encoder on final hardware.
 
 ## 12. Windows: upload through DFU
 
@@ -467,10 +477,10 @@ gcov --version
 ## 22. Linux build, tests, coverage, and upload
 
 ```bash
-# Current I2C prototype
+# Base environment (SPI, SSD1306 by the config.h defaults)
 pio run -e blackpill_f401cc
 
-# Planned SPI display transport
+# Default display profile (SPI, SSD1315), also used for release images
 pio run -e blackpill_f401cc_spi_ssd1315
 
 # Production core through PlatformIO Unity
@@ -581,7 +591,7 @@ python scripts/run_host_tests.py --skip-sanitizers
 python scripts/run_host_tests.py --sanitizers-only
 ```
 
-And compile the alternate display transport:
+And compile the default display profile (SPI, SSD1315):
 
 ```bash
 pio run -e blackpill_f401cc_spi_ssd1315

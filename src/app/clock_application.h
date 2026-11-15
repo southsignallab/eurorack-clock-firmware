@@ -72,6 +72,9 @@ public:
 
     /** @brief Returns whether the real-time engine is running, for host regression tests. */
     bool enginePlayingForTest() const;
+
+    /** @brief Returns the foreground internal/fallback BPM for host regression tests. */
+    std::uint16_t bpmForTest() const;
 #endif
 
 #ifdef CLOCK_SIMULATOR
@@ -110,6 +113,17 @@ public:
 
     /** @brief Returns current UI navigation state for host integration tests. */
     const ui::NavigationState& navigationForSimulator() const;
+
+    /**
+     * @brief Builds the persistence image including accepted pending operations (host patches).
+     * @param image Receives the complete logical image.
+     * @return False only when the committed image cannot be read.
+     */
+    bool persistenceSnapshotForSimulator(
+        std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>& image);
+
+    /** @brief Changes whenever persistenceSnapshotForSimulator() may return different bytes. */
+    std::uint64_t persistenceSnapshotRevisionForSimulator() const;
 #endif
 
 private:
@@ -192,6 +206,8 @@ private:
     services::ExternalSyncController externalSyncController_;
     services::PersistenceCoordinator persistenceCoordinator_;
     std::uint32_t announcedPersistenceNotice_ = 0U;
+    /** Control-activity revision seen by the last persistence pass (W-311 reminder). */
+    std::uint32_t remindedControlActivity_ = 0U;
     ui::UiRenderer renderer_;
     ui::UiController uiController_;
     bool appliedEncoderDirectionReversed_ = false;

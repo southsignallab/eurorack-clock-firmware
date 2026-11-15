@@ -45,6 +45,9 @@ def load_memory_module():
 
 
 class VersionToolTests(unittest.TestCase):
+    GIT = ["git", "-c", "user.name=Release Test", "-c", "user.email=release@example.invalid",
+           "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false", "-c", "init.defaultBranch=main"]
+
     def run_version(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [PYTHON, str(ROOT / "scripts/version.py"), *args],
@@ -67,6 +70,70 @@ class VersionToolTests(unittest.TestCase):
         result = self.run_version("--check-tag", "v0.18.0")
         self.assertEqual(result.returncode, 2)
         self.assertIn("Version mismatch", result.stderr)
+
+    def make_tagged_repository(self, directory: Path, version: str) -> None:
+        """Create a Git repository whose first commit carries the tag v<version>."""
+        header = directory / "src" / "version.h"
+        header.parent.mkdir()
+        header.write_text(f'#pragma once\n#define CLOCK_FIRMWARE_VERSION "{version}"\n', encoding="utf-8")
+        for command in (["init", "-q"], ["add", "."], ["commit", "-q", "-m", "release"],
+                        ["tag", f"v{version}"]):
+            subprocess.run([*self.GIT, *command], cwd=directory, check=True, capture_output=True)
+
+    def commit_later_change(self, directory: Path) -> None:
+        """Add one commit after the tagged one, as on main after a release."""
+        (directory / "later.txt").write_text("work after the release\n", encoding="utf-8")
+        for command in (["add", "later.txt"], ["commit", "-q", "-m", "later"]):
+            subprocess.run([*self.GIT, *command], cwd=directory, check=True, capture_output=True)
+
+    def run_release_source_check(self, directory: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [PYTHON, str(ROOT / "scripts/version.py"), "--require-unreleased"],
+            cwd=directory,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def test_release_source_check_stops_for_an_already_released_stable_version(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            self.make_tagged_repository(directory, "1.1.0")
+            self.commit_later_change(directory)
+            result = self.run_release_source_check(directory)
+        self.assertEqual(result.returncode, 3)
+        self.assertIn("1.1.0 is already released as tag v1.1.0", result.stderr)
+        self.assertIn("src/version.h", result.stderr)
+
+    def test_release_source_check_accepts_the_tagged_release_commit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            self.make_tagged_repository(directory, "1.2.0")
+            result = self.run_release_source_check(directory)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_release_source_check_accepts_a_version_without_tag(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            self.make_tagged_repository(directory, "1.2.0")
+            header = directory / "src" / "version.h"
+            header.write_text('#pragma once\n#define CLOCK_FIRMWARE_VERSION "1.3.0"\n', encoding="utf-8")
+            result = self.run_release_source_check(directory)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_release_source_check_ignores_prerelease_versions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            self.make_tagged_repository(directory, "1.2.0-rc.1")
+            self.commit_later_change(directory)
+            result = self.run_release_source_check(directory)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_release_workflow_stops_for_an_already_released_version_before_building(self) -> None:
+        workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+        check = "python scripts/version.py --require-unreleased"
+        self.assertIn(check, workflow)
+        self.assertLess(workflow.index(check), workflow.index("pio test -e native"))
 
     def test_missing_version_define_fails(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -106,10 +173,11 @@ class ProjectMetadataTests(unittest.TestCase):
         metadata = json.loads((ROOT / "codemeta.json").read_text(encoding="utf-8"))
         self.assertNotIn("identifier", metadata)
 
-    def test_repository_funding_exposes_github_and_kofi(self) -> None:
+    def test_repository_funding_exposes_kofi_only(self) -> None:
+        # W-313: support goes through ko-fi.com/southsignallab only.
         funding = (ROOT / ".github" / "FUNDING.yml").read_text(encoding="utf-8")
-        self.assertRegex(funding, r"(?m)^github:\s+napolitano\s*$")
         self.assertRegex(funding, r"(?m)^ko_fi:\s+southsignallab\s*$")
+        self.assertNotRegex(funding, r"(?m)^github:")
         self.assertNotRegex(funding, r"(?m)^patreon:")
 
     def test_doxygen_output_is_clean_checkout_safe(self) -> None:
@@ -670,19 +738,16 @@ class RepositoryPolicyTests(unittest.TestCase):
 REPOSITORY_URL = "https://github.com/southsignallab/eurorack-clock-firmware"
 OLD_REPOSITORY_PATTERN = re.compile(r"napolitano/eurorack-clock-firmware|github\.com/napolitano")
 # Places that keep the old address on purpose: release history, frozen
-# manuals and the firmware update QR code with the documents and the check
-# that describe it (changed together in W-310).
+# manuals and the manual check that validates them.
 OLD_REPOSITORY_EXCEPTIONS = (
     "CHANGELOG.md",
     "docs/releases/",
     "docs/manual/",
-    "src/",
-    "docs/USER_GUIDE.md",
-    "docs/PROJECT_IDENTITY.md",
-    "scripts/check_documentation.py",
     "scripts/check_user_manual.py",
     "scripts/tests/test_release_tooling.py",
 )
+#: On-device update address (W-044): fits QR version 3 on the 64-pixel display.
+MODULE_UPDATE_URL = "https://southsignallab.com/clock/firmware"
 TEXT_SUFFIXES = {".md", ".py", ".json", ".yml", ".yaml", ".cff", ".txt", ".cpp", ".h", ".ini", ".toml", ".cmake", ".html"}
 
 
@@ -697,6 +762,61 @@ def load_script(name: str):
     finally:
         sys.path.remove(str(ROOT / "scripts"))
     return module
+
+
+def repository_text_files() -> list[Path]:
+    """Return the repository's text files, without ignored local or generated files.
+
+    In a Git checkout the file list comes from Git (tracked plus untracked files
+    that no ignore rule covers). In an exported tree without Git metadata every
+    file is scanned except the generated build and tool directories.
+    """
+    if (ROOT / ".git").exists():
+        listing = subprocess.run(
+            ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+            cwd=ROOT,
+            capture_output=True,
+            check=True,
+        ).stdout.decode("utf-8")
+        candidates = [ROOT / name for name in listing.split("\0") if name]
+    else:
+        generated_roots = {".pio", "build", "coverage", "dist", "node_modules"}
+        candidates = []
+        for directory, subdirectories, files in os.walk(ROOT):
+            if Path(directory) == ROOT:
+                subdirectories[:] = [name for name in subdirectories if name not in generated_roots]
+            candidates.extend(Path(directory) / name for name in files)
+    return sorted(path for path in candidates if path.suffix.lower() in TEXT_SUFFIXES and path.is_file())
+
+
+# Retired support channel, assembled so this test does not match itself.
+RETIRED_SPONSORS_PATH = "/".join(("sponsors", "napolitano"))
+RETIRED_SPONSORS_NAME = " ".join(("GitHub", "Sponsors"))
+
+
+class SupportChannelTests(unittest.TestCase):
+    """W-313: outside the release history no file links the personal Sponsors page."""
+
+    def test_personal_sponsors_page_only_remains_in_release_history(self) -> None:
+        offenders = []
+        for path in repository_text_files():
+            posix = path.relative_to(ROOT).as_posix()
+            if posix.startswith(("CHANGELOG.md", "docs/releases/")):
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for number, line in enumerate(text.splitlines(), start=1):
+                if RETIRED_SPONSORS_PATH in line or RETIRED_SPONSORS_NAME.casefold() in line.casefold():
+                    offenders.append(f"{posix}:{number}")
+        self.assertEqual([], offenders)
+
+    def test_working_manual_names_kofi_as_the_only_support_channel(self) -> None:
+        import zipfile
+
+        with zipfile.ZipFile(ROOT / "docs" / "manual-source" / "clock-user-manual.odt") as archive:
+            content = archive.read("content.xml").decode("utf-8")
+        self.assertNotIn(RETIRED_SPONSORS_PATH, content)
+        self.assertNotIn(RETIRED_SPONSORS_NAME, content)
+        self.assertIn('xlink:href="https://ko-fi.com/southsignallab"', content)
 
 
 class RepositoryAddressTests(unittest.TestCase):
@@ -726,17 +846,15 @@ class RepositoryAddressTests(unittest.TestCase):
         self.assertIn(f'xlink:href="{REPOSITORY_URL}"', content)
         self.assertIsNone(OLD_REPOSITORY_PATTERN.search(content))
 
+    def test_documentation_check_and_documents_use_the_module_update_address(self) -> None:
+        self.assertEqual(MODULE_UPDATE_URL, load_script("check_documentation").UPDATE_URL)
+        for document in ("docs/USER_GUIDE.md", "docs/user-guide/15-settings-map.md", "docs/PROJECT_IDENTITY.md"):
+            with self.subTest(document=document):
+                self.assertIn(MODULE_UPDATE_URL, (ROOT / document).read_text(encoding="utf-8"))
+
     def test_old_repository_address_only_remains_in_the_documented_exceptions(self) -> None:
-        excluded_roots = {".git", ".pio", ".rag", ".claude", "build", "coverage", "dist", "node_modules"}
         offenders = []
-        paths = []
-        for directory, subdirectories, files in os.walk(ROOT):
-            if Path(directory) == ROOT:
-                subdirectories[:] = [name for name in subdirectories if name not in excluded_roots]
-            paths.extend(Path(directory) / name for name in files)
-        for path in sorted(paths):
-            if path.suffix.lower() not in TEXT_SUFFIXES:
-                continue
+        for path in repository_text_files():
             posix = path.relative_to(ROOT).as_posix()
             if posix.startswith(OLD_REPOSITORY_EXCEPTIONS):
                 continue

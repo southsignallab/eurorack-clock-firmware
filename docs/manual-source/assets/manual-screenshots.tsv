@@ -17,6 +17,8 @@ performance-external-unlocked	performance-external-unlocked-print	External clock
 performance-external-locked	performance-external-locked-print	External clock source with lock
 performance-auto-internal	performance-auto-internal-print	AUTO clock source using the internal master
 performance-auto-external	performance-auto-external-print	AUTO clock source locked to external timing
+performance-save-error	performance-save-error-print	SAVE ERROR notice after a failed Flash write
+performance-update-firmware	performance-update-firmware-print	UPDATE FIRMWARE notice for settings from newer firmware
 channel-overview-independent	channel-overview-independent-print	Independent-mode eight-channel overview
 channel-overview-one-clock	channel-overview-one-clock-print	Global overview in One Clock mode
 channel-overview-divider-bank	channel-overview-divider-bank-print	Global overview in Divider Bank mode
@@ -41,7 +43,7 @@ settings-master	settings-master-print	Master clock settings
 settings-preferences	settings-preferences-print	Preset settings
 settings-screensaver	settings-screensaver-print	Screensaver settings
 settings-info	settings-info-print	Firmware information
-settings-support	settings-support-print	Project support destinations
+settings-support	settings-support-print	Project support destination
 settings-licenses	settings-licenses-print	Licensing information
 settings-updates	settings-updates-print	Scannable update QR code
 settings-channel	settings-channel-print	Selected-channel group menu

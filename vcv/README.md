@@ -19,7 +19,7 @@ Implemented in this first slice:
 - the endless encoder classifies each mouse-down exclusively as vertical rotation or push, so a drag cannot also trigger a click while held push still reaches the production long-press path;
 - IN 1 / SYNC and IN 2 / RST use Rack-voltage hysteresis plus an allocation-free transition queue before the 20 kHz firmware boundary, so one-sample Rack triggers are not lost between 50 us scheduler ticks;
 - OUT 1..8 expose the actual logical gate states as **0/+5 V**, matching the hardware contract;
-- Rack patch state embeds CLOCK's complete logical persistence image instead of inventing a second preset/schema format;
+- Rack patch state embeds CLOCK's complete logical persistence image instead of inventing a second preset/schema format. The image includes live settings and accepted pending operations, because the firmware commits only while stopped; the audio thread publishes it without blocking and a worker thread writes the host mirror file, so `process()` performs no file operations;
 - the 10 HP Rack panel shows the KiCad-derived hardware engraving (`../docs/assets/front-panel/clock-front-panel.svg`) and places OLED, encoder, buttons, IN 1/IN 2, eight 3 mm activity LEDs and the 4x2 output matrix at the coordinates in `../sim/panel_layout.ini`; no independent Rack layout is maintained.
 
 Current limitation: the existing host HAL and `ClockApplication` callback boundary own process-global state. The experimental Rack shell therefore permits **one CLOCK instance per Rack process** and visibly disables additional instances rather than allowing silent cross-instance corruption. Multi-instance support requires a later host-HAL instance-context refactor; it is not papered over in this initial port.

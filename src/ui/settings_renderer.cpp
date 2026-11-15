@@ -67,28 +67,39 @@ void fitInformationalValue(
     std::snprintf(destination, destinationSize, "%s", kEllipsis);
 }
 
+/** Modules per side of the version-3 update QR symbol. */
+constexpr std::uint8_t kUpdateQrModules = 29U;
+
 /**
- * Version-2 QR payload for exactly: https://github.com/napolitano
- * Error correction: L. The 25x25 symbol is rendered at 2x inside a white
- * 64x64 field, leaving a 7-pixel quiet margin on every side.
+ * Version-3 QR payload for exactly: https://southsignallab.com/clock/firmware
+ * Error correction: M. The module address leads to the firmware releases
+ * (docs/PROJECT_IDENTITY.md).
+ * Generated with scripts/generate_manual_qr_codes.py (row y, bit x = module x;
+ * a host test compares it with the encoder output). The 29x29 symbol is
+ * rendered at 2x (58 px) inside a white 64x64 field, leaving a 3-pixel quiet
+ * margin on every side.
  */
-constexpr std::array<std::uint32_t, 25U> kUpdateQrRows{{
-    0x01FC5D7FUL, 0x01055741UL, 0x0174245DUL, 0x0174AC5DUL, 0x0174475DUL,
-    0x01056141UL, 0x01FD557FUL, 0x0000DD00UL, 0x019F9767UL, 0x01ADBE9DUL,
-    0x016389FFUL, 0x002B8220UL, 0x010D1BE3UL, 0x018E9A98UL, 0x0165FD5FUL,
-    0x0038D120UL, 0x009F8CE3UL, 0x01115B00UL, 0x01156A7FUL, 0x00918141UL,
-    0x001F965DUL, 0x00D2B85DUL, 0x01BB1D5DUL, 0x001DD741UL, 0x0127157FUL}};
+constexpr std::array<std::uint32_t, kUpdateQrModules> kUpdateQrRows{{
+    0x1FD4417FUL, 0x105A3341UL, 0x17456B5DUL, 0x1752225DUL, 0x174F1B5DUL,
+    0x10546241UL, 0x1FD5557FUL, 0x00183400UL, 0x1D2B41F9UL, 0x0D8EC98BUL,
+    0x05F0C3CFUL, 0x1352C295UL, 0x1051854BUL, 0x1FE7B0AEUL, 0x15E88DC3UL,
+    0x15A0C11EUL, 0x021C33F2UL, 0x0D1D8C29UL, 0x1228AFC7UL, 0x06B8A12FUL,
+    0x0FFB3BF7UL, 0x0314EF00UL, 0x035DB97FUL, 0x191BAF41UL, 0x0BF9AB5DUL,
+    0x102FEB5DUL, 0x1DB0DC5DUL, 0x16E4B841UL, 0x03D80F7FUL}};
 
 /** Draws the scannable update QR as a conventional black-on-white symbol. */
 void drawUpdateQr(hal::OledDisplay& display) {
     constexpr std::int16_t kFieldX = 32;
-    constexpr std::int16_t kQrX = 39;
-    constexpr std::int16_t kQrY = 7;
+    constexpr std::int16_t kFieldSize = 64;
+    constexpr std::int16_t kQrX = 35;
+    constexpr std::int16_t kQrY = 3;
     constexpr std::int16_t kScale = 2;
+    static_assert(kUpdateQrModules * kScale + 2 * (kQrX - kFieldX) == kFieldSize, "QR must be centred in its field");
+    static_assert(kQrY == kQrX - kFieldX, "equal quiet margin on every side");
 
-    display.fillRectangle(kFieldX, 0, 64, 64, hal::PixelColor::White);
+    display.fillRectangle(kFieldX, 0, kFieldSize, kFieldSize, hal::PixelColor::White);
     for (std::size_t y = 0U; y < kUpdateQrRows.size(); ++y) {
-        for (std::uint8_t x = 0U; x < 25U; ++x) {
+        for (std::uint8_t x = 0U; x < kUpdateQrModules; ++x) {
             if ((kUpdateQrRows[y] & (1UL << x)) == 0U) {
                 continue;
             }

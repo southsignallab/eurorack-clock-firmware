@@ -147,7 +147,14 @@ inline constexpr std::uint32_t kPersistenceRetryInitialMs = 1000UL;
 /** Retry delay ceiling after repeated commit failures (F-021). */
 inline constexpr std::uint32_t kPersistenceRetryMaximumMs = 60000UL;
 
-/** Display time of the SAVE ERROR / SAVE LOCKED notice on the Performance screen. */
+/**
+ * Retries after a failed first attempt (after 1, 2, 4, 8, 16 and 32 s). After the
+ * last one fails, nothing is retried until the stored data changes again or the
+ * module restarts (W-031), so a worn sector is not erased indefinitely.
+ */
+inline constexpr std::uint8_t kPersistenceRetryCount = 6U;
+
+/** Display time of the SAVE ERROR / UPDATE FIRMWARE notice on the Performance screen. */
 inline constexpr std::uint32_t kPersistenceNoticeMs = 3000UL;
 
 /** Absolute firmware-supported lower master-tempo bound. User limits may be stricter. */

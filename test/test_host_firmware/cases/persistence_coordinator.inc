@@ -293,6 +293,135 @@ void testCoordinatorBacksOffOnPersistentWriteFailure() {
     CHECK(reloaded.state.presetExists(0U));
 }
 
+namespace {
+/** Advances in 5-ms passes and returns the time of the next commit attempt, or 0 if none before @p untilMs. */
+std::uint32_t nextCommitAttemptMs(PersistenceRig& rig, std::uint32_t& now, const std::uint32_t untilMs) {
+    const std::uint32_t attemptsBefore = hal::PersistentStorage::commitAttemptCountForTest();
+    for (; now < untilMs; now += 5U) {
+        (void)rig.coordinator.service(now, true);
+        if (hal::PersistentStorage::commitAttemptCountForTest() != attemptsBefore) {
+            const std::uint32_t attemptMs = now;
+            now += 5U;
+            return attemptMs;
+        }
+    }
+    return 0U;
+}
+}  // namespace
+
+void testCoordinatorStopsRetryingAfterTheSixthRetry() {
+    // W-031/F-021: the first attempt plus six retries after 1, 2, 4, 8, 16 and
+    // 32 s; after that a failing sector is not erased again until the stored
+    // data changes or the module restarts. SAVE ERROR stays the status.
+    resetFakes();
+    PersistenceRig rig;
+    rig.begin();
+    CHECK(rig.state.savePreset(0U, "WORN", makeDefaultState()));
+    hal::PersistentStorage::failAllWritesForTest(true);
+    std::uint32_t now = 100U;
+    constexpr std::uint32_t kExpectedOffsetsMs[] = {0U, 1000U, 3000U, 7000U, 15000U, 31000U, 63000U};
+    std::uint32_t failure = 0U;
+    for (const std::uint32_t offsetMs : kExpectedOffsetsMs) {
+        CHECK_EQ(nextCommitAttemptMs(rig, now, 100U + 120000U), 100U + offsetMs);
+        ++failure;
+        CHECK_EQ(rig.coordinator.consecutiveFailures(), failure);
+        CHECK(rig.coordinator.status() == services::PersistenceCoordinator::Status::SaveError);
+        // The fifth and sixth failure still schedule a retry; the seventh does not.
+        CHECK(rig.coordinator.retriesExhausted() == (failure == 7U));
+    }
+    CHECK_EQ(hal::PersistentStorage::commitAttemptCountForTest(), 7U);
+    CHECK_EQ(rig.coordinator.noticeRevision(), 7U);
+    CHECK_EQ(nextCommitAttemptMs(rig, now, now + 10U * 60000U), 0U);  // ten quiet minutes
+    CHECK(rig.coordinator.status() == services::PersistenceCoordinator::Status::SaveError);
+    CHECK(rig.coordinator.hasPendingCommit());
+    CHECK_EQ(rig.coordinator.noticeRevision(), 7U);
+
+    // A new save starts a new series at once (explicit saves are urgent).
+    CHECK(rig.state.savePreset(1U, "AGAIN", makeDefaultState()));
+    const std::uint32_t changedAt = now;
+    CHECK_EQ(nextCommitAttemptMs(rig, now, now + 1000U), changedAt);
+    CHECK_EQ(rig.coordinator.consecutiveFailures(), 1U);
+    CHECK(!rig.coordinator.retriesExhausted());
+    hal::PersistentStorage::failAllWritesForTest(false);
+    bool committed = false;
+    while (!committed && now < changedAt + 2000U) {
+        committed = rig.coordinator.service(now, true);
+        now += 5U;
+    }
+    CHECK(committed);
+    CHECK(now - changedAt >= config::kPersistenceRetryInitialMs);
+    CHECK(rig.coordinator.status() == services::PersistenceCoordinator::Status::Ok);
+    PersistenceRig reloaded;
+    reloaded.begin();
+    CHECK(reloaded.state.presetExists(0U));
+    CHECK(reloaded.state.presetExists(1U));
+}
+
+namespace {
+/** Runs passes until the coordinator has given up retrying; returns false on timeout. */
+bool serviceUntilRetriesExhausted(PersistenceRig& rig, std::uint32_t& now) {
+    const std::uint32_t deadline = now + 120000U;
+    while (!rig.coordinator.retriesExhausted() && now < deadline) {
+        (void)rig.coordinator.service(now, true);
+        now += 5U;
+    }
+    return rig.coordinator.retriesExhausted();
+}
+
+/** Toggles one Sequencer gate so the pattern bank really changes. */
+void toggleFirstGate(PersistenceRig& rig, const std::uint32_t now) {
+    const bool gate = (rig.patterns.pattern(0U, 0U).gates[0] & 1ULL) != 0ULL;
+    CHECK(rig.patterns.setGate(0U, 0U, 0U, !gate, now));
+}
+}  // namespace
+
+void testExhaustedRetriesResumeOnEveryKindOfChange() {
+    // A Custom Groove save and a debounced Sequencer edit are changes too; a
+    // restart (new coordinator) retries from the beginning.
+    resetFakes();
+    hal::PersistentStorage::failAllWritesForTest(true);
+    std::uint32_t now = 100U;
+    {
+        PersistenceRig rig;
+        rig.begin();
+        CHECK(rig.state.savePreset(0U, "WORN", makeDefaultState()));
+        CHECK(serviceUntilRetriesExhausted(rig, now));
+        CHECK_EQ(nextCommitAttemptMs(rig, now, now + 120000U), 0U);
+        CustomGroovePattern groove{};
+        groove.length = 4U;
+        CHECK(rig.grooves.save(1U, "GROOVE", groove));
+        const std::uint32_t savedAt = now;
+        CHECK_EQ(nextCommitAttemptMs(rig, now, now + 1000U), savedAt);
+        CHECK(!rig.coordinator.retriesExhausted());
+        CHECK_EQ(rig.coordinator.consecutiveFailures(), 1U);
+    }
+    {
+        // Only a background change is pending: the quiet period applies again.
+        PersistenceRig rig;
+        rig.begin();
+        toggleFirstGate(rig, now);
+        CHECK(serviceUntilRetriesExhausted(rig, now));
+        CHECK_EQ(nextCommitAttemptMs(rig, now, now + 120000U), 0U);
+        toggleFirstGate(rig, now);
+        const std::uint32_t editedAt = now;
+        const std::uint32_t attemptAt = nextCommitAttemptMs(rig, now, now + 10000U);
+        CHECK(attemptAt != 0U);
+        CHECK(attemptAt - editedAt >= config::kPersistenceCommitDelayMs);
+        CHECK_EQ(rig.coordinator.consecutiveFailures(), 1U);
+    }
+    {
+        // Restart: RAM-only changes are lost, the next change is tried again.
+        PersistenceRig restarted;
+        restarted.begin();
+        CHECK(!restarted.coordinator.retriesExhausted());
+        CHECK(restarted.state.savePreset(2U, "BOOT", makeDefaultState()));
+        const std::uint32_t savedAt = now;
+        CHECK_EQ(nextCommitAttemptMs(restarted, now, now + 1000U), savedAt);
+        CHECK_EQ(nextCommitAttemptMs(restarted, now, now + 2000U), savedAt + config::kPersistenceRetryInitialMs);
+    }
+    hal::PersistentStorage::failAllWritesForTest(false);
+}
+
 void testCommitGateRefusalIsDeferredNotFailure() {
     resetFakes();
     PersistenceRig rig;
@@ -311,6 +440,67 @@ void testCommitGateRefusalIsDeferredNotFailure() {
     CHECK(rig.coordinator.service(11U, true));  // no backoff after a deferral
     CHECK_EQ(gate.opened, 1U);
     CHECK_EQ(gate.closed, 1U);
+}
+
+void testPendingSavesInDifferentSlotsAllReachFlash() {
+    // Issue #7: a later save must not discard an earlier save that is still
+    // pending. Saves pile up while Flash writes are blocked (PLAY), refused by
+    // the commit gate and failed once; one commit must then store all of them.
+    resetFakes();
+    PersistenceRig rig;
+    CountingGate gate;
+    rig.storage.setCommitGate(&gate);
+    rig.begin();
+    auto stateWithBpm = [](const std::uint16_t bpm) {
+        ClockState state = makeDefaultState();
+        state.bpm = bpm;
+        return state;
+    };
+    CHECK(rig.state.savePreset(1U, "FIRST", stateWithBpm(101U)));
+    CHECK(!rig.coordinator.service(10U, false));  // PLAY: nothing reaches Flash
+    CHECK(rig.state.savePreset(4U, "SECOND", stateWithBpm(104U)));
+    CustomGroovePattern groove{};
+    groove.length = 4U;
+    groove.offsets256[2] = 9;
+    CHECK(rig.grooves.save(2U, "PENDING", groove));
+    gate.refuse = true;
+    CHECK(!rig.coordinator.service(20U, true));  // engine started: deferred
+    CHECK(rig.storage.lastCommitOutcome() == hal::CommitOutcome::Deferred);
+    gate.refuse = false;
+    CHECK(rig.state.savePreset(7U, "THIRD", stateWithBpm(107U)));
+    hal::PersistentStorage::failNextWriteForTest();
+    CHECK(!rig.coordinator.service(30U, true));  // one failed attempt
+    CHECK(rig.coordinator.status() == services::PersistenceCoordinator::Status::SaveError);
+    CHECK(rig.state.savePreset(6U, "FOURTH", stateWithBpm(106U)));
+    CHECK(rig.coordinator.hasPendingCommit());
+    const std::uint32_t retryAt = 30U + services::PersistenceCoordinator::retryDelayMs(1U);
+    CHECK(rig.coordinator.service(retryAt, true));
+    CHECK(!rig.coordinator.hasPendingCommit());
+
+    PersistenceRig reloaded;
+    reloaded.begin();
+    constexpr struct {
+        std::uint8_t slot;
+        const char* name;
+        std::uint16_t bpm;
+    } kExpected[] = {{1U, "FIRST", 101U}, {4U, "SECOND", 104U}, {6U, "FOURTH", 106U}, {7U, "THIRD", 107U}};
+    for (const auto& expected : kExpected) {
+        CHECK(reloaded.state.presetExists(expected.slot));
+        char name[17]{};
+        reloaded.state.presetName(expected.slot, name, sizeof(name));
+        CHECK(std::strcmp(name, expected.name) == 0);
+        ClockState loaded{};
+        CHECK(reloaded.state.loadPreset(expected.slot, loaded));
+        CHECK_EQ(loaded.bpm, expected.bpm);
+    }
+    constexpr std::uint8_t kUntouchedSlots[] = {0U, 2U, 3U, 5U};
+    for (const std::uint8_t untouched : kUntouchedSlots) {
+        CHECK(!reloaded.state.presetExists(untouched));
+    }
+    CHECK(reloaded.grooves.exists(2U));
+    CustomGroovePattern loadedGroove{};
+    CHECK(reloaded.grooves.load(2U, loadedGroove));
+    CHECK_EQ(loadedGroove.offsets256[2], 9);
 }
 
 void testCommitWindowDefersScheduledStartUntilClosed() {
@@ -487,7 +677,15 @@ void testPersistenceNoticeIsShownAndExpires() {
     controller.serviceRendering(200U + config::kPersistenceNoticeMs);
     CHECK(controller.navigation().persistenceNotice == ui::PersistenceNotice::None);
     CHECK(std::strcmp(text::get(text::TextId::SaveErrorNotice), "SAVE ERROR") == 0);
-    CHECK(std::strcmp(text::get(text::TextId::SaveLockedNotice), "SAVE LOCKED") == 0);
+    // W-033/W-312: the downgrade lock tells the user what to do.
+    CHECK(std::strcmp(text::get(text::TextId::SaveLockedNotice), "UPDATE FIRMWARE") == 0);
+    // Both notices fit inside the banner (x 4..123, one-pixel border) with a
+    // margin of at least two pixels on either side in the Small font.
+    display.setFont(hal::DisplayFont::Small);
+    constexpr std::uint32_t kBannerInnerWidth = static_cast<std::uint32_t>(hal::OledDisplay::kWidth) - 8U - 2U;
+    for (const text::TextId notice : {text::TextId::SaveErrorNotice, text::TextId::SaveLockedNotice}) {
+        CHECK(display.measureText(text::get(notice), 0, 0).width + 4U <= kBannerInnerWidth);
+    }
 }
 
 void testApplicationAnnouncesSaveErrorFromCoordinator() {
@@ -510,6 +708,39 @@ void testApplicationAnnouncesSaveErrorFromCoordinator() {
     runPasses(application, fakefw::nowMs + config::kPersistenceCommitDelayMs + 200U);
     CHECK(application.persistenceForTest().status() == services::PersistenceCoordinator::Status::SaveError);
     CHECK(application.navigationForTest().persistenceNotice == ui::PersistenceNotice::SaveError);
+    hal::PersistentStorage::failAllWritesForTest(false);
+}
+
+void testExhaustedSaveErrorReturnsOnEveryControlAction() {
+    // W-311: without further attempts, SAVE ERROR comes back for the notice
+    // time after every front-panel action until the data changes again.
+    resetFakes();
+    prepareDisplaySuccess();
+    fakefw::delayAdvanceOverrideMs = 333U;
+    ClockState initial = makeDefaultState();
+    initial.transport = TransportState::Stopped;
+    app::ClockApplication application;
+    application.begin(initial);
+    hal::PersistentStorage::failAllWritesForTest(true);
+    fakefw::setPin(pinmap::kPlayPauseButtonPin, LOW);
+    runPasses(application, fakefw::nowMs + 60U);
+    fakefw::setPin(pinmap::kPlayPauseButtonPin, HIGH);
+    runPasses(application, fakefw::nowMs + 60U);
+    pressStop(application);
+    // Quiet period plus the first attempt and six retries (63 s), with margin.
+    runPasses(application, fakefw::nowMs + config::kPersistenceCommitDelayMs + 64000U);
+    CHECK(application.persistenceForTest().retriesExhausted());
+    runPasses(application, fakefw::nowMs + config::kPersistenceNoticeMs + 10U);
+    CHECK(application.navigationForTest().persistenceNotice == ui::PersistenceNotice::None);
+
+    fakefw::setPin(pinmap::kTapTempoButtonPin, LOW);
+    runPasses(application, fakefw::nowMs + 60U);
+    CHECK(application.navigationForTest().persistenceNotice == ui::PersistenceNotice::SaveError);
+    // Releasing the button is an action too; the debounced release ends the press.
+    fakefw::setPin(pinmap::kTapTempoButtonPin, HIGH);
+    runPasses(application, fakefw::nowMs + config::kPersistenceNoticeMs + 100U);
+    CHECK(application.navigationForTest().persistenceNotice == ui::PersistenceNotice::None);
+    CHECK(application.persistenceForTest().retriesExhausted());
     hal::PersistentStorage::failAllWritesForTest(false);
 }
 
@@ -564,7 +795,7 @@ void testPersistenceEdgePaths() {
         CHECK(!service.hasPendingCommit());
     }
 
-    // Failure counter saturates instead of wrapping.
+    // The failure counter stops at the last retry instead of growing (W-031).
     resetFakes();
     {
         PersistenceRig rig;
@@ -576,7 +807,8 @@ void testPersistenceEdgePaths() {
             (void)rig.coordinator.service(now, true);
             now += config::kPersistenceRetryMaximumMs + 1U;
         }
-        CHECK_EQ(rig.coordinator.consecutiveFailures(), UINT8_MAX);
+        CHECK_EQ(rig.coordinator.consecutiveFailures(), config::kPersistenceRetryCount + 1U);
+        CHECK_EQ(hal::PersistentStorage::commitAttemptCountForTest(), config::kPersistenceRetryCount + 1U);
         hal::PersistentStorage::failAllWritesForTest(false);
     }
 }

@@ -120,11 +120,13 @@ void UiController::processControls(
     if (nowUs == 0U) {
         nowUs = nowMs * 1000U;
     }
+    serviceTapTempoSequence(nowUs);
     if (!activityClockInitialized_) {
         lastUserActivityAtMs_ = nowMs;
         activityClockInitialized_ = true;
     }
     if (hasUserActivity(controls)) {
+        ++controlActivityRevision_;
         noteUserActivity(nowMs);
     }
     tapModifierPressed_ = controls.tapButton.pressed;
@@ -239,7 +241,7 @@ void UiController::handleTapButton(
             (navigation_.grooveCursor + 1U) % navigation_.grooveDraft.length);
         invalidate();
     } else if (navigation_.screen == Screen::Performance) {
-        registerTapTempo(nowMs);
+        registerTapTempo(nowMs, nowUs);
     } else if (navigation_.screen == Screen::SequencerEditor && navigation_.sequencerPage > 0U) {
         --navigation_.sequencerPage;
         navigation_.sequencerCursor = 0U;
@@ -366,11 +368,12 @@ void UiController::seedGeneratedNames(const std::uint32_t seed) {
     generatedNameSequence_ = 0U;
 }
 
-void UiController::serviceTapTempoFeedback(const std::uint32_t nowMs) {
-    const std::uint32_t sequenceIntervalMs =
-        services::TapTempo::maximumSequenceIntervalMs(state_.tempoRange.minimumBpm);
+void UiController::serviceTapTempoSequence(const std::uint32_t nowUs) {
+    // Same microsecond time base as every tap timestamp; never compared with milliseconds.
+    const std::uint32_t sequenceIntervalUs =
+        services::TapTempo::maximumSequenceIntervalUs(state_.tempoRange.minimumBpm);
     if (tapVisualSequenceActive_ &&
-        (sequenceIntervalMs == 0U || nowMs - lastTapVisualAtMs_ > sequenceIntervalMs)) {
+        (sequenceIntervalUs == 0U || nowUs - lastTapAtUs_ > sequenceIntervalUs)) {
         tapVisualSequenceActive_ = false;
         tapTempo_.reset();
         if (navigation_.tapIndicatorFrame != 0U) {
@@ -378,7 +381,9 @@ void UiController::serviceTapTempoFeedback(const std::uint32_t nowMs) {
             invalidate();
         }
     }
+}
 
+void UiController::serviceTapTempoFeedback(const std::uint32_t nowMs) {
     if (navigation_.tapIndicatorFrame == 0U) {
         return;
     }

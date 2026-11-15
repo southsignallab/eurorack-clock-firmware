@@ -11,6 +11,7 @@ EXTRA_CXXFLAGS += -std=c++17
 
 SOURCES += $(wildcard src/*.cpp)
 SOURCES += clock_vcv_runtime.cpp
+SOURCES += keyboard_controls.cpp
 
 CLOCK_FW_SOURCES := $(shell find ../src ../lib/clock_core/src -type f -name '*.cpp' ! -name 'main.cpp' ! -name 'native_smoke_main.cpp')
 CLOCK_HOST_SOURCES := \

@@ -366,13 +366,12 @@ void testMenuModelConditionalRowsCoverBothStates(){
     TEST_ASSERT_TRUE(std::strcmp(text::get(text::TextId::PhaseReset), row.label) == 0);
     row = ui::buildMenuRow(ui::SettingsPage::Root, 3U, 0U, h.state, false);
     TEST_ASSERT_TRUE(std::strcmp(text::get(text::TextId::SupportClock), row.label) == 0);
+    // Support goes through Ko-fi only (W-313).
+    TEST_ASSERT_EQUAL_UINT8(1U, ui::settingsPageItemCount(ui::SettingsPage::Support));
     row = ui::buildMenuRow(ui::SettingsPage::Support, 0U, 0U, h.state, false);
-    TEST_ASSERT_TRUE(std::strcmp("GITHUB SPONSORS", row.label) == 0);
-    TEST_ASSERT_TRUE(std::strcmp("github.com/sponsors/napolitano", row.value) == 0);
-    TEST_ASSERT_TRUE(row.expandableInformation);
-    row = ui::buildMenuRow(ui::SettingsPage::Support, 1U, 0U, h.state, false);
     TEST_ASSERT_TRUE(std::strcmp("KO-FI", row.label) == 0);
     TEST_ASSERT_TRUE(std::strcmp("ko-fi.com/southsignallab", row.value) == 0);
+    TEST_ASSERT_TRUE(row.expandableInformation);
 
     h.state.device.encoderDirectionReversed = true;
     row = ui::buildMenuRow(ui::SettingsPage::Hardware, 0U, 0U, h.state);

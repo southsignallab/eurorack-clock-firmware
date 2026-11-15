@@ -258,9 +258,9 @@ void testUiControllerFlows() {
                 CHECK_EQ(controller.navigation().settingsPage, ui::SettingsPage::Preferences);
             } else if (rootRow == 3U) {
                 CHECK_EQ(controller.navigation().settingsPage, ui::SettingsPage::Support);
-                controllerShortPress(controller, now); // GitHub Sponsors -> informational popover
+                controllerShortPress(controller, now); // Ko-fi, the only entry -> informational popover
                 CHECK_EQ(controller.navigation().screen, ui::Screen::InformationPopover);
-                CHECK(std::strcmp(controller.navigation().informationPopoverTitle.data(), "GITHUB SPONSORS") == 0);
+                CHECK(std::strcmp(controller.navigation().informationPopoverTitle.data(), "KO-FI") == 0);
                 controllerShortPress(controller, now);
                 CHECK_EQ(controller.navigation().settingsPage, ui::SettingsPage::Support);
             } else {

@@ -12,6 +12,11 @@
 #include <stdexcept>
 
 namespace clockfw::sim {
+namespace {
+
+thread_local std::uint64_t tFileWrites = 0U;
+
+}  // namespace
 
 SimulatorPersistence::SimulatorPersistence(std::filesystem::path path)
     : path_(std::move(path)) {
@@ -19,6 +24,10 @@ SimulatorPersistence::SimulatorPersistence(std::filesystem::path path)
 }
 
 void SimulatorPersistence::load() {
+    if (!fileWritesEnabled_ && hasLastImage_) {
+        // The host owns the image (see setFileWritesEnabled): keep the simulated NVM.
+        return;
+    }
     hal::PersistentStorage::resetForTest();
 
     std::ifstream stream(path_, std::ios::binary);
@@ -44,7 +53,14 @@ void SimulatorPersistence::load() {
     hasLastImage_ = true;
 }
 
+void SimulatorPersistence::setFileWritesEnabled(const bool enabled) {
+    fileWritesEnabled_ = enabled;
+}
+
 void SimulatorPersistence::flushIfChanged() {
+    if (!fileWritesEnabled_) {
+        return;
+    }
     const auto image = readImage();
     if (hasLastImage_ && image == lastFlushedImage_) {
         return;
@@ -53,12 +69,28 @@ void SimulatorPersistence::flushIfChanged() {
 }
 
 void SimulatorPersistence::flush() {
+    if (!fileWritesEnabled_) {
+        return;
+    }
     const auto image = readImage();
-    if (!path_.parent_path().empty()) {
-        std::filesystem::create_directories(path_.parent_path());
+    writeImageFile(path_, image);
+    lastFlushedImage_ = image;
+    hasLastImage_ = true;
+}
+
+std::uint64_t SimulatorPersistence::fileWritesOnThisThreadForTest() {
+    return tFileWrites;
+}
+
+void SimulatorPersistence::writeImageFile(
+    const std::filesystem::path& path,
+    const std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>& image) {
+    ++tFileWrites;
+    if (!path.parent_path().empty()) {
+        std::filesystem::create_directories(path.parent_path());
     }
 
-    const std::filesystem::path temporaryPath = path_.string() + ".tmp";
+    const std::filesystem::path temporaryPath = path.string() + ".tmp";
     {
         std::ofstream stream(temporaryPath, std::ios::binary | std::ios::trunc);
         if (!stream) {
@@ -71,18 +103,15 @@ void SimulatorPersistence::flush() {
     }
 
     std::error_code error;
-    std::filesystem::rename(temporaryPath, path_, error);
+    std::filesystem::rename(temporaryPath, path, error);
     if (error) {
-        std::filesystem::remove(path_, error);
+        std::filesystem::remove(path, error);
         error.clear();
-        std::filesystem::rename(temporaryPath, path_, error);
+        std::filesystem::rename(temporaryPath, path, error);
         if (error) {
             throw std::runtime_error("Could not replace simulator persistence file");
         }
     }
-
-    lastFlushedImage_ = image;
-    hasLastImage_ = true;
 }
 
 const std::filesystem::path& SimulatorPersistence::path() const {

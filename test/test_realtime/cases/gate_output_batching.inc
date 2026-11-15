@@ -55,6 +55,26 @@ void recordGateWrites(GateTrace& trace, const std::uint32_t tick) {
     fakefw::writes.clear();
 }
 
+/** @brief Runs and records one scheduler tick as tick trace.ticks + 1. */
+void traceOneTick(engine::ClockEngine& engine, GateTrace& trace) {
+    const std::uint32_t tick = trace.ticks + 1U;
+    hal::platform::resetPortWriteLogForTest();
+    engine.processSchedulerTick();
+    trace.ticks = tick;
+    if (hal::platform::portWriteCountForTest() != 1U) {
+        ++trace.ticksWithoutSinglePortWrite;
+    }
+    const hal::platform::PortWriteRecord record = hal::platform::lastPortWriteForTest();
+    if ((record.setMask & record.resetMask) != 0U) {
+        ++trace.overlappingMasks;
+    }
+    if (record.setMask != 0U || record.resetMask != 0U) {
+        trace.portWrites[tick] = record;
+    }
+    trace.linesEverSet = static_cast<std::uint16_t>(trace.linesEverSet | record.setMask);
+    recordGateWrites(trace, tick);
+}
+
 /** @brief Runs @p count scheduler ticks; @p action runs once in the foreground before tick @p actionTick. */
 template <typename Action>
 void traceTicks(
@@ -64,27 +84,12 @@ void traceTicks(
     const std::uint32_t actionTick,
     Action action) {
     for (std::uint32_t index = 0U; index < count; ++index) {
-        const std::uint32_t tick = trace.ticks + 1U;
         fakefw::writes.clear();
-        if (tick == actionTick) {
+        if (trace.ticks + 1U == actionTick) {
             action();
-            recordGateWrites(trace, tick);
+            recordGateWrites(trace, trace.ticks + 1U);
         }
-        hal::platform::resetPortWriteLogForTest();
-        engine.processSchedulerTick();
-        trace.ticks = tick;
-        if (hal::platform::portWriteCountForTest() != 1U) {
-            ++trace.ticksWithoutSinglePortWrite;
-        }
-        const hal::platform::PortWriteRecord record = hal::platform::lastPortWriteForTest();
-        if ((record.setMask & record.resetMask) != 0U) {
-            ++trace.overlappingMasks;
-        }
-        if (record.setMask != 0U || record.resetMask != 0U) {
-            trace.portWrites[tick] = record;
-        }
-        trace.linesEverSet = static_cast<std::uint16_t>(trace.linesEverSet | record.setMask);
-        recordGateWrites(trace, tick);
+        traceOneTick(engine, trace);
     }
 }
 

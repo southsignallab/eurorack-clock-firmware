@@ -40,6 +40,7 @@
 #include "hal/control_panel.h"
 #include "hal/crc32.h"
 #include "hal/display_font.h"
+#include "hal/extended_timebase.h"
 #include "hal/external_input_capture.h"
 #include "hal/gate_output_driver.h"
 #include "hal/interrupt_lock.h"
@@ -590,6 +591,7 @@ hal::ButtonSample heldButton() { return {hal::ButtonEdge::None, true}; }
 #include "cases/ui_games.inc"
 #include "cases/groove_application.inc"
 #include "cases/persistence_coordinator.inc"
+#include "cases/timebase.inc"
 
 } // namespace
 
@@ -666,6 +668,11 @@ int main() {
     RUN_TEST(testPersistenceEdgePaths);
     RUN_TEST(testFactoryResetFailureAndStorelessController);
     RUN_TEST(testApplicationAnnouncesSaveLockedAtBoot);
+    RUN_TEST(testMillisecondsDoNotDriftFromMicrosecondsAcrossFlashStalls);
+    RUN_TEST(testExtendedTimebaseCrossesTheTim5Wrap);
+    RUN_TEST(testExtendedTimebaseReadsDuringTheWrapAndAnInterrupt);
+    RUN_TEST(testMillisecondsStayOnTheMicrosecondBaseOverHours);
+    RUN_TEST(testTapAtMicrosecondZeroAfterTheWrapKeepsTheMicrosecondBase);
     std::cout << "Host firmware assertions: " << gChecks << "\n";
     return UNITY_END();
 }

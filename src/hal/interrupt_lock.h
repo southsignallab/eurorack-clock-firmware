@@ -32,6 +32,11 @@ public:
     /** @brief Prevents copy-assignment of a critical-section guard. */
     InterruptLock& operator=(const InterruptLock&) = delete;
 
+#if defined(CLOCK_HOST_TEST)
+    /** @brief Returns how many InterruptLock scopes are open (host tests only). */
+    static std::uint32_t activeCountForTest();
+#endif
+
 private:
     std::uint32_t previousPrimask_ = 0U;
 #if defined(CLOCK_RUNTIME_INSTRUMENTATION)

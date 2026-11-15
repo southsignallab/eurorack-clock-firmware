@@ -59,10 +59,18 @@ bool beginQuadratureEncoder(mcu::Pin phaseA, mcu::Pin phaseB);
 std::uint32_t quadratureEncoderCount();
 /** @brief Returns the current A/B electrical phase as bit1=A and bit0=B. */
 std::uint8_t quadratureEncoderState();
-/** @brief Returns milliseconds elapsed since MCU initialization. */
+/**
+ * @brief Returns milliseconds elapsed since MCU initialization.
+ *
+ * Production derives them from the 64-bit extension of the TIM5 microsecond counter,
+ * so they share one time base with microseconds() and keep counting through Flash
+ * operations that stall SysTick (F-046). They wrap at 2^32 ms.
+ */
 std::uint32_t milliseconds();
-/** @brief Returns the wrapping 32-bit TIM5 microsecond counter. */
+/** @brief Returns the wrapping 32-bit TIM5 microsecond counter (low word of the same time base). */
 std::uint32_t microseconds();
+/** @brief Scheduler-ISR only: folds the TIM5 counter into the 64-bit time base (single writer). */
+void advanceTimebaseFromIsr();
 /** @brief Blocks foreground execution for the requested milliseconds. */
 void delayMilliseconds(std::uint32_t durationMs);
 /** @brief Disables interrupts and returns the previous PRIMASK state. */

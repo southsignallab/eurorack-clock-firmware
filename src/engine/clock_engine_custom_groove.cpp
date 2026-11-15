@@ -42,7 +42,7 @@ void ClockEngine::updateCustomGrooveSlot(
     std::uint32_t spacingQ16[kChannelCount]{};
     bool usesSlot[kChannelCount]{};
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
-        const ChannelConfig& channel = configuration_.channels[channelIndex];
+        const ChannelConfig& channel = configuration_->channels[channelIndex];
         const GrooveSettings& grooveSettings = channel.common.groove;
         usesSlot[channelIndex] = grooveSettings.preset == GroovePreset::Custom &&
             grooveSettings.customSlot == slotIndex;
@@ -81,7 +81,8 @@ void ClockEngine::setCustomGroovePreview(
         return;
     }
     const std::uint32_t spacingQ16 = customGrooveMinimumSpacingQ16(
-        pattern, amountPercent, rotation, configuration_.channels[channelIndex].common.swingPercent);
+        pattern, amountPercent, rotation,
+        configuration_->channels[channelIndex].common.swingPercent);
     hal::InterruptLock interruptLock;
     customGroovePreviews_[channelIndex] = pattern;
     customGroovePreviewAmount_[channelIndex] = amountPercent;
@@ -100,7 +101,7 @@ void ClockEngine::clearCustomGroovePreview(
         return;
     }
     const std::uint32_t spacingQ16 = calculateCustomGrooveSpacingQ16(
-        channelIndex, configuration_.channels[channelIndex], false);
+        channelIndex, configuration_->channels[channelIndex], false);
     hal::InterruptLock interruptLock;
     customGroovePreviewActive_[channelIndex] = false;
     customGrooveSpacingQ16_[channelIndex] = spacingQ16;

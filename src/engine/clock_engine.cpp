@@ -14,6 +14,14 @@
 #include "engine/output_mode_resolver.h"
 
 namespace clockfw::engine {
+namespace {
+
+/** Events one channel may process in one scheduler quantum. */
+constexpr std::uint8_t kMaximumChannelEventsPerQuantum = 8U;
+static_assert(config::kMaximumSchedulerCatchUpTicks <= kMaximumChannelEventsPerQuantum,
+              "Caught-up ticks must not hold more events than one quantum processes");
+
+}  // namespace
 
 ClockEngine::ClockEngine(hal::GateOutputDriver& gateOutputs)
     : gateOutputs_(gateOutputs) {}
@@ -41,34 +49,12 @@ void ClockEngine::begin(const ClockState& state) {
     restartPending_ = true;
 }
 
-void ClockEngine::updateConfiguration(const ClockState& state, const bool rescheduleChannels) {
-    std::uint32_t spacingQ16[kChannelCount]{};
-    calculateCustomGrooveSpacingsQ16(state, spacingQ16);
-    hal::InterruptLock interruptLock;
-    const std::uint16_t previousBpm = configuration_.bpm;
-    copyConfigurationUnsafe(state);
-    installCustomGrooveSpacingsUnsafe(spacingQ16);
-    if (configuration_.bpm != previousBpm) {
-        discardFreewheelTempoAfterManualChangeUnsafe();
-    }
-    for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
-        const ChannelConfig& channel = configuration_.channels[channelIndex];
-        if (channel.common.mode == ChannelMode::Off || channel.common.muted) {
-            setGateState(channelIndex, false);
-        }
-        if (rescheduleChannels) {
-            scheduleChannelFromCurrentPosition(channelIndex);
-        }
-        synchronizeChannelStepPhase(channelIndex);
-    }
-}
-
 void ClockEngine::updateMasterTempo(const std::uint16_t bpm) {
-    if (configuration_.bpm == bpm) {
+    if (configuration_->bpm == bpm) {
         return;
     }
     hal::InterruptLock interruptLock;
-    configuration_.bpm = bpm;
+    configuration_->bpm = bpm;
     discardFreewheelTempoAfterManualChangeUnsafe();
 }
 
@@ -76,32 +62,9 @@ void ClockEngine::discardFreewheelTempoAfterManualChangeUnsafe() {
     // Decision D-02: with source AUTO and no external signal, a manual tempo
     // change wins over the last measured (freewheel) tempo. A returning signal
     // relocks and owns the tempo again. EXTERNAL keeps its freewheel tempo.
-    if (configuration_.source == ClockSource::Auto && !externalLocked_) {
+    if (configuration_->source == ClockSource::Auto && !externalLocked_) {
         externalBpmMilli_ = 0U;
     }
-}
-
-void ClockEngine::updateChannel(
-    const std::size_t channelIndex,
-    const ChannelConfig& channelConfiguration,
-    const bool rescheduleChannel) {
-    if (channelIndex >= kChannelCount) {
-        return;
-    }
-
-    const std::uint32_t spacingQ16 = calculateCustomGrooveSpacingQ16(
-        channelIndex, channelConfiguration, customGroovePreviewActive_[channelIndex]);
-    hal::InterruptLock interruptLock;
-    configuration_.channels[channelIndex] = channelConfiguration;
-    customGrooveSpacingQ16_[channelIndex] = spacingQ16;
-    if (channelConfiguration.common.mode == ChannelMode::Off ||
-        channelConfiguration.common.muted) {
-        setGateState(channelIndex, false);
-    }
-    if (rescheduleChannel) {
-        scheduleChannelFromCurrentPosition(channelIndex);
-    }
-    synchronizeChannelStepPhase(channelIndex);
 }
 
 void ClockEngine::play() {
@@ -168,8 +131,13 @@ void ClockEngine::resetGlobalPhaseFromIsr() {
     resetRuntime();
 }
 
-void ClockEngine::runSchedulerTick() {
-    ++schedulerTickCounter_;
+void ClockEngine::runSchedulerTick(const std::uint32_t elapsedTicks) {
+    if (elapsedTicks == 0U) {
+        // This TIM3 update was already counted; only the sync service's staged
+        // changes are written.
+        return;
+    }
+    schedulerTickCounter_ += elapsedTicks;
     serviceDeferredGateRises();
 
     // Gate-off checks always run, even while transport is paused or stopped.
@@ -187,25 +155,26 @@ void ClockEngine::runSchedulerTick() {
     if (!playing_) {
         return;
     }
-    if (configuration_.source == ClockSource::External &&
+    if (configuration_->source == ClockSource::External &&
         !externalLocked_ &&
-        configuration_.syncLossMode == SyncLossMode::Stop) {
+        configuration_->syncLossMode == SyncLossMode::Stop) {
         return;
     }
 
     if (preCountActive_) {
         // Locked external pulses own Pre-Count progress; do not double-advance it.
         const bool drivenByExternalPulses =
-            configuration_.source != ClockSource::Internal && externalLocked_;
+            configuration_->source != ClockSource::Internal && externalLocked_;
         if (drivenByExternalPulses) {
             return;
         }
-        const std::uint64_t preCountIncrementQ32 = core::calculateMasterIncrementMilliBpmQ32(
+        const core::MasterAdvanceQ32 preCountAdvance = core::advanceMasterPositionMilliBpmQ32(
             effectiveBpmMilli(),
-            configuration_.beatUnit,
+            configuration_->beatUnit,
             config::kSchedulerFrequencyHz,
+            elapsedTicks,
             preCountRemainder_);
-        preCountPhaseQ32_ += preCountIncrementQ32;
+        preCountPhaseQ32_ += preCountAdvance.totalQ32;
         while (preCountPhaseQ32_ >= core::kQ32One) {
             preCountPhaseQ32_ -= core::kQ32One;
             if (preCountRemaining_ > 0U) {
@@ -219,21 +188,24 @@ void ClockEngine::runSchedulerTick() {
         return;
     }
 
-    const std::uint64_t masterIncrementQ32 = core::calculateMasterIncrementMilliBpmQ32(
+    // Caught-up ticks (F-012) advance the timeline at once; their events fire
+    // below in this quantum, once each and in order.
+    const core::MasterAdvanceQ32 advance = core::advanceMasterPositionMilliBpmQ32(
         effectiveBpmMilli(),
-        configuration_.beatUnit,
+        configuration_->beatUnit,
         config::kSchedulerFrequencyHz,
+        elapsedTicks,
         masterRemainder_);
 
-    masterPositionQ32_ += masterIncrementQ32;
-    masterBeatPhaseQ32_ += masterIncrementQ32;
+    masterPositionQ32_ += advance.totalQ32;
+    masterBeatPhaseQ32_ += advance.totalQ32;
     while (masterBeatPhaseQ32_ >= core::kQ32One) {
         masterBeatPhaseQ32_ -= core::kQ32One;
         ++masterBeatSerial_;
         ++masterBeat_;
 
         const std::uint8_t beatsPerBar =
-            configuration_.beatsPerBar != 0U ? configuration_.beatsPerBar : 1U;
+            configuration_->beatsPerBar != 0U ? configuration_->beatsPerBar : 1U;
         if (masterBeat_ > beatsPerBar) {
             masterBeat_ = 1U;
             ++masterBar_;
@@ -246,13 +218,13 @@ void ClockEngine::runSchedulerTick() {
     serviceSequencerRatchets();
 
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
-        if (configuration_.channels[channelIndex].common.mode == ChannelMode::Off) {
+        if (configuration_->channels[channelIndex].common.mode == ChannelMode::Off) {
             setGateState(channelIndex, false);
             continue;
         }
         std::uint8_t eventGuard = 0U;
         while (masterPositionQ32_ >= channelRuntime_[channelIndex].nextEventQ32 &&
-               eventGuard++ < 8U) {
+               eventGuard++ < kMaximumChannelEventsPerQuantum) {
             fireChannelEvent(channelIndex);
             ChannelRuntime& runtime = channelRuntime_[channelIndex];
             runtime.lastEventSlotQ32 = runtime.nextEventSlotQ32;
@@ -264,7 +236,7 @@ void ClockEngine::runSchedulerTick() {
                 &runtime.nextEventSlotQ32);
         }
     }
-    endGatesBeforeNextRise(masterIncrementQ32);
+    endGatesBeforeNextRise(advance.perTickFloorQ32);
     restartPending_ = false;
 }
 
@@ -300,70 +272,8 @@ std::uint32_t ClockEngine::resetRuntimeCountForTest() const {
 }
 #endif
 
-void ClockEngine::scheduleChannelFromCurrentPosition(
-    const std::size_t channelIndex,
-    const bool includeCurrentBoundary) {
-    ChannelRuntime& runtime = channelRuntime_[channelIndex];
-    const ChannelConfig& channel = configuration_.channels[channelIndex];
-    if (channel.common.resetMode == ResetMode::Global) {
-        runtime.scheduleEpochQ32 = globalScheduleEpochQ32_;
-    }
-
-    const bool mayUseCurrentBoundary = includeCurrentBoundary || restartPending_;
-    const std::uint64_t firstEventQ32 = calculateEventPositionQ32(channelIndex, 0U);
-    std::uint64_t eventSerial = 0U;
-
-    if (masterPositionQ32_ > firstEventQ32 ||
-        (masterPositionQ32_ == firstEventQ32 && !mayUseCurrentBoundary)) {
-        const std::uint64_t elapsedQ32 = masterPositionQ32_ - firstEventQ32;
-        const std::uint64_t baseIntervalQ32 = calculateNominalBaseIntervalQ32(channelIndex);
-        eventSerial = baseIntervalQ32 != 0U ? elapsedQ32 / baseIntervalQ32 : 0U;
-
-        // The estimate above is intentionally cheap. Rational grids use exact
-        // cumulative offsets below, so correct both directions before selecting
-        // the first event that is still eligible.
-        while (eventSerial > 0U) {
-            const std::uint64_t previousPositionQ32 = calculateEventPositionQ32(
-                channelIndex,
-                eventSerial - 1U);
-            const bool previousEligible = mayUseCurrentBoundary
-                ? previousPositionQ32 >= masterPositionQ32_
-                : previousPositionQ32 > masterPositionQ32_;
-            if (!previousEligible) {
-                break;
-            }
-            --eventSerial;
-        }
-
-        for (;;) {
-            const std::uint64_t eventPositionQ32 = calculateEventPositionQ32(
-                channelIndex,
-                eventSerial);
-            const bool eligible = mayUseCurrentBoundary
-                ? eventPositionQ32 >= masterPositionQ32_
-                : eventPositionQ32 > masterPositionQ32_;
-            if (eligible || eventSerial == UINT64_MAX) {
-                break;
-            }
-            ++eventSerial;
-        }
-    }
-
-    // A reschedule never re-emits an event slot that has already been processed.
-    eventSerial = firstSerialAfterLastEvent(channelIndex, eventSerial);
-    runtime.nextEventSerial = eventSerial;
-    runtime.nextEventQ32 = calculateEventPositionQ32(
-        channelIndex, eventSerial, &runtime.nextEventSlotQ32);
-
-    // GLOBAL means pattern position as well as edge timing is derived from the
-    // shared epoch. Otherwise a live CLOCK -> EUCLID/SEQ switch can be on-grid
-    // in time while evaluating the wrong pattern step.
-    if (channel.common.resetMode == ResetMode::Global) {
-        synchronizeChannelStepPhase(channelIndex);
-    }
-}
 void ClockEngine::startPreCountUnsafe() {
-    preCountRemaining_ = configuration_.preCountSteps;
+    preCountRemaining_ = configuration_->preCountSteps;
     preCountPhaseQ32_ = 0U;
     preCountRemainder_ = 0U;
     preCountExternalPulseRemainder_ = 0U;
@@ -383,6 +293,7 @@ void ClockEngine::resetRuntime() {
     ++resetRuntimeCountForTest_;
 #endif
     restartPending_ = true;
+    ++scheduleGeneration_;
     globalScheduleEpochQ32_ = masterPositionQ32_;
     masterBeatPhaseQ32_ = 0U;
     masterBeatSerial_ = 0U;
@@ -393,7 +304,7 @@ void ClockEngine::resetRuntime() {
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
         setGateState(channelIndex, false);
         if (!core::shouldResetChannel(
-                configuration_.channels[channelIndex].common.resetMode,
+                configuration_->channels[channelIndex].common.resetMode,
                 false)) {
             continue;
         }
@@ -416,19 +327,25 @@ void ClockEngine::resetRuntime() {
 }
 
 void ClockEngine::copyConfigurationUnsafe(const ClockState& state) {
-    configuration_.bpm = state.bpm;
-    configuration_.beatsPerBar = state.masterMeter.beats;
-    configuration_.beatUnit = state.masterMeter.unit;
-    configuration_.preCountSteps = state.preCountSteps;
-    configuration_.source = state.source;
-    configuration_.syncLossMode = state.externalSync.lossMode;
-    configuration_.operatingMode = state.operatingMode;
-    configuration_.unifiedHumanizeUs = state.operatingMode == OperatingMode::UnifiedClock
+    resolveConfiguration(state, *configuration_);
+}
+
+void ClockEngine::resolveConfiguration(
+    const ClockState& state,
+    EngineConfiguration& configuration) {
+    configuration.bpm = state.bpm;
+    configuration.beatsPerBar = state.masterMeter.beats;
+    configuration.beatUnit = state.masterMeter.unit;
+    configuration.preCountSteps = state.preCountSteps;
+    configuration.source = state.source;
+    configuration.syncLossMode = state.externalSync.lossMode;
+    configuration.operatingMode = state.operatingMode;
+    configuration.unifiedHumanizeUs = state.operatingMode == OperatingMode::UnifiedClock
         ? state.unifiedClock.humanizeUs
         : 0U;
 
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
-        configuration_.channels[channelIndex] = resolvePhysicalOutputConfiguration(
+        configuration.channels[channelIndex] = resolvePhysicalOutputConfiguration(
             state, channelIndex);
     }
 }

@@ -110,11 +110,21 @@ public:
      * @brief Processes one debounced physical-control sample.
      * @param controls Current HAL control sample.
      * @param nowMs Current monotonic time in milliseconds.
+     * @param nowUs Current TIM5 microseconds of the same time base; 0 is a valid timestamp.
      */
     void processControls(
         const hal::ControlSample& controls,
         std::uint32_t nowMs,
-        std::uint32_t nowUs = 0U);
+        std::uint32_t nowUs);
+
+#ifdef CLOCK_HOST_TEST
+    /**
+     * @brief Host-test shorthand: microseconds derived from @p nowMs, one time base.
+     * @param controls Current HAL control sample.
+     * @param nowMs Current monotonic time in milliseconds.
+     */
+    void processControls(const hal::ControlSample& controls, std::uint32_t nowMs);
+#endif
 
     /**
      * @brief Services render invalidation and sends a frame when the refresh limit allows it.

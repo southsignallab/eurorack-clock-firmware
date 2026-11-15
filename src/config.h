@@ -128,6 +128,14 @@ inline constexpr std::uint32_t kSchedulerInterruptSubPriority = 0U;
 /** Scheduler time quantum in microseconds. */
 inline constexpr std::uint32_t kSchedulerTickUs = 1000000UL / kSchedulerFrequencyHz;
 
+/**
+ * Most scheduler ticks one TIM3 interrupt catches up after updates merged during an
+ * interrupt lock (F-012), in ticks (8 = 400 us). It matches the per-channel event
+ * bound of one quantum. Longer stalls (Flash erase, which never runs while the engine
+ * plays, D-04) drop the excess ticks instead of bursting them.
+ */
+inline constexpr std::uint32_t kMaximumSchedulerCatchUpTicks = 8UL;
+
 /** Minimum interval between ordinary OLED frame transfers. */
 inline constexpr std::uint32_t kDisplayRefreshMinimumMs = 30UL;
 

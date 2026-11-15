@@ -12,6 +12,7 @@
 #include <cassert>
 #else
 #include <stm32f4xx_hal.h>
+#include "hal/extended_timebase.h"
 #endif
 #if defined(CLOCK_RUNTIME_INSTRUMENTATION)
 #include "hal/runtime_instrumentation.h"
@@ -106,12 +107,14 @@ std::uint8_t quadratureEncoderState() {
 }
 std::uint32_t milliseconds() { return millis(); }
 std::uint32_t microseconds() { return micros(); }
+void advanceTimebaseFromIsr() {}
 void delayMilliseconds(const std::uint32_t durationMs) { delay(durationMs); }
 std::uint32_t enterCritical() { noInterrupts(); return 0U; }
 void exitCritical(const std::uint32_t) { interrupts(); }
 #else
 namespace {
 TIM_HandleTypeDef gMicrosTimer{};
+ExtendedTimebase gTimebase{};
 TIM_HandleTypeDef gEncoderTimer{};
 std::uint16_t gEncoderRawCount = 0U;
 std::uint32_t gEncoderExtendedCount = 0U;
@@ -276,8 +279,10 @@ std::uint8_t quadratureEncoderState() {
         ((idr & GPIO_PIN_6) != 0U ? 2U : 0U) |
         ((idr & GPIO_PIN_7) != 0U ? 1U : 0U));
 }
-std::uint32_t milliseconds() { return HAL_GetTick(); }
 std::uint32_t microseconds() { return __HAL_TIM_GET_COUNTER(&gMicrosTimer); }
+// One time base (F-046): SysTick/HAL_GetTick() stays for HAL-internal timeouts and HAL_Delay().
+std::uint32_t milliseconds() { return ExtendedTimebase::millisecondsFrom(gTimebase.read(microseconds)); }
+void advanceTimebaseFromIsr() { gTimebase.advanceFromIsr(microseconds()); }
 void delayMilliseconds(const std::uint32_t durationMs) { HAL_Delay(durationMs); }
 std::uint32_t enterCritical() { const std::uint32_t primask=__get_PRIMASK(); __disable_irq(); return primask; }
 void exitCritical(const std::uint32_t previousPrimask) { if (previousPrimask == 0U) __enable_irq(); }

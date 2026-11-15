@@ -113,13 +113,16 @@ void UiController::invalidate() {
     renderDirty_ = true;
 }
 
+#ifdef CLOCK_HOST_TEST
+void UiController::processControls(const hal::ControlSample& controls, const std::uint32_t nowMs) {
+    processControls(controls, nowMs, nowMs * 1000U);
+}
+#endif
+
 void UiController::processControls(
     const hal::ControlSample& controls,
     const std::uint32_t nowMs,
-    std::uint32_t nowUs) {
-    if (nowUs == 0U) {
-        nowUs = nowMs * 1000U;
-    }
+    const std::uint32_t nowUs) {
     serviceTapTempoSequence(nowUs);
     if (!activityClockInitialized_) {
         lastUserActivityAtMs_ = nowMs;

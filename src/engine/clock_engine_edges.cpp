@@ -14,6 +14,8 @@
  */
 #include "engine/clock_engine_edges.h"
 
+#include "config.h"
+
 #if defined(CLOCK_RUNTIME_INSTRUMENTATION)
 #include "hal/runtime_instrumentation.h"
 #endif
@@ -32,11 +34,49 @@ void ClockEngine::beginSchedulerQuantumFromIsr() {
     gatesRaisedThisQuantum_ = 0U;
 }
 
-void ClockEngine::processSchedulerTick() {
+std::uint32_t ClockEngine::elapsedSchedulerTicksFromIsr(const std::uint32_t updateTimestampUs) {
+    if (!schedulerUpdateAnchored_) {
+        schedulerUpdateAnchored_ = true;
+        lastSchedulerUpdateUs_ = updateTimestampUs;
+        return 1U;
+    }
+    // TIM3 and TIM5 count the same 1 MHz timer clock, so consecutive update
+    // timestamps differ by whole ticks up to +-1 us of read quantization. Half a
+    // tick of bias rounds to the nearest tick. The unsigned difference is exact
+    // across the TIM5 wrap at 2^32 us; a timestamp up to half a tick early wraps
+    // to a small value and counts zero ticks. The timestamp of the last counted
+    // update is the carried microsecond remainder. Subtraction instead of
+    // division keeps this bounded: at most kMaximumSchedulerCatchUpTicks rounds.
+    std::uint32_t remainingUs =
+        (updateTimestampUs - lastSchedulerUpdateUs_) + config::kSchedulerTickUs / 2U;
+    lastSchedulerUpdateUs_ = updateTimestampUs;
+    std::uint32_t ticks = 0U;
+    while (remainingUs >= config::kSchedulerTickUs &&
+           ticks < config::kMaximumSchedulerCatchUpTicks) {
+        remainingUs -= config::kSchedulerTickUs;
+        ++ticks;
+    }
+    if (remainingUs >= config::kSchedulerTickUs) {
+        // More updates than the bound: drop the excess instead of bursting
+        // events. Only stalls far beyond any interrupt lock reach this.
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+        hal::instrumentation::countSchedulerCatchUpLimit();
+#endif
+#ifdef CLOCK_HOST_TEST
+        ++schedulerCatchUpLimitCountForTest_;
+#endif
+    }
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+    hal::instrumentation::countCaughtUpSchedulerTicks(ticks);
+#endif
+    return ticks;
+}
+
+void ClockEngine::processSchedulerTick(const std::uint32_t elapsedTicks) {
     if (!schedulerQuantumOpen_) {
         beginSchedulerQuantumFromIsr();
     }
-    runSchedulerTick();
+    runSchedulerTick(elapsedTicks);
     gateOutputs_.commitStagedChannels();
     gatesHighAtLastCommit_ = gateHighMask_;
     schedulerQuantumOpen_ = false;
@@ -120,25 +160,26 @@ void ClockEngine::endGatesBeforeNextRise(const std::uint64_t masterIncrementQ32)
 }
 
 std::uint64_t ClockEngine::firstSerialAfterLastEvent(
+    const ScheduleInputs& inputs,
     const std::size_t channelIndex,
-    std::uint64_t eventSerial) const {
-    const ChannelRuntime& runtime = channelRuntime_[channelIndex];
-    if (!runtime.lastEventSlotValid) {
+    const ChannelScheduleBasis& basis,
+    std::uint64_t eventSerial) {
+    if (!basis.lastEventSlotValid) {
         return eventSerial;
     }
-    const std::uint64_t epochQ32 = runtime.scheduleEpochQ32;
+    const std::uint64_t epochQ32 = basis.epochQ32;
     const auto slotOf = [&](const std::uint64_t serial) {
-        const std::uint64_t offsetQ32 = calculateBaseEventOffsetQ32(channelIndex, serial);
+        const std::uint64_t offsetQ32 = calculateBaseEventOffsetQ32(inputs, channelIndex, serial);
         return offsetQ32 > UINT64_MAX - epochQ32 ? UINT64_MAX : epochQ32 + offsetQ32;
     };
-    const std::uint64_t lastSlotQ32 = runtime.lastEventSlotQ32;
+    const std::uint64_t lastSlotQ32 = basis.lastEventSlotQ32;
     if (slotOf(eventSerial) > lastSlotQ32) {
         return eventSerial;
     }
     // Jump close to the first later slot, then correct exactly in both directions
     // without going below the first event that is still in the future.
     const std::uint64_t earliestSerial = eventSerial;
-    const std::uint64_t intervalQ32 = calculateNominalBaseIntervalQ32(channelIndex);
+    const std::uint64_t intervalQ32 = calculateNominalBaseIntervalQ32(inputs, channelIndex);
     if (intervalQ32 != 0U && lastSlotQ32 > epochQ32) {
         const std::uint64_t estimate = (lastSlotQ32 - epochQ32) / intervalQ32;
         if (estimate > eventSerial) {
@@ -159,6 +200,9 @@ std::uint64_t ClockEngine::firstSerialAfterLastEvent(
 #ifdef CLOCK_HOST_TEST
 std::uint32_t ClockEngine::deferredGateRiseCountForTest() const {
     return deferredGateRiseCountForTest_;
+}
+std::uint32_t ClockEngine::schedulerCatchUpLimitCountForTest() const {
+    return schedulerCatchUpLimitCountForTest_;
 }
 #endif
 

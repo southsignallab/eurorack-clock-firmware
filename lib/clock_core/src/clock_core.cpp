@@ -142,6 +142,47 @@ std::uint64_t calculateMasterIncrementMilliBpmQ32(
     return increment;
 }
 
+MasterAdvanceQ32 advanceMasterPositionMilliBpmQ32(
+    const std::uint32_t bpmMilli,
+    std::uint8_t beatUnit,
+    std::uint32_t schedulerFrequencyHz,
+    const std::uint32_t ticks,
+    volatile std::uint64_t& remainder) {
+    MasterAdvanceQ32 advance{};
+    if (bpmMilli == 0U) {
+        remainder = 0U;
+        return advance;
+    }
+    if (beatUnit == 0U) {
+        beatUnit = 4U;
+    }
+    if (schedulerFrequencyHz == 0U) {
+        schedulerFrequencyHz = 1U;
+    }
+
+    const std::uint64_t scaledNumerator =
+        static_cast<std::uint64_t>(bpmMilli) * beatUnit * kQ32One;
+    const std::uint64_t denominator = 60ULL * 4ULL * schedulerFrequencyHz * 1000ULL;
+    const std::uint64_t quotient = scaledNumerator / denominator;
+    const std::uint64_t tickRemainder = scaledNumerator % denominator;
+    // remainder < denominator and tickRemainder < denominator, so each tick
+    // carries at most one unit: (q * d + r + rem) / d = q + (r + rem >= d).
+    std::uint64_t carried = remainder;
+    std::uint64_t totalQ32 = 0U;
+    for (std::uint32_t tick = 0U; tick < ticks; ++tick) {
+        totalQ32 += quotient;
+        carried += tickRemainder;
+        if (carried >= denominator) {
+            carried -= denominator;
+            ++totalQ32;
+        }
+    }
+    remainder = carried;
+    advance.totalQ32 = totalQ32;
+    advance.perTickFloorQ32 = quotient;
+    return advance;
+}
+
 std::uint64_t applySwing(
     const std::uint64_t baseIntervalQ32,
     std::uint8_t swingPercent,

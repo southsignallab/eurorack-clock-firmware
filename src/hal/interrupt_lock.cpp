@@ -15,7 +15,20 @@
 
 namespace clockfw::hal {
 
+#if defined(CLOCK_HOST_TEST)
+namespace {
+std::uint32_t gActiveLocksForTest = 0U;
+}  // namespace
+
+std::uint32_t InterruptLock::activeCountForTest() {
+    return gActiveLocksForTest;
+}
+#endif
+
 InterruptLock::InterruptLock() {
+#if defined(CLOCK_HOST_TEST)
+    ++gActiveLocksForTest;
+#endif
     previousPrimask_ = platform::enterCritical();
 #if defined(CLOCK_RUNTIME_INSTRUMENTATION)
     startCycles_ = instrumentation::cycleCount();
@@ -27,6 +40,9 @@ InterruptLock::~InterruptLock() {
     instrumentation::recordInterruptLock(startCycles_);
 #endif
     platform::exitCritical(previousPrimask_);
+#if defined(CLOCK_HOST_TEST)
+    --gActiveLocksForTest;
+#endif
 }
 
 }  // namespace clockfw::hal

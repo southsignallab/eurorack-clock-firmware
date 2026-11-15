@@ -20,6 +20,14 @@ public:
     void start(std::uint32_t frequencyHz, Callback callback);
     /** @brief Stops TIM3 scheduler interrupts. */
     void stop();
+    /**
+     * @brief ISR-only: microseconds since the latest TIM3 update event (TIM3 counter).
+     *
+     * TIM3 counts the same 1 MHz timer clock as TIM5, so subtracting this value from a
+     * TIM5 timestamp yields the timestamp of the update. Host and simulator builds fire
+     * the scheduler exactly on the update and return 0.
+     */
+    static std::uint32_t elapsedSinceUpdateUsFromIsr();
 private:
 #if defined(CLOCK_HOST_TEST) || defined(CLOCK_SIMULATOR)
     HardwareTimer timer_;

@@ -20,6 +20,30 @@ STM32 NVIC priorities use lower numbers for higher preemption priority. The sche
 
 The current scheduler is service-tick based rather than final output-compare scheduling. Consequently the software timing quantization is 50 µs. A future compare-event scheduler may tighten that bound without changing the application timing contract.
 
+### Gate output: one register write per tick
+
+All gate edges of one scheduler tick are staged and written with **one GPIOB `BSRR` access** at the end of the tick, so edges that the engine places in the same tick leave the MCU pins together. A channel never appears in the set and the reset mask of the same write. (RM0368 Rev 6, 8.3.5 and 8.4.7: if both bits of one line are set, setting wins; the firmware never relies on that.) Foreground changes only ever lower gates and write at once, inside the interrupt lock that guards them.
+
+Because one write cannot carry a fall and a rise of the same channel, a HIGH gate **ends one tick before its next rising edge** (next event or ratchet). Only when a reschedule in the same tick leaves no LOW tick does the rising edge move by one tick (50 µs). Tie continues the gate by design.
+
+### Tick catch-up from TIM5
+
+TIM3 and TIM5 count the same 1 MHz timer clock. Each scheduler interrupt computes the TIM5 timestamp of its TIM3 update (TIM5 minus the TIM3 counter) and advances the master timeline by the number of whole ticks since the previous update, rounded to the nearest tick. Updates that merged while interrupts were locked are therefore **caught up instead of lost**; the tempo stays exact. Events that fall into caught-up ticks fire in that interrupt, once each and in order. The count uses unsigned differences, so the TIM5 wrap at 2^32 µs is exact, and subtraction instead of division, so the work is bounded.
+
+At most `kMaximumSchedulerCatchUpTicks` (8 ticks, 400 µs) are caught up in one interrupt; this matches the per-channel event bound of one tick. A longer stall drops the excess ticks rather than bursting events. Only a stall far beyond any interrupt lock reaches the bound, for example a Flash erase, which never runs while the engine plays.
+
+### One time base
+
+Milliseconds and microseconds derive from one source: a 64-bit extension of the 32-bit TIM5 counter. The scheduler interrupt is its only writer and folds the counter delta in every tick; readers in any context use a sequence number instead of an interrupt lock and read again if the interrupt ran in between. SysTick stops counting while a Flash operation stalls the CPU; TIM5 does not, so milliseconds no longer drift from microseconds. SysTick (`HAL_GetTick()`) remains only for HAL-internal timeouts and `HAL_Delay()`.
+
+### Interrupt locks cover only the swap
+
+A configuration change recomputes the next event of up to eight channels, with several 64-bit divisions each. That work runs in the foreground against a staged second configuration buffer and a short snapshot of the scheduler state; the interrupt lock covers only the swap, which exchanges the configuration pointer, installs the prepared values and divides nothing. If the scheduler moved a schedule basis meanwhile (an event of that channel, a restart, a phase correction, an external tempo or lock change), the preparation repeats; after three attempts the swap computes under the lock as before, so no change is lost. An event that the preparation placed between snapshot and swap fires in the next tick.
+
+### External phase correction
+
+Each accepted sync pulse snaps the GLOBAL grid onto the pulse. A late pulse moves the GLOBAL grid later. An early pulse moves the master timeline and every FREE schedule later instead of the GLOBAL grid earlier, which is the same relative correction; schedule positions therefore never move backwards and cannot saturate at the start of the timeline.
+
 ## Encoder and external inputs
 
 The physical encoder and the external timing inputs deliberately use different capture paths.
@@ -84,6 +108,10 @@ The following invariants are release requirements:
 
 - display transport must not change generated clock frequency;
 - no gate edge may be omitted because a display transfer is active;
+- all gate edges of one scheduler tick are written with one `BSRR` access, and a HIGH gate ends before it rises again;
+- scheduler ticks merged during an interrupt lock are caught up from TIM5 (bounded, see above), so the master tempo does not depend on foreground locks;
+- milliseconds and microseconds come from the same TIM5 time base;
+- foreground interrupt locks cover copying and swapping only, not schedule calculations;
 - configured gate lengths remain scheduler-quantized but transport-independent;
 - TIM4 encoder transitions must continue accumulating while foreground display work is active, and foreground detent conversion must not lose a complete mechanical detent;
 - conditioned SYNC/RST edges must remain capturable while OLED traffic is active;

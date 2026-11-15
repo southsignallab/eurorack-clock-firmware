@@ -11,6 +11,28 @@
  * rising edges against the hand-calculated grid.
  */
 
+/** True while each configuration swap runs one scheduler tick between preparation and swap. */
+bool gTickInsideConfigurationSwap = false;
+/** Scheduler ticks that ran inside a configuration swap window. */
+std::uint32_t gTicksInsideConfigurationSwap = 0U;
+
+/** @brief Simulated scheduler interrupt inside the swap window. */
+struct SwapWindowTick {
+    engine::ClockEngine* engine = nullptr;
+    GateTrace* trace = nullptr;
+    std::uint32_t remaining = 0U;
+};
+
+void runTickInsideSwapWindow(void* context) {
+    SwapWindowTick& window = *static_cast<SwapWindowTick*>(context);
+    if (window.remaining == 0U) {
+        return;
+    }
+    --window.remaining;
+    ++gTicksInsideConfigurationSwap;
+    traceOneTick(*window.engine, *window.trace);
+}
+
 /** @brief Runs a CLOCK channel, applies @p change before @p changeTick and returns its rising-edge trace. */
 template <typename Configure, typename Change>
 GateTrace traceReschedule(
@@ -24,7 +46,12 @@ GateTrace traceReschedule(
     configure(fixture);
     fixture.begin();
     GateTrace trace;
-    traceTicks(fixture.engine, trace, ticks, changeTick, [&] { change(fixture); });
+    SwapWindowTick window{&fixture.engine, &trace, 0U};
+    fixture.engine.setConfigurationSwapHookForTest(runTickInsideSwapWindow, &window);
+    traceTicks(fixture.engine, trace, ticks, changeTick, [&] {
+        window.remaining = gTickInsideConfigurationSwap ? 1U : 0U;
+        change(fixture);
+    });
     CHECK(edgesAlternateWithLowTick(trace, 0U));
     CHECK_EQ(trace.ticksWithoutSinglePortWrite, 0U);
     return trace;

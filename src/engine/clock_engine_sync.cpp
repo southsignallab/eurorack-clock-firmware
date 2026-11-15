@@ -14,33 +14,6 @@
 #include "hal/interrupt_lock.h"
 
 namespace clockfw::engine {
-namespace {
-
-void shiftPosition(
-    volatile std::uint64_t& position,
-    const std::uint64_t expected,
-    const std::uint64_t observed) {
-    if (observed >= expected) {
-        position += observed - expected;
-    } else {
-        const std::uint64_t correction = expected - observed;
-        position = position > correction ? position - correction : 0U;
-    }
-}
-
-void shiftPosition(
-    std::uint64_t& position,
-    const std::uint64_t expected,
-    const std::uint64_t observed) {
-    if (observed >= expected) {
-        position += observed - expected;
-    } else {
-        const std::uint64_t correction = expected - observed;
-        position = position > correction ? position - correction : 0U;
-    }
-}
-
-}  // namespace
 
 void ClockEngine::setExternalLock(const bool locked, const std::uint32_t bpmMilli) {
     hal::InterruptLock interruptLock;
@@ -48,6 +21,10 @@ void ClockEngine::setExternalLock(const bool locked, const std::uint32_t bpmMill
 }
 
 void ClockEngine::setExternalLockFromIsr(const bool locked, const std::uint32_t bpmMilli) {
+    if (externalLocked_ != locked || externalBpmMilli_ != bpmMilli) {
+        // The effective tempo and the shortest interval may change (W-060 swap check).
+        ++scheduleGeneration_;
+    }
     externalLocked_ = locked;
     externalBpmMilli_ = bpmMilli;
     if (!locked) {
@@ -81,9 +58,12 @@ void ClockEngine::acceptExternalPulseFromIsr(
 void ClockEngine::acceptExternalPulseUnsafe(
     const std::uint32_t bpmMilli,
     std::uint8_t pulsesPerQuarterNote) {
+    if (!externalLocked_ || externalBpmMilli_ != bpmMilli) {
+        ++scheduleGeneration_;
+    }
     externalLocked_ = true;
     externalBpmMilli_ = bpmMilli;
-    if (configuration_.source == ClockSource::Internal) {
+    if (configuration_->source == ClockSource::Internal) {
         return;
     }
     if (pulsesPerQuarterNote == 0U) {
@@ -98,7 +78,7 @@ void ClockEngine::acceptExternalPulseUnsafe(
         const std::uint32_t pulseNumerator =
             static_cast<std::uint32_t>(4U) * pulsesPerQuarterNote;
         const std::uint32_t pulseDenominator =
-            configuration_.beatUnit != 0U ? configuration_.beatUnit : 4U;
+            configuration_->beatUnit != 0U ? configuration_->beatUnit : 4U;
         const std::uint64_t pulseIntervalQ32 = core::calculateNextIntervalQ32(
             pulseNumerator,
             pulseDenominator,
@@ -133,7 +113,7 @@ void ClockEngine::acceptExternalPulseUnsafe(
     const std::uint32_t pulseNumerator =
         static_cast<std::uint32_t>(4U) * pulsesPerQuarterNote;
     const std::uint32_t pulseDenominator =
-        configuration_.beatUnit != 0U ? configuration_.beatUnit : 4U;
+        configuration_->beatUnit != 0U ? configuration_->beatUnit : 4U;
     const std::uint64_t pulseIntervalQ32 = core::calculateNextIntervalQ32(
         pulseNumerator,
         pulseDenominator,
@@ -154,7 +134,7 @@ void ClockEngine::acceptExternalPulseUnsafe(
     const std::uint64_t completedBeats = externalMusicalPositionQ32_ / core::kQ32One;
     masterBeatSerial_ = static_cast<std::uint32_t>(completedBeats & 0xFFFFFFFFULL);
     const std::uint8_t beatsPerBar =
-        configuration_.beatsPerBar != 0U ? configuration_.beatsPerBar : 1U;
+        configuration_->beatsPerBar != 0U ? configuration_->beatsPerBar : 1U;
     masterBeat_ = static_cast<std::uint8_t>(completedBeats % beatsPerBar) + 1U;
     masterBar_ = static_cast<std::uint16_t>((completedBeats / beatsPerBar) % 999ULL) + 1U;
 }
@@ -165,21 +145,38 @@ void ClockEngine::alignGlobalSchedulesToExternalPulse(
     if (expectedPulsePositionQ32 == observedPulsePositionQ32) {
         return;
     }
+    ++scheduleGeneration_;
 
-    shiftPosition(globalScheduleEpochQ32_, expectedPulsePositionQ32, observedPulsePositionQ32);
+    // Positions only ever move forward (F-069). A late pulse moves the GLOBAL
+    // grid later. An early pulse would move it earlier; near the start of the
+    // timeline that falls below zero and the unsigned epoch would saturate,
+    // leaving every following beat late. Moving the master timeline and every
+    // non-GLOBAL schedule later by the same amount is the same relative
+    // correction and never subtracts.
+    const bool latePulse = observedPulsePositionQ32 > expectedPulsePositionQ32;
+    const std::uint64_t deltaQ32 = latePulse
+        ? observedPulsePositionQ32 - expectedPulsePositionQ32
+        : expectedPulsePositionQ32 - observedPulsePositionQ32;
+    if (latePulse) {
+        globalScheduleEpochQ32_ += deltaQ32;
+    } else {
+        masterPositionQ32_ += deltaQ32;
+    }
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
-        if (configuration_.channels[channelIndex].common.resetMode != ResetMode::Global) {
+        const bool global =
+            configuration_->channels[channelIndex].common.resetMode == ResetMode::Global;
+        if (global != latePulse) {
             continue;
         }
         ChannelRuntime& runtime = channelRuntime_[channelIndex];
-        shiftPosition(runtime.scheduleEpochQ32, expectedPulsePositionQ32, observedPulsePositionQ32);
-        shiftPosition(runtime.nextEventQ32, expectedPulsePositionQ32, observedPulsePositionQ32);
+        runtime.scheduleEpochQ32 += deltaQ32;
+        runtime.nextEventQ32 += deltaQ32;
         // Processed and pending grid slots move with the epoch they belong to.
-        shiftPosition(runtime.nextEventSlotQ32, expectedPulsePositionQ32, observedPulsePositionQ32);
-        shiftPosition(runtime.lastEventSlotQ32, expectedPulsePositionQ32, observedPulsePositionQ32);
-        // Pending ratchet sub-events belong to the same corrected step grid.
+        runtime.nextEventSlotQ32 += deltaQ32;
+        runtime.lastEventSlotQ32 += deltaQ32;
+        // Pending ratchet sub-events belong to the same step grid.
         if (runtime.ratchetRemaining != 0U) {
-            shiftPosition(runtime.nextRatchetQ32, expectedPulsePositionQ32, observedPulsePositionQ32);
+            runtime.nextRatchetQ32 += deltaQ32;
         }
     }
 }

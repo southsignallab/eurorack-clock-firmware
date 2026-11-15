@@ -188,11 +188,20 @@ public:
     void beginSchedulerQuantumFromIsr();
 
     /**
+     * @brief ISR-only: returns the scheduler ticks that elapsed up to one TIM3 update (F-012).
+     * @param updateTimestampUs Microsecond timestamp (TIM5) of the latest scheduler update event.
+     * @return Elapsed ticks since the previous call, rounded to whole ticks and bounded by
+     *         config::kMaximumSchedulerCatchUpTicks; zero when this update was already counted.
+     */
+    std::uint32_t elapsedSchedulerTicksFromIsr(std::uint32_t updateTimestampUs);
+
+    /**
      * @brief Executes one deterministic scheduler quantum and writes its gate edges once.
+     * @param elapsedTicks Scheduler ticks this quantum covers (see elapsedSchedulerTicksFromIsr()).
      *
      * This method is ISR-only and must remain bounded, allocation-free, and non-blocking.
      */
-    void processSchedulerTick();
+    void processSchedulerTick(std::uint32_t elapsedTicks = 1U);
 
     /** @brief Returns interrupt-safe snapshot of the timing state used by the UI. */
     EngineSnapshot snapshot() const;
@@ -225,6 +234,24 @@ public:
     std::uint32_t resetRuntimeCountForTest() const;
     /** @brief Returns how many rising edges moved by one tick because the gate was still HIGH. */
     std::uint32_t deferredGateRiseCountForTest() const;
+    /** @brief Returns how often the tick catch-up reached config::kMaximumSchedulerCatchUpTicks. */
+    std::uint32_t schedulerCatchUpLimitCountForTest() const;
+
+    /** @brief Hook that runs between preparing and swapping a configuration (simulated ISR). */
+    using ConfigurationSwapHookForTest = void (*)(void* context);
+    /** @brief Installs @p hook with @p context; nullptr removes it. */
+    void setConfigurationSwapHookForTest(ConfigurationSwapHookForTest hook, void* context) {
+        configurationSwapHookForTest_ = hook;
+        configurationSwapHookContextForTest_ = context;
+    }
+    /** @brief Returns how many schedules or step phases were computed under an InterruptLock. */
+    std::uint32_t scheduleCalculationsUnderLockForTest() const {
+        return scheduleCalculationsUnderLockForTest_;
+    }
+    /** @brief Returns how many configuration swaps had to compute under the lock. */
+    std::uint32_t configurationSwapFallbackCountForTest() const {
+        return configurationSwapFallbackCountForTest_;
+    }
 
     /** @brief Returns the engine's in-RAM copy of one Custom Groove library slot. */
     const CustomGroovePattern& customGrooveSlotForTest(std::uint8_t slotIndex) const {
@@ -292,25 +319,112 @@ private:
         std::uint32_t randomState = 0x12345678U;
     };
 
+    /**
+     * @brief Inputs of the schedule calculations: the live configuration in scheduler
+     *        context, or a staged one prepared outside the interrupt lock (F-068).
+     */
+    struct ScheduleInputs {
+        /** Configuration the calculation reads. */
+        const EngineConfiguration* configuration = nullptr;
+        /** Humanize spacing cache that belongs to that configuration (one per channel). */
+        const std::uint32_t* customGrooveSpacingQ16 = nullptr;
+        /** Effective master tempo in milli-BPM. */
+        std::uint32_t bpmMilli = 0U;
+        /** Shortest representable interval at that tempo, Q32 master beats. */
+        std::uint64_t minimumIntervalQ32 = 1U;
+    };
+
+    /** @brief Scheduler state one channel schedule is computed from. */
+    struct ChannelScheduleBasis {
+        std::uint64_t positionQ32 = 0U;
+        std::uint64_t epochQ32 = 0U;
+        std::uint64_t lastEventSlotQ32 = 0U;
+        bool lastEventSlotValid = false;
+        bool mayUseCurrentBoundary = false;
+    };
+
+    /** @brief A computed channel schedule; installing it needs no division. */
+    struct PreparedChannelSchedule {
+        std::uint64_t epochQ32 = 0U;
+        std::uint64_t nextEventSerial = 0U;
+        std::uint64_t nextEventQ32 = 0U;
+        std::uint64_t nextEventSlotQ32 = 0U;
+    };
+
+    /** @brief A computed pattern step phase; FREE channels are bounded at install. */
+    struct PreparedStepPhase {
+        bool derivedFromSerial = false;
+        std::uint8_t step = 0U;
+        std::uint8_t displayedStep = 0U;
+    };
+
+    /** @brief Configuration buffer and Humanize spacings that one swap installs. */
+    struct StagedConfiguration {
+        /** The buffer the scheduler does not read (inactiveConfiguration()). */
+        EngineConfiguration* configuration = nullptr;
+        std::uint32_t customGrooveSpacingQ16[kChannelCount]{};
+    };
+
+    /** @brief Copy of the scheduler state a preparation starts from, taken under a short lock. */
+    struct ScheduleSnapshot {
+        std::uint32_t generation = 0U;
+        std::uint64_t positionQ32 = 0U;
+        std::uint64_t globalEpochQ32 = 0U;
+        bool restartPending = false;
+        bool externalLocked = false;
+        std::uint32_t externalBpmMilli = 0U;
+        std::uint16_t configuredBpm = 0U;
+        std::uint64_t epochQ32[kChannelCount]{};
+        std::uint64_t nextEventSerial[kChannelCount]{};
+        std::uint64_t lastEventSlotQ32[kChannelCount]{};
+        bool lastEventSlotValid[kChannelCount]{};
+    };
+
     /** @brief Returns the tempo that currently drives the master timeline. */
     std::uint32_t effectiveBpmMilli() const;
+
+    /** @brief Returns the tempo that @p configuration and the external state select. */
+    static std::uint32_t effectiveBpmMilli(
+        const EngineConfiguration& configuration,
+        bool externalLocked,
+        std::uint32_t externalBpmMilli);
+
+    /** @brief Builds the calculation inputs for @p configuration and the external state. */
+    static ScheduleInputs makeScheduleInputs(
+        const EngineConfiguration& configuration,
+        const std::uint32_t* customGrooveSpacingQ16,
+        bool externalLocked,
+        std::uint32_t externalBpmMilli);
+
+    /** @brief Returns the calculation inputs of the installed configuration. */
+    ScheduleInputs liveScheduleInputs() const;
 
     /** @brief Returns the shortest representable musical interval at the scheduler cadence. */
     std::uint64_t minimumOutputIntervalQ32() const;
 
+    /** @brief Returns the shortest representable interval at @p bpmMilli and @p beatUnit. */
+    static std::uint64_t minimumOutputIntervalQ32(std::uint32_t bpmMilli, std::uint8_t beatUnit);
+
     /** @brief Resolves one channel's effective musical rate into a reduced fraction. */
-    void resolveChannelRate(
+    static void resolveChannelRate(
+        const EngineConfiguration& configuration,
         std::size_t channelIndex,
         std::uint32_t& numerator,
-        std::uint32_t& denominator) const;
+        std::uint32_t& denominator);
 
     /** @brief Calculates one nominal interval without consuming the channel remainder accumulator. */
     std::uint64_t calculateNominalBaseIntervalQ32(std::size_t channelIndex) const;
 
+    /** @brief Nominal interval of one channel for the given calculation inputs. */
+    static std::uint64_t calculateNominalBaseIntervalQ32(
+        const ScheduleInputs& inputs,
+        std::size_t channelIndex);
+
     /** @brief Returns the exact cumulative base-grid offset for one event serial. */
-    std::uint64_t calculateBaseEventOffsetQ32(
+    static std::uint64_t calculateBaseEventOffsetQ32(
+        const ScheduleInputs& inputs,
         std::size_t channelIndex,
-        std::uint64_t eventSerial) const;
+        std::uint64_t eventSerial);
 
     /** @brief Returns the absolute epoch-anchored event position including phase, swing, and ONE CLOCK humanize. */
     std::uint64_t calculateEventPositionQ32(
@@ -318,8 +432,18 @@ private:
         std::uint64_t eventSerial,
         std::uint64_t* nominalSlotQ32 = nullptr) const;
 
+    /** @brief Event position for the given inputs and channel epoch. */
+    std::uint64_t calculateEventPositionQ32(
+        const ScheduleInputs& inputs,
+        std::size_t channelIndex,
+        std::uint64_t scheduleEpochQ32,
+        std::uint64_t eventSerial,
+        std::uint64_t* nominalSlotQ32 = nullptr) const;
+
     /** @brief Calculates one channel interval in real microseconds for gate-length limiting. */
-    std::uint64_t calculateBaseIntervalUs(std::size_t channelIndex) const;
+    static std::uint64_t calculateBaseIntervalUs(
+        const ScheduleInputs& inputs,
+        std::size_t channelIndex);
 
     /**
      * @brief Computes the Custom Groove spacing cache value for one channel configuration.
@@ -334,18 +458,19 @@ private:
         bool previewActive) const;
 
     /** @brief Returns the safely capped ONE CLOCK humanization amount for one output. */
-    std::uint16_t effectiveHumanizeUs(std::size_t channelIndex) const;
+    std::uint16_t effectiveHumanizeUs(const ScheduleInputs& inputs, std::size_t channelIndex) const;
 
     /** @brief Returns deterministic signed per-output timing jitter in Q32 master-beat units. */
     std::int64_t calculateHumanizeOffsetQ32(
+        const ScheduleInputs& inputs,
         std::size_t channelIndex,
         std::uint64_t eventSerial) const;
 
     /** @brief Drives one output only when its logical state changes; staged inside a quantum. */
     void setGateState(std::size_t channelIndex, bool high);
 
-    /** @brief Scheduler body of processSchedulerTick() before the single gate write. */
-    void runSchedulerTick();
+    /** @brief Scheduler body over @p elapsedTicks ticks, before the single gate write. */
+    void runSchedulerTick(std::uint32_t elapsedTicks);
 
     /** @brief Emits rising edges that were moved by one tick in the previous quantum. */
     void serviceDeferredGateRises();
@@ -354,7 +479,11 @@ private:
     void endGatesBeforeNextRise(std::uint64_t masterIncrementQ32);
 
     /** @brief Returns the first serial whose grid slot follows the last processed event. */
-    std::uint64_t firstSerialAfterLastEvent(std::size_t channelIndex, std::uint64_t serial) const;
+    static std::uint64_t firstSerialAfterLastEvent(
+        const ScheduleInputs& inputs,
+        std::size_t channelIndex,
+        const ChannelScheduleBasis& basis,
+        std::uint64_t serial);
 
     /** @brief Evaluates and emits one scheduled event for one channel. */
     void fireChannelEvent(std::size_t channelIndex);
@@ -367,16 +496,81 @@ private:
         std::size_t channelIndex,
         bool includeCurrentBoundary = false);
 
+    /** @brief Returns the live basis of one channel; caller holds the lock or is the ISR. */
+    ChannelScheduleBasis liveScheduleBasis(
+        std::size_t channelIndex,
+        bool includeCurrentBoundary) const;
+
+    /** @brief Computes the next event of one channel from @p basis (64-bit divisions). */
+    PreparedChannelSchedule prepareChannelSchedule(
+        const ScheduleInputs& inputs,
+        std::size_t channelIndex,
+        const ChannelScheduleBasis& basis) const;
+
+    /** @brief Installs a prepared schedule; no division. */
+    void installChannelSchedule(std::size_t channelIndex, const PreparedChannelSchedule& schedule);
+
     /** @brief Returns the active local cycle length used to derive GLOBAL step phase. */
-    std::uint8_t channelCycleLength(std::size_t channelIndex) const;
+    static std::uint8_t channelCycleLength(
+        const EngineConfiguration& configuration,
+        std::size_t channelIndex);
 
     /** @brief Re-establishes GLOBAL pattern phase or bounds FREE local phase after edits. */
     void synchronizeChannelStepPhase(std::size_t channelIndex);
 
-    /** @brief Returns the swing displacement used by the epoch-anchored event grid. */
-    std::uint64_t calculateSwingDeltaQ32(
+    /** @brief Computes the step phase that @p nextEventSerial implies under @p configuration. */
+    PreparedStepPhase prepareStepPhase(
+        const EngineConfiguration& configuration,
         std::size_t channelIndex,
-        std::uint64_t baseIntervalQ32) const;
+        std::uint64_t nextEventSerial) const;
+
+    /** @brief Installs a prepared step phase under the installed configuration. */
+    void installStepPhase(std::size_t channelIndex, const PreparedStepPhase& phase);
+
+    /**
+     * @brief Installs @p staged; prepares the schedules of @p channelMask outside the lock.
+     * @param staged Configuration and spacings to install.
+     * @param channelMask Channels whose gate, schedule and step phase follow the change.
+     * @param rescheduleChannels True to rebuild the next event of every channel in @p channelMask.
+     */
+    void swapConfiguration(
+        const StagedConfiguration& staged,
+        std::uint8_t channelMask,
+        bool rescheduleChannels);
+
+    /** @brief Returns the configuration buffer that is not installed (foreground only). */
+    EngineConfiguration* inactiveConfiguration();
+
+    /** @brief Copies the scheduler state into @p snapshot; caller holds the lock. */
+    void takeScheduleSnapshotUnsafe(ScheduleSnapshot& snapshot) const;
+
+    /** @brief Prepares schedules and step phases of @p channelMask from @p snapshot. */
+    void prepareConfigurationSwap(
+        const StagedConfiguration& staged,
+        const ScheduleSnapshot& snapshot,
+        std::uint8_t channelMask,
+        bool rescheduleChannels,
+        PreparedChannelSchedule (&schedules)[kChannelCount],
+        PreparedStepPhase (&phases)[kChannelCount]) const;
+
+    /** @brief True when the scheduler has not moved a basis of @p channelMask since @p snapshot. */
+    bool scheduleSnapshotCurrentUnsafe(
+        const ScheduleSnapshot& snapshot,
+        std::uint8_t channelMask) const;
+
+    /** @brief Installs a prepared swap; caller holds the lock. */
+    void installConfigurationSwapUnsafe(
+        const StagedConfiguration& staged,
+        std::uint8_t channelMask,
+        bool rescheduleChannels,
+        const PreparedChannelSchedule (&schedules)[kChannelCount],
+        const PreparedStepPhase (&phases)[kChannelCount]);
+
+    /** @brief Returns the swing displacement used by the epoch-anchored event grid. */
+    static std::uint64_t calculateSwingDeltaQ32(
+        const ScheduleInputs& inputs,
+        std::size_t channelIndex,
+        std::uint64_t baseIntervalQ32);
 
     /** @brief Applies one external reference without manipulating global interrupt state. */
     void acceptExternalPulseUnsafe(
@@ -404,6 +598,9 @@ private:
     /** @brief Copies master and channel configuration without entering a critical section. */
     void copyConfigurationUnsafe(const ClockState& state);
 
+    /** @brief Resolves @p state into an engine configuration (no shared state). */
+    static void resolveConfiguration(const ClockState& state, EngineConfiguration& configuration);
+
     /**
      * @brief Computes the Custom Groove spacing cache for every channel of one state (foreground).
      * @param state Application state that the following configuration swap installs.
@@ -417,7 +614,13 @@ private:
     void installCustomGrooveSpacingsUnsafe(const std::uint32_t (&spacingQ16)[kChannelCount]);
 
     hal::GateOutputDriver& gateOutputs_;
-    EngineConfiguration configuration_{};
+    /**
+     * Two configuration buffers (W-060). The scheduler reads *configuration_; the
+     * foreground stages the other buffer outside the lock and installs it by
+     * swapping this pointer under the lock.
+     */
+    EngineConfiguration configurationBuffers_[2]{};
+    EngineConfiguration* configuration_ = &configurationBuffers_[0];
     volatile bool playing_ = true;
     volatile bool restartPending_ = true;
     volatile bool preCountActive_ = false;
@@ -440,7 +643,16 @@ private:
     volatile std::uint32_t externalPulseRemainder_ = 0U;
     ChannelRuntime channelRuntime_[kChannelCount]{};
     volatile std::uint32_t schedulerTickCounter_ = 0U;
+    /**
+     * Incremented whenever scheduler context moves a schedule basis other than by
+     * processing an event: restart, phase correction, external tempo or lock.
+     */
+    volatile std::uint32_t scheduleGeneration_ = 0U;
     volatile std::uint64_t masterRemainder_ = 0U;
+    /** TIM5 timestamp of the last counted TIM3 update (scheduler context only, F-012). */
+    std::uint32_t lastSchedulerUpdateUs_ = 0U;
+    /** False until the first scheduler interrupt anchored lastSchedulerUpdateUs_. */
+    bool schedulerUpdateAnchored_ = false;
     bool schedulerQuantumOpen_ = false;
     std::uint8_t gateHighMask_ = 0U;
     std::uint8_t gatesHighAtLastCommit_ = 0U;
@@ -450,6 +662,11 @@ private:
 #ifdef CLOCK_HOST_TEST
     std::uint32_t resetRuntimeCountForTest_ = 0U;
     std::uint32_t deferredGateRiseCountForTest_ = 0U;
+    std::uint32_t schedulerCatchUpLimitCountForTest_ = 0U;
+    std::uint32_t configurationSwapFallbackCountForTest_ = 0U;
+    mutable std::uint32_t scheduleCalculationsUnderLockForTest_ = 0U;
+    ConfigurationSwapHookForTest configurationSwapHookForTest_ = nullptr;
+    void* configurationSwapHookContextForTest_ = nullptr;
 #endif
 };
 

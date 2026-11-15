@@ -109,6 +109,34 @@ std::uint64_t calculateMasterIncrementMilliBpmQ32(
     std::uint32_t schedulerFrequencyHz,
     volatile std::uint64_t& remainder);
 
+/** @brief Master-position advance over one or more scheduler ticks. */
+struct MasterAdvanceQ32 {
+    /** Advance over all ticks in Q32 master beats. */
+    std::uint64_t totalQ32 = 0U;
+    /** Smallest advance of one tick (quotient without remainder carry) in Q32 master beats. */
+    std::uint64_t perTickFloorQ32 = 0U;
+};
+
+/**
+ * @brief Advances the master position by @p ticks scheduler ticks from a milli-BPM tempo.
+ * @param bpmMilli Master tempo in thousandths of a BPM.
+ * @param beatUnit Master meter unit.
+ * @param schedulerFrequencyHz Scheduler interrupt frequency.
+ * @param ticks Number of scheduler ticks to advance (caught-up ticks included).
+ * @param remainder Persistent division remainder preventing long-term drift.
+ * @return Total and one-tick advance in Q32 master beats.
+ *
+ * Bit-identical to @p ticks calls of calculateMasterIncrementMilliBpmQ32() but with one
+ * 64-bit division regardless of @p ticks: every further tick only adds the quotient
+ * and carries the remainder (F-012).
+ */
+MasterAdvanceQ32 advanceMasterPositionMilliBpmQ32(
+    std::uint32_t bpmMilli,
+    std::uint8_t beatUnit,
+    std::uint32_t schedulerFrequencyHz,
+    std::uint32_t ticks,
+    volatile std::uint64_t& remainder);
+
 /**
  * @brief Applies alternating swing to one ideal interval.
  * @param baseIntervalQ32 Ideal interval in Q32 beats.

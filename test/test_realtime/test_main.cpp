@@ -94,6 +94,9 @@ void runTicks(engine::ClockEngine& engine, const std::uint32_t count) {
 #include "cases/sequencer_step_expression.inc"
 #include "cases/gate_output_batching.inc"
 #include "cases/reschedule_causes.inc"
+#include "cases/sync_phase_alignment.inc"
+#include "cases/scheduler_catch_up.inc"
+#include "cases/configuration_swap.inc"
 
 }  // namespace
 
@@ -158,6 +161,24 @@ int main() {
     RUN_TEST(testExternalSyncCorrectionDoesNotRefireOrDropEvents);
     RUN_TEST(testResetRestartsTheBarExactlyOnce);
     RUN_TEST(testRescheduleInSameTickAsHighGateMovesRiseByOneTick);
+    RUN_TEST(testOnTimePulseAfterEarlyPulsesFiresTheBeatOnThePulse);
+    RUN_TEST(testEarlyPulseBeyondTheEpochKeepsTheFollowingBeats);
+    RUN_TEST(testLatePulseMovesTheGridWithoutRepeatingTheBeat);
+    RUN_TEST(testOnTimePulsesKeepTheGridUnchanged);
+    RUN_TEST(testOutlierPulseRealignsOnceAndTheGridFollowsTheNextPulses);
+    RUN_TEST(testFreeChannelIgnoresEarlyAndLatePulseCorrections);
+    RUN_TEST(testLockOverOneTwoAndSevenUpdatesKeepsTheTimelineExact);
+    RUN_TEST(testCatchUpLimitExactlyBelowAndAbove);
+    RUN_TEST(testLockAcrossTheTim5WrapKeepsTheTimelineExact);
+    RUN_TEST(testAlreadyCountedUpdateAdvancesNothing);
+    RUN_TEST(testTempoStaysExactOverAMinuteOfRandomLocksAndJitter);
+    RUN_TEST(testEventsInCaughtUpTicksFireOnceAndInOrder);
+    RUN_TEST(testGateLengthCountsCaughtUpTicks);
+    RUN_TEST(testConfigurationSwapComputesNoScheduleUnderTheLock);
+    RUN_TEST(testEveryRescheduleCauseWithASchedulerTickInsideTheSwap);
+    RUN_TEST(testSwapAtTheTickOfAnEventFiresItOnce);
+    RUN_TEST(testEventDueInsideTheSwapWindowFiresInTheNextTick);
+    RUN_TEST(testSwapComputesUnderTheLockWhenTheSchedulerKeepsMovingTheBasis);
     std::cout << "Realtime assertions: " << checks << "\n";
     return UNITY_END();
 }

@@ -87,7 +87,7 @@ void ClockEngine::serviceSequencerRatchets() {
 }
 
 void ClockEngine::fireChannelEvent(const std::size_t channelIndex) {
-    const ChannelConfig& channel = configuration_.channels[channelIndex];
+    const ChannelConfig& channel = configuration_->channels[channelIndex];
     ChannelRuntime& runtime = channelRuntime_[channelIndex];
 
     if (channel.common.mode == ChannelMode::Off) {

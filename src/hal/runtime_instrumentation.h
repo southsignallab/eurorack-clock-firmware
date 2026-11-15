@@ -35,6 +35,10 @@ struct ClockRuntimeCounters {
     std::uint32_t measurementOverheadCycles;
     /** Non-zero when CYCCNT advanced during begin(); zero means the counter is not running. */
     std::uint32_t cycleCounterRunning;
+    /** Interrupts whose merged updates exceeded kMaximumSchedulerCatchUpTicks (count, F-012). */
+    std::uint32_t schedulerCatchUpLimitHits;
+    /** Ticks caught up beyond one per interrupt, summed (count, F-012). */
+    std::uint32_t caughtUpSchedulerTicks;
 };
 
 extern "C" volatile ClockRuntimeCounters gClockRuntimeCounters;
@@ -55,6 +59,12 @@ void recordInterruptLock(std::uint32_t startCycles);
 
 /** @brief Counts one rising edge moved by one scheduler tick. */
 void countDeferredGateRise();
+
+/** @brief Counts one scheduler interrupt that dropped updates beyond the catch-up limit. */
+void countSchedulerCatchUpLimit();
+
+/** @brief Adds the ticks beyond one that a scheduler interrupt caught up (@p elapsedTicks > 1). */
+void countCaughtUpSchedulerTicks(std::uint32_t elapsedTicks);
 
 }  // namespace clockfw::hal::instrumentation
 #endif

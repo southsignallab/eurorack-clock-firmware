@@ -1278,7 +1278,10 @@ void testEngineAuditRegressions() {
     runEngineTicks(externalGateEngine, 18000U);
     const auto earlyPulsePosition = externalGateEngine.snapshot().masterPositionQ32;
     externalGateEngine.acceptExternalPulse(60000U, 1U);
-    CHECK_EQ(externalGateEngine.snapshot().masterPositionQ32, earlyPulsePosition);
+    // An early pulse moves the master forward onto the pulse grid (one beat after
+    // the late pulse) instead of moving the GLOBAL grid below its epoch (F-069).
+    CHECK(externalGateEngine.snapshot().masterPositionQ32 > earlyPulsePosition);
+    CHECK_EQ(externalGateEngine.snapshot().masterPositionQ32, latePulsePosition + core::kQ32One);
     CHECK_EQ(externalGateEngine.snapshot().masterBeatPhaseQ32, 0ULL);
 
     // Input-capture ISR integration must not re-enable interrupts from inside the ISR.

@@ -34,7 +34,7 @@ std::uint64_t ClockEngine::estimateMasterPositionAtUs(
     volatile std::uint64_t remainder = 0U;
     const std::uint64_t incrementQ32 = core::calculateMasterIncrementMilliBpmQ32(
         effectiveBpmMilli(),
-        configuration_.beatUnit,
+        configuration_->beatUnit,
         config::kSchedulerFrequencyHz,
         remainder);
     const std::uint64_t rewindQ32 = incrementQ32 != 0U &&

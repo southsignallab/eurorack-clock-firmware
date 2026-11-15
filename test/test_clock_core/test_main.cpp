@@ -150,6 +150,51 @@ void test_master_accumulator_120_bpm_is_exact_at_20khz() {
     TEST_ASSERT_EQUAL_UINT64(0, remainder);
 }
 
+void test_master_advance_over_several_ticks_matches_single_ticks() {
+    // F-012: one division for n caught-up ticks, bit-identical to n single ticks.
+    const uint32_t tempos[] = {1000U, 60000U, 120000U, 127345U, 300000U, 999000U};
+    const uint8_t units[] = {0U, 2U, 4U, 8U, 16U};
+    for (const uint32_t bpmMilli : tempos) {
+        for (const uint8_t unit : units) {
+            volatile uint64_t singleRemainder = 0U;
+            volatile uint64_t batchRemainder = 0U;
+            uint64_t singlePosition = 0U;
+            uint64_t batchPosition = 0U;
+            for (uint32_t ticks = 0U; ticks <= 8U; ++ticks) {
+                uint64_t floorQ32 = UINT64_MAX;
+                for (uint32_t tick = 0U; tick < ticks; ++tick) {
+                    const uint64_t increment = calculateMasterIncrementMilliBpmQ32(
+                        bpmMilli, unit, 20000U, singleRemainder);
+                    singlePosition += increment;
+                    floorQ32 = increment < floorQ32 ? increment : floorQ32;
+                }
+                const MasterAdvanceQ32 advance = advanceMasterPositionMilliBpmQ32(
+                    bpmMilli, unit, 20000U, ticks, batchRemainder);
+                batchPosition += advance.totalQ32;
+                TEST_ASSERT_EQUAL_UINT64(singlePosition, batchPosition);
+                TEST_ASSERT_EQUAL_UINT64(singleRemainder, batchRemainder);
+                if (ticks != 0U) {
+                    TEST_ASSERT_TRUE(advance.perTickFloorQ32 <= floorQ32);
+                    TEST_ASSERT_TRUE(floorQ32 - advance.perTickFloorQ32 <= 1U);
+                }
+            }
+        }
+    }
+}
+
+void test_master_advance_handles_zero_tempo_and_zero_frequency() {
+    volatile uint64_t remainder = 123U;
+    MasterAdvanceQ32 advance = advanceMasterPositionMilliBpmQ32(0U, 4U, 20000U, 5U, remainder);
+    TEST_ASSERT_EQUAL_UINT64(0U, advance.totalQ32);
+    TEST_ASSERT_EQUAL_UINT64(0U, remainder);
+    // Frequency 0 is normalized to 1 Hz like the single-tick function.
+    volatile uint64_t single = 0U;
+    remainder = 0U;
+    advance = advanceMasterPositionMilliBpmQ32(60000U, 4U, 0U, 1U, remainder);
+    const uint64_t singleIncrement = calculateMasterIncrementMilliBpmQ32(60000U, 4U, 0U, single);
+    TEST_ASSERT_EQUAL_UINT64(singleIncrement, advance.totalQ32);
+}
+
 void test_master_accumulator_respects_beat_unit() {
     uint64_t remainder = 0;
     uint64_t sum = 0;
@@ -490,5 +535,7 @@ int main(int, char**) {
     RUN_TEST(test_sequencer_supports_step_64);
     RUN_TEST(test_sequencer_rotation_preserves_hit_count);
     RUN_TEST(test_reset_policy_truth_table);
+    RUN_TEST(test_master_advance_over_several_ticks_matches_single_ticks);
+    RUN_TEST(test_master_advance_handles_zero_tempo_and_zero_frequency);
     return UNITY_END();
 }

@@ -10,6 +10,14 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 ## [Unreleased]
 
+### Fix: exact tempo while editing, one time base
+
+- The master timeline no longer loses scheduler ticks while the foreground holds an interrupt lock. Each scheduler interrupt counts the ticks since the previous one from the microsecond timer (TIM5) and catches up up to 8 ticks (400 µs) at once; events that fall into those ticks fire once each and in order. Previously several 50-µs ticks merged into one, so the clock ran slightly slow while settings were edited during PLAY (not measured).
+- Configuration changes during PLAY compute the new channel schedules outside the interrupt lock; the lock covers only the swap of the prepared values. If the scheduler moves a schedule meanwhile, the preparation repeats, and after three attempts the swap computes under the lock as before. Previously up to eight channels were recomputed with interrupts disabled. Not yet measured on hardware (`blackpill_f401cc_timing`).
+- Milliseconds now derive from the same TIM5 time base as microseconds, so they keep counting through Flash operations, which stall the SysTick counter. Millisecond timers (screen timeouts, button timing) no longer drift from the microsecond input timestamps. SysTick remains for HAL-internal timeouts.
+- A control pass whose microsecond timestamp is exactly zero (once every 71.6 minutes) no longer falls back to milliseconds × 1000.
+- After an early SYNC pulse, the following beats stay on the pulses. Previously an early correction larger than the time since the phase was set (typically right after the first pulses) moved every following beat late by the excess until the next reset; in the reproduced case 10 ms. An early pulse now moves the master timeline forward instead of moving the beat grid back.
+
 ### Fix: simultaneous gate edges, no lost or doubled edges on live changes
 
 - All gate edges of one scheduler tick (50 µs) are written to the outputs in one register access, so outputs that rise or fall together switch at the same instant. Previously each output was written separately with engine work in between, so later outputs switched slightly after earlier ones (not measured). BEATKNECHT raises the drum gates of a step the same way.
@@ -19,7 +27,7 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 ### Added: runtime instrumentation in debug builds
 
-- New PlatformIO environments `blackpill_f401cc_debug_instrumented` and `blackpill_f401cc_timing` (release optimization `-Os`) record the longest TIM3 scheduler interrupt, the longest foreground interrupt lock (CPU cycles) and the number of moved rising edges in `gClockRuntimeCounters`, readable over SWD. Release builds contain none of it.
+- New PlatformIO environments `blackpill_f401cc_debug_instrumented` and `blackpill_f401cc_timing` (release optimization `-Os`) record the longest TIM3 scheduler interrupt, the longest foreground interrupt lock (CPU cycles), the number of moved rising edges, caught-up scheduler ticks and interrupts that reached the catch-up limit in `gClockRuntimeCounters`, readable over SWD. Release builds contain none of it.
 
 ### Changed: one coordinated Flash commit path
 

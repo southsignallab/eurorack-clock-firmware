@@ -134,13 +134,20 @@ std::uint64_t ClockEngine::calculateBaseEventOffsetQ32(
 
 std::uint64_t ClockEngine::calculateEventPositionQ32(
     const std::size_t channelIndex,
-    const std::uint64_t eventSerial) const {
+    const std::uint64_t eventSerial,
+    std::uint64_t* const nominalSlotQ32) const {
     const ChannelRuntime& runtime = channelRuntime_[channelIndex];
     const std::uint64_t baseIntervalQ32 = calculateNominalBaseIntervalQ32(channelIndex);
     const std::uint64_t phaseOffsetQ32 = core::calculatePhaseOffsetQ32(
         baseIntervalQ32,
         configuration_.channels[channelIndex].common.phasePercent);
     const std::uint64_t baseOffsetQ32 = calculateBaseEventOffsetQ32(channelIndex, eventSerial);
+    if (nominalSlotQ32 != nullptr) {
+        // Grid slot without phase, swing, groove, or humanize (F-063 identity of an event).
+        *nominalSlotQ32 = baseOffsetQ32 > UINT64_MAX - runtime.scheduleEpochQ32
+            ? UINT64_MAX
+            : runtime.scheduleEpochQ32 + baseOffsetQ32;
+    }
     const std::uint64_t swingOffsetQ32 = (eventSerial & 1ULL) != 0ULL
         ? calculateSwingDeltaQ32(channelIndex, baseIntervalQ32)
         : 0U;

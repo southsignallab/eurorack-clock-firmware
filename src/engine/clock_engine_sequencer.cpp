@@ -72,10 +72,11 @@ void ClockEngine::serviceSequencerRatchets() {
         while (runtime.ratchetRemaining > 0U &&
                masterPositionQ32_ >= runtime.nextRatchetQ32 && guard++ < 7U) {
             // A bounded ratchet must create a real rising edge. Normal pulse sizing
-            // leaves a LOW gap, but force LOW defensively before the sub-event.
+            // leaves a LOW gap; otherwise the rise moves by one tick (setGateState).
             setGateState(channelIndex, false);
             setGateState(channelIndex, true);
-            runtime.gateOffTick = schedulerTickCounter_ + runtime.ratchetGateTicks;
+            runtime.gateOffTick = schedulerTickCounter_ + runtime.ratchetGateTicks +
+                ((static_cast<std::uint32_t>(deferredRiseMask_) >> channelIndex) & 1U);
             runtime.gateOffScheduled = true;
             --runtime.ratchetRemaining;
             if (runtime.ratchetRemaining > 0U) {
@@ -211,7 +212,8 @@ void ClockEngine::fireChannelEvent(const std::size_t channelIndex) {
         }
     }
 
-    if (arrivedFromTie && ratchetCount > 1U) {
+    // Every new pulse needs a real rising edge; only a tie continues the gate.
+    if (!arrivedFromTie || ratchetCount > 1U) {
         setGateState(channelIndex, false);
     }
     setGateState(channelIndex, true);
@@ -222,7 +224,9 @@ void ClockEngine::fireChannelEvent(const std::size_t channelIndex) {
         return;
     }
 
-    runtime.gateOffTick = schedulerTickCounter_ + gateTicks;
+    // A rise moved by one tick keeps its full pulse length.
+    runtime.gateOffTick = schedulerTickCounter_ + gateTicks +
+        ((static_cast<std::uint32_t>(deferredRiseMask_) >> channelIndex) & 1U);
     runtime.gateOffScheduled = true;
     if (ratchetCount > 1U) {
         runtime.ratchetRemaining = static_cast<std::uint8_t>(ratchetCount - 1U);

@@ -9,8 +9,12 @@
 
 #if defined(CLOCK_HOST_TEST) || defined(CLOCK_SIMULATOR)
 #include <Arduino.h>
+#include <cassert>
 #else
 #include <stm32f4xx_hal.h>
+#endif
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+#include "hal/runtime_instrumentation.h"
 #endif
 
 namespace clockfw::hal::platform {
@@ -43,6 +47,35 @@ void configureInputPullup(const mcu::Pin pin) { pinMode(pin, INPUT_PULLUP); }
 void configureOutput(const mcu::Pin pin) { pinMode(pin, OUTPUT); }
 bool read(const mcu::Pin pin) { return digitalRead(pin) == HIGH; }
 void write(const mcu::Pin pin, const bool high) { digitalWrite(pin, high ? HIGH : LOW); }
+#if defined(CLOCK_HOST_TEST)
+namespace {
+std::uint32_t gPortWriteCount = 0U;
+PortWriteRecord gLastPortWrite{};
+}  // namespace
+std::uint32_t portWriteCountForTest() { return gPortWriteCount; }
+PortWriteRecord lastPortWriteForTest() { return gLastPortWrite; }
+void resetPortWriteLogForTest() {
+    gPortWriteCount = 0U;
+    gLastPortWrite = PortWriteRecord{};
+}
+#endif
+void writePortLines(const mcu::Pin portReference, const std::uint16_t setMask, const std::uint16_t resetMask) {
+    // Production writes one BSRR word; a line in both masks would be ambiguous.
+    assert((setMask & resetMask) == 0U);
+    const std::uint32_t portBase = portReference & 0xFF00U;
+#if defined(CLOCK_HOST_TEST)
+    ++gPortWriteCount;
+    gLastPortWrite = PortWriteRecord{portBase >> 8U, setMask, resetMask};
+#endif
+    for (std::uint32_t line = 0U; line < 16U; ++line) {
+        const std::uint32_t lineMask = 1UL << line;
+        if ((resetMask & lineMask) != 0U) {
+            digitalWrite(portBase | line, LOW);
+        } else if ((setMask & lineMask) != 0U) {
+            digitalWrite(portBase | line, HIGH);
+        }
+    }
+}
 void attachInterrupt(const mcu::Pin pin, const InterruptCallback callback, const InterruptEdge edge) {
     const int mode = edge == InterruptEdge::Rising ? RISING : (edge == InterruptEdge::Falling ? FALLING : CHANGE);
     ::attachInterrupt(digitalPinToInterrupt(pin), callback, mode);
@@ -154,6 +187,9 @@ void initializeMcu() {
     __DSB();
     __ISB();
     configureMicrosTimer();
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+    instrumentation::begin();
+#endif
 }
 void configureInputPullup(const mcu::Pin pin) {
     enablePortClock(pin); GPIO_TypeDef* const port = portFor(pin); if (port == nullptr) return;
@@ -165,6 +201,15 @@ void configureOutput(const mcu::Pin pin) {
 }
 bool read(const mcu::Pin pin) { GPIO_TypeDef* const port=portFor(pin); return port != nullptr && HAL_GPIO_ReadPin(port,maskFor(pin)) == GPIO_PIN_SET; }
 void write(const mcu::Pin pin, const bool high) { GPIO_TypeDef* const port=portFor(pin); if (port != nullptr) HAL_GPIO_WritePin(port,maskFor(pin),high?GPIO_PIN_SET:GPIO_PIN_RESET); }
+void writePortLines(const mcu::Pin portReference, const std::uint16_t setMask, const std::uint16_t resetMask) {
+    // GPIOx_BSRR (CMSIS stm32f401xc.h: GPIO_BSRR_BS0..15 at bits 0..15,
+    // GPIO_BSRR_BR0..15 at bits 16..31). One word store updates every listed
+    // line of the port in the same bus access; callers keep the masks disjoint.
+    GPIO_TypeDef* const port = portFor(portReference);
+    if (port != nullptr) {
+        port->BSRR = (static_cast<std::uint32_t>(resetMask) << 16U) | setMask;
+    }
+}
 void attachInterrupt(const mcu::Pin pin, const InterruptCallback callback, const InterruptEdge edge) {
     enablePortClock(pin); GPIO_TypeDef* const port=portFor(pin); if (port == nullptr) return;
     const std::uint8_t index=indexFor(pin); gExtiCallbacks[index]=callback;

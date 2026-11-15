@@ -1306,6 +1306,10 @@ void testEngineAuditRegressions() {
     CHECK_EQ(fakefw::pinValues[gatePin], LOW);
 
     // Legal maximum-rate/swing settings must not silently lose the short swing events.
+    // Short swing intervals here are about one scheduler tick. With one GPIOB write
+    // per tick a pulse needs at least one HIGH and one LOW tick, so a rise may move
+    // by one tick and events less than two ticks apart can share one pulse; the
+    // earlier same-tick LOW/HIGH glitches (1020..1025 "edges") no longer exist.
     ClockState fastState = makeDefaultState();
     for (auto& channel : fastState.channels) channel.common.mode = ChannelMode::Off;
     fastState.bpm = 300U;
@@ -1326,8 +1330,18 @@ void testEngineAuditRegressions() {
         [gatePin](const fakefw::PinWrite& write) {
             return write.pin == gatePin && write.value == HIGH;
         }));
-    CHECK(fastRisingEdges >= 1020U);
-    CHECK(fastRisingEdges <= 1025U);
+    CHECK(fastRisingEdges >= 970U);
+    CHECK(fastRisingEdges <= 1000U);
+    std::uint8_t previousLevel = LOW;
+    std::uint32_t sameLevelRepeats = 0U;
+    for (const auto& write : fakefw::writes) {
+        if (write.pin == gatePin) {
+            sameLevelRepeats += write.value == previousLevel ? 1U : 0U;
+            previousLevel = write.value;
+        }
+    }
+    CHECK_EQ(sameLevelRepeats, 0U);
+    CHECK(fastEngine.deferredGateRiseCountForTest() > 0U);
 }
 
 void testEngineBoundaryBranches() {

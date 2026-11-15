@@ -158,6 +158,7 @@ def realtime_sources() -> list[Path]:
         "src/engine/clock_engine.cpp",
         "src/engine/clock_engine_capture.cpp",
         "src/engine/clock_engine_custom_groove.cpp",
+        "src/engine/clock_engine_edges.cpp",
         "src/engine/clock_engine_sequencer.cpp",
         "src/engine/clock_engine_sync.cpp",
         "src/engine/clock_engine_timing.cpp",

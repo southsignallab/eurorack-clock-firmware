@@ -214,6 +214,17 @@ pio run -e blackpill_f401cc_spi_ssd1306
 
 Both profiles use PA5=OLED `CLK`, PA7=OLED `DIN` (SPI MOSI; `SDA` on the earlier prototype module), PA4=`CS`, PB9=`DC` and PB15=active-low `RES`; `blackpill_f401cc_spi_ssd1306` selects SSD1306 and `blackpill_f401cc_spi_ssd1315` selects SSD1315. The write-only OLED bus keeps SPI1 in the proven normal two-line master mode; only SCK and MOSI are configured as alternate-function pins, so PA6/MISO remains unconfigured and free. The legacy I2C transport remains host-regression code only because PB6/PB7 are dedicated to the encoder on final hardware.
 
+### Runtime instrumentation (debug builds only)
+
+Two further environments build the SSD1315 profile with `-DCLOCK_RUNTIME_INSTRUMENTATION=1` and `build_type = debug`:
+
+| Environment | Optimization |
+| --- | --- |
+| `blackpill_f401cc_debug_instrumented` | PlatformIO debug default (`-Og -g2 -ggdb2`) |
+| `blackpill_f401cc_timing` | Release level `-Os` with debug symbols, for timing numbers that transfer to release images |
+
+The firmware enables the DWT cycle counter at boot and records the longest TIM3 scheduler ISR body, the longest foreground `InterruptLock` section (both in CPU cycles at 84 MHz) and the number of rising gate edges moved by one scheduler tick. Read them over SWD from the C symbol `gClockRuntimeCounters` (for example `print gClockRuntimeCounters` in GDB); `measurementOverheadCycles` holds the cost of two back-to-back counter reads, and `cycleCounterRunning` is zero if the counter did not start. Nothing is printed from an interrupt. Release environments contain none of this code: the flag stops the build unless `build_type = debug`.
+
 ## 12. Windows: upload through DFU
 
 > [!CAUTION]

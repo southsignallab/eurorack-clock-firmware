@@ -34,6 +34,10 @@ public:
 
 private:
     std::uint32_t previousPrimask_ = 0U;
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+    /** Cycle counter at entry, only in instrumented debug builds (W-056). */
+    std::uint32_t startCycles_ = 0U;
+#endif
 };
 
 }  // namespace clockfw::hal

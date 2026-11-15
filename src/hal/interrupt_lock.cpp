@@ -9,14 +9,23 @@
 #include "hal/interrupt_lock.h"
 
 #include "hal/platform_io.h"
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+#include "hal/runtime_instrumentation.h"
+#endif
 
 namespace clockfw::hal {
 
 InterruptLock::InterruptLock() {
     previousPrimask_ = platform::enterCritical();
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+    startCycles_ = instrumentation::cycleCount();
+#endif
 }
 
 InterruptLock::~InterruptLock() {
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+    instrumentation::recordInterruptLock(startCycles_);
+#endif
     platform::exitCritical(previousPrimask_);
 }
 

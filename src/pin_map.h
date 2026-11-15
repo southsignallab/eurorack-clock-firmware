@@ -77,6 +77,38 @@ inline constexpr std::array<std::uint32_t, kChannelCount> kGateChannelPins{{
     kChannel8GateLedPin
 }};
 
+/** Encoded port identifier of GPIOB (see hal/gpio_pin.h: bits 15..8 of a pin hold the port). */
+inline constexpr std::uint32_t kGpioPortB = 0xBU;
+
+/** @brief Returns the encoded port identifier of one framework-independent pin. */
+constexpr std::uint32_t pinPort(const std::uint32_t pin) {
+    return static_cast<std::uint32_t>((pin >> 8U) & 0xFFU);
+}
+
+/** @brief Returns the single-bit GPIO line mask of one pin within its port. */
+constexpr std::uint16_t pinLineMask(const std::uint32_t pin) {
+    return static_cast<std::uint16_t>(1U << (pin & 0x0FU));
+}
+
+/** @brief Returns true when every gate pin is on GPIOB and no two gate pins share a GPIO line. */
+constexpr bool gatePinsShareOnePortWithoutDuplicates(
+    const std::array<std::uint32_t, kChannelCount>& pins) {
+    std::uint32_t usedLines = 0U;
+    for (const std::uint32_t pin : pins) {
+        if (pin == kUnassignedDigitalPin || pinPort(pin) != kGpioPortB ||
+            (pin & 0xF0U) != 0U || (usedLines & pinLineMask(pin)) != 0U) {
+            return false;
+        }
+        usedLines |= pinLineMask(pin);
+    }
+    return true;
+}
+
+// Contract V1: all eight gates are written with one GPIOB BSRR access per scheduler tick.
+// That is only correct when every gate pin sits on GPIOB and each uses its own line.
+static_assert(gatePinsShareOnePortWithoutDuplicates(kGateChannelPins),
+              "All gate pins must be on GPIOB and must not share a GPIO line");
+
 /** Optional active-low gate-buffer output-enable input.
  *
  * The final hardware pin map does not route /OE to the MCU. Gate-output safety

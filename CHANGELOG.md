@@ -10,6 +10,17 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 ## [Unreleased]
 
+### Fix: simultaneous gate edges, no lost or doubled edges on live changes
+
+- All gate edges of one scheduler tick (50 µs) are written to the outputs in one register access, so outputs that rise or fall together switch at the same instant. Previously each output was written separately with engine work in between, so later outputs switched slightly after earlier ones (not measured). BEATKNECHT raises the drum gates of a step the same way.
+- A pulse is now followed by at least one tick LOW before the next rising edge. When the next event moves closer while a gate is still HIGH (tempo jump, live Groove or Swing change, Ratchet), the gate ends one tick early and the rising edge stays on time; only when a change moves the next event into the very next tick (for example a reset while a gate is HIGH) does the rising edge move by one tick. Previously the rising edge was lost and two clocks merged into one gate. Tie still holds the gate HIGH across steps.
+- A live change of Custom Groove (slot or preview), Groove preset, rotation, Swing or phase no longer plays the last event a second time when its new position lies after the current time. Rate, mode and pattern changes, tempo changes and SYNC corrections are unaffected; a reset still restarts the bar on purpose.
+- At the scheduler's resolution limit (events less than two ticks apart, for example the shortest Swing intervals at the highest rates) such events can share one pulse; the former LOW/HIGH changes within one tick no longer occur.
+
+### Added: runtime instrumentation in debug builds
+
+- New PlatformIO environments `blackpill_f401cc_debug_instrumented` and `blackpill_f401cc_timing` (release optimization `-Os`) record the longest TIM3 scheduler interrupt, the longest foreground interrupt lock (CPU cycles) and the number of moved rising edges in `gClockRuntimeCounters`, readable over SWD. Release builds contain none of it.
+
 ### Changed: one coordinated Flash commit path
 
 - All settings stores (CURRENT, presets, Custom Grooves, Sequencer patterns and step expression) now commit through one coordinator in **one** Flash transaction, so one sector erase covers every pending change instead of up to four.

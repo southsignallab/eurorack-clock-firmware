@@ -174,6 +174,9 @@ void ClockEngine::alignGlobalSchedulesToExternalPulse(
         ChannelRuntime& runtime = channelRuntime_[channelIndex];
         shiftPosition(runtime.scheduleEpochQ32, expectedPulsePositionQ32, observedPulsePositionQ32);
         shiftPosition(runtime.nextEventQ32, expectedPulsePositionQ32, observedPulsePositionQ32);
+        // Processed and pending grid slots move with the epoch they belong to.
+        shiftPosition(runtime.nextEventSlotQ32, expectedPulsePositionQ32, observedPulsePositionQ32);
+        shiftPosition(runtime.lastEventSlotQ32, expectedPulsePositionQ32, observedPulsePositionQ32);
         // Pending ratchet sub-events belong to the same corrected step grid.
         if (runtime.ratchetRemaining != 0U) {
             shiftPosition(runtime.nextRatchetQ32, expectedPulsePositionQ32, observedPulsePositionQ32);

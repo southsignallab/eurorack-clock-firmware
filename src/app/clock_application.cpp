@@ -392,6 +392,8 @@ void ClockApplication::schedulerInterruptThunk() {
     // The callback is registered only after begin() assigns activeInstance_, and
     // the firmware composition root has static lifetime. A nullable callback path
     // would therefore hide a lifecycle violation instead of making it safe.
+    // Resets and transport changes from the sync service share the tick's single gate write.
+    activeInstance_->engine_.beginSchedulerQuantumFromIsr();
     activeInstance_->externalSyncController_.processSchedulerTick(
         hal::SystemClock::microseconds());
     activeInstance_->engine_.processSchedulerTick();

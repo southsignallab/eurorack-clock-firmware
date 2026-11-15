@@ -245,12 +245,15 @@ void Beatknecht::triggerStep(const std::uint32_t nowMs) {
     const DrumStyle& style = kStyles[styleIndex_];
     displayStep_ = nextStep_;
     const std::uint16_t bit = static_cast<std::uint16_t>(1U << nextStep_);
-    bool any = false;
+    std::uint8_t highMask = 0U;
     for (std::size_t channel = 0U; channel < style.pattern.size(); ++channel) {
-        const bool high = (style.pattern[channel] & bit) != 0U;
-        gateOutputs_.setChannelState(channel, high); any = any || high;
+        if ((style.pattern[channel] & bit) != 0U) {
+            highMask = static_cast<std::uint8_t>(highMask | (1U << channel));
+        }
     }
-    gatesHigh_ = any; gatesOffAtMs_ = nowMs + kGatePulseMs;
+    // All drum gates of one step rise in the same GPIOB write.
+    gateOutputs_.setChannelStates(highMask);
+    gatesHigh_ = highMask != 0U; gatesOffAtMs_ = nowMs + kGatePulseMs;
     nextStep_ = static_cast<std::uint8_t>((nextStep_ + 1U) & 0x0FU);
     nextStepAtMs_ = nowMs + stepDurationMs();
 }

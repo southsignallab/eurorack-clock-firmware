@@ -184,8 +184,11 @@ public:
         std::uint32_t bpmMilli,
         std::uint8_t pulsesPerQuarterNote);
 
+    /** @brief ISR-only: opens the quantum whose gate changes processSchedulerTick() writes once. */
+    void beginSchedulerQuantumFromIsr();
+
     /**
-     * @brief Executes one deterministic scheduler quantum.
+     * @brief Executes one deterministic scheduler quantum and writes its gate edges once.
      *
      * This method is ISR-only and must remain bounded, allocation-free, and non-blocking.
      */
@@ -220,6 +223,8 @@ public:
 #ifdef CLOCK_HOST_TEST
     /** @brief Returns how many full runtime resets were executed in deterministic host tests. */
     std::uint32_t resetRuntimeCountForTest() const;
+    /** @brief Returns how many rising edges moved by one tick because the gate was still HIGH. */
+    std::uint32_t deferredGateRiseCountForTest() const;
 
     /** @brief Returns the engine's in-RAM copy of one Custom Groove library slot. */
     const CustomGroovePattern& customGrooveSlotForTest(std::uint8_t slotIndex) const {
@@ -276,7 +281,10 @@ private:
         std::uint32_t gateOffTick = 0U;
         bool gateOffScheduled = false;
         bool gateHigh = false;
+        bool lastEventSlotValid = false;
         bool tieHold = false;
+        std::uint64_t nextEventSlotQ32 = 0U;
+        std::uint64_t lastEventSlotQ32 = 0U;
         std::uint8_t ratchetRemaining = 0U;
         std::uint64_t nextRatchetQ32 = 0U;
         std::uint64_t ratchetSpacingQ32 = 0U;
@@ -307,7 +315,8 @@ private:
     /** @brief Returns the absolute epoch-anchored event position including phase, swing, and ONE CLOCK humanize. */
     std::uint64_t calculateEventPositionQ32(
         std::size_t channelIndex,
-        std::uint64_t eventSerial) const;
+        std::uint64_t eventSerial,
+        std::uint64_t* nominalSlotQ32 = nullptr) const;
 
     /** @brief Calculates one channel interval in real microseconds for gate-length limiting. */
     std::uint64_t calculateBaseIntervalUs(std::size_t channelIndex) const;
@@ -332,8 +341,20 @@ private:
         std::size_t channelIndex,
         std::uint64_t eventSerial) const;
 
-    /** @brief Drives one output only when its logical state changes. */
+    /** @brief Drives one output only when its logical state changes; staged inside a quantum. */
     void setGateState(std::size_t channelIndex, bool high);
+
+    /** @brief Scheduler body of processSchedulerTick() before the single gate write. */
+    void runSchedulerTick();
+
+    /** @brief Emits rising edges that were moved by one tick in the previous quantum. */
+    void serviceDeferredGateRises();
+
+    /** @brief Ends every HIGH gate one tick before its next rising edge would reach it. */
+    void endGatesBeforeNextRise(std::uint64_t masterIncrementQ32);
+
+    /** @brief Returns the first serial whose grid slot follows the last processed event. */
+    std::uint64_t firstSerialAfterLastEvent(std::size_t channelIndex, std::uint64_t serial) const;
 
     /** @brief Evaluates and emits one scheduled event for one channel. */
     void fireChannelEvent(std::size_t channelIndex);
@@ -420,8 +441,15 @@ private:
     ChannelRuntime channelRuntime_[kChannelCount]{};
     volatile std::uint32_t schedulerTickCounter_ = 0U;
     volatile std::uint64_t masterRemainder_ = 0U;
+    bool schedulerQuantumOpen_ = false;
+    std::uint8_t gateHighMask_ = 0U;
+    std::uint8_t gatesHighAtLastCommit_ = 0U;
+    std::uint8_t gatesRaisedThisQuantum_ = 0U;
+    /** Channels whose rising edge moved to the next tick (bit n = channel n). */
+    std::uint8_t deferredRiseMask_ = 0U;
 #ifdef CLOCK_HOST_TEST
     std::uint32_t resetRuntimeCountForTest_ = 0U;
+    std::uint32_t deferredGateRiseCountForTest_ = 0U;
 #endif
 };
 

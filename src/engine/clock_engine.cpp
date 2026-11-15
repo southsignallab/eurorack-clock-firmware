@@ -33,6 +33,7 @@ void ClockEngine::begin(const ClockState& state) {
         // Different deterministic seeds avoid identical probability streams on every output.
         channelRuntime_[channelIndex].randomState ^=
             0x9E3779B9UL * static_cast<std::uint32_t>(channelIndex + 1U);
+        channelRuntime_[channelIndex].lastEventSlotValid = false;
         scheduleChannelFromCurrentPosition(channelIndex, true);
     }
     // Startup stays paused until the external output stage is safely enabled.
@@ -167,8 +168,9 @@ void ClockEngine::resetGlobalPhaseFromIsr() {
     resetRuntime();
 }
 
-void ClockEngine::processSchedulerTick() {
+void ClockEngine::runSchedulerTick() {
     ++schedulerTickCounter_;
+    serviceDeferredGateRises();
 
     // Gate-off checks always run, even while transport is paused or stopped.
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
@@ -253,12 +255,16 @@ void ClockEngine::processSchedulerTick() {
                eventGuard++ < 8U) {
             fireChannelEvent(channelIndex);
             ChannelRuntime& runtime = channelRuntime_[channelIndex];
+            runtime.lastEventSlotQ32 = runtime.nextEventSlotQ32;
+            runtime.lastEventSlotValid = true;
             ++runtime.nextEventSerial;
             runtime.nextEventQ32 = calculateEventPositionQ32(
                 channelIndex,
-                runtime.nextEventSerial);
+                runtime.nextEventSerial,
+                &runtime.nextEventSlotQ32);
         }
     }
+    endGatesBeforeNextRise(masterIncrementQ32);
     restartPending_ = false;
 }
 
@@ -293,18 +299,6 @@ std::uint32_t ClockEngine::resetRuntimeCountForTest() const {
     return resetRuntimeCountForTest_;
 }
 #endif
-
-void ClockEngine::setGateState(const std::size_t channelIndex, const bool high) {
-    ChannelRuntime& runtime = channelRuntime_[channelIndex];
-    if (!high) {
-        runtime.gateOffScheduled = false;
-    }
-    if (runtime.gateHigh == high) {
-        return;
-    }
-    runtime.gateHigh = high;
-    gateOutputs_.setChannelState(channelIndex, high);
-}
 
 void ClockEngine::scheduleChannelFromCurrentPosition(
     const std::size_t channelIndex,
@@ -355,8 +349,11 @@ void ClockEngine::scheduleChannelFromCurrentPosition(
         }
     }
 
+    // A reschedule never re-emits an event slot that has already been processed.
+    eventSerial = firstSerialAfterLastEvent(channelIndex, eventSerial);
     runtime.nextEventSerial = eventSerial;
-    runtime.nextEventQ32 = calculateEventPositionQ32(channelIndex, eventSerial);
+    runtime.nextEventQ32 = calculateEventPositionQ32(
+        channelIndex, eventSerial, &runtime.nextEventSlotQ32);
 
     // GLOBAL means pattern position as well as edge timing is derived from the
     // shared epoch. Otherwise a live CLOCK -> EUCLID/SEQ switch can be on-grid
@@ -413,6 +410,7 @@ void ClockEngine::resetRuntime() {
         runtime.nextRatchetQ32 = 0U;
         runtime.ratchetSpacingQ32 = 0U;
         runtime.ratchetGateTicks = 1U;
+        runtime.lastEventSlotValid = false;
         scheduleChannelFromCurrentPosition(channelIndex, true);
     }
 }

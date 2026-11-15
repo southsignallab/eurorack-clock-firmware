@@ -10,6 +10,9 @@
 #if !defined(CLOCK_HOST_TEST) && !defined(CLOCK_SIMULATOR)
 #include <stm32f4xx_hal.h>
 #endif
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+#include "hal/runtime_instrumentation.h"
+#endif
 namespace clockfw::hal {
 #if defined(CLOCK_HOST_TEST) || defined(CLOCK_SIMULATOR)
 PeriodicTimer::PeriodicTimer() : timer_(TIM3) {}
@@ -34,5 +37,14 @@ void PeriodicTimer::stop(){ if(gSchedulerTimer.Instance==TIM3){(void)HAL_TIM_Bas
 #endif
 } // namespace clockfw::hal
 #if !defined(CLOCK_HOST_TEST) && !defined(CLOCK_SIMULATOR)
-extern "C" void TIM3_IRQHandler(){ if(__HAL_TIM_GET_FLAG(&clockfw::hal::gSchedulerTimer,TIM_FLAG_UPDATE)!=RESET && __HAL_TIM_GET_IT_SOURCE(&clockfw::hal::gSchedulerTimer,TIM_IT_UPDATE)!=RESET){__HAL_TIM_CLEAR_IT(&clockfw::hal::gSchedulerTimer,TIM_IT_UPDATE); if(clockfw::hal::gCallback!=nullptr) clockfw::hal::gCallback();}}
+extern "C" void TIM3_IRQHandler(){
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+    // W-056: handler body from entry to exit; exception stacking is not included.
+    const std::uint32_t startCycles = clockfw::hal::instrumentation::cycleCount();
+#endif
+    if(__HAL_TIM_GET_FLAG(&clockfw::hal::gSchedulerTimer,TIM_FLAG_UPDATE)!=RESET && __HAL_TIM_GET_IT_SOURCE(&clockfw::hal::gSchedulerTimer,TIM_IT_UPDATE)!=RESET){__HAL_TIM_CLEAR_IT(&clockfw::hal::gSchedulerTimer,TIM_IT_UPDATE); if(clockfw::hal::gCallback!=nullptr) clockfw::hal::gCallback();}
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+    clockfw::hal::instrumentation::recordSchedulerIsr(startCycles);
+#endif
+}
 #endif

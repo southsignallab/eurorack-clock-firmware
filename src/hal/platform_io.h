@@ -22,6 +22,27 @@ void configureOutput(mcu::Pin pin);
 bool read(mcu::Pin pin);
 /** @brief Writes one GPIO logic level. */
 void write(mcu::Pin pin, bool high);
+/**
+ * @brief Sets and clears lines of one GPIO port in a single BSRR register write.
+ * @param portReference Any pin of the target port; only its port is used.
+ * @param setMask Lines driven HIGH (bit n = line n).
+ * @param resetMask Lines driven LOW; must not overlap @p setMask.
+ */
+void writePortLines(mcu::Pin portReference, std::uint16_t setMask, std::uint16_t resetMask);
+#if defined(CLOCK_HOST_TEST)
+/** @brief One recorded writePortLines() call in deterministic host tests. */
+struct PortWriteRecord {
+    std::uint32_t port = 0U;
+    std::uint16_t setMask = 0U;
+    std::uint16_t resetMask = 0U;
+};
+/** @brief Returns how many writePortLines() calls happened since the last reset. */
+std::uint32_t portWriteCountForTest();
+/** @brief Returns the most recent writePortLines() call. */
+PortWriteRecord lastPortWriteForTest();
+/** @brief Clears the writePortLines() call log. */
+void resetPortWriteLogForTest();
+#endif
 /** @brief Registers an EXTI callback for one encoded GPIO pin. */
 void attachInterrupt(mcu::Pin pin, InterruptCallback callback, InterruptEdge edge);
 /**

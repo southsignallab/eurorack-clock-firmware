@@ -6,10 +6,13 @@
  * @license PolyForm-Noncommercial-1.0.0
  */
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstdlib>
+#include <initializer_list>
 #include <iostream>
+#include <map>
 #include <unity.h>
 #include <Arduino.h>
 
@@ -23,6 +26,7 @@
 #include "engine/clock_engine.h"
 #include "hal/external_input_capture.h"
 #include "hal/gate_output_driver.h"
+#include "hal/platform_io.h"
 #include "pin_map.h"
 #include "services/external_sync_controller.h"
 
@@ -73,6 +77,7 @@ struct Fixture final {
     }
 
     void tick(std::uint32_t nowUs) {
+        engine.beginSchedulerQuantumFromIsr();
         sync.processSchedulerTick(nowUs);
         engine.processSchedulerTick();
     }
@@ -87,6 +92,8 @@ void runTicks(engine::ClockEngine& engine, const std::uint32_t count) {
 #include "cases/clock_precount_sync.inc"
 #include "cases/reset_overflow_boundaries.inc"
 #include "cases/sequencer_step_expression.inc"
+#include "cases/gate_output_batching.inc"
+#include "cases/reschedule_causes.inc"
 
 }  // namespace
 
@@ -129,6 +136,28 @@ int main() {
     RUN_TEST(testSequencerTieDoesNotCrossRestRandomOrOnceEnd);
     RUN_TEST(testSequencerLiveEditReleasesActiveTieImmediately);
     RUN_TEST(testSequencerRelativeDutyOverridesGateLength);
+    RUN_TEST(testCoincidentGateEdgesUseOneRegisterWritePerTick);
+    RUN_TEST(testRisingAndFallingEdgesOfDifferentChannelsShareOneWrite);
+    RUN_TEST(testOffChannelStaysLowAndModeOffEndsGateImmediately);
+    RUN_TEST(testTieKeepsGateHighAcrossStepsWithOneWritePerTick);
+    RUN_TEST(testRatchetSubEventsKeepDistinctEdgesWithOneWritePerTick);
+    RUN_TEST(testMutedOutputStageKeepsGatesLowWhileEngineRuns);
+    RUN_TEST(testGatesStayLowFromBootUntilPlay);
+    RUN_TEST(testGateDriverWritesSeveralChannelsInOneAccess);
+    RUN_TEST(testTempoJumpDuringHighGateKeepsEveryRisingEdge);
+    RUN_TEST(testLivePatternChangeDuringHighGateKeepsTheNextEdge);
+    RUN_TEST(testCustomGrooveChangeDoesNotRefireLastEvent);
+    RUN_TEST(testCustomGroovePreviewDoesNotRefireLastEvent);
+    RUN_TEST(testSwingIncreaseDoesNotRefireLastEvent);
+    RUN_TEST(testGroovePresetChangeDoesNotRefireLastEvent);
+    RUN_TEST(testGrooveRotationDoesNotRefireLastEvent);
+    RUN_TEST(testPhaseChangeDoesNotRefireLastEvent);
+    RUN_TEST(testRateChangeKeepsTheNextGridEvent);
+    RUN_TEST(testModeAndPatternChangesKeepTheNextGridEvent);
+    RUN_TEST(testTempoChangeDoesNotRefireLastEvent);
+    RUN_TEST(testExternalSyncCorrectionDoesNotRefireOrDropEvents);
+    RUN_TEST(testResetRestartsTheBarExactlyOnce);
+    RUN_TEST(testRescheduleInSameTickAsHighGateMovesRiseByOneTick);
     std::cout << "Realtime assertions: " << checks << "\n";
     return UNITY_END();
 }

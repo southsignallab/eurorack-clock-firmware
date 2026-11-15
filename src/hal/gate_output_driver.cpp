@@ -8,12 +8,46 @@
 
 #include "hal/gate_output_driver.h"
 
+#include <array>
+
 #include "hal/platform_io.h"
 
 #include "domain/clock_types.h"
 #include "pin_map.h"
 
 namespace clockfw::hal {
+namespace {
+
+constexpr std::uint8_t channelBit(const std::size_t channelIndex) {
+    return static_cast<std::uint8_t>(1U << channelIndex);
+}
+
+/** @brief GPIOB line masks for every combination of four channel bits starting at @p firstChannel. */
+constexpr std::array<std::uint16_t, 16U> makeGateLineNibbleTable(const std::size_t firstChannel) {
+    std::array<std::uint16_t, 16U> table{};
+    for (std::size_t channels = 0U; channels < table.size(); ++channels) {
+        std::uint16_t lines = 0U;
+        for (std::size_t bit = 0U; bit < 4U; ++bit) {
+            if ((channels & (1U << bit)) != 0U) {
+                lines = static_cast<std::uint16_t>(
+                    lines | pinmap::pinLineMask(pinmap::kGateChannelPins[firstChannel + bit]));
+            }
+        }
+        table[channels] = lines;
+    }
+    return table;
+}
+
+// pin_map.h asserts one GPIOB line per gate, so both tables map onto disjoint gate lines.
+constexpr std::array<std::uint16_t, 16U> kGateLinesLow = makeGateLineNibbleTable(0U);
+constexpr std::array<std::uint16_t, 16U> kGateLinesHigh = makeGateLineNibbleTable(4U);
+
+/** @brief Maps eight channel bits to their GPIOB line mask with two table lookups. */
+std::uint16_t gateLinesFor(const std::uint8_t channels) {
+    return static_cast<std::uint16_t>(kGateLinesLow[channels & 0x0FU] | kGateLinesHigh[channels >> 4U]);
+}
+
+}  // namespace
 
 void GateOutputDriver::beginDisabled() {
     outputStageEnabled_ = false;
@@ -25,8 +59,10 @@ void GateOutputDriver::beginDisabled() {
     for (std::size_t index = 0U; index < pinmap::kGateChannelPins.size(); ++index) {
         platform::configureOutput(pinmap::kGateChannelPins[index]);
         platform::write(pinmap::kGateChannelPins[index], false);
-        channelStates_[index] = false;
     }
+    channelHighMask_ = 0U;
+    stagedSetChannels_ = 0U;
+    stagedResetChannels_ = 0U;
 }
 
 void GateOutputDriver::enableOutputStage() {
@@ -46,10 +82,9 @@ void GateOutputDriver::disableOutputStage() {
 }
 
 void GateOutputDriver::setAllChannelsLow() {
-    for (std::size_t index = 0U; index < pinmap::kGateChannelPins.size(); ++index) {
-        platform::write(pinmap::kGateChannelPins[index], false);
-        channelStates_[index] = false;
-    }
+    // Safety path: drive every line LOW regardless of the cached levels.
+    platform::writePortLines(pinmap::kGateChannelPins[0], 0U, gateLinesFor(0xFFU));
+    channelHighMask_ = 0U;
 }
 
 void GateOutputDriver::setChannelState(const std::size_t channelIndex, const bool high) {
@@ -58,12 +93,47 @@ void GateOutputDriver::setChannelState(const std::size_t channelIndex, const boo
     }
 
     const bool effectiveHigh = outputStageEnabled_ && high;
-    platform::write(pinmap::kGateChannelPins[channelIndex], effectiveHigh);
-    channelStates_[channelIndex] = effectiveHigh;
+    const std::uint8_t bit = channelBit(channelIndex);
+    writeChannelMasks(effectiveHigh ? bit : 0U, effectiveHigh ? 0U : bit);
+}
+
+void GateOutputDriver::setChannelStates(const std::uint8_t highMask) {
+    const std::uint8_t effectiveHigh = outputStageEnabled_ ? highMask : 0U;
+    writeChannelMasks(effectiveHigh, static_cast<std::uint8_t>(~effectiveHigh));
+}
+
+void GateOutputDriver::stageChannelState(const std::size_t channelIndex, const bool high) {
+    if (channelIndex >= kChannelCount) {
+        return;
+    }
+    const std::uint8_t bit = channelBit(channelIndex);
+    if (outputStageEnabled_ && high) {
+        stagedSetChannels_ = static_cast<std::uint8_t>(stagedSetChannels_ | bit);
+        stagedResetChannels_ = static_cast<std::uint8_t>(stagedResetChannels_ & ~bit);
+    } else {
+        stagedResetChannels_ = static_cast<std::uint8_t>(stagedResetChannels_ | bit);
+        stagedSetChannels_ = static_cast<std::uint8_t>(stagedSetChannels_ & ~bit);
+    }
+}
+
+void GateOutputDriver::commitStagedChannels() {
+    const std::uint8_t setChannels = stagedSetChannels_;
+    const std::uint8_t resetChannels = stagedResetChannels_;
+    stagedSetChannels_ = 0U;
+    stagedResetChannels_ = 0U;
+    writeChannelMasks(setChannels, resetChannels);
+}
+
+void GateOutputDriver::writeChannelMasks(const std::uint8_t setChannels, const std::uint8_t resetChannels) {
+    // Only lines whose level changes are written, so the host log shows edges only.
+    const std::uint8_t rising = static_cast<std::uint8_t>(setChannels & ~channelHighMask_);
+    const std::uint8_t falling = static_cast<std::uint8_t>(resetChannels & channelHighMask_ & ~setChannels);
+    platform::writePortLines(pinmap::kGateChannelPins[0], gateLinesFor(rising), gateLinesFor(falling));
+    channelHighMask_ = static_cast<std::uint8_t>((channelHighMask_ | rising) & ~falling);
 }
 
 bool GateOutputDriver::channelStateHigh(const std::size_t channelIndex) const {
-    return channelIndex < channelStates_.size() ? channelStates_[channelIndex] : false;
+    return channelIndex < kChannelCount && (channelHighMask_ & channelBit(channelIndex)) != 0U;
 }
 
 bool GateOutputDriver::outputStageEnabled() const {

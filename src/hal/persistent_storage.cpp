@@ -24,6 +24,9 @@ bool PersistentStorage::readBytes(
         return false;
     }
 #ifdef CLOCK_HOST_TEST
+    if (slots::hostFaults().readHook != nullptr) {
+        slots::hostFaults().readHook();
+    }
     ++slots::hostFaults().reads;
     if (slots::hostFaults().failNextRead) {
         slots::hostFaults().failNextRead = false;
@@ -240,6 +243,9 @@ std::uint32_t PersistentStorage::payloadValidationCountForTest() {
 }
 std::uint32_t PersistentStorage::readCountForTest() {
     return slots::hostFaults().reads;
+}
+void PersistentStorage::setReadHookForTest(void (*const hook)()) {
+    slots::hostFaults().readHook = hook;
 }
 void PersistentStorage::failNextReadForTest() {
     slots::hostFaults().failNextRead = true;

@@ -36,7 +36,7 @@ public:
     HighScoreEntry load() const;
 
     /** @brief Persists a validated score entry immediately. Safe because boot games run before clocks. */
-    bool save(const HighScoreEntry& entry);
+    [[nodiscard]] bool save(const HighScoreEntry& entry);
 
 private:
     static constexpr std::size_t kStorageBaseOffset = hal::persistent_layout::kLegacyScoreRegionOffset;

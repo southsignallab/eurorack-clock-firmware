@@ -8,6 +8,7 @@
 #include <array>
 #include <cstdint>
 #include <cstdlib>
+#include <initializer_list>
 #include <iostream>
 
 #include "keyboard_controls.h"
@@ -15,6 +16,8 @@
 namespace {
 
 using clockfw::vcv::applyKeyboardEvent;
+using clockfw::vcv::reconcileHeldControls;
+using clockfw::vcv::releaseHeldControls;
 using clockfw::vcv::KeyAction;
 using clockfw::vcv::KeyboardEventResult;
 using clockfw::vcv::KeyboardHeldControls;
@@ -141,11 +144,44 @@ void testEncoderKeysAndForwarding() {
     require(!result.consumed && noneHeld(held), "Ctrl+T release without a held TAP reaches Rack");
 }
 
+/** @brief F-065: the pointer leaves the module while keys hold controls. */
+void testPointerLeavingReleasesEveryHeldControl() {
+    KeyboardHeldControls held{};
+    require(!releaseHeldControls(held), "nothing held: nothing to release");
+    applyKeyboardEvent(held, PanelKey::Play, KeyAction::Press, false);
+    applyKeyboardEvent(held, PanelKey::Tap, KeyAction::Press, false);
+    applyKeyboardEvent(held, PanelKey::LeftShift, KeyAction::Press, false);
+    applyKeyboardEvent(held, PanelKey::EncoderPush, KeyAction::Press, false);
+    applyKeyboardEvent(held, PanelKey::Stop, KeyAction::Press, false);
+    applyKeyboardEvent(held, PanelKey::RightShift, KeyAction::Press, false);
+    require(releaseHeldControls(held), "held controls are released when the pointer leaves");
+    require(noneHeld(held), "no control stays held after the pointer left");
+}
+
+/** @brief F-065: a key release that reached another widget still ends its hold. */
+void testReleaseElsewhereIsFoundFromTheKeyState() {
+    KeyboardHeldControls held{};
+    applyKeyboardEvent(held, PanelKey::Play, KeyAction::Press, false);
+    applyKeyboardEvent(held, PanelKey::Tap, KeyAction::Press, false);
+    const auto onlyTapDown = [](const PanelKey key) { return key == PanelKey::Tap; };
+    require(reconcileHeldControls(held, onlyTapDown), "a key that is up releases its control");
+    require(!held.play && held.tap, "only the control whose key is up is released");
+    require(!reconcileHeldControls(held, onlyTapDown), "nothing changes while the key stays down");
+    const auto nothingDown = [](PanelKey) { return false; };
+    require(reconcileHeldControls(held, nothingDown) && noneHeld(held), "all keys up: nothing held");
+    for (const PanelKey key : {PanelKey::LeftShift, PanelKey::RightShift, PanelKey::EncoderPush, PanelKey::Stop}) {
+        applyKeyboardEvent(held, key, KeyAction::Press, false);
+        require(reconcileHeldControls(held, nothingDown) && !heldFlag(held, key), "each held key is reconciled");
+    }
+}
+
 }  // namespace
 
 int main() {
     testModifierInterleavingsNeverLeaveControlsHeld();
     testEncoderKeysAndForwarding();
+    testPointerLeavingReleasesEveryHeldControl();
+    testReleaseElsewhereIsFoundFromTheKeyState();
     std::cout << "clock-vcv-keyboard-tests: PASS\n";
     return 0;
 }

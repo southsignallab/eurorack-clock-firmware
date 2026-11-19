@@ -44,26 +44,32 @@ void SettingsRenderer::renderInformationPopover(const NavigationState& navigatio
     if (display_.measureText(value, 0, 0).width <= 124U) {
         drawCenteredTextLine(display_, 27, value);
     } else {
-        // Read-only detail values are rare and short. Split at the last space
-        // that keeps the first line inside the OLED instead of introducing a
-        // scrolling text state for information that fits comfortably in two rows.
+        // Read-only detail values are rare and short. Split at the last space or
+        // after the last '/' that keeps the first line inside the OLED instead of
+        // introducing a scrolling text state for information that fits in two
+        // rows. Only a word longer than one line breaks inside the word (F-049).
         char first[32]{};
         char second[32]{};
-        std::size_t split = 0U;
         const std::size_t length = std::strlen(value);
-        for (std::size_t index = 1U; index < length && index < sizeof(first); ++index) {
-            if (value[index] != ' ') {
-                continue;
-            }
+        const auto fits = [&](const std::size_t characters) {
             char candidate[32]{};
-            std::memcpy(candidate, value, index);
-            candidate[index] = '\0';
-            if (display_.measureText(candidate, 0, 0).width <= 124U) {
+            std::memcpy(candidate, value, characters);
+            candidate[characters] = '\0';
+            return display_.measureText(candidate, 0, 0).width <= 124U;
+        };
+        std::size_t split = 0U;
+        std::size_t hardSplit = 0U;
+        for (std::size_t index = 1U; index < length && index < sizeof(first); ++index) {
+            if (!fits(index)) {
+                break;
+            }
+            hardSplit = index;
+            if (value[index] == ' ' || value[index - 1U] == '/') {
                 split = index;
             }
         }
         if (split == 0U) {
-            split = std::min<std::size_t>(20U, length);
+            split = hardSplit;
         }
         std::memcpy(first, value, std::min(split, sizeof(first) - 1U));
         first[std::min(split, sizeof(first) - 1U)] = '\0';
@@ -82,7 +88,7 @@ void SettingsRenderer::renderTemplates(const NavigationState& navigation) {
     display_.drawText(0, 0, text::get(text::TextId::Templates));
     display_.drawHorizontalLine(0, 9, hal::OledDisplay::kWidth);
 
-    for (std::uint8_t visibleRow = 0U; visibleRow < 4U; ++visibleRow) {
+    for (std::uint8_t visibleRow = 0U; visibleRow < kVisibleTemplateRows; ++visibleRow) {
         const std::uint8_t templateIndex = navigation.scrollOffset + visibleRow;
         if (templateIndex >= services::TemplateService::kTemplateCount) {
             break;
@@ -116,8 +122,7 @@ void SettingsRenderer::renderPresetSlots(
                 : text::TextId::SavePresetTitle));
     display_.drawHorizontalLine(0, 9, hal::OledDisplay::kWidth);
 
-    constexpr std::uint8_t kVisiblePresetRows = 5U;
-    for (std::uint8_t visibleRow = 0U; visibleRow < kVisiblePresetRows; ++visibleRow) {
+    for (std::uint8_t visibleRow = 0U; visibleRow < kVisibleSlotRows; ++visibleRow) {
         const std::uint8_t slotIndex = navigation.scrollOffset + visibleRow;
         if (slotIndex >= services::PersistentStateService::kUserPresetSlotCount) {
             break;
@@ -184,6 +189,49 @@ void SettingsRenderer::renderOverwriteConfirm(
         const std::int16_t boxWidth = static_cast<std::int16_t>(bounds.width + 8U);
         const std::int16_t boxX = static_cast<std::int16_t>(
             kChoiceX[index] - boxWidth / 2);
+        if (navigation.cursor == index) {
+            display_.fillRectangle(boxX, 39, boxWidth, 13);
+            display_.setTextColor(hal::PixelColor::Black);
+        } else {
+            display_.drawRectangle(boxX, 39, boxWidth, 13);
+        }
+        display_.drawText(
+            static_cast<std::int16_t>(kChoiceX[index] - static_cast<std::int16_t>(bounds.width / 2)),
+            42,
+            choices[index]);
+        display_.setTextColor(hal::PixelColor::White);
+    }
+
+    display_.present();
+}
+
+void SettingsRenderer::renderTemplateApplyConfirm(const NavigationState& navigation) {
+    display_.clear();
+    display_.setFont(hal::DisplayFont::Small);
+    display_.setTextColor(hal::PixelColor::White);
+
+    const char* const title = text::get(text::TextId::ApplyTemplate);
+    const hal::TextBounds titleBounds = display_.measureText(title, 0, 0);
+    display_.drawText(
+        static_cast<std::int16_t>((hal::OledDisplay::kWidth - titleBounds.width) / 2),
+        3,
+        title);
+
+    const char* const name = services::TemplateService::name(navigation.pendingTemplate);
+    const hal::TextBounds nameBounds = display_.measureText(name, 0, 0);
+    display_.drawText(
+        static_cast<std::int16_t>((hal::OledDisplay::kWidth - nameBounds.width) / 2),
+        20,
+        name);
+
+    const char* const choices[2] = {
+        text::get(text::TextId::No),
+        text::get(text::TextId::Yes)};
+    constexpr std::int16_t kChoiceX[2] = {25, 79};
+    for (std::uint8_t index = 0U; index < 2U; ++index) {
+        const hal::TextBounds bounds = display_.measureText(choices[index], 0, 0);
+        const std::int16_t boxWidth = static_cast<std::int16_t>(bounds.width + 8U);
+        const std::int16_t boxX = static_cast<std::int16_t>(kChoiceX[index] - boxWidth / 2);
         if (navigation.cursor == index) {
             display_.fillRectangle(boxX, 39, boxWidth, 13);
             display_.setTextColor(hal::PixelColor::Black);

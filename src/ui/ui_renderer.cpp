@@ -213,6 +213,9 @@ void UiRenderer::render(
         case Screen::InformationPopover:
             settingsRenderer_.renderInformationPopover(navigation);
             break;
+        case Screen::TemplateApplyConfirm:
+            settingsRenderer_.renderTemplateApplyConfirm(navigation);
+            break;
     }
 }
 

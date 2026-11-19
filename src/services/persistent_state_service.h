@@ -79,7 +79,7 @@ public:
      * @param state Destination state receiving the persisted configuration.
      * @return True when a valid current-state record was restored.
      */
-    bool restoreCurrentState(ClockState& state) const;
+    [[nodiscard]] bool restoreCurrentState(ClockState& state) const;
 
     /**
      * @brief Schedules a wear-coalesced save of the complete current configuration.
@@ -123,7 +123,7 @@ public:
      * @brief Stages every pending record into the storage update the caller opened.
      * @param includeCurrent Also stage a pending CURRENT record.
      */
-    bool stagePendingRecords(bool includeCurrent = true);
+    [[nodiscard]] bool stagePendingRecords(bool includeCurrent = true);
 
     /** @brief Marks everything staged by stagePendingRecords() as durable. */
     void commitSucceeded();
@@ -150,7 +150,7 @@ public:
      * @param state Configuration snapshot to persist.
      * @return True when the record was validated and staged for durable storage.
      */
-    bool savePreset(std::uint8_t slotIndex, const char* name, const ClockState& state);
+    [[nodiscard]] bool savePreset(std::uint8_t slotIndex, const char* name, const ClockState& state);
 
     /**
      * @brief Loads a complete user preset while preserving live transport state.
@@ -158,19 +158,19 @@ public:
      * @param state Mutable application state receiving the stored configuration.
      * @return True when the requested preset exists and validates successfully.
      */
-    bool loadPreset(std::uint8_t slotIndex, ClockState& state) const;
+    [[nodiscard]] bool loadPreset(std::uint8_t slotIndex, ClockState& state) const;
 
     /**
      * @brief Renames an existing user preset without changing its configuration.
      * @return True when the slot existed and the updated record was written.
      */
-    bool renamePreset(std::uint8_t slotIndex, const char* name);
+    [[nodiscard]] bool renamePreset(std::uint8_t slotIndex, const char* name);
 
     /**
      * @brief Erases one logical preset slot by writing an invalid/empty record.
      * @return True when the slot index was valid and the clear operation succeeded.
      */
-    bool clearPreset(std::uint8_t slotIndex);
+    [[nodiscard]] bool clearPreset(std::uint8_t slotIndex);
 
     /** @brief Returns true when one zero-based user slot contains a valid preset. */
     bool presetExists(std::uint8_t slotIndex) const;
@@ -194,7 +194,7 @@ public:
      * factory state as the new CURRENT record.
      * @return True only after the replacement image has been committed and verified.
      */
-    bool factoryReset(const ClockState& factoryState);
+    [[nodiscard]] bool factoryReset(const ClockState& factoryState);
 
 private:
     /** Serialized field count for one complete ClockState payload. */
@@ -552,7 +552,7 @@ private:
      * @param priorSchema Set true when the record was found in an older layout.
      * @return True when a valid record was found.
      */
-    bool loadPresetAnySchema(
+    [[nodiscard]] bool loadPresetAnySchema(
         std::uint8_t slotIndex, char* name, ClockState& state, bool& priorSchema) const;
 
     /**
@@ -561,7 +561,7 @@ private:
      * Requires an open storage update. CURRENT is staged from storedCurrentState_;
      * every valid preset is re-read from Flash and re-serialized at its current offset.
      */
-    bool stageMigratedRecords();
+    [[nodiscard]] bool stageMigratedRecords();
 
     /** @brief Delay between retries of a failed boot migration commit. */
     static constexpr std::uint32_t kMigrationRetryIntervalMs = 3000U;

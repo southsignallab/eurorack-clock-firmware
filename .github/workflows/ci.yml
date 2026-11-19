@@ -185,13 +185,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "platformio==6.1.19" pillow
 
-      - name: Build I2C prototype firmware
+      - name: Build blackpill_f401cc firmware
         run: pio run -e blackpill_f401cc
 
-      - name: Compile-check SPI display variant
+      - name: Build blackpill_f401cc_spi_ssd1315 firmware
         run: pio run -e blackpill_f401cc_spi_ssd1315
 
       - name: Confirm STM32Cube firmware builds
         run: |
-          echo "I2C and SPI STM32Cube firmware compiled successfully."
+          echo "blackpill_f401cc and blackpill_f401cc_spi_ssd1315 firmware compiled successfully."
           python scripts/check_embedded_dependencies.py

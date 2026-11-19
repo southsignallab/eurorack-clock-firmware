@@ -18,7 +18,8 @@ bool panelLedVisuallyLit(
     if (telemetry.logicHigh) {
         return true;
     }
-    if (telemetry.lastRisingUs == 0ULL || nowUs < telemetry.lastRisingUs) {
+    // The edge count says whether an edge happened; time 0 is a valid edge time (F-074).
+    if (telemetry.risingEdges == 0ULL || nowUs < telemetry.lastRisingUs) {
         return false;
     }
     const double safeSpeed = std::max(speedMultiplier, 1.0);

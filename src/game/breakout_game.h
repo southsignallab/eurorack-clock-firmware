@@ -89,7 +89,7 @@ private:
     std::uint8_t lives_ = 3U;
     std::uint8_t level_ = 1U;
     std::uint32_t lastPhysicsAtMs_ = 0U;
-    std::uint32_t encoderPressedAtMs_ = 0U;
+    LongPressDetector exitHold_{};
     std::uint32_t extraExpiresAtMs_ = 0U;
     FallingExtra fallingExtra_{};
     ExtraType activeExtra_ = ExtraType::None;

@@ -14,6 +14,30 @@
 #include "ui_text.h"
 
 namespace clockfw::game {
+
+bool LongPressDetector::update(
+    const hal::ButtonSample& button,
+    const std::uint32_t nowMs,
+    const std::uint32_t holdMs,
+    const bool enabled) {
+    if (button.edge == hal::ButtonEdge::Pressed) {
+        pressedAtMs_ = nowMs;
+        tracking_ = true;
+    }
+    if (!button.pressed) {
+        tracking_ = false;
+        return false;
+    }
+    if (enabled && tracking_ && nowMs - pressedAtMs_ >= holdMs) {
+        tracking_ = false;
+        return true;
+    }
+    return false;
+}
+
+void LongPressDetector::cancel() {
+    tracking_ = false;
+}
 namespace {
 constexpr std::int16_t kMarqueeY = 55;
 constexpr std::uint32_t kMarqueePixelMs = 55U;

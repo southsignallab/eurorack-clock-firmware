@@ -103,6 +103,8 @@ Final hardware uses SPI. The legacy I2C transport is retained only as a host reg
 
 SPI is the default PlatformIO/reference profile. `present()` transfers dirty pages immediately. The dedicated bus is fast enough that this remains the simplest path and it does not inherit the additional scheduling machinery required by I2C.
 
+SPI clock (calculated, not measured): SPI1 runs from PCLK2. The DIY Blackpill build has a 25 MHz HSE; `configureSystemClock()` sets PLLM 25, PLLN 336, PLLP 4 (SYSCLK 84 MHz) and APB2 ÷1, so PCLK2 is 84 MHz (RM0368 Rev 6, 6.3.2). `CLOCK_DISPLAY_SPI_FREQUENCY_HZ` requests 1 MHz; the fastest SPI_CR1 BR divider at or below that is ÷128 (RM0368 Rev 6, 20.5.1), so SCK runs at **656.25 kHz**. A full 1024-byte frame then takes **12.5 ms** of bit time (8192 bits), plus command bytes and the gaps between bytes; `HAL_SPI_Transmit()` has a 20 ms timeout. A failed transfer leaves its pages dirty, and the next frame sends them again. The SMD variant has an 8 MHz HSE and needs other PLL values (hardware reference); the figures above apply to the DIY build. The measurement of SCK and frame time on the scope is planned for 1.2.1.
+
 ### Legacy I2C transport — regression/reference only
 
 I2C is no longer a supported production wiring option because PB6/PB7 are reserved for the encoder. The implementation remains regression-tested so older transport logic does not silently rot; blocking STM32Cube I2C master transmissions can keep the foreground waiting for transfer completion, so CLOCK never sends a complete 1 KiB framebuffer from one runtime `present()` call.

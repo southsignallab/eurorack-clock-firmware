@@ -17,7 +17,7 @@ Preset names can contain up to 16 characters. Saving over an occupied slot requi
 </tr>
 </table>
 
-Factory templates currently include `ALL MASTER`, `CLOCK TREE`, `DIVIDERS`, `POLYRHYTHM`, `EUCLID KIT`, and `HYBRID`. Loading a template changes CURRENT; it does not silently create or overwrite a named user preset.
+Factory templates currently include `ALL MASTER`, `CLOCK TREE`, `DIVIDERS`, `POLYRHYTHM`, `EUCLID KIT`, and `HYBRID`. Pushing a template asks `APPLY TEMPLATE?` with **NO** preselected, as CHANGE MODE does; only **YES** replaces the configuration, while NO and BACK return to the list unchanged. Loading a template changes CURRENT; it does not silently create or overwrite a named user preset.
 
 ### When settings reach Flash
 
@@ -29,9 +29,9 @@ CLOCK never writes Flash while transport is PLAY, because the STM32F401 stalls w
 
 If a RUN or START signal arrives during the short Flash write, playback starts right after the write instead of during it.
 
-**SAVE ERROR** on the Performance screen means a Flash write failed. Your changes stay in memory and CLOCK retries automatically after 1, 2, 4, 8, 16 and 32 seconds. If the last retry fails too, CLOCK stops writing so that a worn Flash sector is not erased again and again; **SAVE ERROR** then appears again for a few seconds after every front-panel action. The next change to your settings, presets, grooves or patterns starts a new series of attempts, and so does switching the module off and on. Changes made since the last successful write are lost when power is removed.
+**SAVE ERROR** on the Performance screen means a Flash write failed. Your changes stay in memory and CLOCK retries automatically after 1, 2, 4, 8, 16 and 32 seconds, seven attempts in all. If the last retry fails too, CLOCK stops writing so that a worn Flash sector is not erased again and again; **SAVE ERROR** then appears again for 3 seconds after every front-panel action. The next change to your settings, presets, grooves or patterns starts a new series of attempts, and so does switching the module off and on. Changes made since the last successful write are lost when power is removed.
 
-**UPDATE FIRMWARE** means the Flash holds settings written by a newer firmware in a format this firmware does not know, typically after a downgrade. CLOCK still runs with the newest settings it can read but writes nothing, so the newer data stays intact for a later upgrade. Either install the newer firmware again or confirm **FACTORY RESET** (`INFO`), which replaces the stored data with factory settings and lifts the lock.
+**UPDATE FIRMWARE** means the Flash holds settings written by a newer firmware in a format this firmware does not know, typically after a downgrade. CLOCK still runs with the newest settings it can read but writes nothing, so the newer data stays intact for a later upgrade. Either install the newer firmware again or confirm **FACTORY RESET** (`INFO`), which replaces the stored data with factory settings. Only **FACTORY RESET** (`ERASE ALL DATA`) lifts the lock.
 
 <table>
 <tr>

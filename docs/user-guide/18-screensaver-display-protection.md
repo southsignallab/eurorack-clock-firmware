@@ -23,7 +23,22 @@ Display protection is active only while transport is STOP. The factory timing is
 - dim after 5 minutes;
 - OLED off after 10 minutes.
 
-The configured order is constrained to `START <= DIM <= OFF`. Any front-panel activity wakes the OLED immediately. `OFF` disables animation but does not disable the later dim/panel-off protection stages.
+The configured order is constrained to `START <= DIM <= OFF`. `OFF` disables animation but does not disable the later dim/panel-off protection stages.
+
+What counts as activity and restarts the timers:
+
+- every front-panel control: encoder turn and push, START/PAUSE, TAP TEMPO, STOP/BACK;
+- a START, STOP, RESTART or RUN command at an input assigned to that role.
+
+A clock at SYNC, a RESET trigger, TAP at an input and an input set to `OFF` do not count, so display protection also works in STOP while a master clock keeps running.
+
+While the OLED is switched off, a control only wakes it, except the transport keys:
+
+- turning or pushing the encoder, TAP TEMPO, and BACK in a menu wake the display and do nothing else; the release of that press is ignored as well;
+- START/PAUSE and STOP act at once and wake the display;
+- a START or STOP command at an input wakes the display and acts.
+
+During the screensaver animation and while the display is dimmed, every control acts as usual.
 
 Four additional visual modes are available: **MAKE MUSIC** builds `MAKE·MUSIC·NOT·WAR` one character at a time and continues row by row; **LABYRINTH** repeatedly generates and draws a random perfect maze; **STARFIELD** scrolls three parallax depth layers; and **FIREWORKS** launches a pixel rocket from changing positions before an upper-screen burst.
 

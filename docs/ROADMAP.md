@@ -8,8 +8,8 @@ This roadmap separates the first stable DIY release from later musical expansion
 
 ```mermaid
 flowchart LR
-    V1["1.0.1<br/>Stable baseline"] --> G["NOW<br/>1.1.0<br/>Grooves + Pre-Count"]
-    G --> S["1.2.x<br/>Sequencer 2.0"]
+    V1["1.0.1<br/>Stable baseline"] --> G["1.1.0<br/>Grooves + Pre-Count"]
+    G --> S["NOW<br/>1.2.0<br/>Sequencer 2.0"]
     S --> E["1.3.x<br/>Euclid Auto-Fill<br/>Conditions"]
     E --> R["1.4.x<br/>Ratchet / Burst"]
     R --> N["1.5.x<br/>Structured Random<br/>Hard HIL gate"]
@@ -25,9 +25,9 @@ flowchart LR
     classDef virtual fill:#EEE7F7,color:#221832,stroke:#74509A,stroke-width:1.5px;
     classDef research fill:#F2F2F2,color:#222222,stroke:#777777,stroke-dasharray: 4 3;
 
-    class G current;
-    class V1 stable;
-    class S,E,R,I,P music;
+    class S current;
+    class V1,G stable;
+    class E,R,I,P music;
     class N gate;
     class VCV virtual;
     class X research;

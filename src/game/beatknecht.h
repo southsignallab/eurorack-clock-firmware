@@ -39,8 +39,12 @@ private:
     void update(const hal::ControlSample& controls, std::uint32_t nowMs);
     /** @brief Renders all eight patterns and the current step position. */
     void render();
-    /** @brief Emits the active gates for one sixteenth-note pattern step. */
-    void triggerStep(std::uint32_t nowMs);
+    /**
+     * @brief Emits the active gates for one sixteenth-note pattern step.
+     * @param nowMs Current time; the gates fall a fixed pulse length later.
+     * @param stepAtMs Target time of this step; the next step is scheduled from it (F-041).
+     */
+    void triggerStep(std::uint32_t nowMs, std::uint32_t stepAtMs);
     /** @brief Starts from STOP or resumes a paused rhythm without resetting tempo/style. */
     void startOrResume(std::uint32_t nowMs);
     /** @brief Pauses rhythm timing, preserves the remaining step interval, and forces all gates LOW. */
@@ -67,8 +71,10 @@ private:
     std::uint8_t nextStep_ = 0U;
     std::uint8_t displayStep_ = 0U;
     std::uint32_t nextStepAtMs_ = 0U;
+    /** Accumulated remainder of 15000 / bpm_ in units of 1 / bpm_ ms (F-041). */
+    std::uint32_t stepRemainder_ = 0U;
     std::uint32_t gatesOffAtMs_ = 0U;
-    std::uint32_t encoderPressedAtMs_ = 0U;
+    LongPressDetector exitHold_{};
     std::uint32_t pausedStepRemainingMs_ = 0U;
     TransportState transport_ = TransportState::Stopped;
     TransportState transportBeforeExitConfirmation_ = TransportState::Stopped;

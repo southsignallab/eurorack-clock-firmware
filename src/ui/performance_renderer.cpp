@@ -221,7 +221,16 @@ void PerformanceRenderer::render(
     // Detailed rotation remains available in the mode settings, while performance view
     // keeps the pattern strip visually dominant.
     char detailText[12]{};
-    formatChannelSummary(configuredChannel, detailText, sizeof(detailText));
+    if (configuredChannel.common.mode == ChannelMode::Sequencer && activeSequencerPattern != nullptr) {
+        // Sequencer 2.0 owns the pattern length; the legacy field is not updated (F-035).
+        std::snprintf(
+            detailText,
+            sizeof(detailText),
+            "%u",
+            static_cast<unsigned>(activeSequencerPattern->length));
+    } else {
+        formatChannelSummary(configuredChannel, detailText, sizeof(detailText));
+    }
     display_.setFont(hal::DisplayFont::Small);
     const hal::TextBounds detailBounds = display_.measureText(detailText, 0, contextY);
     display_.drawText(

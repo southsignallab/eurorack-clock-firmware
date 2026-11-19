@@ -130,7 +130,7 @@ void UiController::activateRootSetting() {
         openSettingsPage(SettingsPage::Support);
     } else if (navigation_.cursor == 4U) {
         openSettingsPage(SettingsPage::Info);
-    } else if (navigation_.highScoreResetAvailable && navigation_.cursor == 5U) {
+    } else if (navigation_.highScoreResetAvailable && navigation_.cursor == kRootHighScoresRow) {
         navigation_.screen = Screen::HighScoreClearConfirm;
         navigation_.cursor = 0U;  // Confirmation dialogs always default to NO.
         navigation_.editing = false;

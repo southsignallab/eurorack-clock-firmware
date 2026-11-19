@@ -18,11 +18,14 @@ std::uint32_t clockHz; std::uint8_t bitOrder; std::uint8_t dataMode;
 };
 class SPIClass {
 public:
- void reset(){sclk=0;mosi=0;begun=false;inTransaction=false;transfers.clear();beginCount=0;endCount=0;lastClock=0;}
+ void reset(){sclk=0;mosi=0;begun=false;inTransaction=false;transfers.clear();beginCount=0;endCount=0;lastClock=0;failTransactions=0;lastFailed=false;}
  void setSCLK(PinName p){sclk=p;} void setMOSI(PinName p){mosi=p;} void begin(){begun=true;}
  void beginTransaction(const SPISettings& s){inTransaction=true;++beginCount;lastClock=s.clockHz;}
  std::uint8_t transfer(std::uint8_t v, bool = false){transfers.push_back(v);return v;}
- void endTransaction(){inTransaction=false;++endCount;}
+ void endTransaction(){inTransaction=false;++endCount;lastFailed=failTransactions!=0U;if(lastFailed)--failTransactions;}
+ /** True when the transaction that just ended was set to fail (failTransactions). */
+ bool lastTransactionFailedForTest() const {return lastFailed;}
+ unsigned failTransactions=0; bool lastFailed=false;
  PinName sclk=0,mosi=0; bool begun=false,inTransaction=false; std::vector<std::uint8_t> transfers{}; unsigned beginCount=0,endCount=0; std::uint32_t lastClock=0;
 };
 inline SPIClass SPI{};

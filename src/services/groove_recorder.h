@@ -44,8 +44,29 @@ public:
     /** @brief Changes the recorder-local Count-In length in master beats. */
     void setCountInBeats(std::uint8_t beats);
 
-    /** @brief Arms recording from the supplied engine position and nominal event interval. */
+    /**
+     * @brief Arms recording on a grid that starts where the recording starts.
+     *
+     * Same as the four-argument start() with the grid origin at the end of the Count-In.
+     */
     void start(std::uint64_t masterPositionQ32, std::uint64_t stepIntervalQ32, std::uint8_t length);
+
+    /**
+     * @brief Arms recording on the grid of the channel that plays the groove (F-022).
+     * @param masterPositionQ32 Engine position when recording is armed.
+     * @param gridOriginQ32 Position of event serial 0 of the channel (epoch plus phase).
+     * @param stepIntervalQ32 Nominal event interval of the channel.
+     * @param length Pattern length in steps.
+     *
+     * After the Count-In, capture starts at the next grid step. Steps are numbered as
+     * playback numbers them, event serial modulo @p length, so a recording started in the
+     * middle of a step plays back where it was tapped.
+     */
+    void start(
+        std::uint64_t masterPositionQ32,
+        std::uint64_t gridOriginQ32,
+        std::uint64_t stepIntervalQ32,
+        std::uint8_t length);
 
     /** @brief Stops recording and returns the playhead to the start without changing the draft. */
     void stop();
@@ -74,6 +95,8 @@ private:
     std::uint64_t preCountEpochQ32_ = 0U;
     std::uint64_t recordEpochQ32_ = 0U;
     std::uint64_t recordStartTargetQ32_ = 0U;
+    /** Playback step of the first recorded grid step: its event serial modulo the length. */
+    std::uint8_t stepBase_ = 0U;
 };
 
 }  // namespace clockfw::services

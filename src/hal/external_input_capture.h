@@ -51,9 +51,6 @@ public:
     /** @brief Returns the number of RST edges collapsed because the queue was saturated. */
     std::uint32_t collapsedResetEdges() const;
 
-    /** @brief Monotonic sequence incremented for every observed SYNC or RST transition. */
-    std::uint32_t activitySequence() const;
-
 #ifdef CLOCK_HOST_TEST
     /** @brief Injects a captured SYNC transition for deterministic host tests. */
     void injectSyncEdgeForTest(std::uint32_t timestampUs, bool high);
@@ -129,7 +126,6 @@ private:
     EdgeQueue resetQueue_{};
     volatile bool syncLevelHigh_ = false;
     volatile bool resetLevelHigh_ = false;
-    volatile std::uint32_t activitySequence_ = 0U;
 #ifdef CLOCK_HOST_TEST
     std::uint32_t synthesizedEdgesForTest_ = 0U;
 #endif

@@ -206,6 +206,9 @@ void ClockEngine::installRestartUnsafe(const PreparedRestart& restart) {
     masterRemainder_ = 0U;
     masterBeat_ = 1U;
     masterBar_ = 1U;
+    // The bar/beat display follows external pulses from this accumulator; it restarts with
+    // the counter, or the next pulse would show the position before the reset (F-027).
+    externalMusicalPositionQ32_ = 0U;
 
     lowerAllGatesUnsafe();
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {

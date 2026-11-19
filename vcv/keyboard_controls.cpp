@@ -7,6 +7,8 @@
  */
 #include "keyboard_controls.h"
 
+#include <initializer_list>
+
 namespace clockfw::vcv {
 namespace {
 
@@ -75,6 +77,26 @@ KeyboardEventResult applyKeyboardEvent(
     *heldControl = pressed;
     result.consumed = true;
     return result;
+}
+
+bool releaseHeldControls(KeyboardHeldControls& held) noexcept {
+    const bool anyHeld = held.leftShift || held.rightShift || held.encoder || held.play ||
+        held.tap || held.stop;
+    held = KeyboardHeldControls{};
+    return anyHeld;
+}
+
+bool reconcileHeldControls(KeyboardHeldControls& held, const PanelKeyDownQuery keyDown) noexcept {
+    bool released = false;
+    for (const PanelKey key : {PanelKey::LeftShift, PanelKey::RightShift, PanelKey::EncoderPush,
+                               PanelKey::Play, PanelKey::Tap, PanelKey::Stop}) {
+        bool* const heldControl = heldControlFor(held, key);
+        if (*heldControl && !keyDown(key)) {
+            *heldControl = false;
+            released = true;
+        }
+    }
+    return released;
 }
 
 }  // namespace clockfw::vcv

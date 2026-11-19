@@ -132,7 +132,7 @@ MenuRow buildMenuRow(
                 text::TextId::Info};
             copyText(row.label, sizeof(row.label), kLabels[rowIndex]);
             copyText(row.value, sizeof(row.value), text::TextId::Arrow);
-        } else if (highScoreResetAvailable && rowIndex == 5U) {
+        } else if (highScoreResetAvailable && rowIndex == kRootHighScoresRow) {
             copyText(row.label, sizeof(row.label), text::TextId::HighScores);
             copyText(row.value, sizeof(row.value), text::TextId::Clear);
         } else {

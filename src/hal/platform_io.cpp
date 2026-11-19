@@ -47,6 +47,10 @@ void quadratureEdgeThunk() {
 void initializeMcu() {}
 void configureInputPullup(const mcu::Pin pin) { pinMode(pin, INPUT_PULLUP); }
 void configureOutput(const mcu::Pin pin) { pinMode(pin, OUTPUT); }
+void configureOutputAtLevel(const mcu::Pin pin, const bool high) {
+    digitalWrite(pin, high ? HIGH : LOW);
+    pinMode(pin, OUTPUT);
+}
 bool read(const mcu::Pin pin) { return digitalRead(pin) == HIGH; }
 bool readInterruptLevel(const mcu::Pin pin) { return read(pin); }
 void write(const mcu::Pin pin, const bool high) { digitalWrite(pin, high ? HIGH : LOW); }
@@ -215,6 +219,25 @@ void configureInputPullup(const mcu::Pin pin) {
 void configureOutput(const mcu::Pin pin) {
     enablePortClock(pin); GPIO_TypeDef* const port = portFor(pin); if (port == nullptr) return;
     GPIO_InitTypeDef init{}; init.Pin=maskFor(pin); init.Mode=GPIO_MODE_OUTPUT_PP; init.Pull=GPIO_NOPULL; init.Speed=GPIO_SPEED_FREQ_HIGH; HAL_GPIO_Init(port,&init);
+}
+void configureOutputAtLevel(const mcu::Pin pin, const bool high) {
+    enablePortClock(pin);
+    GPIO_TypeDef* const port = portFor(pin);
+    if (port == nullptr) {
+        return;
+    }
+    // After reset every pin is an input (RM0368 Rev 6, 8.3.1) and GPIOx_ODR is 0 (8.4.6).
+    // The level goes into ODR through BSRR (8.3.5) while the pin is still an input;
+    // HAL_GPIO_Init() writes MODER last and leaves ODR alone, so the pin drives this
+    // level from its first cycle as an output.
+    const std::uint16_t mask = maskFor(pin);
+    port->BSRR = high ? static_cast<std::uint32_t>(mask) : (static_cast<std::uint32_t>(mask) << 16U);
+    GPIO_InitTypeDef init{};
+    init.Pin = mask;
+    init.Mode = GPIO_MODE_OUTPUT_PP;
+    init.Pull = GPIO_NOPULL;
+    init.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(port, &init);
 }
 bool read(const mcu::Pin pin) { GPIO_TypeDef* const port=portFor(pin); return port != nullptr && HAL_GPIO_ReadPin(port,maskFor(pin)) == GPIO_PIN_SET; }
 bool readInterruptLevel(const mcu::Pin pin) {

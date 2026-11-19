@@ -20,8 +20,8 @@ void UiController::openPresetSlots(const PresetSlotAction action) {
     navigation_.screen = Screen::PresetSlots;
     navigation_.presetSlotAction = action;
     navigation_.cursor = navigation_.selectedPresetSlot;
-    navigation_.scrollOffset = navigation_.cursor >= 5U
-        ? static_cast<std::uint8_t>(navigation_.cursor - 4U)
+    navigation_.scrollOffset = navigation_.cursor >= kVisibleSlotRows
+        ? static_cast<std::uint8_t>(navigation_.cursor - (kVisibleSlotRows - 1U))
         : 0U;
     navigation_.editing = false;
     invalidate();

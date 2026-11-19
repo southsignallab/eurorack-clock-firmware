@@ -100,12 +100,14 @@ void ClockApplication::begin() {
 }
 
 void ClockApplication::begin(const ClockState& initialState) {
+    // First action (F-023): gate sources LOW. The buffer's /OE pins are tied to GND on both
+    // hardware variants, so it always drives; before this only the pull-downs hold it LOW.
+    gateOutputs_.beginDisabled();
     state_ = initialState;
 
-    // Restore the complete durable configuration before hardware starts. A valid
-    // CURRENT record supersedes factory/default input values, but transport safety
-    // is intentionally stronger than persistence: every power-up enters STOP and
-    // requires an explicit user action before the clock can produce gates.
+    // Restore the durable configuration. A valid CURRENT record supersedes the defaults;
+    // every loader keeps its defaults when nothing valid is stored, so the results are not
+    // needed (W-116). Transport safety is stronger than persistence: power-up enters STOP.
     persistentState_.begin();
     (void)persistentState_.restoreCurrentState(state_);
     (void)sequencerPatternStore_.begin();
@@ -117,8 +119,6 @@ void ClockApplication::begin(const ClockState& initialState) {
     state_.transport = TransportState::Stopped;
     activeInstance_ = this;
 
-    // The external gate buffer is disabled before any channel GPIO is configured.
-    gateOutputs_.beginDisabled();
     controlPanel_.begin();
     externalInputs_.begin();
 
@@ -150,7 +150,7 @@ void ClockApplication::begin(const ClockState& initialState) {
         // Ranked games create their durable leaderboard record on first launch.
         // This marker later exposes the guarded HI-SCORES reset in Settings.
         if (selectedLeaderboard_ != nullptr) {
-            (void)selectedLeaderboard_->markStarted();
+            (void)selectedLeaderboard_->markStarted();  // a failed marker only hides HI-SCORES
         }
         // Boot Easter eggs run before the scheduler. Arcade games keep the logical
         // gate-output stage muted; BEATKNECHT enables it only while deliberately
@@ -165,8 +165,7 @@ void ClockApplication::begin(const ClockState& initialState) {
     externalSyncController_.begin(state_);
     schedulerTimer_.start(config::kSchedulerFrequencyHz, schedulerInterruptThunk);
 
-    gateOutputs_.setAllChannelsLow();
-    gateOutputs_.enableOutputStage();
+    engine_.enableOutputStage();
     uiController_.invalidate();
 #endif
 }
@@ -176,11 +175,11 @@ void ClockApplication::runOnce() {
 #ifdef CLOCK_SIMULATOR
     if (simulatorLifecycle_ != SimulatorLifecycle::Running) {
         serviceSimulatorStartup(nowMs);
-        (void)display_.service();
+        (void)display_.service();  // only reports pending I2C work; polled every pass
         return;
     }
 #endif
-    adoptExternalTransportTransition();
+    adoptExternalTransportTransition(nowMs);
 
     std::uint32_t externalTapTimestampUs = 0U;
     if (externalSyncController_.consumeTapRequest(externalTapTimestampUs)) {
@@ -199,9 +198,8 @@ void ClockApplication::runOnce() {
     // PAUSE/STOP feedback immediate even when the subsequent sector commit takes
     // perceptible time on the F401. PLAY never reaches the Flash write path.
     uiController_.serviceRendering(nowMs);
-    // Runtime I2C transfers are intentionally bounded to one short transaction
-    // per foreground pass. SPI builds return immediately here because present()
-    // already uses the faster synchronous dirty-page path.
+    // One short I2C transaction per pass; SPI returns at once (present() sends the dirty
+    // pages). The result only says whether I2C work remains: the next pass polls again.
     (void)display_.service();
     // STM32F4 stalls instruction/data fetches from Flash while a sector is being
     // erased or programmed. One coordinator commits all stores in one transaction
@@ -301,7 +299,7 @@ void ClockApplication::serviceSimulatorStartup(const std::uint32_t nowMs) {
 
     if (simulatorEncoderHeldForEntireBoot_) {
         if (selectedLeaderboard_ != nullptr) {
-            (void)selectedLeaderboard_->markStarted();
+            (void)selectedLeaderboard_->markStarted();  // a failed marker only hides HI-SCORES
         }
         simulatorLifecycle_ = SimulatorLifecycle::EasterEgg;
         beginSelectedEasterEggForSimulator();
@@ -315,8 +313,7 @@ void ClockApplication::finishSimulatorStartup() {
     loadSequencerPatternBank();
     externalSyncController_.begin(state_);
     schedulerTimer_.start(config::kSchedulerFrequencyHz, schedulerInterruptThunk);
-    gateOutputs_.setAllChannelsLow();
-    gateOutputs_.enableOutputStage();
+    engine_.enableOutputStage();
     uiController_.invalidate();
     simulatorLifecycle_ = SimulatorLifecycle::Running;
 }
@@ -425,7 +422,7 @@ bool ClockApplication::runBootSequence() {
 
         encoderHeldForEntireBoot = encoderHeldForEntireBoot &&
             controlPanel_.sample(nowMs).encoderButton.pressed;
-        (void)display_.service();
+        (void)display_.service();  // only reports pending I2C work; polled every pass
 
         if (elapsedMs >= config::kBootDurationMs) {
             break;

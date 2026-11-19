@@ -124,6 +124,9 @@ public:
      * @param nowMs Current monotonic time in milliseconds.
      */
     void processControls(const hal::ControlSample& controls, std::uint32_t nowMs);
+
+    /** @brief True while STOP-mode display protection has switched the OLED off (host tests). */
+    bool displayPoweredOffForTest() const { return displayPoweredOff_; }
 #endif
 
     /**
@@ -142,6 +145,15 @@ public:
      */
     void registerExternalTapTempo(std::uint32_t timestampUs, std::uint32_t nowMs);
 
+    /**
+     * @brief Records a START, STOP, RESTART or RUN command from an input as user activity.
+     * @param nowMs Current monotonic time in milliseconds.
+     *
+     * Wakes the display and restarts the STOP-mode inactivity timers (E-11). SYNC clocks and
+     * RESET triggers deliberately do not reach this function.
+     */
+    void noteExternalTransportCommand(std::uint32_t nowMs);
+
     /** @brief Shows SAVE ERROR or UPDATE FIRMWARE on the Performance screen for a few seconds. */
     void showPersistenceNotice(PersistenceNotice notice, std::uint32_t nowMs);
 
@@ -158,6 +170,17 @@ public:
 
 private:
     friend struct UiControllerTestAccess;
+
+    /**
+     * @brief Applies the D-08 wake rules to one control sample.
+     * @param rawControls Sample from the control panel.
+     * @return The sample to act on: while the OLED is off, the encoder and the menu keys
+     *         only wake it, and a waking press stays hidden until its release.
+     */
+    hal::ControlSample applyWakeRules(const hal::ControlSample& rawControls);
+
+    /** @brief Returns true when one debounced front-panel sample represents user activity. */
+    static bool hasUserActivity(const hal::ControlSample& controls);
 
     /** @brief Routes one encoder detent according to the active screen and edit state. */
     void handleEncoderDelta(
@@ -323,8 +346,11 @@ private:
     /** @brief Keeps the selected settings row visible inside the five-row viewport. */
     void normalizeScrollOffset();
 
-    /** @brief Applies the highlighted factory template and returns to performance view. */
+    /** @brief Applies the confirmed factory template and returns to performance view. */
     void applySelectedTemplate(std::uint32_t nowMs);
+
+    /** @brief Leaves APPLY TEMPLATE? without a change, back to the highlighted template. */
+    void returnToTemplates();
 
     /** @brief Executes or cancels the guarded Top-100 clear action. */
     void confirmHighScoreClear(std::uint32_t nowMs);
@@ -469,6 +495,12 @@ private:
     bool encoderLongPressHandled_ = false;
     std::uint32_t encoderPressedAtMs_ = 0U;
     bool modeTapTurnActive_ = false;
+    /** TAP was held as a modifier while the encoder turned; its release is no TAP action. */
+    bool tapPressConsumedByTurn_ = false;
+    /** A press that woke the OLED is hidden until it is released (D-08). */
+    bool wakeSwallowsEncoderButton_ = false;
+    bool wakeSwallowsTapButton_ = false;
+    bool wakeSwallowsResetButton_ = false;
     bool activityClockInitialized_ = false;
     bool screensaverActive_ = false;
     bool displayDimmed_ = false;
@@ -477,7 +509,6 @@ private:
     std::uint32_t controlActivityRevision_ = 0U;
     std::uint32_t lastScreensaverFrameAtMs_ = 0U;
     std::uint32_t screensaverFrameIndex_ = 0U;
-    std::uint32_t lastExternalInputActivitySequence_ = 0U;
 
     GrooveSettings grooveEditorOriginalSettings_{};
     bool grooveEditorDirty_ = false;

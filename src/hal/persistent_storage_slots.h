@@ -100,6 +100,8 @@ struct HostFaults final {
     std::uint32_t commitAttempts = 0U;
     std::uint32_t payloadValidations = 0U;
     std::uint32_t reads = 0U;
+    /** @brief Called at the start of every readBytes(). */
+    void (*readHook)() = nullptr;
 };
 
 /** @brief Returns the host fault/counter block. */

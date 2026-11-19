@@ -16,18 +16,6 @@
 #include "ui/mode_functions.h"
 
 namespace clockfw::ui {
-namespace {
-
-/** Returns true when one debounced front-panel sample represents user activity. */
-bool hasUserActivity(const hal::ControlSample& controls) {
-    return controls.encoderDelta != 0 ||
-        controls.encoderButton.edge != hal::ButtonEdge::None ||
-        controls.transportButton.edge != hal::ButtonEdge::None ||
-        controls.tapButton.edge != hal::ButtonEdge::None ||
-        controls.resetButton.edge != hal::ButtonEdge::None;
-}
-
-}  // namespace
 
 UiController::UiController(
     ClockState& state,
@@ -44,7 +32,7 @@ UiController::UiController(
       leaderboard_(leaderboard),
       externalInputs_(externalInputs),
       gateOutputs_(gateOutputs),
-      settingsEditor_(state, engine) {}
+      settingsEditor_(state, engine, customGrooveStore_) {}
 
 UiController::UiController(
     ClockState& state,
@@ -63,7 +51,7 @@ UiController::UiController(
       leaderboard_(leaderboard),
       externalInputs_(externalInputs),
       gateOutputs_(gateOutputs),
-      settingsEditor_(state, engine) {}
+      settingsEditor_(state, engine, customGrooveStore_) {}
 
 UiController::UiController(
     ClockState& state,
@@ -84,7 +72,7 @@ UiController::UiController(
       leaderboard_(leaderboard),
       externalInputs_(externalInputs),
       gateOutputs_(gateOutputs),
-      settingsEditor_(state, engine) {}
+      settingsEditor_(state, engine, customGrooveStore_) {}
 
 UiController::UiController(
     ClockState& state,
@@ -107,7 +95,7 @@ UiController::UiController(
       leaderboard_(leaderboard),
       externalInputs_(externalInputs),
       gateOutputs_(gateOutputs),
-      settingsEditor_(state, engine) {}
+      settingsEditor_(state, engine, customGrooveStore_) {}
 
 void UiController::invalidate() {
     renderDirty_ = true;
@@ -120,7 +108,7 @@ void UiController::processControls(const hal::ControlSample& controls, const std
 #endif
 
 void UiController::processControls(
-    const hal::ControlSample& controls,
+    const hal::ControlSample& rawControls,
     const std::uint32_t nowMs,
     const std::uint32_t nowUs) {
     serviceTapTempoSequence(nowUs);
@@ -128,9 +116,15 @@ void UiController::processControls(
         lastUserActivityAtMs_ = nowMs;
         activityClockInitialized_ = true;
     }
-    if (hasUserActivity(controls)) {
+    const hal::ControlSample controls = applyWakeRules(rawControls);
+    const Screen screenBeforeControls = navigation_.screen;
+    if (hasUserActivity(rawControls)) {
         ++controlActivityRevision_;
         noteUserActivity(nowMs);
+    }
+    if (controls.encoderDelta != 0 && controls.tapButton.pressed) {
+        // TAP served as a modifier for this turn; its release is not a TAP (F-033).
+        tapPressConsumedByTurn_ = true;
     }
     tapModifierPressed_ = controls.tapButton.pressed;
 
@@ -162,6 +156,10 @@ void UiController::processControls(
         !controls.tapButton.pressed &&
         !controls.encoderButton.pressed) {
         settingsChordActive_ = false;
+    }
+    if (navigation_.screen != screenBeforeControls) {
+        // PLAY held for zoom belongs to the screen it zoomed; its release elsewhere is lost (F-039).
+        transportPressConsumedByGrooveZoom_ = false;
     }
 }
 
@@ -214,6 +212,9 @@ void UiController::handleTapButton(
     const hal::ButtonSample& button,
     const std::uint32_t nowMs,
     const std::uint32_t nowUs) {
+    if (button.edge == hal::ButtonEdge::Pressed) {
+        tapPressConsumedByTurn_ = false;
+    }
     if (navigation_.screen == Screen::GrooveRecorder) {
         if (button.edge == hal::ButtonEdge::Pressed) {
             captureGrooveTap(button, nowUs);
@@ -232,6 +233,11 @@ void UiController::handleTapButton(
     if (modeTapTurnActive_ && navigation_.screen == Screen::ModeSelect) {
         modeTapTurnActive_ = false;
         commitSelectedMode(nowMs);
+        return;
+    }
+
+    if (tapPressConsumedByTurn_) {
+        tapPressConsumedByTurn_ = false;
         return;
     }
 
@@ -274,6 +280,8 @@ void UiController::handleResetButton(
         invalidate();
     } else if (navigation_.screen == Screen::Templates) {
         openSettingsPage(SettingsPage::Preferences);
+    } else if (navigation_.screen == Screen::TemplateApplyConfirm) {
+        returnToTemplates();
     } else if (navigation_.screen == Screen::PresetSlots) {
         openSettingsPage(SettingsPage::Preferences);
     } else if (navigation_.screen == Screen::GrooveEditor ||
@@ -328,7 +336,7 @@ void UiController::handleResetButton(
         navigation_.cursor = modeFunctionIndexForState(state_, navigation_.selectedChannel);
         invalidate();
     } else if (navigation_.screen == Screen::HighScoreClearConfirm) {
-        openSettingsPage(SettingsPage::Root, navigation_.highScoreResetAvailable ? 4U : 0U);
+        openSettingsPage(SettingsPage::Root, navigation_.highScoreResetAvailable ? kRootHighScoresRow : 0U);
     } else if (navigation_.screen == Screen::FactoryResetConfirm) {
         openSettingsPage(SettingsPage::Info, 5U);
     } else if (navigation_.screen == Screen::ModeSelect) {

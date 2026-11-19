@@ -6,7 +6,7 @@ Groove is deterministic microtiming applied to the same master timeline as Clock
 
 ### Factory Grooves
 
-`TIMING → GROOVE` offers `OFF`, `SWING 54`, `SWING 58`, `SWING 62`, `SWING 66`, and `POCKET A / B / C`. **AMOUNT** scales the selected pattern from straight (`0%`) through its stored shape (`100%`), while **ROTATE** changes where that pattern starts against the channel timeline. One Clock owns one global Groove; Independent stores Groove per channel and applies it equally to Clock, Euclid and Sequencer event timing.
+`TIMING → GROOVE` offers `OFF`, `SWING 54`, `SWING 58`, `SWING 62`, `SWING 66`, and `POCKET A / B / C`. `CUSTOM` follows at the end of the list only while at least one Custom Groove slot holds a groove; it then uses the slot already selected for the channel or, if that slot is empty, the first stored groove. **AMOUNT** scales the selected pattern from straight (`0%`) through its stored shape (`100%`), while **ROTATE** changes where that pattern starts against the channel timeline. One Clock owns one global Groove; Independent stores Groove per channel and applies it equally to Clock, Euclid and Sequencer event timing.
 
 ### Custom Groove Editor
 
@@ -40,6 +40,8 @@ Recorder controls:
 - **BACK** — leave/confirm discard using the same shared-draft rules as the editor.
 
 The Record menu provides **MODE** (`ONE SHOT / ENDLESS`), recorder **COUNT IN** (`OFF / 1–64`, default `4`), **LENGTH** (`1–64`), **ZOOM**, **SAVE**, `EDITOR >`, and **CLEAR**. `ONE SHOT` stops at the end of one pattern pass. `ENDLESS` wraps and continues; only steps that receive a new TAP are overwritten, so an existing Groove can be refined over repeated passes.
+
+The recording grid is the grid of the channel that plays the Groove. When recording starts in the middle of a step, for example while the clock already runs, capture begins at the next step of that channel and numbers the steps as playback does, so a recorded Groove plays back exactly where it was tapped.
 
 Front-panel TAP capture preserves the high-resolution physical press timestamp through button debounce before converting it to a signed per-step offset. Host tests verify that software contract; absolute physical switch latency/jitter remains a HIL measurement.
 

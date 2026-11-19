@@ -125,6 +125,7 @@ int main() {
     RUN_TEST(testPauseIgnoresPulsesAndResumesWithoutBurst);
     RUN_TEST(testResetTriggerIsEdgeTriggered);
     RUN_TEST(testResetBurstIsCoalescedPerSchedulerQuantum);
+    RUN_TEST(testResetRestartsTheExternalMusicalPosition);
     RUN_TEST(testResetOverflowStillCoalescesToOneReset);
     RUN_TEST(testResetGateHoldsAndReleasesScheduler);
     RUN_TEST(testGateModeHonorsAlreadyHighInputAndRuntimeModeChange);

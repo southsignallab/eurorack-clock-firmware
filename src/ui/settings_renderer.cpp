@@ -23,9 +23,6 @@
 namespace clockfw::ui {
 namespace {
 
-/** Number of text-setting rows visible at once on the 64-pixel display. */
-constexpr std::uint8_t kVisibleSettingsRows = 5U;
-
 /** Minimum horizontal breathing room between a settings label and its right-aligned value. */
 constexpr std::int16_t kSettingsValueGap = 4;
 

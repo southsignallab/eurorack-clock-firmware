@@ -250,7 +250,7 @@ void GrooveEditorRenderer::renderSlots(
     }
     display_.drawText(0, 0, text::get(title));
     display_.drawHorizontalLine(0, 9, hal::OledDisplay::kWidth);
-    for (std::uint8_t row = 0U; row < 5U; ++row) {
+    for (std::uint8_t row = 0U; row < kVisibleSlotRows; ++row) {
         const std::uint8_t slot = static_cast<std::uint8_t>(navigation.scrollOffset + row);
         if (slot >= kCustomGrooveSlotCount) break;
         const std::int16_t y = static_cast<std::int16_t>(12 + row * 10U);

@@ -63,15 +63,13 @@ void Beatknecht::run() {
     while (!exitRequested_) {
         const std::uint32_t nowMs = hal::SystemClock::milliseconds();
         const hal::ControlSample controls = controls_.sample(nowMs);
-        if (controls.encoderButton.edge == hal::ButtonEdge::Pressed) encoderPressedAtMs_ = nowMs;
-        if (!controls.encoderButton.pressed) encoderPressedAtMs_ = 0U;
-        else if (!exitConfirmationActive_ && encoderPressedAtMs_ != 0U && nowMs - encoderPressedAtMs_ >= kExitLongPressMs) {
+        if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs, !exitConfirmationActive_)) {
             beginExitConfirmation(nowMs);
         }
         if (exitConfirmationActive_) {
             updateExitConfirmation(controls, nowMs);
             renderExitConfirmation();
-            (void)display_.service();
+            (void)display_.service();  // only reports pending I2C work
             hal::SystemClock::delayMilliseconds(1U);
             continue;
         }
@@ -84,7 +82,7 @@ void Beatknecht::run() {
         }
         if (shell_.playing() && !startedThisFrame) update(controls, nowMs);
         if (nowMs - lastFrameAtMs >= kFrameIntervalMs) { if (shell_.playing()) render(); else shell_.render(nowMs); lastFrameAtMs = nowMs; }
-        (void)display_.service();
+        (void)display_.service();  // only reports pending I2C work
         hal::SystemClock::delayMilliseconds(1U);
     }
     if (outputsEnabled) {
@@ -103,15 +101,13 @@ void Beatknecht::beginForSimulator() {
 
 bool Beatknecht::serviceForSimulator(const std::uint32_t nowMs) {
     const hal::ControlSample controls = controls_.sample(nowMs);
-    if (controls.encoderButton.edge == hal::ButtonEdge::Pressed) encoderPressedAtMs_ = nowMs;
-    if (!controls.encoderButton.pressed) encoderPressedAtMs_ = 0U;
-    else if (!exitConfirmationActive_ && encoderPressedAtMs_ != 0U && nowMs - encoderPressedAtMs_ >= kExitLongPressMs) {
+    if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs, !exitConfirmationActive_)) {
         beginExitConfirmation(nowMs);
     }
     if (exitConfirmationActive_) {
         updateExitConfirmation(controls, nowMs);
         renderExitConfirmation();
-        (void)display_.service();
+        (void)display_.service();  // only reports pending I2C work
         if (exitRequested_) { stopOutputs(); gateOutputs_.disableOutputStage(); }
         return !exitRequested_;
     }
@@ -127,7 +123,7 @@ bool Beatknecht::serviceForSimulator(const std::uint32_t nowMs) {
 
 void Beatknecht::resetSession(const std::uint32_t nowMs) {
     styleIndex_ = 0U; bpm_ = kStyles[0].defaultBpm; nextStep_ = 0U; displayStep_ = 0U;
-    nextStepAtMs_ = nowMs; gatesOffAtMs_ = 0U; encoderPressedAtMs_ = 0U; pausedStepRemainingMs_ = 0U;
+    nextStepAtMs_ = nowMs; gatesOffAtMs_ = 0U; exitHold_.cancel(); pausedStepRemainingMs_ = 0U;
     gatesHigh_ = false; exitRequested_ = false; transport_ = TransportState::Stopped;
     transportBeforeExitConfirmation_ = TransportState::Stopped;
     exitConfirmationActive_ = false; exitYesSelected_ = false; exitWaitForRelease_ = false;
@@ -142,7 +138,7 @@ void Beatknecht::beginExitConfirmation(const std::uint32_t nowMs) {
     } else {
         stopOutputs();
     }
-    encoderPressedAtMs_ = 0U;
+    exitHold_.cancel();
     exitYesSelected_ = false;
     exitWaitForRelease_ = true;
     exitConfirmationActive_ = true;
@@ -165,7 +161,7 @@ void Beatknecht::updateExitConfirmation(const hal::ControlSample& controls, cons
     exitConfirmationActive_ = false;
     exitYesSelected_ = false;
     exitWaitForRelease_ = false;
-    encoderPressedAtMs_ = 0U;
+    exitHold_.cancel();
     if (confirmExit) {
         stop();
         exitRequested_ = true;
@@ -218,13 +214,15 @@ void Beatknecht::startOrResume(const std::uint32_t nowMs) {
     nextStep_ = 0U;
     displayStep_ = 0U;
     pausedStepRemainingMs_ = 0U;
+    stepRemainder_ = 0U;
     transport_ = TransportState::Playing;
-    triggerStep(nowMs);
+    triggerStep(nowMs, nowMs);
 }
 
 void Beatknecht::pause(const std::uint32_t nowMs) {
     if (transport_ != TransportState::Playing) return;
-    pausedStepRemainingMs_ = nextStepAtMs_ > nowMs ? nextStepAtMs_ - nowMs : 0U;
+    pausedStepRemainingMs_ =
+        static_cast<std::int32_t>(nextStepAtMs_ - nowMs) > 0 ? nextStepAtMs_ - nowMs : 0U;
     stopOutputs();
     transport_ = TransportState::Paused;
 }
@@ -240,7 +238,7 @@ void Beatknecht::stop() {
     pausedStepRemainingMs_ = 0U;
 }
 
-void Beatknecht::triggerStep(const std::uint32_t nowMs) {
+void Beatknecht::triggerStep(const std::uint32_t nowMs, const std::uint32_t stepAtMs) {
     stopOutputs();
     const DrumStyle& style = kStyles[styleIndex_];
     displayStep_ = nextStep_;
@@ -255,7 +253,16 @@ void Beatknecht::triggerStep(const std::uint32_t nowMs) {
     gateOutputs_.setChannelStates(highMask);
     gatesHigh_ = highMask != 0U; gatesOffAtMs_ = nowMs + kGatePulseMs;
     nextStep_ = static_cast<std::uint8_t>((nextStep_ + 1U) & 0x0FU);
-    nextStepAtMs_ = nowMs + stepDurationMs();
+    // From the target time, not from now, and with the remainder of the division, so the
+    // grid neither drifts with late updates nor with a fractional step length (F-041).
+    const std::uint32_t bpm = bpm_;
+    std::uint32_t durationMs = stepDurationMs();
+    stepRemainder_ += 15000U % bpm;
+    if (stepRemainder_ >= bpm) {
+        stepRemainder_ -= bpm;
+        ++durationMs;
+    }
+    nextStepAtMs_ = stepAtMs + durationMs;
 }
 
 void Beatknecht::update(const hal::ControlSample& controls, const std::uint32_t nowMs) {
@@ -274,10 +281,16 @@ void Beatknecht::update(const hal::ControlSample& controls, const std::uint32_t 
     }
     if (controls.encoderDelta != 0) {
         bpm_ = static_cast<std::uint16_t>(std::clamp<int>(static_cast<int>(bpm_) + controls.encoderDelta, kMinimumBpm, kMaximumBpm));
+        stepRemainder_ = 0U;  // the remainder counts in units of the old tempo
     }
     if (transport_ != TransportState::Playing) return;
-    if (gatesHigh_ && nowMs >= gatesOffAtMs_) stopOutputs();
-    if (nowMs >= nextStepAtMs_) triggerStep(nowMs);
+    // Wrap-safe: signed differences of the wrapping millisecond time.
+    if (gatesHigh_ && static_cast<std::int32_t>(nowMs - gatesOffAtMs_) >= 0) stopOutputs();
+    if (static_cast<std::int32_t>(nowMs - nextStepAtMs_) >= 0) {
+        // More than a whole step late (blocked foreground): restart the grid instead of a burst.
+        const std::uint32_t stepAtMs = nowMs - nextStepAtMs_ >= stepDurationMs() ? nowMs : nextStepAtMs_;
+        triggerStep(nowMs, stepAtMs);
+    }
 }
 
 void Beatknecht::render() {

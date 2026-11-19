@@ -10,6 +10,67 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 ## [Unreleased]
 
+## [1.2.0] - YYYY-MM-DD
+
+### Changed: repository in the citation metadata, CI step names
+
+- `CITATION.cff` (`repository-code`) and `codemeta.json` (`codeRepository`) name https://github.com/southsignallab/eurorack-clock-firmware; the documentation check requires it.
+- The firmware build steps in the CI workflow are named after the PlatformIO environments they build (`blackpill_f401cc`, `blackpill_f401cc_spi_ssd1315`).
+
+### Documentation: SAVE ERROR and UPDATE FIRMWARE in the manual
+
+- The storage chapter of the user manual explains SAVE ERROR (seven attempts, then a pause until the next change or power-up, shown for 3 seconds after every front-panel action) and UPDATE FIRMWARE (only FACTORY RESET lifts the lock), as the user guide does.
+
+### Changed: native tests are as strict as the host coverage run
+
+- `pio test -e native` builds the firmware sources and the test suites with `-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Werror`, the flags of `scripts/run_host_tests.py`. A `test/unity_config.h` keeps PlatformIO from generating its own Unity output adapter, which does not build with these flags.
+
+### Fix: VCV Rack keyboard holds and coverage check on Windows
+
+- A control held through the keyboard in VCV Rack (Shift, Enter/E, P, T, S/Backspace) is released when the pointer leaves the module and when its key is released while the pointer is elsewhere. Before, such a release did not reach the module and the control stayed held.
+- `scripts/check_vcv_runtime_coverage.py` runs on Windows with MinGW-w64 GCC and Ninja from `PATH` instead of picking MSVC; without them it stops with exit code 2 and names the missing tools.
+- The Custom Groove store checks the slot index inside its cache helper as well, which removes a false GCC 16 `-Warray-bounds` warning in the optimized VCV build.
+
+### Fix: safe start-up and output stage
+
+- The eight gate outputs are configured and driven LOW as the very first step of start-up, before the stored settings are loaded. Each output's level is set before the pin becomes an output, so it never drives HIGH for an instant.
+- Enabling the gate output stage sets the engine's gate state to LOW in the same step, so engine and outputs agree from the first event. Before, a gate the engine raised while the stage was still muted stayed recorded as HIGH although the output was LOW.
+- After a reset the bar/beat counter that follows an external clock starts again from bar 1; it no longer jumps back to the position before the reset with the next clock pulse.
+- A display page whose SPI transfer fails is sent again with the next frame instead of staying wrong until its content changes.
+
+### Fix: boot games
+
+- Pixel Raid ends with GAME OVER and records the high score when the invaders reach the cannon line; before, the formation sank without limit.
+- BEATKNECHT schedules each step from its target time and carries the remainder of the step length, so the rhythm no longer drifts (for example 112.78 ms steps at 133 BPM).
+- The long encoder hold that leaves a game is recognized when the press falls exactly on millisecond 0 of the system time (once every 49.7 days), and the Formula 1 physics no longer treats a frame at that time as the first frame.
+- The Pixel Raid life-lost blink writes all eight muted gate sources in one register access per update.
+
+### Changed: checked results of storage, commit and display transfers
+
+- Storage, commit and display-transport functions are marked `[[nodiscard]]`; every call either uses the result or states why it is not needed.
+
+### Fix: display protection with a running external clock
+
+- A clock at SYNC no longer keeps the display awake. Only front-panel controls and START, STOP, RESTART or RUN commands at an input count as activity; SYNC pulses, RESET triggers, TAP at an input and inputs set to OFF do not. Screensaver, dimming and OLED off now also start in STOP while a master clock keeps running.
+- While the OLED is switched off, turning or pushing the encoder, TAP TEMPO and BACK in a menu only wake the display; the release of that press is ignored too. START/PAUSE and STOP act at once and wake the display, and so does a START or STOP command at an input. Previously a turn changed the tempo or a value invisibly.
+
+### Fix: menus and editors
+
+- Factory templates ask `APPLY TEMPLATE?` with NO preselected before they replace the configuration; NO and BACK return to the list unchanged.
+- The template list keeps the cursor on a visible row. The list scrolled after five rows but showed four, so templates 5 and 6 could be applied without being visible.
+- Groove Record aligns a recording started in the middle of a step with the grid of the channel that plays the Groove: capture begins at the next step and numbers the steps as playback does. Previously every recorded offset carried the start phase, and the steps were shifted.
+- Releasing TAP after holding it as a modifier while turning the encoder no longer also triggers the TAP action (Tap Tempo, Groove Editor cursor, Sequencer page).
+- The Performance screen shows the Sequencer length of the active pattern; a LENGTH change in Sequencer 2.0 was not shown.
+- After PASTE of a shorter Sequencer pattern the editor cursor moves to the last step instead of staying outside the pattern.
+- Groove PRESET offers `CUSTOM` only while a Custom Groove slot holds a groove; selecting it uses the channel's slot or, if that slot is empty, the first stored groove.
+- After the HI-SCORES CLEAR dialog the cursor returns to HI-SCORES instead of INFO.
+- A PLAY press used for zoom in the Groove Editor no longer swallows the next PLAY in the recorder after a screen change.
+- The information popover wraps at spaces and after `/`, so `ko-fi.com/southsignallab` is no longer broken inside a word; only a word longer than one line breaks inside the word.
+
+### Changed: documented test counts are checked
+
+- `scripts/check_test_inventory.py` now compares the per-suite and total Native test counts in `test/README.md`, `README.md` and `docs/DEVELOPMENT.md` with the `RUN_TEST` registrations and fails on any difference. The three documents listed the counts of an older state (525 instead of 655 cases).
+
 ### Fix: short triggers at INPUT 1/2, encoder after menu visits
 
 - A trigger at INPUT 1 or INPUT 2 that is already over when the input interrupt runs now fires its role. START, STOP, RESTART, TAP and RESET (`TRIGGER`) fire exactly once; RUN and RESET (`GATE`) follow only the level. Previously such a trigger was read as LOW and lost, for example a START trigger while a preset was written to Flash with the clock stopped; it now arrives after the write. Not yet measured on hardware.

@@ -254,6 +254,51 @@ class ProjectMetadataTests(unittest.TestCase):
         self.assertIsNotNone(total)
         self.assertGreaterEqual(int(total.group(1)), 360)
 
+    def test_documented_test_counts_must_match_the_inventory(self) -> None:
+        # F-076: the per-suite counts in the READMEs are guarded against the RUN_TEST registrations.
+        spec = importlib.util.spec_from_file_location(
+            "check_test_inventory", ROOT / "scripts/check_test_inventory.py"
+        )
+        assert spec is not None and spec.loader is not None
+        inventory = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(inventory)
+        counts = {"test_clock_core": 46, "test_realtime": 93}
+        table = (
+            "| `test_clock_core` | 46 | core |\n"
+            "| `test_realtime` | 93 | realtime |\n"
+            "| **Total** | **139** | public |\n"
+        )
+        total_pattern = re.compile(r"\|\s*\*\*Total\*\*\s*\|\s*\*\*(\d+)\*\*")
+        self.assertEqual(
+            inventory.documented_count_problems(
+                "doc", table, inventory.SUITE_ROW, total_pattern, counts, 139
+            ),
+            [],
+        )
+        stale = table.replace("| 93 |", "| 35 |").replace("**139**", "**81**")
+        problems = inventory.documented_count_problems(
+            "doc", stale, inventory.SUITE_ROW, total_pattern, counts, 139
+        )
+        self.assertIn("doc: test_realtime lists 35 cases, inventory has 93", problems)
+        self.assertIn("doc: total lists 81 cases, inventory has 139", problems)
+        missing = inventory.documented_count_problems(
+            "doc", "| `test_clock_core` | 46 |\n", inventory.SUITE_ROW, total_pattern, counts, 139
+        )
+        self.assertIn("doc: no case count for test_realtime", missing)
+        self.assertIn("doc: total case count not found", missing)
+        inline = "**139 named test cases**: 46 `test_clock_core`, 93 `test_realtime`, 1 `test_other`."
+        self.assertEqual(
+            inventory.documented_count_problems(
+                "dev",
+                inline,
+                inventory.INLINE_SUITE,
+                re.compile(r"\*\*(\d+) named test cases\*\*"),
+                counts,
+                139,
+            ),
+            ["dev: lists unknown suite test_other"],
+        )
+
 
 
 class ReleaseNotesTests(unittest.TestCase):
@@ -633,6 +678,31 @@ class MemoryBudgetTests(unittest.TestCase):
             self.memory.enforce_memory_budget(both_over, 229376, 65536, 90.0)
 
 
+def native_warning_flags(platformio_ini: str) -> list[str]:
+    """Return the -W flags that build_src_flags of [env:native] passes to sources and tests."""
+    section = re.search(r"(?ms)^\[env:native\]\n(.*?)(?=^\[|\Z)", platformio_ini)
+    if section is None:
+        return []
+    flags = re.search(r"(?m)^build_src_flags\s*=\s*\n((?:[ \t]+\S.*\n)+)", section.group(1))
+    if flags is None:
+        return []
+    return [line.strip() for line in flags.group(1).splitlines() if line.strip().startswith("-W")]
+
+
+class NativeWarningFlagTests(unittest.TestCase):
+    def test_native_tests_use_the_host_runner_warnings(self) -> None:
+        # F-060 / W-319: pio test -e native is as strict as scripts/run_host_tests.py.
+        spec = importlib.util.spec_from_file_location(
+            "run_host_tests", ROOT / "scripts/run_host_tests.py"
+        )
+        assert spec is not None and spec.loader is not None
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        native = native_warning_flags((ROOT / "platformio.ini").read_text(encoding="utf-8"))
+        self.assertEqual(sorted(native), sorted(runner.WARNING_FLAGS))
+        self.assertTrue((ROOT / "test/unity_config.h").is_file())
+
+
 class RepositoryPolicyTests(unittest.TestCase):
     def test_architecture_policy_passes_for_repository(self) -> None:
         result = subprocess.run(
@@ -656,6 +726,15 @@ class RepositoryPolicyTests(unittest.TestCase):
         self.assertIn("schema v13", audit)
         self.assertIn("schema v12", audit)
         self.assertIn("schema v9", audit)
+
+    def test_ci_firmware_build_steps_are_named_after_their_environments(self) -> None:
+        # F-061 / W-320: a step that runs "pio run -e <env>" names <env>.
+        ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        steps = re.findall(r"- name: ([^\n]+)\n\s+run: pio run -e (\S+)", ci)
+        self.assertGreaterEqual(len(steps), 2)
+        for name, environment in steps:
+            self.assertIn(environment, name)
+        self.assertNotIn("I2C prototype", ci)
 
     def test_hil_qualification_contract_is_staged_from_1_5(self) -> None:
         ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")

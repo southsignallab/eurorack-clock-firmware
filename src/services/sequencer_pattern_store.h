@@ -38,7 +38,7 @@ public:
     explicit SequencerPatternStore(hal::PersistentStorage& storage);
 
     /** @brief Loads the durable bank or initializes clean in-memory defaults when absent/corrupt. */
-    bool begin();
+    [[nodiscard]] bool begin();
 
     /** @brief Returns one immutable slot, or slot 0/channel 0 defaults for invalid indices. */
     const SequencerPatternV2& pattern(std::uint8_t channelIndex, std::uint8_t slotIndex) const;
@@ -47,7 +47,7 @@ public:
     std::uint8_t activeSlot(std::uint8_t channelIndex) const;
 
     /** @brief Selects P1..P8 for one channel and schedules a coalesced persistent commit. */
-    bool setActiveSlot(std::uint8_t channelIndex, std::uint8_t slotIndex, std::uint32_t nowMs);
+    [[nodiscard]] bool setActiveSlot(std::uint8_t channelIndex, std::uint8_t slotIndex, std::uint32_t nowMs);
 
     /**
      * @brief Seeds P1 of every channel from the legacy 1.x SequencerSettings.
@@ -56,17 +56,17 @@ public:
      * retain their clean defaults. It provides the one-way migration bridge from the
      * historical per-channel 64-bit sequence into the new global pattern bank.
      */
-    bool seedLegacyPatternOnes(const ClockState& state, std::uint32_t nowMs);
+    [[nodiscard]] bool seedLegacyPatternOnes(const ClockState& state, std::uint32_t nowMs);
 
     /** @brief Replaces one validated slot and schedules a coalesced persistent commit. */
-    bool updatePattern(
+    [[nodiscard]] bool updatePattern(
         std::uint8_t channelIndex,
         std::uint8_t slotIndex,
         const SequencerPatternV2& pattern,
         std::uint32_t nowMs);
 
     /** @brief Mutates one binary gate bit and schedules persistence. */
-    bool setGate(
+    [[nodiscard]] bool setGate(
         std::uint8_t channelIndex,
         std::uint8_t slotIndex,
         std::uint8_t step,
@@ -74,10 +74,10 @@ public:
         std::uint32_t nowMs);
 
     /** @brief Commits a dirty bank immediately in its own transaction (tools/tests). */
-    bool flush();
+    [[nodiscard]] bool flush();
 
     /** @brief Stages the dirty bank into the storage update the caller opened (D-04). */
-    bool stage();
+    [[nodiscard]] bool stage();
 
     /** @brief Marks the staged bank as durable after a successful commit. */
     void markCommitted();
@@ -114,7 +114,7 @@ private:
     /** @brief Restores clean in-memory defaults for all 64 slots. */
     void resetDefaults();
     /** @brief Decodes and validates the complete pattern bank image. */
-    bool decodeBank(const std::array<std::uint8_t, kStorageBytes>& bytes);
+    [[nodiscard]] bool decodeBank(const std::array<std::uint8_t, kStorageBytes>& bytes);
     /** @brief Encodes the complete pattern bank with header and CRC. */
     void encodeBank(std::array<std::uint8_t, kStorageBytes>& bytes) const;
 

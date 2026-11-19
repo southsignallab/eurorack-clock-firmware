@@ -92,14 +92,12 @@ void EggJourneyGame::run() {
     while (!exitRequested_) {
         const std::uint32_t nowMs = hal::SystemClock::milliseconds();
         const hal::ControlSample controls = controls_.sample(nowMs);
-        if (controls.encoderButton.edge == hal::ButtonEdge::Pressed) encoderPressedAtMs_ = nowMs;
-        if (!controls.encoderButton.pressed) encoderPressedAtMs_ = 0U;
-        else if (encoderPressedAtMs_ != 0U && nowMs - encoderPressedAtMs_ >= kExitLongPressMs) exitRequested_ = true;
+        if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs)) exitRequested_ = true;
         const ArcadeShell::Action action = shell_.update(controls, nowMs);
         if (action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun) { highScore_.score = shell_.highScore(); resetSession(); }
         if (shell_.playing()) update(controls, nowMs);
         if (nowMs - lastFrameAtMs >= kFrameIntervalMs) { if (shell_.playing()) render(); else shell_.render(nowMs); lastFrameAtMs = nowMs; }
-        (void)display_.service();
+        (void)display_.service();  // only reports pending I2C work
         hal::SystemClock::delayMilliseconds(1U);
     }
     gateOutputs_.setAllChannelsLow(); gateOutputs_.disableOutputStage();
@@ -115,9 +113,7 @@ void EggJourneyGame::beginForSimulator() {
 
 bool EggJourneyGame::serviceForSimulator(const std::uint32_t nowMs) {
     const hal::ControlSample controls = controls_.sample(nowMs);
-    if (controls.encoderButton.edge == hal::ButtonEdge::Pressed) encoderPressedAtMs_ = nowMs;
-    if (!controls.encoderButton.pressed) encoderPressedAtMs_ = 0U;
-    else if (encoderPressedAtMs_ != 0U && nowMs - encoderPressedAtMs_ >= kExitLongPressMs) exitRequested_ = true;
+    if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs)) exitRequested_ = true;
     const ArcadeShell::Action action = shell_.update(controls, nowMs);
     if (action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun) { highScore_.score = shell_.highScore(); resetSession(); }
     if (shell_.playing()) update(controls, nowMs);
@@ -144,7 +140,7 @@ void EggJourneyGame::resetSession() {
     lastAsteroidAtMs_ = 0U;
     nextAsteroidDelayMs_ = 5200U;
     impactFlashUntilMs_ = 0U;
-    encoderPressedAtMs_ = 0U;
+    exitHold_.cancel();
     lives_ = 3U;
     failureMode_ = FailureMode::None;
     gameOver_ = false;

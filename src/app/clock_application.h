@@ -75,6 +75,9 @@ public:
 
     /** @brief Returns the foreground internal/fallback BPM for host regression tests. */
     std::uint16_t bpmForTest() const;
+
+    /** @brief True while STOP-mode display protection has switched the OLED off. */
+    bool displayPoweredOffForTest() const { return uiController_.displayPoweredOffForTest(); }
 #endif
 
 #ifdef CLOCK_SIMULATOR
@@ -130,8 +133,11 @@ private:
     /** @brief Timer ISR thunk used by the HAL periodic-timer callback boundary. */
     static void schedulerInterruptThunk();
 
-    /** @brief Applies the latest ISR transport transition if it still matches the engine. */
-    void adoptExternalTransportTransition();
+    /**
+     * @brief Applies the latest ISR transport transition if it still matches the engine.
+     * @param nowMs Current monotonic time; input transport commands are reported as activity.
+     */
+    void adoptExternalTransportTransition(std::uint32_t nowMs);
 
     /**
      * @brief Returns true only when a Flash sector commit cannot stall a running engine.
@@ -206,6 +212,8 @@ private:
     services::ExternalSyncController externalSyncController_;
     services::PersistenceCoordinator persistenceCoordinator_;
     std::uint32_t announcedPersistenceNotice_ = 0U;
+    /** Input transport-command count already reported to the UI as activity (E-11). */
+    std::uint32_t seenInputTransportCommands_ = 0U;
     /** Control-activity revision seen by the last persistence pass (W-311 reminder). */
     std::uint32_t remindedControlActivity_ = 0U;
     ui::UiRenderer renderer_;

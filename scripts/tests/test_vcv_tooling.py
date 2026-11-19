@@ -271,3 +271,61 @@ class VcvWorkflowTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def load_vcv_coverage_module():
+    """Load scripts/check_vcv_runtime_coverage.py without running it."""
+    import importlib.util
+
+    path = ROOT / "scripts/check_vcv_runtime_coverage.py"
+    spec = importlib.util.spec_from_file_location("check_vcv_runtime_coverage", path)
+    if spec is None or spec.loader is None:
+        raise AssertionError("Unable to load check_vcv_runtime_coverage.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class VcvCoverageToolchainTests(unittest.TestCase):
+    """F-066: the VCV runtime coverage check selects a supported compiler on Windows."""
+
+    def test_windows_selects_gcc_and_ninja_from_path(self) -> None:
+        module = load_vcv_coverage_module()
+        tools = {name: f"C:/msys64/ucrt64/bin/{name}.exe" for name in ("gcc", "g++", "gcov", "ninja")}
+        arguments = module.cmake_toolchain_arguments("nt", tools.get)
+        self.assertEqual(arguments[:2], ["-G", "Ninja"])
+        self.assertIn("-DCMAKE_C_COMPILER=C:/msys64/ucrt64/bin/gcc.exe", arguments)
+        self.assertIn("-DCMAKE_CXX_COMPILER=C:/msys64/ucrt64/bin/g++.exe", arguments)
+
+    def test_windows_compiler_paths_use_forward_slashes_for_cmake(self) -> None:
+        # CMake reads backslashes in -D values as escapes ("Invalid character escape").
+        module = load_vcv_coverage_module()
+        tools = {name: "C:\\Strawberry\\c\\bin\\" + name + ".EXE" for name in ("gcc", "g++", "gcov", "ninja")}
+        arguments = module.cmake_toolchain_arguments("nt", tools.get)
+        self.assertIn("-DCMAKE_C_COMPILER=C:/Strawberry/c/bin/gcc.EXE", arguments)
+        self.assertIn("-DCMAKE_CXX_COMPILER=C:/Strawberry/c/bin/g++.EXE", arguments)
+
+    def test_windows_without_gcc_stops_with_a_clear_message(self) -> None:
+        module = load_vcv_coverage_module()
+        with self.assertRaises(module.ToolchainError) as raised:
+            module.cmake_toolchain_arguments("nt", {"ninja": "C:/ninja.exe"}.get)
+        message = str(raised.exception)
+        for expected in ("g++", "gcov", "UCRT64", "WSL", "MSVC"):
+            self.assertIn(expected, message)
+
+    def test_other_platforms_keep_the_cmake_default(self) -> None:
+        module = load_vcv_coverage_module()
+        self.assertEqual(module.cmake_toolchain_arguments("posix", lambda name: None), [])
+
+    def test_missing_toolchain_exits_with_status_two(self) -> None:
+        module = load_vcv_coverage_module()
+        original = module.cmake_toolchain_arguments
+
+        def refuse(*_arguments):
+            raise module.ToolchainError("no supported compiler")
+
+        module.cmake_toolchain_arguments = refuse
+        try:
+            self.assertEqual(module.main([]), 2)
+        finally:
+            module.cmake_toolchain_arguments = original

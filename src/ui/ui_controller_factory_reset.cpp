@@ -48,6 +48,7 @@ void UiController::confirmFactoryReset(const std::uint32_t nowMs) {
         // Same as a boot without a durable bank: P1 of every channel starts from
         // the factory legacy sequence, so the state does not change on the next boot.
         sequencerPatternStore_->resetToFactory();
+        // resetToFactory() cleared the durable and dirty flags, the only reasons seeding refuses.
         (void)sequencerPatternStore_->seedLegacyPatternOnes(factoryState, nowMs);
     }
     if (sequencerStepStore_ != nullptr) {

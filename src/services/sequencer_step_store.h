@@ -39,7 +39,7 @@ public:
     explicit SequencerStepStore(hal::PersistentStorage& storage);
 
     /** @brief Loads a valid sparse image or initializes an empty in-memory store. */
-    bool begin();
+    [[nodiscard]] bool begin();
 
     /** @brief Returns one override, or DEFAULT metadata when no explicit record exists. */
     SequencerStepMetadata metadata(
@@ -54,7 +54,7 @@ public:
         std::array<SequencerStepMetadataWord, kSequencerMaximumSteps>& destination) const;
 
     /** @brief Adds, replaces, or removes one sparse override and schedules persistence. */
-    bool updateMetadata(
+    [[nodiscard]] bool updateMetadata(
         std::uint8_t channelIndex,
         std::uint8_t slotIndex,
         std::uint8_t step,
@@ -62,20 +62,20 @@ public:
         std::uint32_t nowMs);
 
     /** @brief Removes every expression override owned by one pattern slot. */
-    bool clearPattern(std::uint8_t channelIndex, std::uint8_t slotIndex, std::uint32_t nowMs);
+    [[nodiscard]] bool clearPattern(std::uint8_t channelIndex, std::uint8_t slotIndex, std::uint32_t nowMs);
 
     /** @brief Replaces one pattern's overrides from a complete 128-word snapshot. */
-    bool replacePatternWords(
+    [[nodiscard]] bool replacePatternWords(
         std::uint8_t channelIndex,
         std::uint8_t slotIndex,
         const std::array<SequencerStepMetadataWord, kSequencerMaximumSteps>& words,
         std::uint32_t nowMs);
 
     /** @brief Forces an immediate durable commit of pending step expression in its own transaction. */
-    bool flush();
+    [[nodiscard]] bool flush();
 
     /** @brief Stages the dirty sparse image into the storage update the caller opened (D-04). */
-    bool stage();
+    [[nodiscard]] bool stage();
 
     /** @brief Marks the staged image as durable after a successful commit. */
     void markCommitted();
@@ -121,7 +121,7 @@ private:
     /** @brief Restores an empty sparse store. */
     void resetDefaults();
     /** @brief Decodes and validates the complete sparse store image. */
-    bool decodeStore(const std::array<std::uint8_t, kStorageBytes>& bytes);
+    [[nodiscard]] bool decodeStore(const std::array<std::uint8_t, kStorageBytes>& bytes);
     /** @brief Encodes the complete sparse store image with CRC. */
     void encodeStore(std::array<std::uint8_t, kStorageBytes>& bytes) const;
 

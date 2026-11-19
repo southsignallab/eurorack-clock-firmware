@@ -13,6 +13,7 @@
 
 #include "domain/clock_types.h"
 #include "engine/clock_engine.h"
+#include "services/custom_groove_store.h"
 #include "ui/ui_types.h"
 
 namespace clockfw::ui {
@@ -29,8 +30,12 @@ public:
      * @brief Constructs the editor around mutable application state and the real-time engine.
      * @param state Mutable musical/application state.
      * @param engine Real-time engine receiving committed changes.
+     * @param customGrooveStore Custom Groove library; without it, Groove PRESET never offers CUSTOM.
      */
-    SettingsEditor(ClockState& state, engine::ClockEngine& engine);
+    SettingsEditor(
+        ClockState& state,
+        engine::ClockEngine& engine,
+        const services::CustomGrooveStore* customGrooveStore = nullptr);
 
     /**
      * @brief Changes the master tempo by one or more encoder detents.
@@ -106,6 +111,13 @@ private:
     /** @brief Adjusts the active global/per-channel Stage-1 Groove assignment. */
     void adjustGroove(std::uint8_t channelIndex, std::uint8_t rowIndex, std::int8_t delta);
 
+    /**
+     * @brief Returns the first Custom Groove slot that holds a groove (F-037).
+     * @param slotIndex Receives the slot.
+     * @return False when no slot holds a groove or no library is attached.
+     */
+    bool firstStoredCustomGroove(std::uint8_t& slotIndex) const;
+
     /** @brief Adjusts one fixed divider-bank setting. */
     void adjustDividerBank(std::uint8_t rowIndex, std::int8_t delta);
 
@@ -114,6 +126,7 @@ private:
 
     ClockState& state_;
     engine::ClockEngine& engine_;
+    const services::CustomGrooveStore* customGrooveStore_ = nullptr;
     std::uint64_t sequencerClipboard_ = 0U;
     bool sequencerClipboardValid_ = false;
 };

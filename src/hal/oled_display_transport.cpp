@@ -79,7 +79,8 @@ bool i2cProbe(const std::uint8_t address) {
 #endif
 }
 
-void spiTransmit(const bool dataMode, const std::uint8_t* const data, const std::size_t size) {
+/** Sends one SPI command or data block; false when the transfer did not complete (F-043). */
+bool spiTransmit(const bool dataMode, const std::uint8_t* const data, const std::size_t size) {
 #if defined(CLOCK_HOST_TEST) || defined(CLOCK_SIMULATOR)
     SPI.beginTransaction(SPISettings(config::kDisplaySpiFrequencyHz, MSBFIRST, SPI_MODE0));
     platform::write(pinmap::kDisplaySpiDataCommandPin, dataMode);
@@ -87,11 +88,18 @@ void spiTransmit(const bool dataMode, const std::uint8_t* const data, const std:
     for (std::size_t index=0U; index<size; ++index) SPI.transfer(data[index], SPI_TRANSMITONLY);
     platform::write(pinmap::kDisplaySpiChipSelectPin, true);
     SPI.endTransaction();
+#if defined(CLOCK_HOST_TEST) && !defined(CLOCK_SIMULATOR)
+    return !SPI.lastTransactionFailedForTest();  // host-test fault injection
+#else
+    return true;
+#endif
 #else
     platform::write(pinmap::kDisplaySpiDataCommandPin, dataMode);
     platform::write(pinmap::kDisplaySpiChipSelectPin, false);
-    (void)HAL_SPI_Transmit(&gDisplaySpi, const_cast<std::uint8_t*>(data), static_cast<std::uint16_t>(size), 20U);
+    const bool sent = HAL_SPI_Transmit(&gDisplaySpi, const_cast<std::uint8_t*>(data),
+        static_cast<std::uint16_t>(size), 20U) == HAL_OK;
     platform::write(pinmap::kDisplaySpiChipSelectPin, true);
+    return sent;
 #endif
 }
 
@@ -156,25 +164,36 @@ void OledDisplay::resetController() {
 }
 
 void OledDisplay::sendCommand(const std::uint8_t command) {
-    sendCommands(&command, 1U);
+    // Setup, contrast, power and orientation commands have no retry path; the next state
+    // change sends its command again. Frame data is retried (presentImmediate()).
+    (void)sendCommands(&command, 1U);
 }
 
-void OledDisplay::sendCommands(
+bool OledDisplay::sendCommands(
     const std::uint8_t* const commands,
     const std::size_t size) {
     if (commands == nullptr || size == 0U) {
-        return;
+        return false;
     }
 
-    if (config::kDisplayTransport == config::DisplayTransport::I2c) { (void)i2cTransmit(i2cAddress_, kSsd1306CommandControlByte, commands, size); return; }
-    spiTransmit(false, commands, size);
+    if (config::kDisplayTransport == config::DisplayTransport::I2c) {
+        return i2cTransmit(i2cAddress_, kSsd1306CommandControlByte, commands, size);
+    }
+    return spiTransmit(false, commands, size);
 }
 
-void OledDisplay::sendData(const std::uint8_t* const data, const std::size_t size) {
+bool OledDisplay::sendData(const std::uint8_t* const data, const std::size_t size) {
     if (config::kDisplayTransport == config::DisplayTransport::I2c) {
-        std::size_t offset=0U; while (offset<size) { const std::size_t chunkSize=std::min(kI2cPayloadChunkSize,size-offset); (void)i2cTransmit(i2cAddress_,kSsd1306DataControlByte,data+offset,chunkSize); offset+=chunkSize; } return;
+        bool sent = true;
+        std::size_t offset = 0U;
+        while (offset < size) {
+            const std::size_t chunkSize = std::min(kI2cPayloadChunkSize, size - offset);
+            sent = i2cTransmit(i2cAddress_, kSsd1306DataControlByte, data + offset, chunkSize) && sent;
+            offset += chunkSize;
+        }
+        return sent;
     }
-    spiTransmit(true, data, size);
+    return spiTransmit(true, data, size);
 }
 
 
@@ -206,6 +225,7 @@ void OledDisplay::presentImmediate() {
     constexpr std::size_t kPageWidth = static_cast<std::size_t>(config::kDisplayWidth);
     constexpr std::size_t kPageCount = config::kDisplayHeight / 8U;
 
+    bool everyPageSent = true;
     std::size_t page = 0U;
     while (page < kPageCount) {
         const std::size_t pageOffset = page * kPageWidth;
@@ -238,19 +258,24 @@ void OledDisplay::presentImmediate() {
             0x22U,
             static_cast<std::uint8_t>(firstDirtyPage),
             static_cast<std::uint8_t>(lastDirtyPage)};
-        sendCommands(addressWindow, sizeof(addressWindow));
-
         const std::size_t firstByte = firstDirtyPage * kPageWidth;
         const std::size_t byteCount = (lastDirtyPage - firstDirtyPage + 1U) * kPageWidth;
-        sendData(queuedI2cFramebuffer_.data() + firstByte, byteCount);
-        std::copy_n(
-            queuedI2cFramebuffer_.begin() + static_cast<std::ptrdiff_t>(firstByte),
-            byteCount,
-            presentedFramebuffer_.begin() + static_cast<std::ptrdiff_t>(firstByte));
+        const bool windowSent = sendCommands(addressWindow, sizeof(addressWindow));
+        const bool dataSent = windowSent && sendData(queuedI2cFramebuffer_.data() + firstByte, byteCount);
+        if (dataSent) {
+            std::copy_n(
+                queuedI2cFramebuffer_.begin() + static_cast<std::ptrdiff_t>(firstByte),
+                byteCount,
+                presentedFramebuffer_.begin() + static_cast<std::ptrdiff_t>(firstByte));
+        } else {
+            // F-043: the pages keep their old presented copy, so they stay dirty and the
+            // next present() sends them again, even if their content does not change.
+            everyPageSent = false;
+        }
         page = lastDirtyPage + 1U;
     }
 
-    hasPresentedFramebuffer_ = true;
+    hasPresentedFramebuffer_ = hasPresentedFramebuffer_ || everyPageSent;
 }
 
 void OledDisplay::queueI2cPresent() {

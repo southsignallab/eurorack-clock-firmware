@@ -65,16 +65,19 @@ bool ExternalSyncController::takeDeferredStartUnsafe(void* const context) {
 }
 
 void ExternalSyncController::requestPlayFromInput() {
+    ++transportCommandSequence_;
     autoTransportArmed_ = true;
     startOrDeferFromIsr();
 }
 
 void ExternalSyncController::requestStopFromInput() {
+    ++transportCommandSequence_;
     autoTransportArmed_ = false;
     stopFromIsr();
 }
 
 void ExternalSyncController::requestRestartFromInput() {
+    ++transportCommandSequence_;
     autoTransportArmed_ = true;
     engine_.stopFromIsr();
     startOrDeferFromIsr();

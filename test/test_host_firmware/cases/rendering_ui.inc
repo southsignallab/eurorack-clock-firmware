@@ -1322,28 +1322,27 @@ void testScreensaverRenderingAndPolicy() {
     controller.processControls(wake, 180'002U);
     controller.serviceRendering(180'002U + config::kDisplayRefreshMinimumMs);
 
-    // Any external SYNC or RST transition is visible activity: it wakes the
-    // stopped module immediately and restarts the inactivity interval.
-    controller.serviceRendering(240'003U);
-    const auto syncSleeperFrame = display.framebufferForTest();
-    externalInputs.injectSyncEdgeForTest(240'004'000U, true);
-    controller.serviceRendering(240'004U);
-    CHECK(display.framebufferForTest() != syncSleeperFrame);
-
-    controller.serviceRendering(300'005U);
-    const auto resetSleeperFrame = display.framebufferForTest();
-    externalInputs.injectResetEdgeForTest(300'006'000U, true);
-    controller.serviceRendering(300'006U);
-    CHECK(display.framebufferForTest() != resetSleeperFrame);
+    // SYNC and RST edges are not user activity (E-11): the sleeping module stays dark.
+    // Only transport commands from an input wake it (application-level test).
+    controller.serviceRendering(400'003U);
+    CHECK(controller.displayPoweredOffForTest());
+    externalInputs.injectSyncEdgeForTest(400'004'000U, true);
+    controller.serviceRendering(400'004U);
+    CHECK(controller.displayPoweredOffForTest());
+    externalInputs.injectResetEdgeForTest(400'006'000U, true);
+    controller.serviceRendering(400'006U);
+    CHECK(controller.displayPoweredOffForTest());
+    controller.noteExternalTransportCommand(400'007U);
+    CHECK(!controller.displayPoweredOffForTest());
 
     // MODE 3 deliberately keeps the ordinary STOP screen until DIM/OFF.
     state.display = {ScreensaverMode::None, 1U, 2U, 3U};
-    controller.processControls(wake, 320'000U);
-    controller.serviceRendering(380'001U);
+    controller.processControls(wake, 420'000U);
+    controller.serviceRendering(480'001U);
 
     // Screensaver logic is disabled while transport is not STOPPED.
     state.transport = TransportState::Playing;
-    controller.serviceRendering(500'000U);
+    controller.serviceRendering(600'000U);
 }
 
 

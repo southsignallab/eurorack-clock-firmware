@@ -30,6 +30,27 @@ std::uint64_t ClockEngine::nominalIntervalQ32(const std::size_t channelIndex) co
     return calculateNominalBaseIntervalQ32(foregroundScheduleInputs(tempo), channelIndex);
 }
 
+std::uint64_t ClockEngine::channelGridOriginQ32(const std::size_t channelIndex) const {
+    if (channelIndex >= kChannelCount) {
+        return 0U;
+    }
+    TempoSnapshot tempo{};
+    std::uint64_t epochQ32 = 0U;
+    {
+        hal::InterruptLock interruptLock;
+        tempo = takeTempoSnapshotUnsafe();
+        epochQ32 = channelRuntime_[channelIndex].scheduleEpochQ32;
+    }
+#ifdef CLOCK_HOST_TEST
+    countCalculationUnderLockForTest();
+#endif
+    const ScheduleInputs inputs = foregroundScheduleInputs(tempo);
+    const std::uint64_t phaseOffsetQ32 = core::calculatePhaseOffsetQ32(
+        calculateNominalBaseIntervalQ32(inputs, channelIndex),
+        inputs.configuration->channels[channelIndex].common.phasePercent);
+    return phaseOffsetQ32 > UINT64_MAX - epochQ32 ? UINT64_MAX : epochQ32 + phaseOffsetQ32;
+}
+
 std::uint64_t ClockEngine::estimateMasterPositionAtUs(
     const std::uint32_t eventTimestampUs,
     const std::uint32_t nowUs) const {

@@ -51,14 +51,14 @@ std::uint16_t gateLinesFor(const std::uint8_t channels) {
 
 void GateOutputDriver::beginDisabled() {
     outputStageEnabled_ = false;
+    // Level first, then output mode (V3): no pin drives anything but its safe level.
     if (pinmap::kGateBufferOutputEnablePin != pinmap::kUnassignedDigitalPin) {
-        platform::configureOutput(pinmap::kGateBufferOutputEnablePin);
-        platform::write(pinmap::kGateBufferOutputEnablePin, pinmap::kGateBufferDisabledLevel);
+        platform::configureOutputAtLevel(
+            pinmap::kGateBufferOutputEnablePin, pinmap::kGateBufferDisabledLevel);
     }
 
     for (std::size_t index = 0U; index < pinmap::kGateChannelPins.size(); ++index) {
-        platform::configureOutput(pinmap::kGateChannelPins[index]);
-        platform::write(pinmap::kGateChannelPins[index], false);
+        platform::configureOutputAtLevel(pinmap::kGateChannelPins[index], false);
     }
     channelHighMask_ = 0U;
     stagedSetChannels_ = 0U;

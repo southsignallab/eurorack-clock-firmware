@@ -43,8 +43,8 @@ void UiController::handleEncoderDelta(
             static_cast<int>(navigation_.cursor) + delta, 0,
             static_cast<int>(kCustomGrooveSlotCount - 1U)));
         if (navigation_.cursor < navigation_.scrollOffset) navigation_.scrollOffset = navigation_.cursor;
-        if (navigation_.cursor >= navigation_.scrollOffset + 5U) {
-            navigation_.scrollOffset = static_cast<std::uint8_t>(navigation_.cursor - 4U);
+        if (navigation_.cursor >= navigation_.scrollOffset + kVisibleSlotRows) {
+            navigation_.scrollOffset = static_cast<std::uint8_t>(navigation_.cursor - (kVisibleSlotRows - 1U));
         }
         invalidate();
         return;
@@ -113,8 +113,8 @@ void UiController::handleEncoderDelta(
         if (navigation_.cursor < navigation_.scrollOffset) {
             navigation_.scrollOffset = navigation_.cursor;
         }
-        if (navigation_.cursor >= navigation_.scrollOffset + 5U) {
-            navigation_.scrollOffset = static_cast<std::uint8_t>(navigation_.cursor - 4U);
+        if (navigation_.cursor >= navigation_.scrollOffset + kVisibleTemplateRows) {
+            navigation_.scrollOffset = static_cast<std::uint8_t>(navigation_.cursor - (kVisibleTemplateRows - 1U));
         }
         invalidate();
         return;
@@ -128,8 +128,8 @@ void UiController::handleEncoderDelta(
         if (navigation_.cursor < navigation_.scrollOffset) {
             navigation_.scrollOffset = navigation_.cursor;
         }
-        if (navigation_.cursor >= navigation_.scrollOffset + 5U) {
-            navigation_.scrollOffset = static_cast<std::uint8_t>(navigation_.cursor - 4U);
+        if (navigation_.cursor >= navigation_.scrollOffset + kVisibleSlotRows) {
+            navigation_.scrollOffset = static_cast<std::uint8_t>(navigation_.cursor - (kVisibleSlotRows - 1U));
         }
         invalidate();
         return;
@@ -149,7 +149,8 @@ void UiController::handleEncoderDelta(
     }
 
     if (navigation_.screen == Screen::ModeChangeConfirm || navigation_.screen == Screen::HighScoreClearConfirm ||
-        navigation_.screen == Screen::FactoryResetConfirm) {
+        navigation_.screen == Screen::FactoryResetConfirm ||
+        navigation_.screen == Screen::TemplateApplyConfirm) {
         navigation_.cursor = static_cast<std::uint8_t>(clampInt(
             static_cast<int>(navigation_.cursor) + delta, 0, 1));
         invalidate();

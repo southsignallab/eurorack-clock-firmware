@@ -245,7 +245,7 @@ void UiController::backFromSettings() {
 
 void UiController::confirmHighScoreClear(const std::uint32_t nowMs) {
     if (navigation_.cursor == 0U || leaderboard_ == nullptr) {
-        openSettingsPage(SettingsPage::Root, navigation_.highScoreResetAvailable ? 4U : 0U);
+        openSettingsPage(SettingsPage::Root, navigation_.highScoreResetAvailable ? kRootHighScoresRow : 0U);
         return;
     }
 
@@ -253,14 +253,14 @@ void UiController::confirmHighScoreClear(const std::uint32_t nowMs) {
     // the immediate leaderboard commit so this maintenance action can never
     // disturb active musical timing.
     stopTransport(nowMs);
+    // The outcome is read back: HI-SCORES stays available only while the record exists.
     (void)leaderboard_->clear();
     navigation_.highScoreResetAvailable = leaderboard_->hasPersistentRecord();
-    openSettingsPage(SettingsPage::Root, navigation_.highScoreResetAvailable ? 4U : 0U);
+    openSettingsPage(SettingsPage::Root, navigation_.highScoreResetAvailable ? kRootHighScoresRow : 0U);
 }
 
 
 void UiController::normalizeScrollOffset() {
-    constexpr std::uint8_t kVisibleRows = 5U;
     const ChannelMode mode = state_.channels[navigation_.selectedChannel].common.mode;
     const std::uint8_t itemCount = settingsPageItemCount(
         navigation_.settingsPage, mode, navigation_.highScoreResetAvailable);
@@ -268,17 +268,24 @@ void UiController::normalizeScrollOffset() {
     if (navigation_.cursor < navigation_.scrollOffset) {
         navigation_.scrollOffset = navigation_.cursor;
     }
-    if (navigation_.cursor >= navigation_.scrollOffset + kVisibleRows) {
+    if (navigation_.cursor >= navigation_.scrollOffset + kVisibleSettingsRows) {
         navigation_.scrollOffset = static_cast<std::uint8_t>(
-            navigation_.cursor - (kVisibleRows - 1U));
+            navigation_.cursor - (kVisibleSettingsRows - 1U));
     }
-    if (itemCount <= kVisibleRows) {
+    if (itemCount <= kVisibleSettingsRows) {
         navigation_.scrollOffset = 0U;
     }
 }
 
+void UiController::returnToTemplates() {
+    navigation_.screen = Screen::Templates;
+    navigation_.cursor = navigation_.pendingTemplate;
+    invalidate();
+}
+
 void UiController::applySelectedTemplate(const std::uint32_t nowMs) {
-    (void)services::TemplateService::apply(navigation_.cursor, state_);
+    // The index comes from the template list, so apply() cannot reject it.
+    (void)services::TemplateService::apply(navigation_.pendingTemplate, state_);
     engine_.updateConfiguration(state_, true);
     persistCurrentState(nowMs);
     navigation_.screen = Screen::Performance;

@@ -24,6 +24,7 @@
 #include "hal/gate_output_driver.h"
 #include "hal/oled_display.h"
 #include "hal/persistent_storage.h"
+#include "hal/platform_io.h"
 #include "pin_map.h"
 
 using namespace clockfw;
@@ -33,11 +34,18 @@ struct PixelRaidGameTestAccess {
     static void reset(PixelRaidGame& game){ game.resetSession(); }
     static std::uint8_t lives(const PixelRaidGame& game){ return game.lives_; }
     static bool hitAlien(PixelRaidGame& game,std::int16_t x,std::int16_t y){ return game.hitAlien(x,y); }
+    static void setFormationTop(PixelRaidGame& game,std::int16_t y){ game.alienOffsetY_=y; }
+    static void advanceAliens(PixelRaidGame& game,std::uint32_t nowMs){ game.updateAliens(nowMs); }
+    static bool gameOver(const PixelRaidGame& game){ return game.gameOver_; }
+    static void setScore(PixelRaidGame& game,std::uint32_t score){ game.score_=score; }
+    static std::uint32_t highScore(const PixelRaidGame& game){ return game.highScore_.score; }
+    static void flashLifeLost(PixelRaidGame& game){ game.flashLifeLostLeds(); }
 };
 struct Formula1GameTestAccess {
     static void reset(Formula1Game& game){ game.resetSession(); }
     static void update(Formula1Game& game,const hal::ControlSample& controls,std::uint32_t nowMs){ game.update(controls,nowMs); }
     static std::uint16_t speed(const Formula1Game& game){ return game.speed_; }
+    static std::uint32_t elapsed(const Formula1Game& game){ return game.elapsedMs_; }
 };
 struct BreakoutGameTestAccess {
     static void reset(BreakoutGame& game){ game.resetSession(); }
@@ -265,8 +273,87 @@ void testBeatknechtTransportGlyphsRenderForStopPlayAndPause(){
 
 }  // namespace
 
+void testArcadeLongPressAtTimeZeroIsRecognized(){
+    // F-074 / W-337: an encoder press whose time is exactly 0 ms is a press like any other.
+    game::LongPressDetector detector;
+    const hal::ButtonSample press{hal::ButtonEdge::Pressed,true};
+    const hal::ButtonSample held{hal::ButtonEdge::None,true};
+    const hal::ButtonSample released{hal::ButtonEdge::Released,false};
+    TEST_ASSERT_FALSE(detector.update(press,0U,900U));
+    TEST_ASSERT_FALSE(detector.update(held,899U,900U));
+    TEST_ASSERT_TRUE(detector.update(held,900U,900U));
+    TEST_ASSERT_FALSE(detector.update(held,1800U,900U));  // fires once per press
+    TEST_ASSERT_FALSE(detector.update(released,1801U,900U));
+    // Across the 32-bit wrap, and held back while a dialog owns the encoder.
+    TEST_ASSERT_FALSE(detector.update(press,0xFFFFFF00U,900U));
+    TEST_ASSERT_FALSE(detector.update(held,700U,900U,false));
+    TEST_ASSERT_TRUE(detector.update(held,700U,900U));
+    TEST_ASSERT_FALSE(detector.update(press,10U,900U));
+    detector.cancel();
+    TEST_ASSERT_FALSE(detector.update(held,2000U,900U));
+}
+void testFormula1FrameAfterAPhysicsFrameAtTimeZero(){
+    // F-074 / W-337: a physics frame at 0 ms is not mistaken for the first frame.
+    Fixture f; game::ArcadeLeaderboardStore l(f.storage,game::ArcadeGameId::Formula1); game::Formula1Game g(f.display,f.controls,f.gates,l);
+    game::Formula1GameTestAccess::reset(g);
+    hal::ControlSample idle{};
+    game::Formula1GameTestAccess::update(g,idle,0xFFFFFFFFU-44U);  // first frame
+    game::Formula1GameTestAccess::update(g,idle,0U);              // 45 ms later, at time 0
+    const std::uint32_t before=game::Formula1GameTestAccess::elapsed(g);
+    game::Formula1GameTestAccess::update(g,idle,110U);            // 110 ms after the frame at 0
+    TEST_ASSERT_EQUAL_UINT32(before+110U,game::Formula1GameTestAccess::elapsed(g));
+}
+void testPixelRaidInvasionEndsTheGame(){
+    // F-040 / W-109: the formation reaching the player line is GAME OVER with a high score.
+    Fixture f; game::PixelRaidGame g(f.display,f.controls,f.gates,f.leaderboard); g.run();
+    game::PixelRaidGameTestAccess::setScore(g,370U);
+    game::PixelRaidGameTestAccess::setFormationTop(g,38);  // bottom row ends just above the player
+    std::uint32_t now=1000U;
+    for(std::uint32_t move=0U;move<200U && !game::PixelRaidGameTestAccess::gameOver(g);++move){
+        now+=500U;
+        game::PixelRaidGameTestAccess::advanceAliens(g,now);
+    }
+    TEST_ASSERT_TRUE(game::PixelRaidGameTestAccess::gameOver(g));
+    TEST_ASSERT_EQUAL_UINT8(3U,game::PixelRaidGameTestAccess::lives(g));
+    TEST_ASSERT_EQUAL_UINT32(370U,game::PixelRaidGameTestAccess::highScore(g));
+}
+void testPixelRaidLifeLostBlinkUsesOneGateAccessPerUpdate(){
+    // F-070 / W-333: the blink writes all eight sources in one access per update, and the
+    // muted stage produces no rising edge.
+    Fixture f; game::PixelRaidGame g(f.display,f.controls,f.gates,f.leaderboard); g.run();
+    hal::platform::resetPortWriteLogForTest();
+    fakefw::writes.clear();
+    game::PixelRaidGameTestAccess::flashLifeLost(g);
+    // disable (all LOW), then two cycles of all HIGH (muted to LOW) and all LOW.
+    TEST_ASSERT_EQUAL_UINT32(5U,hal::platform::portWriteCountForTest());
+    for(const auto& write: fakefw::writes) TEST_ASSERT_EQUAL(LOW,write.value);
+    for(const auto pin: pinmap::kGateChannelPins) TEST_ASSERT_EQUAL(LOW,fakefw::pinValues[pin]);
+}
+void testBeatknechtStepsFollowTheTargetTimeWithoutDrift(){
+    // F-041 / W-110: steps advance from the target time with the division remainder, so a
+    // 16th-note grid with a fractional step length does not drift, also with late updates.
+    for(const std::uint32_t pollMs:{1U,7U}){
+        Fixture f; game::Beatknecht g(f.display,f.controls,f.gates); game::BeatknechtTestAccess::reset(g,0U);
+        hal::ControlSample faster{}; faster.encoderDelta=13;
+        game::BeatknechtTestAccess::update(g,faster,1U);
+        const std::uint32_t bpm=game::BeatknechtTestAccess::bpm(g);
+        TEST_ASSERT_TRUE(15000U%bpm!=0U);  // a step length with a fractional millisecond
+        game::BeatknechtTestAccess::update(g,playPress(),1000U);
+        std::uint8_t lastStep=game::BeatknechtTestAccess::step(g);
+        std::uint32_t steps=1U;
+        for(std::uint32_t now=1000U+pollMs;now<=61050U;now+=pollMs){
+            game::BeatknechtTestAccess::update(g,{},now);
+            const std::uint8_t step=game::BeatknechtTestAccess::step(g);
+            if(step!=lastStep){ ++steps; lastStep=step; }
+        }
+        // Steps at 1000 ms + k * 15000 / bpm ms; k = 4 * bpm lands exactly on 61000 ms.
+        TEST_ASSERT_EQUAL_UINT32(4U*bpm+1U,steps);
+    }
+}
+
 int main(){ UNITY_BEGIN();
 RUN_TEST(testDefaultEasterEggIsBeatknecht);
+RUN_TEST(testArcadeLongPressAtTimeZeroIsRecognized);RUN_TEST(testFormula1FrameAfterAPhysicsFrameAtTimeZero);RUN_TEST(testPixelRaidInvasionEndsTheGame);RUN_TEST(testPixelRaidLifeLostBlinkUsesOneGateAccessPerUpdate);RUN_TEST(testBeatknechtStepsFollowTheTargetTimeWithoutDrift);
 RUN_TEST(testLeaderboardRecordAppearsOnlyAfterFirstLaunchMarker);RUN_TEST(testLeaderboardClearRemovesScoresButRetainsStartedMarker);
 RUN_TEST(testPixelRaidIntroNeverAutoStarts);RUN_TEST(testFormula1IntroNeverAutoStarts);RUN_TEST(testBreakoutIntroNeverAutoStarts);RUN_TEST(testEggJourneyIntroNeverAutoStarts);RUN_TEST(testBeatknechtIntroNeverAutoStarts);
 RUN_TEST(testPixelRaidIntroStartsOnTap);RUN_TEST(testFormula1IntroStartsOnTap);RUN_TEST(testBreakoutIntroStartsOnTap);RUN_TEST(testEggJourneyIntroStartsOnTap);RUN_TEST(testBeatknechtIntroUsesPlayInsteadOfTap);

@@ -34,7 +34,7 @@ public:
     explicit CustomGrooveStore(hal::PersistentStorage& storage, bool deferredWrites = false);
 
     /** @brief Commits queued groove mutations in their own transaction when Flash writes are allowed. */
-    bool service(bool allowFlashWrite);
+    [[nodiscard]] bool service(bool allowFlashWrite);
 
     /** @brief True while at least one slot mutation awaits a durable commit. */
     bool hasPendingCommit() const;
@@ -43,7 +43,7 @@ public:
     std::uint32_t changeRevision() const { return changeRevision_; }
 
     /** @brief Stages every queued slot into the storage update the caller opened (D-04). */
-    bool stage();
+    [[nodiscard]] bool stage();
 
     /** @brief Marks the staged queue as durable after a successful commit. */
     void markCommitted();
@@ -52,17 +52,17 @@ public:
     void resetToFactory();
 
     /** @brief Loads one validated slot; returns false for empty/corrupt/out-of-range slots. */
-    bool load(
+    [[nodiscard]] bool load(
         std::uint8_t slotIndex,
         CustomGroovePattern& pattern,
         char* name = nullptr,
         std::size_t nameSize = 0U) const;
 
     /** @brief Accepts a named validated pattern; production stores defer Flash until safe. */
-    bool save(std::uint8_t slotIndex, const char* name, const CustomGroovePattern& pattern);
+    [[nodiscard]] bool save(std::uint8_t slotIndex, const char* name, const CustomGroovePattern& pattern);
 
     /** @brief Accepts one slot deletion; deferred readers see it immediately. */
-    bool clear(std::uint8_t slotIndex);
+    [[nodiscard]] bool clear(std::uint8_t slotIndex);
 
     /** @brief Returns true when a slot contains one valid current-format record. */
     bool exists(std::uint8_t slotIndex) const;
@@ -89,7 +89,7 @@ private:
     void cacheSlot(std::uint8_t slotIndex) const;
 
     /** @brief Writes a validated/erased record immediately or queues it for a safe commit. */
-    bool writeRecord(std::uint8_t slotIndex, const std::array<std::uint8_t, kRecordBytes>& record);
+    [[nodiscard]] bool writeRecord(std::uint8_t slotIndex, const std::array<std::uint8_t, kRecordBytes>& record);
 
     hal::PersistentStorage& storage_;
     bool deferredWrites_ = false;

@@ -228,6 +228,10 @@ def check_hil_qualification_contract(errors: list[str]) -> None:
         detail = (result.stderr or result.stdout).strip()
         errors.append(f'docs/qualification/v1_qualification.json: invalid HIL ledger ({detail})')
 
+#: Canonical source repository (docs/PROJECT_IDENTITY.md, F-062).
+CANONICAL_REPOSITORY = 'https://github.com/southsignallab/eurorack-clock-firmware'
+
+
 def check_project_metadata(errors: list[str]) -> None:
     """Require citation/discovery metadata to match the canonical project identity and version."""
     version_header = (ROOT / 'src' / 'version.h').read_text(encoding='utf-8')
@@ -248,6 +252,7 @@ def check_project_metadata(errors: list[str]) -> None:
             f'license: {CANONICAL_LICENSE}': 'SPDX license identifier mismatch',
             'given-names: Axel': 'author given name missing',
             'family-names: Napolitano': 'author family name missing',
+            f'repository-code: "{CANONICAL_REPOSITORY}"': 'repository-code must name the canonical repository',
         }
         for needle, message in required_lines.items():
             if needle not in citation:
@@ -279,6 +284,8 @@ def check_project_metadata(errors: list[str]) -> None:
             errors.append('codemeta.json: canonical author mismatch')
         if metadata.get('publisher', {}).get('name') != CANONICAL_PUBLISHER:
             errors.append('codemeta.json: publisher must be South Signal Lab')
+        if metadata.get('codeRepository') != CANONICAL_REPOSITORY:
+            errors.append('codemeta.json: codeRepository must name the canonical repository')
         expected_license = f'https://spdx.org/licenses/{CANONICAL_LICENSE}.html'
         if metadata.get('license') != expected_license:
             errors.append('codemeta.json: SPDX license URL mismatch')

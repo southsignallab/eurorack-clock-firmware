@@ -40,6 +40,47 @@ MIN_SUITE_CASES = {
 }
 
 
+#: Documents that list the per-suite case counts. Each pattern pair finds the suite rows and
+#: the stated total; the counts must equal the RUN_TEST registrations (F-076).
+SUITE_ROW = re.compile(r"^\|\s*`(test_[a-z0-9_]+)`\s*\|\s*(\d+)\s*\|", re.MULTILINE)
+INLINE_SUITE = re.compile(r"(\d+) `(test_[a-z0-9_]+)`")
+COUNT_DOCUMENTS = (
+    (ROOT / "test" / "README.md", SUITE_ROW, re.compile(r"\|\s*\*\*Total\*\*\s*\|\s*\*\*(\d+)\*\*")),
+    (ROOT / "README.md", SUITE_ROW, re.compile(r"\*\*(\d+) explicitly named Native test cases\*\*")),
+    (ROOT / "docs" / "DEVELOPMENT.md", INLINE_SUITE, re.compile(r"\*\*(\d+) named test cases\*\*")),
+)
+
+
+def documented_count_problems(
+    name: str,
+    text: str,
+    suite_pattern: re.Pattern[str],
+    total_pattern: re.Pattern[str],
+    counts: dict[str, int],
+    total: int,
+) -> list[str]:
+    """Compare the suite counts and the total stated in one document with the inventory."""
+    problems: list[str] = []
+    documented: dict[str, int] = {}
+    for first, second in suite_pattern.findall(text):
+        suite, value = (first, second) if first.startswith("test_") else (second, first)
+        documented[suite] = int(value)
+    for suite, count in counts.items():
+        if suite not in documented:
+            problems.append(f"{name}: no case count for {suite}")
+        elif documented[suite] != count:
+            problems.append(f"{name}: {suite} lists {documented[suite]} cases, inventory has {count}")
+    for suite in sorted(set(documented) - set(counts)):
+        problems.append(f"{name}: lists unknown suite {suite}")
+    stated_totals = [int(value) for value in total_pattern.findall(text)]
+    if not stated_totals:
+        problems.append(f"{name}: total case count not found")
+    for stated in stated_totals:
+        if stated != total:
+            problems.append(f"{name}: total lists {stated} cases, inventory has {total}")
+    return problems
+
+
 def main() -> int:
     config = PIO.read_text(encoding="utf-8")
     native_match = re.search(r"(?ms)^\[env:native\]\n(.*?)(?=^\[|\Z)", config)
@@ -71,6 +112,20 @@ def main() -> int:
 
     if total < MIN_CASES:
         raise RuntimeError(f"native test inventory regressed to {total}; minimum is {MIN_CASES}")
+    problems: list[str] = []
+    for path, suite_pattern, total_pattern in COUNT_DOCUMENTS:
+        problems.extend(
+            documented_count_problems(
+                path.relative_to(ROOT).as_posix(),
+                path.read_text(encoding="utf-8"),
+                suite_pattern,
+                total_pattern,
+                counts,
+                total,
+            )
+        )
+    if problems:
+        raise RuntimeError("documented native test counts are stale:\n  " + "\n  ".join(problems))
     print("Native test inventory: " + ", ".join(f"{k}={v}" for k, v in counts.items()) + f", total={total}")
     return 0
 

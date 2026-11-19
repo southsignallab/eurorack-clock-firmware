@@ -430,17 +430,44 @@ void testPersistedRunDoesNotBreakBootStopOnStandingHighLevel() {
     CHECK_EQ(transition, TransportState::Playing);
 }
 
-void testExternalInputActivitySequenceTracksSyncAndReset() {
-    hal::ExternalInputCapture inputs;
-    CHECK_EQ(inputs.activitySequence(), 0U);
+void testOnlyInputTransportCommandsCountAsActivity() {
+    // E-11 / W-082: START, STOP, RESTART and RUN changes count as user activity; SYNC pulses,
+    // RESET triggers, TAP and inputs set to OFF do not.
+    const auto commandsAfterPulse = [](const InputFunction role, const bool playing) {
+        Fixture fixture;
+        fixture.state.inputs = {role, InputFunction::Off};
+        fixture.begin();
+        if (!playing) {
+            fixture.engine.stop();
+        }
+        const std::uint32_t before = fixture.sync.transportCommandSequence();
+        fixture.inputs.injectSyncEdgeForTest(1000U, true);
+        fixture.sync.processSchedulerTick(1000U);
+        fixture.inputs.injectSyncEdgeForTest(2000U, false);
+        fixture.sync.processSchedulerTick(2000U);
+        return fixture.sync.transportCommandSequence() - before;
+    };
+    CHECK_EQ(commandsAfterPulse(InputFunction::Start, false), 1U);
+    CHECK_EQ(commandsAfterPulse(InputFunction::Stop, true), 1U);
+    CHECK_EQ(commandsAfterPulse(InputFunction::Restart, true), 1U);
+    CHECK_EQ(commandsAfterPulse(InputFunction::Run, false), 2U);  // HIGH starts, LOW stops
+    CHECK_EQ(commandsAfterPulse(InputFunction::Sync, false), 0U);
+    CHECK_EQ(commandsAfterPulse(InputFunction::Reset, true), 0U);
+    CHECK_EQ(commandsAfterPulse(InputFunction::Tap, false), 0U);
+    CHECK_EQ(commandsAfterPulse(InputFunction::Off, false), 0U);
 
-    inputs.injectSyncEdgeForTest(1000U, true);
-    CHECK_EQ(inputs.activitySequence(), 1U);
-    inputs.injectSyncEdgeForTest(2000U, false);
-    CHECK_EQ(inputs.activitySequence(), 2U);
-
-    inputs.injectResetEdgeForTest(3000U, true);
-    CHECK_EQ(inputs.activitySequence(), 3U);
-    inputs.injectResetEdgeForTest(4000U, false);
-    CHECK_EQ(inputs.activitySequence(), 4U);
+    // A running SYNC clock that locks and auto-starts is not user activity either.
+    Fixture locked;
+    locked.state.inputs = {InputFunction::Sync, InputFunction::Off};
+    locked.state.externalSync.autostartOnLock = true;
+    locked.begin();
+    locked.engine.stop();
+    for (std::uint32_t pulse = 0U; pulse < 8U; ++pulse) {
+        const std::uint32_t at = 10'000U + pulse * 500'000U;
+        locked.inputs.injectSyncEdgeForTest(at, true);
+        locked.sync.processSchedulerTick(at);
+        locked.inputs.injectSyncEdgeForTest(at + 5'000U, false);
+        locked.sync.processSchedulerTick(at + 5'000U);
+    }
+    CHECK_EQ(locked.sync.transportCommandSequence(), 0U);
 }

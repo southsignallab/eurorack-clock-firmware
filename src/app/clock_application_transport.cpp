@@ -9,7 +9,14 @@
 #include "app/clock_application.h"
 
 namespace clockfw::app {
-void ClockApplication::adoptExternalTransportTransition() {
+void ClockApplication::adoptExternalTransportTransition(const std::uint32_t nowMs) {
+    // START/STOP/RESTART/RUN from an input count as user activity; SYNC and RESET do not (E-11).
+    const std::uint32_t inputTransportCommands = externalSyncController_.transportCommandSequence();
+    if (inputTransportCommands != seenInputTransportCommands_) {
+        seenInputTransportCommands_ = inputTransportCommands;
+        uiController_.noteExternalTransportCommand(nowMs);
+    }
+
     TransportState externalTransport{};
     if (!externalSyncController_.consumeTransportTransition(externalTransport)) {
         return;
@@ -31,6 +38,7 @@ bool ClockApplication::flashWriteAllowed() const {
 }
 
 void ClockApplication::servicePersistence(const std::uint32_t nowMs) {
+    // The coordinator reports its outcome through status() and noticeRevision() below.
     (void)persistenceCoordinator_.service(nowMs, flashWriteAllowed());
     // W-311: once no retry is left, every front-panel action brings SAVE ERROR
     // back for the normal notice time until the stored data changes again.

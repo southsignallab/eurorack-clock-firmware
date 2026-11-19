@@ -49,7 +49,7 @@ public:
         static_cast<std::size_t>(config::kDisplayWidth) * config::kDisplayHeight / 8U;
 
     /** @brief Initializes the configured bus and OLED controller. */
-    bool begin();
+    [[nodiscard]] bool begin();
 
     /** @brief Clears the in-memory framebuffer. */
     void clear();
@@ -64,7 +64,7 @@ public:
      * SPI builds keep their immediate dirty-page transfer path, so this method
      * becomes a cheap no-op. Callers may therefore service it unconditionally.
      */
-    bool service();
+    [[nodiscard]] bool service();
 
     /** @brief Selects the font role used by subsequent text operations. */
     void setFont(DisplayFont font);
@@ -140,11 +140,11 @@ private:
     /** @brief Sends one controller command byte over the selected transport. */
     void sendCommand(std::uint8_t command);
 
-    /** @brief Sends a contiguous controller command sequence in one bus transaction. */
-    void sendCommands(const std::uint8_t* commands, std::size_t size);
+    /** @brief Sends a contiguous controller command sequence in one bus transaction; false on a failed transfer. */
+    [[nodiscard]] bool sendCommands(const std::uint8_t* commands, std::size_t size);
 
-    /** @brief Sends a contiguous block of framebuffer data over the selected transport. */
-    void sendData(const std::uint8_t* data, std::size_t size);
+    /** @brief Sends a contiguous block of framebuffer data; false when any transfer failed. */
+    [[nodiscard]] bool sendData(const std::uint8_t* data, std::size_t size);
 
     /** @brief Runs the existing immediate dirty-page transfer used by SPI builds. */
     void presentImmediate();

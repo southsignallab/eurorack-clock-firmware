@@ -31,6 +31,9 @@ inline constexpr std::uint32_t TIM3 = 3U;
 
 namespace fakefw {
 struct PinWrite { std::uint32_t pin; std::uint8_t value; };
+/** One pinMode() or digitalWrite() call, in call order. */
+struct PinEvent { std::uint32_t pin; bool modeChange; std::uint8_t value; };
+inline std::vector<PinEvent> pinEvents{};
 inline std::map<std::uint32_t,std::uint8_t> pinModes{};
 inline std::map<std::uint32_t,std::uint8_t> pinValues{};
 inline std::vector<PinWrite> writes{};
@@ -46,7 +49,7 @@ inline std::uint32_t delayAdvanceOverrideMs = 0U;
 inline voidFuncPtr digitalReadHook = nullptr;
 
 inline void resetArduino() {
-    pinModes.clear(); pinValues.clear(); writes.clear(); interruptBindings.clear(); nowMs=0U; nowUs=0U;
+    pinModes.clear(); pinValues.clear(); writes.clear(); pinEvents.clear(); interruptBindings.clear(); nowMs=0U; nowUs=0U;
     noInterruptCalls=0U; interruptCalls=0U; throwOnDelay=false; delayAdvanceOverrideMs=0U;
     digitalReadHook=nullptr;
 }
@@ -70,14 +73,14 @@ inline void setPin(std::uint32_t pin, std::uint8_t value) {
 }
 }
 
-inline void pinMode(std::uint32_t pin, std::uint8_t mode) { fakefw::pinModes[pin]=mode; }
+inline void pinMode(std::uint32_t pin, std::uint8_t mode) { fakefw::pinModes[pin]=mode; fakefw::pinEvents.push_back({pin,true,mode}); }
 inline int digitalRead(std::uint32_t pin) {
     if (fakefw::digitalReadHook != nullptr) fakefw::digitalReadHook();
     const auto it=fakefw::pinValues.find(pin);
     return it==fakefw::pinValues.end()?HIGH:it->second;
 }
 inline void digitalWrite(std::uint32_t pin, std::uint8_t value) {
-    fakefw::pinValues[pin]=value; fakefw::writes.push_back({pin,value});
+    fakefw::pinValues[pin]=value; fakefw::writes.push_back({pin,value}); fakefw::pinEvents.push_back({pin,false,value});
 }
 inline std::uint32_t millis() { return fakefw::nowMs; }
 inline std::uint32_t micros() { return fakefw::nowUs != 0U ? fakefw::nowUs : fakefw::nowMs * 1000U; }

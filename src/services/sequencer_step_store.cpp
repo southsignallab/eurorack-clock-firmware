@@ -324,6 +324,7 @@ bool SequencerStepStore::replacePatternWords(
     if (count_ - existingTarget + required > kMaximumOverrides) {
         return false;
     }
+    // The indices were checked above; clearPattern() fails only for invalid indices.
     (void)clearPattern(channelIndex, slotIndex, nowMs);
     for (std::uint16_t step = 0U; step < kSequencerMaximumSteps; ++step) {
         const SequencerStepMetadata metadataValue = unpackSequencerStepMetadata(words[step]);

@@ -58,7 +58,7 @@ public:
      *        storage commit gate still checks the engine atomically before erase.
      * @return True when a new generation was committed in this pass.
      */
-    bool service(std::uint32_t nowMs, bool allowFlashWrite);
+    [[nodiscard]] bool service(std::uint32_t nowMs, bool allowFlashWrite);
 
     /** @brief True while any store holds a change that is not yet durable. */
     bool hasPendingCommit() const;
@@ -113,7 +113,7 @@ private:
     void recordFailure(std::uint32_t nowMs, bool locked);
 
     /** @brief Stages every store into one open update and commits it. */
-    bool commitAll(std::uint32_t nowMs);
+    [[nodiscard]] bool commitAll(std::uint32_t nowMs);
 
     hal::PersistentStorage& storage_;
     PersistentStateService& state_;

@@ -30,7 +30,7 @@ DIN         PA7  (SPI MOSI; labeled SDA on the earlier prototype module)
 CS          PA4
 DC          PB9
 RES         PB15
-SPI clock   1 MHz
+SPI clock   1 MHz requested, 656.25 kHz actual (84 MHz / 128, calculated)
 ```
 
 The display-side labels are authoritative for wiring the target module: **GND, VCC, CLK, DIN, RES, DC, CS**. The earlier prototype OLED used **SCL/SDA/RES/DC/CS** silk-screen labels even in SPI mode; on that module SCL was the SPI clock and SDA was the SPI data input. This does not indicate I2C operation.

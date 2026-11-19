@@ -19,8 +19,11 @@
 
 namespace clockfw::ui {
 
-SettingsEditor::SettingsEditor(ClockState& state, engine::ClockEngine& engine)
-    : state_(state), engine_(engine) {}
+SettingsEditor::SettingsEditor(
+    ClockState& state,
+    engine::ClockEngine& engine,
+    const services::CustomGrooveStore* const customGrooveStore)
+    : state_(state), engine_(engine), customGrooveStore_(customGrooveStore) {}
 
 void SettingsEditor::changeMasterTempo(const std::int8_t delta) {
     const std::uint16_t previousBpm = state_.bpm;

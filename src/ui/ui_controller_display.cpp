@@ -18,6 +18,26 @@ std::uint32_t minutesToMilliseconds(const std::uint8_t minutes) {
     return static_cast<std::uint32_t>(minutes) * 60'000UL;
 }
 
+/** True when a button takes part in the sample: an edge or a held press. */
+bool buttonActive(const hal::ButtonSample& button) {
+    return button.edge != hal::ButtonEdge::None || button.pressed;
+}
+
+/**
+ * Hides a button that woke the display until it is released, including that release (D-08).
+ * @param button Sample to neutralize while @p swallowed is set.
+ * @param swallowed Set while the waking press lasts; cleared with its release.
+ */
+void swallowWakePress(hal::ButtonSample& button, bool& swallowed) {
+    if (!swallowed) {
+        return;
+    }
+    if (!button.pressed) {
+        swallowed = false;
+    }
+    button = hal::ButtonSample{};
+}
+
 }  // namespace
 
 /** Restores the OLED to its active state and restarts the inactivity timer. */
@@ -39,6 +59,35 @@ void UiController::noteUserActivity(const std::uint32_t nowMs) {
         screensaverActive_ = false;
     }
     invalidate();
+}
+
+bool UiController::hasUserActivity(const hal::ControlSample& controls) {
+    return controls.encoderDelta != 0 ||
+        controls.encoderButton.edge != hal::ButtonEdge::None ||
+        controls.transportButton.edge != hal::ButtonEdge::None ||
+        controls.tapButton.edge != hal::ButtonEdge::None ||
+        controls.resetButton.edge != hal::ButtonEdge::None;
+}
+
+hal::ControlSample UiController::applyWakeRules(const hal::ControlSample& rawControls) {
+    hal::ControlSample controls = rawControls;
+    if (displayPoweredOff_ && hasUserActivity(rawControls)) {
+        // D-08: with the OLED off, the encoder and the menu keys only wake it. START/PAUSE
+        // acts at once, and so does STOP, which is the BACK key outside Performance.
+        controls.encoderDelta = 0;
+        wakeSwallowsEncoderButton_ = buttonActive(rawControls.encoderButton);
+        wakeSwallowsTapButton_ = buttonActive(rawControls.tapButton);
+        wakeSwallowsResetButton_ =
+            navigation_.screen != Screen::Performance && buttonActive(rawControls.resetButton);
+    }
+    swallowWakePress(controls.encoderButton, wakeSwallowsEncoderButton_);
+    swallowWakePress(controls.tapButton, wakeSwallowsTapButton_);
+    swallowWakePress(controls.resetButton, wakeSwallowsResetButton_);
+    return controls;
+}
+
+void UiController::noteExternalTransportCommand(const std::uint32_t nowMs) {
+    noteUserActivity(nowMs);
 }
 
 void UiController::serviceRendering(const std::uint32_t nowMs) {
@@ -123,14 +172,6 @@ void UiController::serviceRendering(const std::uint32_t nowMs) {
  * @return true when normal UI rendering must remain suppressed for this cycle.
  */
 bool UiController::serviceStopModeDisplay(const std::uint32_t nowMs) {
-    if (externalInputs_ != nullptr) {
-        const std::uint32_t activitySequence = externalInputs_->activitySequence();
-        if (activitySequence != lastExternalInputActivitySequence_) {
-            lastExternalInputActivitySequence_ = activitySequence;
-            noteUserActivity(nowMs);
-        }
-    }
-
     if (!activityClockInitialized_) {
         lastUserActivityAtMs_ = nowMs;
         activityClockInitialized_ = true;

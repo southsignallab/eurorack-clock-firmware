@@ -53,6 +53,9 @@ public:
         const NavigationState& navigation,
         const services::PersistentStateService& persistentState);
 
+    /** @brief Draws APPLY TEMPLATE? with the template name and NO/YES (D-09). */
+    void renderTemplateApplyConfirm(const NavigationState& navigation);
+
     /** @brief Draws the guarded confirmation used before clearing the ranked-game Top-100 table. */
     void renderHighScoreClearConfirm(const NavigationState& navigation);
 

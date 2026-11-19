@@ -92,6 +92,11 @@ bool CustomGrooveStore::service(const bool allowFlashWrite) {
 }
 
 void CustomGrooveStore::cacheSlot(const std::uint8_t slotIndex) const {
+    // Both callers check the index already. GCC 16 at -O3 still reported a path with
+    // index 10 here (F-067, false positive); the check makes the function self-contained.
+    if (slotIndex >= kCustomGrooveSlotCount) {
+        return;
+    }
     if (cacheContentRevision_ != hal::PersistentStorage::contentRevision()) {
         // Another writer (factory reset, a second store instance) changed Flash.
         for (SlotCache& stale : slotCache_) {

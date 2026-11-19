@@ -15,6 +15,7 @@
 #include "engine/clock_engine_edges.h"
 
 #include "config.h"
+#include "hal/interrupt_lock.h"
 
 #if defined(CLOCK_RUNTIME_INSTRUMENTATION)
 #include "hal/runtime_instrumentation.h"
@@ -116,6 +117,16 @@ void ClockEngine::setGateState(const std::size_t channelIndex, const bool high) 
         gatesRaisedThisQuantum_ = static_cast<std::uint8_t>(gatesRaisedThisQuantum_ | bit);
     }
     gateOutputs_.stageChannelState(channelIndex, high);
+}
+
+void ClockEngine::enableOutputStage() {
+    hal::InterruptLock interruptLock;
+    // In the same step as the release, not in the tick: the scheduler never sees an
+    // enabled stage while the engine still records a gate the driver never raised.
+    lowerAllGatesUnsafe();
+    gatesHighAtLastCommit_ = 0U;
+    gateOutputs_.setAllChannelsLow();
+    gateOutputs_.enableOutputStage();
 }
 
 void ClockEngine::lowerAllGatesUnsafe() {

@@ -190,7 +190,7 @@ python -m unittest discover -s scripts/tests -p 'test_*.py' -v
 python scripts/check_vcv_runtime_coverage.py
 ```
 
-The CTest suite includes `vcv_runtime_adapter_tests`. These tests exercise the real CLOCK boot path, scheduler, controls, gate outputs, persistence image and external-input bridge without requiring Rack itself. `check_vcv_runtime_coverage.py` rebuilds that adapter with GCC coverage and enforces 95% line, 95% function and 90% non-throw decision-branch coverage.
+The CTest suite includes `vcv_runtime_adapter_tests`. These tests exercise the real CLOCK boot path, scheduler, controls, gate outputs, persistence image and external-input bridge without requiring Rack itself. `check_vcv_runtime_coverage.py` rebuilds that adapter with GCC coverage and enforces 95% line, 95% function and 90% non-throw decision-branch coverage. On Windows it uses MinGW-w64 `gcc`, `g++`, `gcov` and `ninja` from `PATH` (MSYS2 UCRT64, `C:\msys64\ucrt64\bin` first); MSVC writes no gcov data. Without them the check stops with exit code 2 and names the missing tools; WSL works as well.
 
 ### 1.7 Verify generated panel assets
 

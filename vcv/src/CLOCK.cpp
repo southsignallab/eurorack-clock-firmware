@@ -52,6 +52,32 @@ clockfw::vcv::PanelKey panelKeyFor(const int key) {
     }
 }
 
+/** @brief Reports whether a host key that holds a panel control is down (F-065). */
+bool hostKeyDown(const clockfw::vcv::PanelKey key) {
+    using clockfw::vcv::PanelKey;
+    GLFWwindow* const window = APP->window->win;
+    const auto down = [window](const int glfwKey) { return glfwGetKey(window, glfwKey) == GLFW_PRESS; };
+    switch (key) {
+        case PanelKey::LeftShift:
+            return down(GLFW_KEY_LEFT_SHIFT);
+        case PanelKey::RightShift:
+            return down(GLFW_KEY_RIGHT_SHIFT);
+        case PanelKey::EncoderPush:
+            return down(GLFW_KEY_ENTER) || down(GLFW_KEY_E);
+        case PanelKey::Play:
+            return down(GLFW_KEY_P);
+        case PanelKey::Tap:
+            return down(GLFW_KEY_T);
+        case PanelKey::Stop:
+            return down(GLFW_KEY_S) || down(GLFW_KEY_BACKSPACE);
+        case PanelKey::Unmapped:
+        case PanelKey::EncoderUp:
+        case PanelKey::EncoderDown:
+            break;
+    }
+    return false;
+}
+
 std::string encodeHex(const std::uint8_t* data, const std::size_t size) {
     static constexpr char kHex[] = "0123456789abcdef";
     std::string encoded;
@@ -650,6 +676,28 @@ struct ClockWidget final : ModuleWidget {
             return;
         }
         ModuleWidget::onHoverKey(event);
+    }
+
+    void onLeave(const LeaveEvent& event) override {
+        // F-065: once the pointer is outside, key releases go to other widgets. End every hold.
+        if (ClockModule* const clock = clockModule()) {
+            clockfw::vcv::KeyboardHeldControls held = clock->keyboardHeldControls();
+            if (clockfw::vcv::releaseHeldControls(held)) {
+                clock->setKeyboardHeldControls(held);
+            }
+        }
+        ModuleWidget::onLeave(event);
+    }
+
+    void step() override {
+        // F-065: a release that reached another widget still ends the hold within one frame.
+        if (ClockModule* const clock = clockModule()) {
+            clockfw::vcv::KeyboardHeldControls held = clock->keyboardHeldControls();
+            if (clockfw::vcv::reconcileHeldControls(held, &hostKeyDown)) {
+                clock->setKeyboardHeldControls(held);
+            }
+        }
+        ModuleWidget::step();
     }
 
     void appendContextMenu(Menu* menu) override {

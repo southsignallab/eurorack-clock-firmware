@@ -94,6 +94,13 @@ struct BreakoutGameTestAccess {
 
 namespace {
 
+/** Stops the generator when a store rejects a screenshot fixture. */
+void requireStored(const bool stored) {
+    if (!stored) {
+        throw std::runtime_error("Screenshot fixture was rejected by its store");
+    }
+}
+
 using namespace clockfw;
 
 class ScreenshotCatalog final {
@@ -238,8 +245,8 @@ private:
         SequencerPatternV2 performancePattern{};
         performancePattern.length = 128U;
         performancePattern.gates = {{0xA55A0F0F33CC5AA5ULL, 0x5AA5CC330F0FA55AULL}};
-        sequencerPatternStore_.updatePattern(6U, 0U, performancePattern, 0U);
-        sequencerPatternStore_.setActiveSlot(6U, 0U, 0U);
+        requireStored(sequencerPatternStore_.updatePattern(6U, 0U, performancePattern, 0U));
+        requireStored(sequencerPatternStore_.setActiveSlot(6U, 0U, 0U));
         navigation_.selectedChannel = 6U;
         snapshot_.channelStep[6] = 82U;
         renderCurrent("performance-independent-sequencer-play", "Independent 128-step Sequencer 2.0 while playing");
@@ -341,22 +348,22 @@ private:
         editorPattern.gates = {{0x00000000000000FFULL, 0x0ULL}};
         editorPattern.direction = SequencerPlayDirection::PingPong;
         editorPattern.loopMode = SequencerLoopMode::Loop;
-        sequencerPatternStore_.updatePattern(0U, 0U, editorPattern, 0U);
-        sequencerPatternStore_.setActiveSlot(0U, 0U, 0U);
+        requireStored(sequencerPatternStore_.updatePattern(0U, 0U, editorPattern, 0U));
+        requireStored(sequencerPatternStore_.setActiveSlot(0U, 0U, 0U));
         SequencerStepMetadata metadata{};
         metadata.probabilityPercent = 75U;
-        sequencerStepStore_.updateMetadata(0U, 0U, 0U, metadata, 0U);
+        requireStored(sequencerStepStore_.updateMetadata(0U, 0U, 0U, metadata, 0U));
         metadata = SequencerStepMetadata{};
         metadata.gateProfile = SequencerGateProfile::Duty50;
-        sequencerStepStore_.updateMetadata(0U, 0U, 1U, metadata, 0U);
+        requireStored(sequencerStepStore_.updateMetadata(0U, 0U, 1U, metadata, 0U));
         metadata = SequencerStepMetadata{};
         metadata.ratchetCount = 4U;
-        sequencerStepStore_.updateMetadata(0U, 0U, 2U, metadata, 0U);
+        requireStored(sequencerStepStore_.updateMetadata(0U, 0U, 2U, metadata, 0U));
         metadata.ratchetCount = 8U;
-        sequencerStepStore_.updateMetadata(0U, 0U, 3U, metadata, 0U);
+        requireStored(sequencerStepStore_.updateMetadata(0U, 0U, 3U, metadata, 0U));
         metadata = SequencerStepMetadata{};
         metadata.tie = true;
-        sequencerStepStore_.updateMetadata(0U, 0U, 4U, metadata, 0U);
+        requireStored(sequencerStepStore_.updateMetadata(0U, 0U, 4U, metadata, 0U));
         navigation_.screen = ui::Screen::SequencerEditor;
         navigation_.sequencerPage = 0U;
         navigation_.sequencerCursor = 0U;
@@ -696,8 +703,8 @@ int main(int argc, char** argv) {
         clockfw::services::CustomGrooveStore customGrooveStore(storage);
         clockfw::services::SequencerPatternStore sequencerPatternStore(storage);
         clockfw::services::SequencerStepStore sequencerStepStore(storage);
-        sequencerPatternStore.begin();
-        sequencerStepStore.begin();
+        requireStored(sequencerPatternStore.begin());
+        requireStored(sequencerStepStore.begin());
 
         ScreenshotCatalog catalog(
             argv[1], display, storage, persistentState, customGrooveStore,

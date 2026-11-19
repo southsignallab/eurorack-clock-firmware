@@ -98,7 +98,7 @@ private:
     std::uint32_t lastAsteroidAtMs_ = 0U;
     std::uint32_t nextAsteroidDelayMs_ = 5200U;
     std::uint32_t impactFlashUntilMs_ = 0U;
-    std::uint32_t encoderPressedAtMs_ = 0U;
+    LongPressDetector exitHold_{};
     std::uint8_t lives_ = 3U;
 #ifdef CLOCK_SIMULATOR
     std::uint32_t lastSimulatorFrameAtMs_ = 0U;

@@ -49,11 +49,9 @@ void PixelRaidGame::run() {
     while (!exitRequested_) {
         const std::uint32_t nowMs = hal::SystemClock::milliseconds();
         const hal::ControlSample controls = controls_.sample(nowMs);
-        if (controls.encoderButton.edge == hal::ButtonEdge::Pressed) encoderPressedAtMs_ = nowMs;
-        if (!controls.encoderButton.pressed) encoderPressedAtMs_ = 0U;
-        else if (encoderPressedAtMs_ != 0U && nowMs - encoderPressedAtMs_ >= kExitLongPressMs) {
-            encoderPressedAtMs_ = 0U;
-            if (confirmExit()) { exitRequested_ = true; break; }
+        if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs) && confirmExit()) {
+            exitRequested_ = true;
+            break;
         }
         const ArcadeShell::Action action = shell_.update(controls, nowMs);
         if (action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun) {
@@ -65,7 +63,7 @@ void PixelRaidGame::run() {
             if (shell_.playing()) render(); else shell_.render(nowMs);
             lastFrameAtMs = nowMs;
         }
-        (void)display_.service();
+        (void)display_.service();  // only reports pending I2C work
         hal::SystemClock::delayMilliseconds(1U);
     }
     gateOutputs_.setAllChannelsLow();
@@ -80,9 +78,7 @@ void PixelRaidGame::beginForSimulator() {
 }
 bool PixelRaidGame::serviceForSimulator(const std::uint32_t nowMs) {
     const hal::ControlSample controls = controls_.sample(nowMs);
-    if (controls.encoderButton.edge == hal::ButtonEdge::Pressed) encoderPressedAtMs_ = nowMs;
-    if (!controls.encoderButton.pressed) encoderPressedAtMs_ = 0U;
-    else if (encoderPressedAtMs_ != 0U && nowMs - encoderPressedAtMs_ >= kExitLongPressMs) exitRequested_ = true;
+    if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs)) exitRequested_ = true;
     const ArcadeShell::Action action = shell_.update(controls, nowMs);
     if (action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun) {
         highScore_.score = shell_.highScore(); resetSession();
@@ -182,9 +178,7 @@ void PixelRaidGame::updateEnemyShot(const std::uint32_t nowMs) {
         }
         flashLifeLostLeds();
         if (lives_ == 0U) {
-            gameOver_ = true;
-            shell_.finishRun(score_);
-            highScore_.score = std::max<std::uint32_t>(highScore_.score, score_);
+            endRun();
         }
     }
 }
@@ -215,9 +209,32 @@ void PixelRaidGame::updateAliens(const std::uint32_t nowMs) {
     if (nextOffset < 1 || nextOffset + formationWidth >= hal::OledDisplay::kWidth - 1) {
         alienDirection_ = static_cast<std::int8_t>(-alienDirection_);
         alienOffsetY_ = static_cast<std::int16_t>(alienOffsetY_ + 2);
+        if (formationReachedPlayer()) {
+            endRun();  // the invasion ends the game (F-040)
+        }
     } else {
         alienOffsetX_ = nextOffset;
     }
+}
+
+bool PixelRaidGame::formationReachedPlayer() const {
+    for (std::uint8_t row = kAlienRows; row > 0U; --row) {
+        for (std::uint8_t column = 0U; column < kAlienColumns; ++column) {
+            if (!aliens_[static_cast<std::size_t>(row - 1U) * kAlienColumns + column]) {
+                continue;
+            }
+            // Lowest living row against the top of the player sprite (kPlayerY - 3).
+            const int bottom = alienOffsetY_ + (row - 1) * kAlienCellHeight + kAlienHeight;
+            return bottom >= kPlayerY - 3;
+        }
+    }
+    return false;
+}
+
+void PixelRaidGame::endRun() {
+    gameOver_ = true;
+    shell_.finishRun(score_);
+    highScore_.score = std::max<std::uint32_t>(highScore_.score, score_);
 }
 
 void PixelRaidGame::render() {
@@ -271,9 +288,8 @@ void PixelRaidGame::flashLifeLostLeds() {
     // preserving the life-loss pause without producing gate pulses at the jacks.
     gateOutputs_.disableOutputStage();
     for (std::uint8_t cycle = 0U; cycle < 2U; ++cycle) {
-        for (std::size_t channel = 0U; channel < 8U; ++channel) {
-            gateOutputs_.setChannelState(channel, true);
-        }
+        // One GPIOB access for all eight sources (F-070); muted, so they stay LOW.
+        gateOutputs_.setChannelStates(0xFFU);
         hal::SystemClock::delayMilliseconds(70U);
         gateOutputs_.setAllChannelsLow();
         hal::SystemClock::delayMilliseconds(70U);
@@ -318,7 +334,7 @@ bool PixelRaidGame::confirmExit() {
         display_.drawText(71, 36, text::get(text::TextId::Yes));
         display_.setTextColor(hal::PixelColor::White);
         display_.present();
-        (void)display_.service();
+        (void)display_.service();  // only reports pending I2C work
         hal::SystemClock::delayMilliseconds(2U);
     }
 #endif

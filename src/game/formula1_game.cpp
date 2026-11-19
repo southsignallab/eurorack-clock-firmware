@@ -174,9 +174,7 @@ void Formula1Game::run() {
     while (!exitRequested_) {
         const std::uint32_t nowMs = hal::SystemClock::milliseconds();
         const hal::ControlSample controls = controls_.sample(nowMs);
-        if (controls.encoderButton.edge == hal::ButtonEdge::Pressed) encoderPressedAtMs_ = nowMs;
-        if (!controls.encoderButton.pressed) encoderPressedAtMs_ = 0U;
-        else if (encoderPressedAtMs_ != 0U && nowMs - encoderPressedAtMs_ >= kExitLongPressMs) exitRequested_ = true;
+        if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs)) exitRequested_ = true;
         const ArcadeShell::Action action = shell_.update(controls, nowMs);
         if (action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun) {
             highScore_.score = shell_.highScore(); resetSession();
@@ -186,7 +184,7 @@ void Formula1Game::run() {
             if (shell_.playing()) render(); else shell_.render(nowMs);
             lastFrameAtMs = nowMs;
         }
-        (void)display_.service();
+        (void)display_.service();  // only reports pending I2C work
         hal::SystemClock::delayMilliseconds(1U);
     }
     gateOutputs_.setAllChannelsLow(); gateOutputs_.disableOutputStage();
@@ -201,9 +199,7 @@ void Formula1Game::beginForSimulator() {
 }
 bool Formula1Game::serviceForSimulator(const std::uint32_t nowMs) {
     const hal::ControlSample controls = controls_.sample(nowMs);
-    if (controls.encoderButton.edge == hal::ButtonEdge::Pressed) encoderPressedAtMs_ = nowMs;
-    if (!controls.encoderButton.pressed) encoderPressedAtMs_ = 0U;
-    else if (encoderPressedAtMs_ != 0U && nowMs - encoderPressedAtMs_ >= kExitLongPressMs) exitRequested_ = true;
+    if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs)) exitRequested_ = true;
     const ArcadeShell::Action action = shell_.update(controls, nowMs);
     if (action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun) { highScore_.score = shell_.highScore(); resetSession(); }
     if (shell_.playing()) update(controls, nowMs);
@@ -216,7 +212,7 @@ bool Formula1Game::serviceForSimulator(const std::uint32_t nowMs) {
 void Formula1Game::resetSession() {
     for (Car& car : traffic_) car = {};
     playerX_ = 63; speed_ = 92U; distance_ = 0U; elapsedMs_ = 0U; score_ = 0U; lap_ = 1U; crashesRemaining_ = 3U;
-    lastPhysicsAtMs_ = 0U; lastSpawnAtMs_ = 0U; encoderPressedAtMs_ = 0U; crashStartedAtMs_ = 0U;
+    lastPhysicsAtMs_ = 0U; physicsStarted_ = false; lastSpawnAtMs_ = 0U; exitHold_.cancel(); crashStartedAtMs_ = 0U;
     crashed_ = false; gameOver_ = false; scoreFinalized_ = false; exitRequested_ = false;
     spawnTraffic(); traffic_[0].y = 18; spawnTraffic(); traffic_[1].y = 27;
 }
@@ -251,8 +247,10 @@ void Formula1Game::update(const hal::ControlSample& controls, const std::uint32_
         playerX_ = clampToRange(static_cast<std::int16_t>(playerX_ + static_cast<std::int16_t>(controls.encoderDelta) * 3), leftLimit, rightLimit);
     }
     if (nowMs - lastPhysicsAtMs_ < kFrameIntervalMs) return;
-    elapsedMs_ += lastPhysicsAtMs_ == 0U ? kFrameIntervalMs : nowMs - lastPhysicsAtMs_;
+    // A frame at 0 ms is a frame like any other; only the first one has no predecessor (F-074).
+    elapsedMs_ += physicsStarted_ ? nowMs - lastPhysicsAtMs_ : kFrameIntervalMs;
     lastPhysicsAtMs_ = nowMs;
+    physicsStarted_ = true;
 
     const std::uint32_t speedPhase = (distance_ / 300U) % 6U;
     const std::uint16_t target = (speedPhase == 1U || speedPhase == 4U) ? 166U : ((speedPhase == 2U || speedPhase == 5U) ? 142U : 184U);

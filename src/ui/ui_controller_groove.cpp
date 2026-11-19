@@ -28,6 +28,7 @@ void UiController::openGrooveEditor() {
     if (customGrooveStore_ != nullptr &&
         grooveEditorOriginalSettings_.preset == GroovePreset::Custom &&
         grooveEditorOriginalSettings_.customSlot < kCustomGrooveSlotCount) {
+        // A missing or invalid slot leaves an invalid draft, replaced below.
         (void)customGrooveStore_->load(
             grooveEditorOriginalSettings_.customSlot,
             navigation_.grooveDraft);

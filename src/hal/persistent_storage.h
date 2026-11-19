@@ -26,7 +26,7 @@ namespace clockfw::hal {
 class FlashCommitGate {
 public:
     /** @brief Atomically checks the engine and opens the commit window; false keeps Flash untouched. */
-    virtual bool tryOpenCommitWindow() = 0;
+    [[nodiscard]] virtual bool tryOpenCommitWindow() = 0;
     /** @brief Closes the window and executes any start deferred while it was open. */
     virtual void closeCommitWindow() = 0;
 
@@ -76,7 +76,7 @@ public:
      * @param size Number of bytes to read.
      * @return True when the requested range was valid and readable.
      */
-    bool readBytes(std::size_t offset, std::uint8_t* destination, std::size_t size) const;
+    [[nodiscard]] bool readBytes(std::size_t offset, std::uint8_t* destination, std::size_t size) const;
     /**
      * @brief Updates one logical range and commits a complete new A/B generation.
      * @param offset Byte offset inside the logical image.
@@ -84,7 +84,7 @@ public:
      * @param size Number of bytes to copy.
      * @return True only after the new generation has been committed and verified.
      */
-    bool writeBytes(std::size_t offset, const std::uint8_t* source, std::size_t size);
+    [[nodiscard]] bool writeBytes(std::size_t offset, const std::uint8_t* source, std::size_t size);
 
     /**
      * @brief Starts one whole-image update in bounded static storage.
@@ -92,7 +92,7 @@ public:
      * The staging image lives inside PersistentStorage rather than on the call stack.
      * This is used when several logical records must share one physical Flash commit.
      */
-    bool beginUpdate();
+    [[nodiscard]] bool beginUpdate();
 
     /**
      * @brief Starts a whole-image replacement from an erased staging image.
@@ -102,16 +102,16 @@ public:
      * it wants to keep. The commit always writes, even when the staged image
      * happens to equal the active one, so the lock is cleared durably.
      */
-    bool beginFullReplacement();
+    [[nodiscard]] bool beginFullReplacement();
 
     /** @brief Applies one byte range to the currently staged image. */
-    bool stageBytes(std::size_t offset, const std::uint8_t* source, std::size_t size);
+    [[nodiscard]] bool stageBytes(std::size_t offset, const std::uint8_t* source, std::size_t size);
 
     /** @brief Fills one byte range in the currently staged image. */
-    bool stageFill(std::size_t offset, std::size_t size, std::uint8_t value);
+    [[nodiscard]] bool stageFill(std::size_t offset, std::size_t size, std::uint8_t value);
 
     /** @brief Commits the staged image atomically to the inactive A/B Flash slot. */
-    bool commitUpdate();
+    [[nodiscard]] bool commitUpdate();
 
     /** @brief Discards a staged image without touching Flash. */
     void cancelUpdate();
@@ -151,6 +151,9 @@ public:
 
     /** @brief Makes the next logical read fail without touching storage. */
     static void failNextReadForTest();
+
+    /** @brief Calls @p hook at the start of every readBytes(); nullptr removes it. */
+    static void setReadHookForTest(void (*hook)());
 
     /** @brief Makes the next write fail before touching the inactive slot. */
     static void failNextWriteForTest();

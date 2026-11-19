@@ -286,7 +286,11 @@ void testUiControllerFlows() {
     controllerTurn(controller, 5, now);
     controllerTurn(controller, -5, now);
     state.channels[0].common.mode = ChannelMode::Off;
-    controllerShortPress(controller, now); // apply ALL MASTER template
+    controllerShortPress(controller, now); // ALL MASTER -> APPLY TEMPLATE? (NO preselected, D-09)
+    CHECK_EQ(controller.navigation().screen, ui::Screen::TemplateApplyConfirm);
+    CHECK_EQ(state.channels[0].common.mode, ChannelMode::Off);
+    controllerTurn(controller, 1, now);     // YES
+    controllerShortPress(controller, now);
     CHECK_EQ(controller.navigation().screen, ui::Screen::Performance);
     CHECK_EQ(state.channels[0].common.mode, ChannelMode::Clock);
 

@@ -2,9 +2,9 @@
 
 # South Signal Lab CLOCK — User Guide
 
-> **Current stable release: v1.1.0**
+> **Current stable release: v1.2.0**
 >
-> CLOCK 1.1.0 is the current stable release. This guide covers Pre-Count, configurable digital-input roles, Groove Engine Stage 1/2, Custom Groove editing/recording and the horizontal Channel Mode carousel together with the established 1.0 functionality. Physical comparator thresholds, jack-level timing, gate jitter and Groove/TAP-record timing remain tracked HIL evidence rather than host-test claims.
+> CLOCK 1.2.0 is the current stable release. This guide covers Sequencer 2.0, Pre-Count, configurable digital-input roles, Groove Engine Stage 1/2, Custom Groove editing/recording and the horizontal Channel Mode carousel together with the established 1.0 functionality. Physical comparator thresholds, jack-level timing, gate jitter and Groove/TAP-record timing remain tracked HIL evidence rather than host-test claims.
 
 > [!NOTE]
 > The chapter-oriented version of this guide lives under [`docs/user-guide/`](user-guide/README.md) and follows the same 24-chapter navigation as the ODT/PDF manual and generated Wiki. This file remains the consolidated reference view.
@@ -112,7 +112,7 @@ For lengths above 16 steps, the Performance screen continues to show a compact 1
 
 ![Independent Clock performance screen in STOP, with transport stopped and no beat animation.](manual-source/assets/performance-independent-clock-stop.png)
 
-With factory display preferences, STOP-mode inactivity starts the configured screensaver after 2 minutes, dims the OLED after 5 minutes, and powers the OLED panel off after 10 minutes. Any front-panel interaction or conditioned SYNC/RST transition wakes it immediately.
+With factory display preferences, STOP-mode inactivity starts the configured screensaver after 2 minutes, dims the OLED after 5 minutes, and powers the OLED panel off after 10 minutes. Front-panel controls and START, STOP, RESTART or RUN commands at an input wake it; a clock at SYNC and RESET triggers do not. With the OLED switched off, the encoder and the menu keys only wake it, while START/PAUSE and STOP act at once (see section 18).
 
 ## 7. Navigation and editing
 
@@ -316,7 +316,7 @@ Groove is deterministic microtiming applied to the same master timeline as Clock
 
 ### Factory Grooves
 
-`TIMING → GROOVE` offers `OFF`, `SWING 54`, `SWING 58`, `SWING 62`, `SWING 66`, and `POCKET A / B / C`. **AMOUNT** scales the selected pattern from straight (`0%`) through its stored shape (`100%`), while **ROTATE** changes where that pattern starts against the channel timeline. One Clock owns one global Groove; Independent stores Groove per channel and applies it equally to Clock, Euclid and Sequencer event timing.
+`TIMING → GROOVE` offers `OFF`, `SWING 54`, `SWING 58`, `SWING 62`, `SWING 66`, and `POCKET A / B / C`. `CUSTOM` follows at the end of the list only while at least one Custom Groove slot holds a groove; it then uses the slot already selected for the channel or, if that slot is empty, the first stored groove. **AMOUNT** scales the selected pattern from straight (`0%`) through its stored shape (`100%`), while **ROTATE** changes where that pattern starts against the channel timeline. One Clock owns one global Groove; Independent stores Groove per channel and applies it equally to Clock, Euclid and Sequencer event timing.
 
 ### Custom Groove Editor
 
@@ -350,6 +350,8 @@ Recorder controls:
 - **BACK** — leave/confirm discard using the same shared-draft rules as the editor.
 
 The Record menu provides **MODE** (`ONE SHOT / ENDLESS`), recorder **COUNT IN** (`OFF / 1–64`, default `4`), **LENGTH** (`1–64`), **ZOOM**, **SAVE**, `EDITOR >`, and **CLEAR**. `ONE SHOT` stops at the end of one pattern pass. `ENDLESS` wraps and continues; only steps that receive a new TAP are overwritten, so an existing Groove can be refined over repeated passes.
+
+The recording grid is the grid of the channel that plays the Groove. When recording starts in the middle of a step, for example while the clock already runs, capture begins at the next step of that channel and numbers the steps as playback does, so a recorded Groove plays back exactly where it was tapped.
 
 Front-panel TAP capture preserves the high-resolution physical press timestamp through button debounce before converting it to a signed per-step offset. Host tests verify that software contract; absolute physical switch latency/jitter remains a HIL measurement.
 
@@ -528,7 +530,7 @@ Preset names can contain up to 16 characters. Saving over an occupied slot requi
 </tr>
 </table>
 
-Factory templates currently include `ALL MASTER`, `CLOCK TREE`, `DIVIDERS`, `POLYRHYTHM`, `EUCLID KIT`, and `HYBRID`. Loading a template changes CURRENT; it does not silently create or overwrite a named user preset.
+Factory templates currently include `ALL MASTER`, `CLOCK TREE`, `DIVIDERS`, `POLYRHYTHM`, `EUCLID KIT`, and `HYBRID`. Pushing a template asks `APPLY TEMPLATE?` with **NO** preselected, as CHANGE MODE does; only **YES** replaces the configuration, while NO and BACK return to the list unchanged. Loading a template changes CURRENT; it does not silently create or overwrite a named user preset.
 
 #### When settings reach Flash
 
@@ -540,9 +542,9 @@ CLOCK never writes Flash while transport is PLAY, because the STM32F401 stalls w
 
 If a RUN or START signal arrives during the short Flash write, playback starts right after the write instead of during it.
 
-**SAVE ERROR** on the Performance screen means a Flash write failed. Your changes stay in memory and CLOCK retries automatically after 1, 2, 4, 8, 16 and 32 seconds. If the last retry fails too, CLOCK stops writing so that a worn Flash sector is not erased again and again; **SAVE ERROR** then appears again for a few seconds after every front-panel action. The next change to your settings, presets, grooves or patterns starts a new series of attempts, and so does switching the module off and on. Changes made since the last successful write are lost when power is removed.
+**SAVE ERROR** on the Performance screen means a Flash write failed. Your changes stay in memory and CLOCK retries automatically after 1, 2, 4, 8, 16 and 32 seconds, seven attempts in all. If the last retry fails too, CLOCK stops writing so that a worn Flash sector is not erased again and again; **SAVE ERROR** then appears again for 3 seconds after every front-panel action. The next change to your settings, presets, grooves or patterns starts a new series of attempts, and so does switching the module off and on. Changes made since the last successful write are lost when power is removed.
 
-**UPDATE FIRMWARE** means the Flash holds settings written by a newer firmware in a format this firmware does not know, typically after a downgrade. CLOCK still runs with the newest settings it can read but writes nothing, so the newer data stays intact for a later upgrade. Either install the newer firmware again or confirm **FACTORY RESET** (`INFO`), which replaces the stored data with factory settings and lifts the lock.
+**UPDATE FIRMWARE** means the Flash holds settings written by a newer firmware in a format this firmware does not know, typically after a downgrade. CLOCK still runs with the newest settings it can read but writes nothing, so the newer data stays intact for a later upgrade. Either install the newer firmware again or confirm **FACTORY RESET** (`INFO`), which replaces the stored data with factory settings. Only **FACTORY RESET** (`ERASE ALL DATA`) lifts the lock.
 
 <table>
 <tr>
@@ -574,7 +576,22 @@ Display protection is active only while transport is STOP. The factory timing is
 - dim after 5 minutes;
 - OLED off after 10 minutes.
 
-The configured order is constrained to `START <= DIM <= OFF`. Any front-panel activity wakes the OLED immediately. `OFF` disables animation but does not disable the later dim/panel-off protection stages.
+The configured order is constrained to `START <= DIM <= OFF`. `OFF` disables animation but does not disable the later dim/panel-off protection stages.
+
+What counts as activity and restarts the timers:
+
+- every front-panel control: encoder turn and push, START/PAUSE, TAP TEMPO, STOP/BACK;
+- a START, STOP, RESTART or RUN command at an input assigned to that role.
+
+A clock at SYNC, a RESET trigger, TAP at an input and an input set to `OFF` do not count, so display protection also works in STOP while a master clock keeps running.
+
+While the OLED is switched off, a control only wakes it, except the transport keys:
+
+- turning or pushing the encoder, TAP TEMPO, and BACK in a menu wake the display and do nothing else; the release of that press is ignored as well;
+- START/PAUSE and STOP act at once and wake the display;
+- a START or STOP command at an input wakes the display and acts.
+
+During the screensaver animation and while the display is dimmed, every control acts as usual.
 
 Four additional visual modes are available: **MAKE MUSIC** builds `MAKE·MUSIC·NOT·WAR` one character at a time and continues row by row; **LABYRINTH** repeatedly generates and draws a random perfect maze; **STARFIELD** scrolls three parallax depth layers; and **FIREWORKS** launches a pixel rocket from changing positions before an upper-screen burst.
 
@@ -636,11 +653,11 @@ The four ranked games — **Pixel Raid, Formula 1, Breakout, and Egg Journey** �
 </tr>
 </table>
 
-- **Pixel Raid** — encoder moves the cannon; TAP TEMPO fires.
+- **Pixel Raid** — encoder moves the cannon; TAP TEMPO fires. The run ends when the last life is lost or the invaders reach the cannon line.
 - **Formula 1** — encoder steers through changing road geometry and traffic; three crashes end the run.
 - **Breakout** — encoder moves the paddle; TAP TEMPO launches the waiting ball; the run has three lives and scored bricks/board clears.
 - **Egg Journey** — encoder shifts the egg within the scrolling lunar landscape; TAP TEMPO jumps; craters and asteroids consume one of three lives.
-- **BEATKNECHT** — not a ranked game. **START/PAUSE** starts and pauses the rhythm, **STOP/BACK** stops it and resets the pattern to step 1, TAP TEMPO cycles curated one-bar rhythm styles, and the encoder changes BPM. OUT 1–8 intentionally emit the displayed eight gate patterns. Pause forces every gate LOW while preserving the remaining step interval; START resumes from that point. STOP additionally mutes all gate source GPIOs until PLAY is pressed again. A long encoder push opens an **EXIT GAME? / NO / YES** confirmation instead of leaving immediately. NO returns to the exact previous transport state; if the rhythm was playing it resumes from the preserved phase. YES stops the rhythm, forces all gates LOW, keeps gate output muted, and returns to the normal clock firmware.
+- **BEATKNECHT** — not a ranked game. **START/PAUSE** starts and pauses the rhythm, **STOP/BACK** stops it and resets the pattern to step 1, TAP TEMPO cycles curated one-bar rhythm styles, and the encoder changes BPM. Steps follow the set tempo exactly; they do not drift when the step length is not a whole number of milliseconds. OUT 1–8 intentionally emit the displayed eight gate patterns. Pause forces every gate LOW while preserving the remaining step interval; START resumes from that point. STOP additionally mutes all gate source GPIOs until PLAY is pressed again. A long encoder push opens an **EXIT GAME? / NO / YES** confirmation instead of leaving immediately. NO returns to the exact previous transport state; if the rhythm was playing it resumes from the preserved phase. YES stops the rhythm, forces all gates LOW, keeps gate output muted, and returns to the normal clock firmware.
 
 After a ranked Easter egg has been launched at least once, the Settings root gains **HI-SCORES / CLEAR**. The entry is hidden beforehand and is not shown for BEATKNECHT. Clearing uses a guarded **NO / YES** confirmation, stops transport before Flash is written, clears the complete Top 100 for that selected ranked game, and keeps the menu entry available for later resets.
 

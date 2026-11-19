@@ -340,6 +340,11 @@ def settings_sources() -> list[Path]:
     """Return production units needed by the atomic settings-contract suite."""
     return realtime_sources() + [
         ROOT / "src/domain/clock_labels.cpp",
+        # The Groove PRESET editor asks the Custom Groove library which slots are used (F-037).
+        ROOT / "src/hal/crc32.cpp",
+        ROOT / "src/hal/persistent_storage.cpp",
+        ROOT / "src/hal/persistent_storage_slots.cpp",
+        ROOT / "src/services/custom_groove_store.cpp",
         ROOT / "src/ui/settings_editor.cpp",
         ROOT / "src/ui/settings_editor_channel.cpp",
         ROOT / "src/ui/settings_editor_sync.cpp",

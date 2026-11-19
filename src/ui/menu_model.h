@@ -25,6 +25,9 @@ struct MenuRow {
     bool expandableInformation = false;
 };
 
+/** Row of HI-SCORES CLEAR on the settings root page while a ranked game has a record (F-038). */
+inline constexpr std::uint8_t kRootHighScoresRow = 5U;
+
 /** @brief Returns the compact title for a settings page. */
 const char* settingsPageTitle(SettingsPage page);
 

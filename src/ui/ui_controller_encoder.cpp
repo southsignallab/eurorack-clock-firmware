@@ -90,7 +90,19 @@ void UiController::handleShortEncoderPress(const std::uint32_t nowMs) {
             return;
 
         case Screen::Templates:
-            applySelectedTemplate(nowMs);
+            // A template replaces the configuration: ask first, NO preselected (D-09).
+            navigation_.pendingTemplate = navigation_.cursor;
+            navigation_.screen = Screen::TemplateApplyConfirm;
+            navigation_.cursor = 0U;
+            invalidate();
+            return;
+
+        case Screen::TemplateApplyConfirm:
+            if (navigation_.cursor == 0U) {
+                returnToTemplates();
+            } else {
+                applySelectedTemplate(nowMs);
+            }
             return;
 
         case Screen::PresetSlots:

@@ -8,23 +8,23 @@
 pio test -e native
 ```
 
-This is the developer-facing Native entry point. The suite deliberately makes timing, musical behavior, persistence, UI, and physical-control contracts visible instead of presenting only the 44-case mathematical core. PlatformIO executes twelve conventionally named suites:
+This is the developer-facing Native entry point. The suite deliberately makes timing, musical behavior, persistence, UI, and physical-control contracts visible instead of presenting only the mathematical core. PlatformIO executes twelve conventionally named suites:
 
 | Suite | Named cases | What it proves |
 | --- | ---: | --- |
-| `test_clock_core` | 44 | hardware-independent clock mathematics and exhaustive invariants |
-| `test_realtime` | 35 | deterministic scheduler/GPIO/SYNC/RST integration, bounded Sequencer step-expression gates and stress behavior |
-| `test_sync_behavior` | 116 | exact/changing external clocks plus configurable INPUT 1/2 roles (SYNC/RESET/RUN/START/STOP/RESTART/TAP), role reassignment, RUN baselining, jitter/glitches/loss, PPQN/edge semantics and nominal analogue-front-end behavior |
+| `test_clock_core` | 46 | hardware-independent clock mathematics and exhaustive invariants |
+| `test_realtime` | 94 | deterministic scheduler/GPIO/SYNC/RST integration, bounded Sequencer step-expression gates and stress behavior |
+| `test_sync_behavior` | 125 | exact/changing external clocks plus configurable INPUT 1/2 roles (SYNC/RESET/RUN/START/STOP/RESTART/TAP), role reassignment, RUN baselining, jitter/glitches/loss, PPQN/edge semantics and nominal analogue-front-end behavior |
 | `test_sequencer2` | 20 | Sequencer 2.0 128-step pattern model, traversal/loop modes, bank migration and sparse Probability/Gate/Tie/Ratchet persistence/defensive boundaries |
-| `test_swing` | 40 | Swing/Groove mathematics, exhaustive Custom-Groove sweeps, TAP Recorder capture/Count-In/One-Shot/Endless behavior, and observable engine timing invariants |
-| `test_humanize` | 12 | deterministic One Clock timing displacement, bounds, repeatability and isolation |
-| `test_tap_tempo` | 24 | tap estimator acquisition, rolling average, clamps, invalid intervals, jitter and timestamp wrap |
-| `test_controls` | 51 | TIM4 encoder quadrature, detent-phase recovery after missed/coalesced transitions and encoder-push phase shifts, first-detent and immediate direction-reversal behavior, NORMAL/REVERSED direction mapping, fast-turn backlog/drain and saturation, debounce, bounce, hold and simultaneous button behavior |
-| `test_settings` | 89 | settings boundaries, configurable inputs, grouped channel settings, Groove Editor/Recorder menus, Custom Groove slot management, Info overflow/popover, device preferences and invalid-input invariants |
+| `test_swing` | 45 | Swing/Groove mathematics, exhaustive Custom-Groove sweeps, TAP Recorder capture/Count-In/One-Shot/Endless behavior, and observable engine timing invariants |
+| `test_humanize` | 14 | deterministic One Clock timing displacement, bounds, repeatability and isolation |
+| `test_tap_tempo` | 29 | tap estimator acquisition, rolling average, clamps, invalid intervals, jitter and timestamp wrap |
+| `test_controls` | 62 | TIM4 encoder quadrature, detent-phase recovery after missed/coalesced transitions and encoder-push phase shifts, first-detent and immediate direction-reversal behavior, NORMAL/REVERSED direction mapping, fast-turn backlog/drain and saturation, debounce, bounce, hold and simultaneous button behavior |
+| `test_settings` | 90 | settings boundaries, configurable inputs, grouped channel settings, Groove Editor/Recorder menus, Custom Groove slot management, Info overflow/popover, device preferences and invalid-input invariants |
 | `test_screensavers` | 19 | all screensaver renderers, deterministic/rewind behavior and long frame sweeps |
-| `test_easter_eggs` | 36 | intro launch gating, reset state, output safety and game-specific controls |
-| `test_host_firmware` | 39 | complete firmware/UI/HAL/persistence behavior, Groove Editor/Record workflows, schema migrations and framebuffer/navigation contracts using deterministic host fakes |
-| **Total** | **525** | public Native inventory |
+| `test_easter_eggs` | 41 | intro launch gating, reset state, output safety and game-specific controls |
+| `test_host_firmware` | 97 | complete firmware/UI/HAL/persistence behavior, Groove Editor/Record workflows, schema migrations and framebuffer/navigation contracts using deterministic host fakes |
+| **Total** | **682** | public Native inventory |
 
 The default Native configuration executes more than **433,000 assertions**. `scripts/check_test_inventory.py` enforces the visible-suite inventory contract so a broad test-count increase cannot hide a regression in one focused suite.
 

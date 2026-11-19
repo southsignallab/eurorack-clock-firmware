@@ -18,6 +18,15 @@ void initializeMcu();
 void configureInputPullup(mcu::Pin pin);
 /** @brief Configures one GPIO as a push-pull output. */
 void configureOutput(mcu::Pin pin);
+/**
+ * @brief Sets the output level of one GPIO, then makes it a push-pull output.
+ * @param pin GPIO to configure.
+ * @param high Level the pin drives from the moment it becomes an output.
+ *
+ * The output data bit is written while the pin is still an input, so the pin never drives
+ * another level, not even for one bus cycle (V3).
+ */
+void configureOutputAtLevel(mcu::Pin pin, bool high);
 /** @brief Reads one GPIO logic level. */
 bool read(mcu::Pin pin);
 /**

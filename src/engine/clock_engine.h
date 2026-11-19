@@ -219,6 +219,15 @@ public:
     void beginSchedulerQuantumFromIsr();
 
     /**
+     * @brief Releases the gate output stage with engine and driver both LOW (F-031).
+     *
+     * While the stage is muted the driver holds every source LOW, whatever the engine
+     * recorded. One interrupt lock lowers the engine's gate state, writes all sources LOW and
+     * enables the stage, so the next event raises its gate at the jack. Foreground only.
+     */
+    void enableOutputStage();
+
+    /**
      * @brief ISR-only: returns the scheduler ticks that elapsed up to one TIM3 update (F-012).
      * @param updateTimestampUs Microsecond timestamp (TIM5) of the latest scheduler update event.
      * @return Elapsed ticks since the previous call, rounded to whole ticks and bounded by
@@ -250,6 +259,14 @@ public:
     std::uint64_t nominalIntervalQ32(std::size_t channelIndex) const;
 
     /**
+     * @brief Returns the position of event serial 0 of a channel: schedule epoch plus phase.
+     *
+     * Groove Record aligns its grid to it (F-022). The epoch is read under a short lock;
+     * the phase offset is computed after it.
+     */
+    std::uint64_t channelGridOriginQ32(std::size_t channelIndex) const;
+
+    /**
      * @brief Estimates the engine position at an earlier microsecond timestamp.
      *
      * This compensates front-panel debounce latency for Groove Record without
@@ -263,6 +280,8 @@ public:
 #ifdef CLOCK_HOST_TEST
     /** @brief Returns how many full runtime resets were executed in deterministic host tests. */
     std::uint32_t resetRuntimeCountForTest() const;
+    /** @brief Returns the channels the engine currently holds HIGH (bit n = channel n). */
+    std::uint8_t gateHighMaskForTest() const { return gateHighMask_; }
     /** @brief Returns how many rising edges moved by one tick because the gate was still HIGH. */
     std::uint32_t deferredGateRiseCountForTest() const;
     /** @brief Returns how often the tick catch-up reached config::kMaximumSchedulerCatchUpTicks. */

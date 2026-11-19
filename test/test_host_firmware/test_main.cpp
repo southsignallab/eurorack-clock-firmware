@@ -592,6 +592,9 @@ hal::ButtonSample heldButton() { return {hal::ButtonEdge::None, true}; }
 #include "cases/groove_application.inc"
 #include "cases/persistence_coordinator.inc"
 #include "cases/timebase.inc"
+#include "cases/ui_lists_dialogs.inc"
+#include "cases/ui_wake_rules.inc"
+#include "cases/startup_and_games.inc"
 
 } // namespace
 
@@ -638,6 +641,7 @@ int main() {
     RUN_TEST(testNestedGroupNavigationCoverage);
     RUN_TEST(testCustomGrooveEditorControllerWorkflow);
     RUN_TEST(testCustomGrooveRecorderControllerWorkflow);
+    RUN_TEST(testGrooveRecordStartedMidStepUsesTheChannelGrid);
     RUN_TEST(testUiControllerFlows);
     RUN_TEST(testUiCursorWrapToleratesFullEncoderDeltaRange);
     RUN_TEST(testManualTempoAfterSignalLossAndExternalTempoLock);
@@ -674,6 +678,25 @@ int main() {
     RUN_TEST(testExtendedTimebaseReadsDuringTheWrapAndAnInterrupt);
     RUN_TEST(testMillisecondsStayOnTheMicrosecondBaseOverHours);
     RUN_TEST(testTapAtMicrosecondZeroAfterTheWrapKeepsTheMicrosecondBase);
+    RUN_TEST(testTemplateCursorStaysVisibleAtEveryPosition);
+    RUN_TEST(testPresetAndGrooveSlotCursorsStayVisible);
+    RUN_TEST(testTemplateApplyAsksWithNoPreselected);
+    RUN_TEST(testPerformanceScreenShowsTheActivePatternLength);
+    RUN_TEST(testSequencerCursorIsClampedAfterAShorterPaste);
+    RUN_TEST(testCustomGrooveIsOfferedOnlyWithAStoredGroove);
+    RUN_TEST(testHighScoreClearReturnsToTheHighScoresRow);
+    RUN_TEST(testGrooveZoomFlagEndsWithTheScreen);
+    RUN_TEST(testInformationPopoverWrapsAtWordBoundaries);
+    RUN_TEST(testSyncClockDoesNotKeepTheDisplayAwake);
+    RUN_TEST(testStartAndStopFromAnInputWakeTheDisplay);
+    RUN_TEST(testEncoderOnlyWakesTheSleepingDisplay);
+    RUN_TEST(testMenuKeysOnlyWakeTheSleepingDisplay);
+    RUN_TEST(testTransportKeysActWhileTheDisplaySleeps);
+    RUN_TEST(testTapReleaseAfterTapTurnDoesNotTriggerTheTapAction);
+    RUN_TEST(testGatesAreLowOutputsBeforePersistenceLoads);
+    RUN_TEST(testGateDriverWritesLowBeforeSwitchingToOutput);
+    RUN_TEST(testEnablingTheOutputStageStartsEngineAndDriverLow);
+    RUN_TEST(testFailedSpiPageIsSentAgain);
     std::cout << "Host firmware assertions: " << gChecks << "\n";
     return UNITY_END();
 }

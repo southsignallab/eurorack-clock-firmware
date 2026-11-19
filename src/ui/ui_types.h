@@ -15,6 +15,17 @@
 
 namespace clockfw::ui {
 
+/**
+ * Rows a list shows at once. The controller's scroll window and the renderer use the same
+ * constant, so the cursor is always on a drawn row (F-019).
+ */
+/** Factory-template list: four 12-pixel rows below the title. */
+inline constexpr std::uint8_t kVisibleTemplateRows = 4U;
+/** Named-preset and Custom Groove slot lists: five 10-pixel rows below the title. */
+inline constexpr std::uint8_t kVisibleSlotRows = 5U;
+/** Text settings pages: five rows below the title. */
+inline constexpr std::uint8_t kVisibleSettingsRows = 5U;
+
 /** @brief Top-level OLED working screens. */
 enum class Screen : std::uint8_t {
     Performance,
@@ -37,7 +48,9 @@ enum class Screen : std::uint8_t {
     GrooveDeleteConfirm,
     GrooveDiscardConfirm,
     GrooveNameEntry,
-    InformationPopover
+    InformationPopover,
+    /** APPLY TEMPLATE? with NO preselected before a factory template replaces the configuration (D-09). */
+    TemplateApplyConfirm
 };
 
 /** @brief Hierarchical text settings pages. */
@@ -133,6 +146,8 @@ struct NavigationState {
     PersistenceNotice persistenceNotice = PersistenceNotice::None;
     /** True when the selected ranked Easter egg has created a durable leaderboard record. */
     bool highScoreResetAvailable = false;
+    /** Template that APPLY TEMPLATE? applies on YES. */
+    std::uint8_t pendingTemplate = 0U;
     PresetSlotAction presetSlotAction = PresetSlotAction::Load;
     std::uint8_t selectedPresetSlot = 0U;
     std::uint8_t nameCharacterIndex = 0U;

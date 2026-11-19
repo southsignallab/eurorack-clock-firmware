@@ -18,6 +18,28 @@ namespace clockfw::game {
 
 enum class ArcadeTitle : std::uint8_t { PixelRaid, Formula1, Breakout, EggJourney, Beatknecht };
 
+/** @brief Detects the encoder long press that leaves a boot game. */
+class LongPressDetector final {
+public:
+    /**
+     * @brief Feeds one control sample.
+     * @param button Encoder push sample.
+     * @param nowMs Current monotonic time in milliseconds.
+     * @param holdMs Hold time that makes a long press.
+     * @param enabled False while a dialog owns the encoder; the press is still tracked.
+     * @return True once per press, when it has been held for @p holdMs.
+     */
+    bool update(const hal::ButtonSample& button, std::uint32_t nowMs, std::uint32_t holdMs, bool enabled = true);
+
+    /** @brief Forgets the current press; it can no longer fire. */
+    void cancel();
+
+private:
+    std::uint32_t pressedAtMs_ = 0U;
+    /** Every millisecond value is a valid press time, including 0 (F-074). */
+    bool tracking_ = false;
+};
+
 class ArcadeShell final {
 public:
     enum class Screen : std::uint8_t { Intro, Playing, NameEntry, Leaderboard };

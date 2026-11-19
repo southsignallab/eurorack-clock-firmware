@@ -13,6 +13,7 @@
 
 #include "simulator_contract_tests.h"
 #include "simulator_regression_tests.h"
+#include "panel_led_visual.h"
 #include "scope_session.h"
 #include "scope_timeline.h"
 #include "simulator_runtime.h"
@@ -34,6 +35,17 @@ int main() {
 
     if (clockfw::sim::tests::runStaticContracts() != 0) {
         return 1;
+    }
+
+    // F-074 / W-337: a rising edge at simulator time 0 is an edge, not "no edge yet".
+    ChannelTelemetry risenAtZero{};
+    risenAtZero.risingEdges = 1ULL;
+    risenAtZero.lastRisingUs = 0ULL;
+    if (!panelLedVisuallyLit(risenAtZero, 1000ULL, 1.0)) {
+        return fail("an LED must glow after a rising edge at simulator time 0");
+    }
+    if (panelLedVisuallyLit(ChannelTelemetry{}, 1000ULL, 1.0)) {
+        return fail("an LED without any rising edge must stay dark");
     }
 
 

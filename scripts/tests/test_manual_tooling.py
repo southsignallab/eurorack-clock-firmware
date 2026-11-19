@@ -89,7 +89,7 @@ class ManualToolingTests(unittest.TestCase):
         actual_entries = {path.name for path in archive.iterdir()}
         self.assertEqual(actual_entries, expected_files)
         self.assertTrue(all(path.is_file() for path in archive.iterdir()))
-        self.assertEqual({"1.0.0", "1.0.1", "1.1.0"}, stable_versions)
+        self.assertEqual({"1.0.0", "1.0.1", "1.1.0", "1.2.0"}, stable_versions)
 
     def test_prerelease_manual_defaults_outside_archive(self) -> None:
         version = "1.1.0-beta.1"
@@ -600,6 +600,28 @@ class ManualPrintLayoutTests(unittest.TestCase):
         introduction = re.sub(r"<[^>]+>", "", content[start:content.find("<draw:frame", start)])
         self.assertIn("IN 1 and IN 2 (factory roles SYNC and RESET)", introduction)
         self.assertNotIn("RST", introduction)
+
+    def test_storage_chapter_explains_save_error_and_update_firmware(self) -> None:
+        # F-059 / W-318: the printed manual explains both banners like user guide chapter 17.
+        import re
+        import zipfile
+
+        with zipfile.ZipFile(ROOT / "docs" / "manual-source" / "clock-user-manual.odt") as archive:
+            content = archive.read("content.xml").decode("utf-8")
+        start = content.find("Presets, autosave and templates</text:span></text:h>")
+        end = content.find("Screensaver and display protection</text:span></text:h>", start)
+        self.assertGreater(start, 0)
+        self.assertGreater(end, start)
+        chapter = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", content[start:end]))
+        for expected in (
+            "SAVE ERROR",
+            "after 1, 2, 4, 8, 16 and 32 seconds",
+            "until the next change or until the module is switched off and on",
+            "for 3 seconds after every front-panel action",
+            "UPDATE FIRMWARE",
+            "Only FACTORY RESET (ERASE ALL DATA) lifts the lock",
+        ):
+            self.assertIn(expected, chapter)
 
     def working_manual_text(self) -> str:
         import re

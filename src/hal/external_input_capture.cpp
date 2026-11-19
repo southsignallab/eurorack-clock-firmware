@@ -59,10 +59,6 @@ std::uint32_t ExternalInputCapture::collapsedResetEdges() const {
     return resetQueue_.overflowCount;
 }
 
-std::uint32_t ExternalInputCapture::activitySequence() const {
-    return activitySequence_;
-}
-
 void ExternalInputCapture::syncInterruptThunk() {
     if (activeInstance_ != nullptr) {
         activeInstance_->captureSyncFromIsr();
@@ -92,7 +88,6 @@ void ExternalInputCapture::captureFromIsr(
     // time means an even number, at least two: a pulse shorter than the latency.
     const bool merged = high == storedLevelHigh;
     storedLevelHigh = high;
-    ++activitySequence_;
     if (merged) {
 #ifdef CLOCK_HOST_TEST
         ++synthesizedEdgesForTest_;
@@ -163,7 +158,6 @@ void ExternalInputCapture::injectSyncEdgeForTest(
     const std::uint32_t timestampUs,
     const bool high) {
     syncLevelHigh_ = high;
-    ++activitySequence_;
     pushFromIsr(syncQueue_, {timestampUs, high});
 }
 
@@ -171,7 +165,6 @@ void ExternalInputCapture::injectResetEdgeForTest(
     const std::uint32_t timestampUs,
     const bool high) {
     resetLevelHigh_ = high;
-    ++activitySequence_;
     pushFromIsr(resetQueue_, {timestampUs, high});
 }
 #endif

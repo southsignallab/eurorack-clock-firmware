@@ -2,7 +2,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/clock-firmware-hero-dark.webp">
-  <img src="docs/assets/readme/clock-firmware-hero-light.webp" width="100%" alt="CLOCK firmware by South Signal Lab, version 1.1.0, with a render of the Revision C hardware">
+  <img src="docs/assets/readme/clock-firmware-hero-light.webp" width="100%" alt="CLOCK firmware by South Signal Lab, version 1.2.0, with a render of the Revision C hardware">
 </picture>
 
 # CLOCK Firmware
@@ -11,7 +11,7 @@ Firmware for CLOCK, the eight-channel Eurorack master clock and gate sequencer i
 
 The project is deliberately DIY-oriented: commonly obtainable parts, a compact physical interface, reproducible builds, a native simulator, strong automated tests, and documentation that is meant to be useful at the workbench rather than merely satisfy a release checklist.
 
-**[Download firmware 1.1.0](https://github.com/southsignallab/eurorack-clock-firmware/releases/latest)** · [User manual](https://github.com/southsignallab/eurorack-clock-firmware/wiki/Manual-and-Downloads) · [Product page](https://southsignallab.com/hardware/clock/)
+**[Download firmware 1.2.0](https://github.com/southsignallab/eurorack-clock-firmware/releases/latest)** · [User manual](https://github.com/southsignallab/eurorack-clock-firmware/wiki/Manual-and-Downloads) · [Product page](https://southsignallab.com/hardware/clock/)
 
 [![CI](https://github.com/southsignallab/eurorack-clock-firmware/actions/workflows/ci.yml/badge.svg)](https://github.com/southsignallab/eurorack-clock-firmware/actions/workflows/ci.yml) [![Manual publication](https://github.com/southsignallab/eurorack-clock-firmware/actions/workflows/manual-publication.yml/badge.svg)](https://github.com/southsignallab/eurorack-clock-firmware/actions/workflows/manual-publication.yml) [![Release](https://img.shields.io/github/v/release/southsignallab/eurorack-clock-firmware?include_prereleases&sort=semver&label=release)](https://github.com/southsignallab/eurorack-clock-firmware/releases)
 
@@ -29,7 +29,7 @@ Revision B is the assembled development module the firmware runs on today. It wa
 </table>
 
 > [!IMPORTANT]
-> **Stable firmware: `1.1.0`.** This release makes Grooves a first-class timing tool, adds Pre-Count and configurable digital-input roles, and expands Custom Grooves with graphical editing, live TAP recording, named storage, the horizontal Channel Mode carousel, and the related UI/persistence work.
+> **Stable firmware: `1.2.0`.** This release adds Sequencer 2.0 (1–128-step patterns, eight pattern slots per channel, per-step Probability, Gate, Tie and Ratchet) and closes the known timing, input, persistence and UI defects of the 1.1 line. The Groove, Pre-Count and configurable-input features of `1.1.0` are unchanged.
 
 **HIL policy:** the physical HIL ledger remains fully visible and evidence-checked, but incomplete HIL status is advisory for release automation through `1.4.x`. The hard all-PASS release gate activates for release candidates and stable releases from `1.5.0` onward. Physical Groove/TAP-record captures are therefore tracked qualification evidence, not substituted by host tests. See [`docs/qualification/`](docs/qualification/README.md) and [`docs/HIL_TEST_PLAN.md`](docs/HIL_TEST_PLAN.md).
 
@@ -81,7 +81,7 @@ CLOCK reached **1.0** by stabilizing and qualifying the product that already exi
 
 ```mermaid
 flowchart LR
-    V1["1.0.1<br/>Stable baseline"] --> G["1.1.0<br/>Stable<br/>Grooves + Pre-Count"] --> S["NOW<br/>1.2 dev<br/>Sequencer 2.0"] --> E["1.3<br/>Euclid Fill<br/>Conditions"] --> R["1.4<br/>Ratchet / Burst"] --> N["1.5<br/>Structured Random<br/>Hard HIL gate"] --> I["1.6<br/>Channel Interaction"] --> P["1.7<br/>Scenes + Phase"]
+    V1["1.0.1<br/>Stable baseline"] --> G["1.1.0<br/>Grooves + Pre-Count"] --> S["NOW<br/>1.2.0<br/>Stable<br/>Sequencer 2.0"] --> E["1.3<br/>Euclid Fill<br/>Conditions"] --> R["1.4<br/>Ratchet / Burst"] --> N["1.5<br/>Structured Random<br/>Hard HIL gate"] --> I["1.6<br/>Channel Interaction"] --> P["1.7<br/>Scenes + Phase"]
     V1 -. separate track .-> VCV["VCV Rack<br/>Development preview"]
 ```
 
@@ -290,22 +290,22 @@ The public PlatformIO command exposes the complete native suite rather than a sm
 pio test -e native
 ```
 
-Current inventory: **525 explicitly named Native test cases**. PlatformIO exposes twelve behavioral suites rather than leaving the 44-case mathematical core as the dominant visible result:
+Current inventory: **682 explicitly named Native test cases**. PlatformIO exposes twelve behavioral suites rather than leaving the mathematical core as the dominant visible result:
 
 | Native suite | Cases | Primary purpose |
 | --- | ---: | --- |
-| `test_clock_core` | 44 | deterministic rate, Q32, probability, Euclid and sequencer mathematics |
-| `test_realtime` | 35 | scheduler, physical gate driver and realtime input/timing integration, including bounded Sequencer Tie/Ratchet gate behavior |
-| `test_sync_behavior` | 116 | external clock acquisition plus configurable INPUT 1/2 role semantics, transport commands, reset/run levels, jitter/glitches/loss and nominal LM393-front-end modeling |
+| `test_clock_core` | 46 | deterministic rate, Q32, probability, Euclid and sequencer mathematics |
+| `test_realtime` | 94 | scheduler, physical gate driver and realtime input/timing integration, including bounded Sequencer Tie/Ratchet gate behavior |
+| `test_sync_behavior` | 125 | external clock acquisition plus configurable INPUT 1/2 role semantics, transport commands, reset/run levels, jitter/glitches/loss and nominal LM393-front-end modeling |
 | `test_sequencer2` | 20 | Sequencer 2.0 128-step pattern model, direction/loop contracts, deterministic RANDOM, bank migration and sparse step-expression persistence/defensive boundaries |
-| `test_swing` | 40 | Swing/Groove mathematics, exhaustive Custom-Groove sweeps, Groove Record capture and engine timing invariants |
-| `test_humanize` | 12 | One Clock humanize bounds, deterministic repeatability, channel spread, swing interaction and mode isolation |
-| `test_tap_tempo` | 24 | tap acquisition, averaging, clamps, invalid intervals, reset behavior, jitter and timestamp wrap |
-| `test_controls` | 51 | TIM4 quadrature counting, detent recovery, fast-turn behavior, NORMAL/REVERSED direction and button debounce |
-| `test_settings` | 89 | settings boundaries, input-role exclusivity, INPUTS/HARDWARE navigation, device preferences, grouped channel settings and invalid-input behavior |
+| `test_swing` | 45 | Swing/Groove mathematics, exhaustive Custom-Groove sweeps, Groove Record capture and engine timing invariants |
+| `test_humanize` | 14 | One Clock humanize bounds, deterministic repeatability, channel spread, swing interaction and mode isolation |
+| `test_tap_tempo` | 29 | tap acquisition, averaging, clamps, invalid intervals, reset behavior, jitter and timestamp wrap |
+| `test_controls` | 62 | TIM4 quadrature counting, detent recovery, fast-turn behavior, NORMAL/REVERSED direction and button debounce |
+| `test_settings` | 90 | settings boundaries, input-role exclusivity, INPUTS/HARDWARE navigation, device preferences, grouped channel settings and invalid-input behavior |
 | `test_screensavers` | 19 | all screensaver renderers, deterministic frames, rewind behavior and long frame sweeps |
-| `test_easter_eggs` | 36 | launch gating, reset state, host-safe output behavior and game-specific control/state contracts |
-| `test_host_firmware` | 39 | complete firmware/UI/HAL/persistence scenarios, Groove Editor/Record workflows, schema migration and framebuffer/navigation contracts against deterministic framework fakes |
+| `test_easter_eggs` | 41 | launch gating, reset state, host-safe output behavior and game-specific control/state contracts |
+| `test_host_firmware` | 97 | complete firmware/UI/HAL/persistence scenarios, Groove Editor/Record workflows, schema migration and framebuffer/navigation contracts against deterministic framework fakes |
 
 The default Native run executes more than **447,000 assertions**. Exhaustive loops remain useful for mathematical invariants, but user-visible musical and control contracts now also have independently reported cases. The nominal front-end tests exercise 2.5 V, 3 V and 4 V clock amplitudes through the documented resistor/hysteresis model; they do **not** replace physical comparator HIL.
 

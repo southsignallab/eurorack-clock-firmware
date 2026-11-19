@@ -49,14 +49,12 @@ void BreakoutGame::run() {
     while (!exitRequested_) {
         const std::uint32_t nowMs = hal::SystemClock::milliseconds();
         const hal::ControlSample controls = controls_.sample(nowMs);
-        if (controls.encoderButton.edge == hal::ButtonEdge::Pressed) encoderPressedAtMs_ = nowMs;
-        if (!controls.encoderButton.pressed) encoderPressedAtMs_ = 0U;
-        else if (encoderPressedAtMs_ != 0U && nowMs - encoderPressedAtMs_ >= kExitLongPressMs) exitRequested_ = true;
+        if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs)) exitRequested_ = true;
         const ArcadeShell::Action action = shell_.update(controls, nowMs);
         if (action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun) { highScore_.score = shell_.highScore(); resetSession(); }
         if (shell_.playing()) update(controls, nowMs);
         if (nowMs - lastFrameAtMs >= kFrameIntervalMs) { if (shell_.playing()) render(); else shell_.render(nowMs); lastFrameAtMs = nowMs; }
-        (void)display_.service();
+        (void)display_.service();  // only reports pending I2C work
         hal::SystemClock::delayMilliseconds(1U);
     }
     gateOutputs_.setAllChannelsLow(); gateOutputs_.disableOutputStage();
@@ -71,9 +69,7 @@ void BreakoutGame::beginForSimulator() {
 }
 bool BreakoutGame::serviceForSimulator(const std::uint32_t nowMs) {
     const hal::ControlSample controls = controls_.sample(nowMs);
-    if (controls.encoderButton.edge == hal::ButtonEdge::Pressed) encoderPressedAtMs_ = nowMs;
-    if (!controls.encoderButton.pressed) encoderPressedAtMs_ = 0U;
-    else if (encoderPressedAtMs_ != 0U && nowMs - encoderPressedAtMs_ >= kExitLongPressMs) exitRequested_ = true;
+    if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs)) exitRequested_ = true;
     const ArcadeShell::Action action = shell_.update(controls, nowMs);
     if (action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun) { highScore_.score = shell_.highScore(); resetSession(); }
     if (shell_.playing()) update(controls, nowMs);
@@ -86,7 +82,7 @@ bool BreakoutGame::serviceForSimulator(const std::uint32_t nowMs) {
 void BreakoutGame::resetSession() {
     bricks_.fill(true); paddleWidth_ = kDefaultPaddleWidth; paddleStep_ = kDefaultPaddleStep; paddleX_ = 54;
     activeExtra_ = ExtraType::None; fallingExtra_ = {}; extraExpiresAtMs_ = 0U; lastPhysicsAtMs_ = 0U;
-    encoderPressedAtMs_ = 0U; exitRequested_ = false; gameOver_ = false; score_ = 0U; lives_ = 3U; level_ = 1U; resetBall();
+    exitHold_.cancel(); exitRequested_ = false; gameOver_ = false; score_ = 0U; lives_ = 3U; level_ = 1U; resetBall();
 }
 
 void BreakoutGame::resetBall() {

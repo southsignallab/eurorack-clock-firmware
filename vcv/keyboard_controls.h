@@ -65,4 +65,29 @@ KeyboardEventResult applyKeyboardEvent(
     KeyAction action,
     bool nonShiftModifiers) noexcept;
 
+/**
+ * @brief Releases every control held through the keyboard (F-065).
+ *
+ * Called when the pointer leaves the module: key releases then go to another widget and
+ * would never reach CLOCK.
+ *
+ * @param held Controls held through the keyboard; cleared in place.
+ * @return True when at least one control was held.
+ */
+bool releaseHeldControls(KeyboardHeldControls& held) noexcept;
+
+/** @brief Returns whether the host key for one panel control is down right now. */
+using PanelKeyDownQuery = bool (*)(PanelKey key);
+
+/**
+ * @brief Releases every held control whose host key is no longer down (F-065).
+ *
+ * Called once per UI frame, so a release that arrived at another widget still ends the hold.
+ *
+ * @param held Controls held through the keyboard; updated in place.
+ * @param keyDown Reports whether the host key of a hold-type panel key is down.
+ * @return True when a control was released.
+ */
+bool reconcileHeldControls(KeyboardHeldControls& held, PanelKeyDownQuery keyDown) noexcept;
+
 }  // namespace clockfw::vcv

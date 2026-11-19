@@ -820,3 +820,80 @@ void testMixedPanelAndInputTapsShareOneTimeBase() {
         CHECK_EQ(afterWrap, beforeWrap);
     }
 }
+
+void testGrooveRecordStartedMidStepUsesTheChannelGrid() {
+    // F-022 / W-087: a recording started mid-step aligns with the channel grid, so a tap on a
+    // grid step lands on that step with no offset, and the step number is the one playback uses.
+    resetFakes();
+    prepareDisplaySuccess();
+    hal::OledDisplay display;
+    CHECK(display.begin());
+    ClockState state = makeDefaultState();
+    state.operatingMode = OperatingMode::UnifiedClock;
+    hal::GateOutputDriver gates;
+    gates.beginDisabled();
+    engine::ClockEngine engine(gates);
+    engine.begin(state);
+    hal::PersistentStorage::resetForTest();
+    hal::PersistentStorage storage;
+    services::PersistentStateService persistentState(storage);
+    persistentState.begin();
+    services::CustomGrooveStore grooveStore(storage);
+    ui::UiRenderer renderer(display, persistentState, grooveStore);
+    ui::UiController controller(state, engine, renderer, persistentState, grooveStore);
+    std::uint32_t now = 100U;
+
+    // SETTINGS -> CHANNEL SETTINGS -> TIMING -> GROOVE -> RECORD.
+    controllerOpenSettingsChord(controller, now);
+    controllerTurn(controller, 1, now);
+    controllerShortPress(controller, now);
+    controllerTurn(controller, 1, now);
+    controllerShortPress(controller, now);
+    controllerTurn(controller, 4, now);
+    controllerShortPress(controller, now);
+    controllerTurn(controller, 5, now);
+    controllerShortPress(controller, now);
+    CHECK_EQ(controller.navigation().screen, ui::Screen::GrooveRecorder);
+    auto& nav = ui::UiControllerTestAccess::navigation(controller);
+    nav.grooveRecordMode = ui::GrooveRecordMode::Endless;
+    nav.grooveRecordCountInBeats = 0U;
+    nav.grooveDraft.length = 4U;
+
+    // The clock already runs; recording starts 2.4 steps in.
+    state.transport = TransportState::Playing;
+    engine.play();
+    const std::uint64_t intervalQ32 = engine.nominalIntervalQ32(0U);
+    const auto runTo = [&](const std::uint64_t positionQ32) {
+        std::uint32_t ticks = 0U;
+        while (engine.snapshot().masterPositionQ32 < positionQ32 && ticks++ < 200'000U) {
+            engine.processSchedulerTick();
+        }
+        CHECK(ticks < 200'000U);
+    };
+    runTo(2U * intervalQ32 + (2U * intervalQ32) / 5U);
+    hal::ControlSample sample{};
+    sample.transportButton = releasedEdge();
+    controller.processControls(sample, now++);
+    CHECK_EQ(controller.navigation().grooveRecordState, ui::GrooveRecordState::Recording);
+
+    // Taps exactly on grid steps 3 and 5: playback steps 3 % 4 and 5 % 4, no offset.
+    const auto tapNow = [&](const std::uint32_t edgeUs) {
+        sample = {};
+        sample.tapButton = {hal::ButtonEdge::Pressed, true, edgeUs, true};
+        controller.processControls(sample, now++, edgeUs);
+    };
+    runTo(3U * intervalQ32);
+    tapNow(3'000'000U);
+    CHECK(((controller.navigation().grooveRecordCapturedMask >> 3U) & 1ULL) != 0ULL);
+    CHECK_EQ(controller.navigation().grooveDraft.offsets256[3], 0);
+    runTo(5U * intervalQ32);
+    tapNow(4'000'000U);
+    CHECK(((controller.navigation().grooveRecordCapturedMask >> 1U) & 1ULL) != 0ULL);
+    CHECK_EQ(controller.navigation().grooveDraft.offsets256[1], 0);
+    CHECK_EQ(controller.navigation().grooveRecordCapturedMask, 0x0AULL);
+
+    // The playhead shows the playback step of the grid as well.
+    runTo(6U * intervalQ32 + intervalQ32 / 2U);
+    controller.serviceRendering(now++);
+    CHECK_EQ(controller.navigation().grooveRecordPlayheadStep, 2U);
+}

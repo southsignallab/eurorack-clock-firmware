@@ -106,6 +106,7 @@ void UiController::toggleGrooveRecording(const std::uint32_t nowMs) {
     grooveRecorder_.setCountInBeats(navigation_.grooveRecordCountInBeats);
     grooveRecorder_.start(
         engine_.snapshot().masterPositionQ32,
+        engine_.channelGridOriginQ32(timingChannel),
         engine_.nominalIntervalQ32(timingChannel),
         navigation_.grooveDraft.length);
     const services::GrooveRecorderView started = grooveRecorder_.view();

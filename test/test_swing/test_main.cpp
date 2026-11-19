@@ -742,6 +742,44 @@ void testGrooveRecorderCountInAndOneShotCapture() {
     TEST_ASSERT_EQUAL_UINT8(0U, recorder.view().playheadStep);
 }
 
+void testGrooveRecorderAlignsToTheChannelGrid() {
+    // F-022 / W-087: the recording grid follows the channel grid, not the arming position.
+    services::GrooveRecorder recorder;
+    CustomGroovePattern pattern{};
+    pattern.length = 4U;
+    constexpr std::uint64_t step = core::kQ32One;  // one beat per step
+    constexpr std::uint64_t origin = core::kQ32One / 4ULL;  // epoch plus phase
+
+    // Armed at 2.65, one beat Count-In: recording starts at 3.65, the grid at 4.25 (serial 4).
+    recorder.reset(services::GrooveRecordMode::OneShot, 1U);
+    recorder.start(2ULL * core::kQ32One + (13ULL * core::kQ32One) / 20ULL, origin, step, pattern.length);
+    TEST_ASSERT_EQUAL(services::GrooveRecordState::PreCount, recorder.view().state);
+    TEST_ASSERT_TRUE(recorder.service(4ULL * core::kQ32One, pattern.length));
+    TEST_ASSERT_EQUAL(services::GrooveRecordState::Recording, recorder.view().state);
+    TEST_ASSERT_EQUAL_UINT8(0U, recorder.view().playheadStep);  // serial 4 is step 0
+    TEST_ASSERT_FALSE(recorder.capture(4ULL * core::kQ32One, pattern));  // before the grid step
+    TEST_ASSERT_TRUE(recorder.capture(origin + 5ULL * step + step / 8ULL, pattern));
+    TEST_ASSERT_EQUAL(32, pattern.offsets256[1]);  // serial 5 is step 1, an eighth late
+    TEST_ASSERT_TRUE(recorder.service(origin + 7ULL * step + step / 2ULL, pattern.length));
+    TEST_ASSERT_EQUAL_UINT8(3U, recorder.view().playheadStep);
+    TEST_ASSERT_TRUE(recorder.service(origin + 8ULL * step, pattern.length));  // one cycle done
+    TEST_ASSERT_EQUAL(services::GrooveRecordState::Ready, recorder.view().state);
+
+    // Armed exactly on a grid step without Count-In: that step is the first one.
+    recorder.reset(services::GrooveRecordMode::Endless, 0U);
+    recorder.start(origin + 6ULL * step, origin, step, pattern.length);
+    TEST_ASSERT_TRUE(recorder.capture(origin + 6ULL * step, pattern));
+    TEST_ASSERT_TRUE((recorder.view().capturedMask & 0x4ULL) != 0ULL);  // serial 6 is step 2
+
+    // A grid origin still ahead (phase after a restart): recording waits for serial 0.
+    recorder.reset(services::GrooveRecordMode::Endless, 0U);
+    recorder.start(0U, origin, step, pattern.length);
+    TEST_ASSERT_FALSE(recorder.service(origin / 2ULL, pattern.length));
+    TEST_ASSERT_EQUAL_UINT8(0U, recorder.view().playheadStep);
+    TEST_ASSERT_TRUE(recorder.capture(origin, pattern));
+    TEST_ASSERT_TRUE((recorder.view().capturedMask & 0x1ULL) != 0ULL);
+}
+
 void testGrooveRecorderEndlessWrapsAndOverwritesTappedStepOnly() {
     services::GrooveRecorder recorder;
     CustomGroovePattern pattern{};
@@ -932,6 +970,7 @@ int main() {
     RUN_TEST(testCustomGrooveMinimumSpacingQ16);
     RUN_TEST(testCustomGrooveDefensiveAndRescheduleBranches);
     RUN_TEST(testGrooveRecorderCountInAndOneShotCapture);
+    RUN_TEST(testGrooveRecorderAlignsToTheChannelGrid);
     RUN_TEST(testGrooveRecorderEndlessWrapsAndOverwritesTappedStepOnly);
     RUN_TEST(testGrooveRecorderGuardsClampAndClearCaptureState);
     RUN_TEST(testGrooveRecorderDefensiveServiceBranches);

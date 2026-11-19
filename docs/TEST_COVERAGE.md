@@ -1,8 +1,8 @@
 <!-- Author: Axel Napolitano | License: PolyForm-Noncommercial-1.0.0 -->
 
-# South Signal Lab CLOCK Test Coverage — stable v1.1.0
+# South Signal Lab CLOCK Test Coverage — stable v1.2.0
 
-The stable-release test policy is repository-wide rather than limited to `clock_core`. Stable 1.1.0 shipped with 497 named Native cases. The current post-1.1 development tree adds the focused `test_sequencer2` suite plus current Sequencer expression/UI, realtime gate and persistence-coordinator regressions for a **559-case** working inventory, while `run_host_tests.py` remains the authoritative variant/sanitizer/coverage matrix.
+The stable-release test policy is repository-wide rather than limited to `clock_core`. Stable 1.1.0 shipped with 497 named Native cases. Release 1.2.0 adds the focused `test_sequencer2` suite plus Sequencer expression/UI, realtime gate, input, persistence-coordinator, wake-rule and start-up regressions for a **682-case** inventory, while `run_host_tests.py` remains the authoritative variant/sanitizer/coverage matrix.
 
 ## Hard CI gates
 
@@ -33,6 +33,16 @@ Compiler branches:   5640/7322 (77.03%, informational only)
 ```
 
 This is a host-coverage result, not HIL evidence. The 90% decision threshold is unchanged.
+
+CLOCK 1.2.0 release baseline after Sequencer 2.0, the timing, input and persistence fixes, the UI and start-up fixes and the boot-game fixes (682 named Native cases):
+
+```text
+Executable lines:  11813/12275 (96.24%)
+Functions:          1101/1116  (98.66%)
+Decision branches:  7432/8187  (90.78%)
+```
+
+This is a host-coverage result as well; the physical HIL ledger for 1.2.0 remains pending.
 
 Post-1.1 r45 development aggregate after adding the Sequencer 2.0 model/store and 8-KiB migration path:
 

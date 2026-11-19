@@ -9,14 +9,52 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import os
 import shutil
 import subprocess
+import sys
+from collections.abc import Callable
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / "build" / "vcv-coverage"
 TARGET_SOURCE = (ROOT / "vcv" / "clock_vcv_runtime.cpp").resolve()
 COVERAGE_DIR = ROOT / "coverage"
+
+
+class ToolchainError(RuntimeError):
+    """No compiler that writes gcov coverage data was found."""
+
+
+def cmake_toolchain_arguments(
+    os_name: str,
+    which: Callable[[str], str | None] = shutil.which,
+) -> list[str]:
+    """Return the CMake generator and compiler arguments for this host (F-066).
+
+    On Windows CMake would pick MSVC, which writes no gcov data. Use MinGW-w64 GCC
+    with Ninja from PATH instead, or stop with a message that names what is missing.
+    Other hosts keep the CMake default (GCC or Clang with gcov).
+    """
+    if os_name != "nt":
+        return []
+    found = {name: which(name) for name in ("gcc", "g++", "gcov", "ninja")}
+    missing = [name for name, path in found.items() if path is None]
+    if missing:
+        raise ToolchainError(
+            "VCV runtime coverage on Windows needs MinGW-w64 GCC with gcov and Ninja on PATH "
+            f"(missing: {', '.join(missing)}). Install MSYS2 UCRT64 "
+            "(pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-ninja) and put "
+            "C:\\msys64\\ucrt64\\bin first on PATH, or run the check in WSL. "
+            "MSVC writes no gcov data and is not supported."
+        )
+    # CMake reads backslashes in -D values as escape sequences.
+    return [
+        "-G",
+        "Ninja",
+        f"-DCMAKE_C_COMPILER={str(found['gcc']).replace(chr(92), '/')}",
+        f"-DCMAKE_CXX_COMPILER={str(found['g++']).replace(chr(92), '/')}",
+    ]
 
 
 def run(command: list[str], cwd: Path = ROOT) -> None:
@@ -75,12 +113,18 @@ def collect_report(notes_file: Path) -> tuple[float, float, float, int, int, int
     raise RuntimeError("gcov report did not contain vcv/clock_vcv_runtime.cpp")
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--minimum-line", type=float, default=95.0)
     parser.add_argument("--minimum-function", type=float, default=95.0)
     parser.add_argument("--minimum-branch", type=float, default=90.0)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+
+    try:
+        toolchain = cmake_toolchain_arguments(os.name)
+    except ToolchainError as error:
+        print(f"check_vcv_runtime_coverage.py: {error}", file=sys.stderr)
+        return 2
 
     if BUILD.exists():
         shutil.rmtree(BUILD)
@@ -88,6 +132,7 @@ def main() -> int:
         "cmake",
         "-S", ".",
         "-B", str(BUILD.relative_to(ROOT)),
+        *toolchain,
         "-DCLOCK_SIMULATOR_WITH_SDL=OFF",
         "-DCMAKE_BUILD_TYPE=Debug",
         "-DCMAKE_CXX_FLAGS=--coverage -O0",

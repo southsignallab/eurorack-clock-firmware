@@ -331,7 +331,7 @@ int main() {
     RUN_TEST(testInput2OnlyRoleChangeInvalidatesQueuedMeaning);
     RUN_TEST(testSelectingRunIsTransportNeutralUntilPhysicalLevelChanges);
     RUN_TEST(testPersistedRunDoesNotBreakBootStopOnStandingHighLevel);
-    RUN_TEST(testExternalInputActivitySequenceTracksSyncAndReset);
+    RUN_TEST(testOnlyInputTransportCommandsCountAsActivity);
     std::cout << "SYNC behavior assertions: " << checks << "\n";
     RUN_TEST(testShortStartPulseBetweenLowLevelsStartsOnce);
     RUN_TEST(testMergedEdgesBetweenHighLevelsQueueFallThenRise);

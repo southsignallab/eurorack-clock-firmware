@@ -403,3 +403,33 @@ void testEngineExternalSyncDefensiveConfigurationPaths() {
         CHECK(snapshot.masterBar >= 1U);
     }
 }
+
+void testResetRestartsTheExternalMusicalPosition() {
+    // F-027 / W-104: a reset restarts the bar/beat counter that follows external pulses;
+    // the next pulse must not jump back to the position before the reset.
+    Fixture fixture;
+    fixture.state.source = ClockSource::External;
+    fixture.state.masterMeter = {4U, 4U};
+    fixture.begin();
+    for (std::uint32_t pulse = 0U; pulse < 7U; ++pulse) {
+        fixture.engine.acceptExternalPulse(120000U, 1U);  // one quarter note per pulse
+    }
+    CHECK_EQ(fixture.engine.snapshot().masterBar, 2U);
+    CHECK_EQ(fixture.engine.snapshot().masterBeat, 3U);
+
+    fixture.engine.resetGlobalPhase();
+    CHECK_EQ(fixture.engine.snapshot().masterBar, 1U);
+    CHECK_EQ(fixture.engine.snapshot().masterBeat, 1U);
+    fixture.engine.acceptExternalPulse(120000U, 1U);
+    CHECK_EQ(fixture.engine.snapshot().masterBar, 1U);
+    CHECK_EQ(fixture.engine.snapshot().masterBeat, 2U);
+
+    // The same for a RESET trigger in scheduler context.
+    for (std::uint32_t pulse = 0U; pulse < 5U; ++pulse) {
+        fixture.engine.acceptExternalPulse(120000U, 1U);
+    }
+    fixture.engine.resetGlobalPhaseFromIsr();
+    fixture.engine.acceptExternalPulse(120000U, 1U);
+    CHECK_EQ(fixture.engine.snapshot().masterBar, 1U);
+    CHECK_EQ(fixture.engine.snapshot().masterBeat, 2U);
+}

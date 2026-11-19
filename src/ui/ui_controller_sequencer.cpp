@@ -265,10 +265,11 @@ bool UiController::executeSequencerPatternCommandV2(
     }
     engine_.updateSequencerPattern(channel, pattern, false);
     synchronizeActiveSequencerStepMetadata();
-    const std::uint8_t lastPage = static_cast<std::uint8_t>((pattern.length - 1U) / 8U);
-    if (navigation_.sequencerPage > lastPage) {
-        navigation_.sequencerPage = lastPage;
-        navigation_.sequencerCursor = 0U;
+    // A shorter pattern (PASTE) must not leave the cursor behind its last step (F-036).
+    const std::uint8_t lastStep = static_cast<std::uint8_t>(pattern.length - 1U);
+    if (navigation_.sequencerPage * 8U + navigation_.sequencerCursor > lastStep) {
+        navigation_.sequencerPage = static_cast<std::uint8_t>(lastStep / 8U);
+        navigation_.sequencerCursor = static_cast<std::uint8_t>(lastStep % 8U);
     }
     return true;
 }

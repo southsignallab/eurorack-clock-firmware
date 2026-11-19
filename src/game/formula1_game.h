@@ -70,8 +70,10 @@ private:
     std::uint8_t crashesRemaining_ = 3U;
     std::uint32_t randomState_ = 0xC064F1A5U;
     std::uint32_t lastPhysicsAtMs_ = 0U;
+    /** True after the first physics frame of a run; lastPhysicsAtMs_ may be any value. */
+    bool physicsStarted_ = false;
     std::uint32_t lastSpawnAtMs_ = 0U;
-    std::uint32_t encoderPressedAtMs_ = 0U;
+    LongPressDetector exitHold_{};
     std::uint32_t crashStartedAtMs_ = 0U;
 #ifdef CLOCK_SIMULATOR
     std::uint32_t lastSimulatorFrameAtMs_ = 0U;

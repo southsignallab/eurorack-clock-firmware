@@ -35,4 +35,4 @@ For lengths above 16 steps, the Performance screen continues to show a compact 1
 
 ![Independent Clock performance screen in STOP, with transport stopped and no beat animation.](../manual-source/assets/performance-independent-clock-stop.png)
 
-With factory display preferences, STOP-mode inactivity starts the configured screensaver after 2 minutes, dims the OLED after 5 minutes, and powers the OLED panel off after 10 minutes. Any front-panel interaction or conditioned SYNC/RST transition wakes it immediately.
+With factory display preferences, STOP-mode inactivity starts the configured screensaver after 2 minutes, dims the OLED after 5 minutes, and powers the OLED panel off after 10 minutes. Front-panel controls and START, STOP, RESTART or RUN commands at an input wake it; a clock at SYNC and RESET triggers do not. With the OLED switched off, the encoder and the menu keys only wake it, while START/PAUSE and STOP act at once (see section 18).

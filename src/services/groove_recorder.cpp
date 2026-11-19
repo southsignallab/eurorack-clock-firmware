@@ -27,6 +27,7 @@ void GrooveRecorder::reset(
     preCountEpochQ32_ = 0U;
     recordEpochQ32_ = 0U;
     recordStartTargetQ32_ = 0U;
+    stepBase_ = 0U;
 }
 
 void GrooveRecorder::setMode(const GrooveRecordMode mode) {
@@ -44,21 +45,46 @@ void GrooveRecorder::start(
     const std::uint64_t masterPositionQ32,
     const std::uint64_t stepIntervalQ32,
     const std::uint8_t length) {
+    const std::uint64_t countInQ32 = static_cast<std::uint64_t>(countInBeats_) * core::kQ32One;
+    const std::uint64_t recordingStartQ32 = masterPositionQ32 > UINT64_MAX - countInQ32
+        ? UINT64_MAX
+        : masterPositionQ32 + countInQ32;
+    start(masterPositionQ32, recordingStartQ32, stepIntervalQ32, length);
+}
+
+void GrooveRecorder::start(
+    const std::uint64_t masterPositionQ32,
+    const std::uint64_t gridOriginQ32,
+    const std::uint64_t stepIntervalQ32,
+    const std::uint8_t length) {
     if (stepIntervalQ32 == 0U || length == 0U || length > kCustomGrooveMaximumSteps) {
         stop();
         return;
     }
     stepIntervalQ32_ = stepIntervalQ32;
     preCountEpochQ32_ = masterPositionQ32;
-    playheadStep_ = 0U;
-    playheadPhase256_ = 0U;
     countInRemaining_ = countInBeats_;
 
     const std::uint64_t countInQ32 = static_cast<std::uint64_t>(countInBeats_) * core::kQ32One;
     recordStartTargetQ32_ = masterPositionQ32 > UINT64_MAX - countInQ32
         ? UINT64_MAX
         : masterPositionQ32 + countInQ32;
-    recordEpochQ32_ = recordStartTargetQ32_;
+    // F-022: capture on the channel grid, from its first step at or after the Count-In.
+    std::uint64_t firstSerial = 0U;
+    if (recordStartTargetQ32_ > gridOriginQ32) {
+        const std::uint64_t sinceOriginQ32 = recordStartTargetQ32_ - gridOriginQ32;
+        firstSerial = sinceOriginQ32 / stepIntervalQ32 +
+            (sinceOriginQ32 % stepIntervalQ32 != 0U ? 1U : 0U);
+    }
+    const std::uint64_t firstOffsetQ32 = firstSerial > UINT64_MAX / stepIntervalQ32
+        ? UINT64_MAX
+        : firstSerial * stepIntervalQ32;
+    recordEpochQ32_ = firstOffsetQ32 > UINT64_MAX - gridOriginQ32
+        ? UINT64_MAX
+        : gridOriginQ32 + firstOffsetQ32;
+    stepBase_ = static_cast<std::uint8_t>(firstSerial % length);
+    playheadStep_ = 0U;
+    playheadPhase256_ = 0U;
     state_ = countInBeats_ == 0U
         ? GrooveRecordState::Recording
         : GrooveRecordState::PreCount;
@@ -103,7 +129,7 @@ bool GrooveRecorder::service(
 
     if (state_ == GrooveRecordState::Recording && stepIntervalQ32_ != 0U && length > 0U) {
         if (masterPositionQ32 < recordEpochQ32_) {
-            playheadStep_ = 0U;
+            playheadStep_ = static_cast<std::uint8_t>(stepBase_ % length);
             playheadPhase256_ = 0U;
         } else {
             const std::uint64_t elapsedQ32 = masterPositionQ32 - recordEpochQ32_;
@@ -111,7 +137,7 @@ bool GrooveRecorder::service(
             if (mode_ == GrooveRecordMode::OneShot && serial >= length) {
                 stop();
             } else {
-                playheadStep_ = static_cast<std::uint8_t>(serial % length);
+                playheadStep_ = static_cast<std::uint8_t>((serial + stepBase_) % length);
                 const std::uint64_t remainderQ32 = elapsedQ32 % stepIntervalQ32_;
                 playheadPhase256_ = static_cast<std::uint8_t>(
                     std::min<std::uint64_t>(255U, (remainderQ32 * 256ULL) / stepIntervalQ32_));
@@ -138,7 +164,7 @@ bool GrooveRecorder::capture(
         return false;
     }
 
-    const std::uint8_t step = static_cast<std::uint8_t>(nearestSerial % pattern.length);
+    const std::uint8_t step = static_cast<std::uint8_t>((nearestSerial + stepBase_) % pattern.length);
     const std::uint64_t serialOffsetQ32 = nearestSerial > UINT64_MAX / stepIntervalQ32_
         ? UINT64_MAX
         : nearestSerial * stepIntervalQ32_;

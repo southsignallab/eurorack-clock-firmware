@@ -71,6 +71,10 @@ private:
 
     /** @brief Flashes all activity LEDs with all gate source GPIOs forced LOW. */
     void flashLifeLostLeds();
+    /** @brief True when the lowest living alien row has reached the player line. */
+    bool formationReachedPlayer() const;
+    /** @brief Ends the run: GAME OVER, leaderboard and high score. */
+    void endRun();
 
     /** @brief Opens the in-game exit confirmation dialog and returns the selected decision. */
     bool confirmExit();
@@ -105,7 +109,7 @@ private:
 #ifdef CLOCK_SIMULATOR
     std::uint32_t lastSimulatorFrameAtMs_ = 0U;
 #endif
-    std::uint32_t encoderPressedAtMs_ = 0U;
+    LongPressDetector exitHold_{};
     bool playerShotActive_ = false;
     std::int16_t playerShotX_ = 0;
     std::int16_t playerShotY_ = 0;

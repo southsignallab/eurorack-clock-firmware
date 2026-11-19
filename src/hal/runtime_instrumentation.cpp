@@ -30,6 +30,10 @@ void begin() {
     gClockRuntimeCounters.schedulerCatchUpLimitHits = 0U;
     gClockRuntimeCounters.caughtUpSchedulerTicks = 0U;
     gClockRuntimeCounters.stagedSwapFallbacks = 0U;
+    gClockRuntimeCounters.synthesizedInputEdges = 0U;
+    gClockRuntimeCounters.encoderAnchors = 0U;
+    gClockRuntimeCounters.encoderAnchorRequestPhase = 0U;
+    gClockRuntimeCounters.encoderDiscardedRemainders = 0U;
     const std::uint32_t first = cycleCount();
     const std::uint32_t second = cycleCount();
     gClockRuntimeCounters.measurementOverheadCycles = second - first;
@@ -83,6 +87,23 @@ void countCaughtUpSchedulerTicks(const std::uint32_t elapsedTicks) {
 
 void countStagedSwapFallback() {
     gClockRuntimeCounters.stagedSwapFallbacks = gClockRuntimeCounters.stagedSwapFallbacks + 1U;
+}
+
+void countSynthesizedInputEdge() {
+    gClockRuntimeCounters.synthesizedInputEdges = gClockRuntimeCounters.synthesizedInputEdges + 1U;
+}
+
+void countEncoderAnchor() {
+    gClockRuntimeCounters.encoderAnchors = gClockRuntimeCounters.encoderAnchors + 1U;
+}
+
+void recordEncoderAnchorRequestPhase(const std::uint8_t phase) {
+    gClockRuntimeCounters.encoderAnchorRequestPhase = phase;
+}
+
+void countEncoderDiscardedRemainder() {
+    gClockRuntimeCounters.encoderDiscardedRemainders =
+        gClockRuntimeCounters.encoderDiscardedRemainders + 1U;
 }
 
 }  // namespace clockfw::hal::instrumentation

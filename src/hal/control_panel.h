@@ -64,6 +64,18 @@ public:
     /** @brief Reverses the semantic sign of completed encoder detents without touching quadrature decoding. */
     void setEncoderDirectionReversed(bool reversed);
 
+#if defined(CLOCK_HOST_TEST)
+    /** @brief Encoder anchor diagnostics, the host-test copy of the W-070 debug counters. */
+    struct EncoderDiagnosticsForTest {
+        std::uint32_t anchors = 0U;
+        std::uint8_t anchorRequestPhase = 0U;
+        std::uint32_t discardedRemainders = 0U;
+    };
+
+    /** @brief Returns the encoder anchor diagnostics (host tests only). */
+    EncoderDiagnosticsForTest encoderDiagnosticsForTest() const { return encoderDiagnostics_; }
+#endif
+
 private:
     /** @brief Small state machine used for one active-low button input. */
     class DebouncedButton final {
@@ -97,28 +109,49 @@ private:
         bool pressStartKnown_ = false;
     };
 
-    /** @brief Converts the wrapping quadrature transition counter into complete detents. */
-    std::int8_t sampleEncoder();
+    /**
+     * @brief Converts the wrapping quadrature transition counter into complete detents.
+     * @param nowMs Current monotonic time in milliseconds; marks quadrature activity.
+     */
+    std::int8_t sampleEncoder(std::uint32_t nowMs);
 
     /**
-     * @brief Re-anchors quadrature bookkeeping after the encoder push switch settles.
+     * @brief Requests an anchor after the encoder push switch was released (F-010).
      *
-     * Axial push/release of the PEC11R shaft and contact bounce can
-     * leave a harmless partial quadrature residue even though the shaft is again
-     * sitting in a mechanical detent. Re-anchoring after a debounced release
-     * prevents that residue from consuming the next detent or direction reversal.
+     * An axial push or release of the PEC11R shaft and contact bounce can leave a
+     * partial transition count although the shaft is back in a detent. The anchor
+     * drops it; anchorEncoderAtRest() takes it once the encoder rests in a detent.
      */
-    void resynchronizeEncoderAtRest();
+    void requestEncoderAnchor();
+
+    /**
+     * @brief Takes a requested anchor once A/B rest in the detent state (F-010).
+     * @param nowMs Current monotonic time in milliseconds.
+     *
+     * Requires the datasheet detent state and no quadrature transition for
+     * kEncoderAnchorQuietMs; until then the request stays pending. The anchor
+     * discards the partial transition count; completed and pending detents stay.
+     */
+    void anchorEncoderAtRest(std::uint32_t nowMs);
+
+    /** @brief Counts one discarded partial transition count (W-070 diagnostics). */
+    void countDiscardedEncoderRemainder();
 
     DebouncedButton encoderButton_;
     DebouncedButton transportButton_;
     DebouncedButton tapButton_;
     DebouncedButton resetButton_;
     std::uint32_t encoderLastTransitionCount_ = 0U;
-    std::uint8_t encoderDetentPhase_ = 0U;
+    /** Sample time (ms) of the last observed quadrature transition. */
+    std::uint32_t encoderLastActivityMs_ = 0U;
+    /** True from an encoder-button release until the anchor is taken. */
+    bool encoderAnchorPending_ = false;
     std::int8_t encoderTransitionRemainder_ = 0;
     std::int16_t pendingEncoderDetents_ = 0;
     bool encoderDirectionReversed_ = false;
+#if defined(CLOCK_HOST_TEST)
+    EncoderDiagnosticsForTest encoderDiagnostics_{};
+#endif
 };
 
 }  // namespace clockfw::hal

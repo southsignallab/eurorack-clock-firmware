@@ -13,6 +13,7 @@
 #else
 #include <stm32f4xx_hal.h>
 #include "hal/extended_timebase.h"
+#include "hal/exti_dispatch.h"
 #endif
 #if defined(CLOCK_RUNTIME_INSTRUMENTATION)
 #include "hal/runtime_instrumentation.h"
@@ -47,6 +48,7 @@ void initializeMcu() {}
 void configureInputPullup(const mcu::Pin pin) { pinMode(pin, INPUT_PULLUP); }
 void configureOutput(const mcu::Pin pin) { pinMode(pin, OUTPUT); }
 bool read(const mcu::Pin pin) { return digitalRead(pin) == HIGH; }
+bool readInterruptLevel(const mcu::Pin pin) { return read(pin); }
 void write(const mcu::Pin pin, const bool high) { digitalWrite(pin, high ? HIGH : LOW); }
 #if defined(CLOCK_HOST_TEST)
 namespace {
@@ -132,6 +134,18 @@ GPIO_TypeDef* portFor(const mcu::Pin pin) {
 }
 std::uint16_t maskFor(const mcu::Pin pin) { return static_cast<std::uint16_t>(1U << (pin & 0x0FU)); }
 std::uint8_t indexFor(const mcu::Pin pin) { return static_cast<std::uint8_t>(pin & 0x0FU); }
+// EXTI_PR (RM0368 Rev 6, 10.3.6): bit n is set by the selected edge on line n and
+// cleared by writing 1 to it. HAL_GPIO_EXTI_IRQHandler() clears it and then calls
+// HAL_GPIO_EXTI_Callback().
+bool extiLinePending(const std::uint32_t lineMask) {
+    return __HAL_GPIO_EXTI_GET_IT(lineMask) != RESET;
+}
+void clearExtiLine(const std::uint32_t lineMask) {
+    __HAL_GPIO_EXTI_CLEAR_IT(lineMask);
+}
+void serviceExtiLine(const std::uint32_t lineMask) {
+    HAL_GPIO_EXTI_IRQHandler(static_cast<std::uint16_t>(lineMask));
+}
 void enablePortClock(const mcu::Pin pin) {
     switch ((pin >> 8U) & 0xFFU) {
         case 0xAU: __HAL_RCC_GPIOA_CLK_ENABLE(); break;
@@ -203,6 +217,9 @@ void configureOutput(const mcu::Pin pin) {
     GPIO_InitTypeDef init{}; init.Pin=maskFor(pin); init.Mode=GPIO_MODE_OUTPUT_PP; init.Pull=GPIO_NOPULL; init.Speed=GPIO_SPEED_FREQ_HIGH; HAL_GPIO_Init(port,&init);
 }
 bool read(const mcu::Pin pin) { GPIO_TypeDef* const port=portFor(pin); return port != nullptr && HAL_GPIO_ReadPin(port,maskFor(pin)) == GPIO_PIN_SET; }
+bool readInterruptLevel(const mcu::Pin pin) {
+    return exti::readSettledLevel(pin, maskFor(pin), read, extiLinePending, clearExtiLine);
+}
 void write(const mcu::Pin pin, const bool high) { GPIO_TypeDef* const port=portFor(pin); if (port != nullptr) HAL_GPIO_WritePin(port,maskFor(pin),high?GPIO_PIN_SET:GPIO_PIN_RESET); }
 void writePortLines(const mcu::Pin portReference, const std::uint16_t setMask, const std::uint16_t resetMask) {
     // GPIOx_BSRR (CMSIS stm32f401xc.h: GPIO_BSRR_BS0..15 at bits 0..15,
@@ -302,6 +319,18 @@ extern "C" void HAL_MspInit(){
 }
 extern "C" void SysTick_Handler(){ HAL_IncTick(); }
 extern "C" void EXTI0_IRQHandler(){HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);} extern "C" void EXTI1_IRQHandler(){HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);} extern "C" void EXTI2_IRQHandler(){HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);} extern "C" void EXTI3_IRQHandler(){HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_3);} extern "C" void EXTI4_IRQHandler(){HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);}
-extern "C" void EXTI9_5_IRQHandler(){for(std::uint16_t p=GPIO_PIN_5;p<=GPIO_PIN_9;p<<=1U) if(__HAL_GPIO_EXTI_GET_IT(p)!=RESET) HAL_GPIO_EXTI_IRQHandler(p);}
-extern "C" void EXTI15_10_IRQHandler(){for(std::uint16_t p=GPIO_PIN_10;p<=GPIO_PIN_15;p<<=1U) if(__HAL_GPIO_EXTI_GET_IT(p)!=RESET) HAL_GPIO_EXTI_IRQHandler(p);}
+extern "C" void EXTI9_5_IRQHandler() {
+    clockfw::hal::exti::dispatchPendingLines(
+        clockfw::hal::exti::kExti9To5FirstLine,
+        clockfw::hal::exti::kExti9To5LastLine,
+        clockfw::hal::platform::extiLinePending,
+        clockfw::hal::platform::serviceExtiLine);
+}
+extern "C" void EXTI15_10_IRQHandler() {
+    clockfw::hal::exti::dispatchPendingLines(
+        clockfw::hal::exti::kExti15To10FirstLine,
+        clockfw::hal::exti::kExti15To10LastLine,
+        clockfw::hal::platform::extiLinePending,
+        clockfw::hal::platform::serviceExtiLine);
+}
 #endif

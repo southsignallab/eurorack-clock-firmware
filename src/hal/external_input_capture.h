@@ -8,6 +8,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 
@@ -59,20 +60,39 @@ public:
 
     /** @brief Injects a captured RST transition for deterministic host tests. */
     void injectResetEdgeForTest(std::uint32_t timestampUs, bool high);
+
+    /** @brief Opposite edges queued for merged interrupts, both inputs (host tests). */
+    std::uint32_t synthesizedEdgesForTest() const { return synthesizedEdgesForTest_; }
 #endif
 
 private:
     static constexpr std::uint8_t kQueueCapacity = 16U;
 
+    /**
+     * @brief Single-producer/single-consumer ring of captured edges (F-025).
+     *
+     * Producer: EXTI handler, priority 4. Consumer: TIM3 scheduler, priority 0, which
+     * preempts the producer at any instruction. The producer writes the slot and
+     * then publishes head with release; the consumer loads head with acquire before
+     * it reads the slot, and frees the slot by storing tail with release. Without
+     * this ordering the compiler may move the slot store behind the head store, and
+     * the consumer would read a stale slot. std::atomic states the order for compiler
+     * and CPU at once (PM0214 Rev 10, 2.2.4: where the order of memory accesses
+     * matters, software must include a barrier); on the Cortex-M4 it adds one DMB per
+     * ordered access.
+     */
     struct EdgeQueue {
         std::array<ExternalInputEdge, kQueueCapacity> edges{};
-        volatile std::uint8_t head = 0U;
-        volatile std::uint8_t tail = 0U;
-        volatile bool overflowPending = false;
+        std::atomic<std::uint8_t> head{0U};
+        std::atomic<std::uint8_t> tail{0U};
+        /** Published with release after the overflow payload below. */
+        std::atomic<bool> overflowPending{false};
         volatile std::uint32_t overflowTimestampUs = 0U;
         volatile bool overflowLevelHigh = false;
         volatile std::uint32_t overflowCount = 0U;
     };
+    static_assert(std::atomic<std::uint8_t>::is_always_lock_free, "queue indices must not need a lock");
+    static_assert(std::atomic<bool>::is_always_lock_free, "overflow flag must not need a lock");
 
     /** @brief Shared EXTI thunk for the SYNC comparator GPIO. */
     static void syncInterruptThunk();
@@ -86,6 +106,18 @@ private:
     /** @brief Captures the current RST GPIO level and timestamp from interrupt context. */
     void captureResetFromIsr();
 
+    /**
+     * @brief Queues the edges behind one EXTI interrupt (parity rule, F-016, D-15).
+     * @param queue Edge queue of the input.
+     * @param storedLevelHigh Level latch of the input; set to @p high.
+     * @param high Level read after the pending bit was cleared.
+     *
+     * A changed level is one edge. An unchanged level means at least two edges
+     * merged into one interrupt: the missing opposite edge is queued first, then
+     * the observed edge, both with the same timestamp.
+     */
+    void captureFromIsr(EdgeQueue& queue, volatile bool& storedLevelHigh, bool high);
+
     /** @brief Pushes one edge into a single-producer/single-consumer ISR queue. */
     static void pushFromIsr(EdgeQueue& queue, ExternalInputEdge edge);
 
@@ -98,6 +130,9 @@ private:
     volatile bool syncLevelHigh_ = false;
     volatile bool resetLevelHigh_ = false;
     volatile std::uint32_t activitySequence_ = 0U;
+#ifdef CLOCK_HOST_TEST
+    std::uint32_t synthesizedEdgesForTest_ = 0U;
+#endif
 };
 
 }  // namespace clockfw::hal

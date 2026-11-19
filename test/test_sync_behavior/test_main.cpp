@@ -21,6 +21,7 @@
 #include "engine/clock_engine.h"
 #include "hal/external_input_capture.h"
 #include "hal/gate_output_driver.h"
+#include "pin_map.h"
 #include "services/external_sync_controller.h"
 #include "sync_frontend_model.h"
 
@@ -210,6 +211,7 @@ void assertJitterBand(
 }  // namespace
 
 #include "cases/input_roles.inc"
+#include "cases/merged_edges.inc"
 
 int main() {
     UNITY_BEGIN();
@@ -331,5 +333,13 @@ int main() {
     RUN_TEST(testPersistedRunDoesNotBreakBootStopOnStandingHighLevel);
     RUN_TEST(testExternalInputActivitySequenceTracksSyncAndReset);
     std::cout << "SYNC behavior assertions: " << checks << "\n";
+    RUN_TEST(testShortStartPulseBetweenLowLevelsStartsOnce);
+    RUN_TEST(testMergedEdgesBetweenHighLevelsQueueFallThenRise);
+    RUN_TEST(testLongStartPulseStartsOnceWithoutSynthesizedEdges);
+    RUN_TEST(testMergedSyncPulseWithRepeatedTimestampKeepsTempo);
+    RUN_TEST(testFullQueueKeepsContinuityMarkerWithSynthesizedEdge);
+    RUN_TEST(testRunGateFollowsLevelThroughMergedEdges);
+    RUN_TEST(testResetRolesHandleMergedEdges);
+    RUN_TEST(testMergedPulsesOnBothInputsInOneTick);
     return UNITY_END();
 }

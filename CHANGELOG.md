@@ -10,6 +10,16 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 ## [Unreleased]
 
+### Fix: short triggers at INPUT 1/2, encoder after menu visits
+
+- A trigger at INPUT 1 or INPUT 2 that is already over when the input interrupt runs now fires its role. START, STOP, RESTART, TAP and RESET (`TRIGGER`) fire exactly once; RUN and RESET (`GATE`) follow only the level. Previously such a trigger was read as LOW and lost, for example a START trigger while a preset was written to Flash with the clock stopped; it now arrives after the write. Not yet measured on hardware.
+- An edge that arrived while the input interrupt read the pin is no longer counted twice.
+- The input edge queue publishes each edge with release/acquire ordering, so the scheduler cannot read an edge before it is complete.
+- The encoder no longer loses a detent at each direction change after a menu visit. The detent state now comes from the encoder datasheet (A and B LOW), and releasing the encoder button only drops a partial count once the encoder has rested 3 ms in a detent. Previously the A/B state at the release became the new detent phase, even mid-turn.
+- Transport commands from the inputs (START, STOP, RESTART, RUN, auto-start on lock, stop on sync loss) no longer disable interrupts inside the scheduler interrupt, and a START deferred by a Flash write is prepared outside the interrupt lock. `scripts/check_architecture.py` reports interrupt code that opens an interrupt lock.
+- The shared interrupt handlers for EXTI lines 5–9 and 10–15 iterate over line numbers; the 10–15 handler no longer loops forever once line 15 is pending (no line 10–15 is used today).
+- The debug counters in `gClockRuntimeCounters` also count synthesized input edges, encoder anchors, the A/B state at the last anchor request and discarded partial encoder counts.
+
 ### Fix: front-panel taps keep their press time
 
 - TAP TEMPO and Groove Record now time a front-panel press from its first contact edge instead of from the debounced edge. Debouncing (25 ms) still decides whether a press counts. Previously a Groove Record tap was late by the contact bounce plus up to one control pass, and TAP TEMPO measured from release to release, so holding TAP longer or shorter for one tap changed the tempo. The same applies to every front-panel button and the encoder push.

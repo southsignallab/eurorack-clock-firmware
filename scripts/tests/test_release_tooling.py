@@ -212,7 +212,7 @@ class ProjectMetadataTests(unittest.TestCase):
         self.assertIn("beginQuadratureEncoder", controls)
         self.assertIn("quadratureEncoderCount", controls)
         self.assertIn("quadratureEncoderState", controls)
-        self.assertIn("encoderDetentPhase_", controls)
+        self.assertIn("kEncoderDetentState", controls)
         self.assertIn("atDetentPhase", controls)
         self.assertNotIn("encoderInterruptThunk", controls)
 

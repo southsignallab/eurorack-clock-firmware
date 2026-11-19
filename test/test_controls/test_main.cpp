@@ -20,14 +20,16 @@ namespace clockfw::hal::platform {
 void setQuadratureEncoderCountForTest(std::uint32_t count);
 }
 
-void setUp(){ fakefw::resetArduino(); }
+// The PEC11R rests in a detent with A and B closed to C (GND): both LOW (datasheet
+// PEC11R REV. 04/26, p. 3). Scenarios start there instead of at the fake pull-up level.
+void setUp(){ fakefw::resetArduino(); fakefw::setPinSilently(pinmap::kEncoderPhaseAPin,LOW); fakefw::setPinSilently(pinmap::kEncoderPhaseBPin,LOW); }
 void tearDown(){}
 
 namespace {
 
 void setEncoder(int a,int b){ fakefw::setPin(pinmap::kEncoderPhaseAPin,a?HIGH:LOW); fakefw::setPin(pinmap::kEncoderPhaseBPin,b?HIGH:LOW); }
-void forwardDetent(){ setEncoder(1,0); setEncoder(0,0); setEncoder(0,1); setEncoder(1,1); }
-void reverseDetent(){ setEncoder(0,1); setEncoder(0,0); setEncoder(1,0); setEncoder(1,1); }
+void forwardDetent(){ setEncoder(0,1); setEncoder(1,1); setEncoder(1,0); setEncoder(0,0); }
+void reverseDetent(){ setEncoder(1,0); setEncoder(1,1); setEncoder(0,1); setEncoder(0,0); }
 
 hal::ButtonSample buttonFrom(const hal::ControlSample& s, std::size_t index){
     switch(index){case 0:return s.encoderButton;case 1:return s.transportButton;case 2:return s.tapButton;default:return s.resetButton;}
@@ -54,8 +56,8 @@ void assertHoldNoRepeat(std::size_t index){
 void testIdleSampleDoesNotMaskInterrupts(){ hal::ControlPanel c; c.begin(); fakefw::noInterruptCalls=0;fakefw::interruptCalls=0; TEST_ASSERT_EQUAL(0,c.sample(0U).encoderDelta); TEST_ASSERT_EQUAL_UINT32(0U,fakefw::noInterruptCalls); TEST_ASSERT_EQUAL_UINT32(0U,fakefw::interruptCalls); }
 void testGrayCycleAProducesOneDetent(){ hal::ControlPanel c;c.begin();forwardDetent();const int d=c.sample(1U).encoderDelta;TEST_ASSERT_TRUE(d==1 || d==-1); }
 void testGrayCycleBProducesOppositeDetent(){ hal::ControlPanel c;c.begin();forwardDetent();const int a=c.sample(1U).encoderDelta;reverseDetent();const int b=c.sample(2U).encoderDelta;TEST_ASSERT_EQUAL(-a,b); }
-void testPartialGrayCycleProducesNoDetent(){ hal::ControlPanel c;c.begin();setEncoder(1,0);setEncoder(0,0);TEST_ASSERT_EQUAL(0,c.sample(1U).encoderDelta); }
-void testEncoderBounceReturnsToSameStateWithoutDetent(){ hal::ControlPanel c;c.begin();setEncoder(1,0);setEncoder(1,1);TEST_ASSERT_EQUAL(0,c.sample(1U).encoderDelta); }
+void testPartialGrayCycleProducesNoDetent(){ hal::ControlPanel c;c.begin();setEncoder(0,1);setEncoder(1,1);TEST_ASSERT_EQUAL(0,c.sample(1U).encoderDelta); }
+void testEncoderBounceReturnsToSameStateWithoutDetent(){ hal::ControlPanel c;c.begin();setEncoder(0,1);setEncoder(0,0);TEST_ASSERT_EQUAL(0,c.sample(1U).encoderDelta); }
 void testSixFastDetentsAccumulateWithoutForegroundPoll(){ hal::ControlPanel c;c.begin();forwardDetent();const int d=c.sample(1U).encoderDelta;for(int i=0;i<6;++i)forwardDetent();TEST_ASSERT_EQUAL(d*6,c.sample(2U).encoderDelta); }
 void testEncoderDrainIsEmptyAfterSample(){ hal::ControlPanel c;c.begin();forwardDetent();const int d=c.sample(1U).encoderDelta;TEST_ASSERT_TRUE(d==1 || d==-1);TEST_ASSERT_EQUAL(0,c.sample(2U).encoderDelta); }
 void testEncoderDrainCapsAt127AndPreservesRemainderForCycleA(){ hal::ControlPanel c;c.begin();forwardDetent();const int sign=c.sample(1U).encoderDelta;for(int i=0;i<130;++i)forwardDetent();TEST_ASSERT_EQUAL(sign*127,c.sample(2U).encoderDelta);TEST_ASSERT_EQUAL(sign*3,c.sample(3U).encoderDelta); }
@@ -229,10 +231,10 @@ void testFastTurnDuringButtonBouncePreservesAllDetents(){ hal::ControlPanel c;c.
 void testFirstDetentCountsImmediatelyFromEveryElectricalPhase(){
     struct StartAndCycle { int a; int b; std::array<std::array<int,2>,4> states; };
     const std::array<StartAndCycle,4> cases{{
-        {1,1, {{{1,0},{0,0},{0,1},{1,1}}}},
-        {1,0, {{{0,0},{0,1},{1,1},{1,0}}}},
         {0,0, {{{0,1},{1,1},{1,0},{0,0}}}},
         {0,1, {{{1,1},{1,0},{0,0},{0,1}}}},
+        {1,1, {{{1,0},{0,0},{0,1},{1,1}}}},
+        {1,0, {{{0,0},{0,1},{1,1},{1,0}}}},
     }};
     for (const auto& item : cases) {
         fakefw::resetArduino();
@@ -248,10 +250,10 @@ void testFirstDetentCountsImmediatelyFromEveryElectricalPhase(){
 void testFirstReverseDetentCountsImmediatelyFromEveryElectricalPhase(){
     struct StartAndCycle { int a; int b; std::array<std::array<int,2>,4> states; };
     const std::array<StartAndCycle,4> cases{{
-        {1,1, {{{0,1},{0,0},{1,0},{1,1}}}},
-        {1,0, {{{1,1},{0,1},{0,0},{1,0}}}},
         {0,0, {{{1,0},{1,1},{0,1},{0,0}}}},
         {0,1, {{{0,0},{1,0},{1,1},{0,1}}}},
+        {1,1, {{{0,1},{0,0},{1,0},{1,1}}}},
+        {1,0, {{{1,1},{0,1},{0,0},{1,0}}}},
     }};
     for (const auto& item : cases) {
         fakefw::resetArduino();
@@ -280,17 +282,17 @@ void testMidCycleDirectionReversalDoesNotPoisonNextDetent(){
     hal::ControlPanel c; c.begin();
     forwardDetent(); const int forwardSign=c.sample(1U).encoderDelta;
     TEST_ASSERT_TRUE(forwardSign==1 || forwardSign==-1);
-    setEncoder(1,0);
-    setEncoder(0,0);
-    setEncoder(1,0);
+    setEncoder(0,1);
     setEncoder(1,1);
+    setEncoder(0,1);
+    setEncoder(0,0);
     TEST_ASSERT_EQUAL(0,c.sample(2U).encoderDelta);
     reverseDetent();
     TEST_ASSERT_EQUAL(-forwardSign,c.sample(3U).encoderDelta);
 }
 
 void testMissedTransitionAtDetentStillReportsFirstClick(){
-    setEncoder(1,1);
+    setEncoder(0,0);
     hal::ControlPanel c; c.begin();
     hal::platform::setQuadratureEncoderCountForTest(3U);
     TEST_ASSERT_EQUAL(1,c.sample(1U).encoderDelta);
@@ -298,7 +300,7 @@ void testMissedTransitionAtDetentStillReportsFirstClick(){
 }
 
 void testMissedTransitionRecoveryDoesNotPoisonImmediateReverse(){
-    setEncoder(1,1);
+    setEncoder(0,0);
     hal::ControlPanel c; c.begin();
     hal::platform::setQuadratureEncoderCountForTest(3U);
     TEST_ASSERT_EQUAL(1,c.sample(1U).encoderDelta);
@@ -307,7 +309,7 @@ void testMissedTransitionRecoveryDoesNotPoisonImmediateReverse(){
 }
 
 void testHalfCycleCorruptionIsDiscardedAtDetentBoundary(){
-    setEncoder(1,1);
+    setEncoder(0,0);
     hal::ControlPanel c; c.begin();
     hal::platform::setQuadratureEncoderCountForTest(2U);
     TEST_ASSERT_EQUAL(0,c.sample(1U).encoderDelta);
@@ -316,7 +318,7 @@ void testHalfCycleCorruptionIsDiscardedAtDetentBoundary(){
 }
 
 void testExtraTransitionAtDetentDoesNotCreatePersistentPhaseError(){
-    setEncoder(1,1);
+    setEncoder(0,0);
     hal::ControlPanel c; c.begin();
     hal::platform::setQuadratureEncoderCountForTest(5U);
     TEST_ASSERT_EQUAL(1,c.sample(1U).encoderDelta);
@@ -328,7 +330,7 @@ void testExtraTransitionAtDetentDoesNotCreatePersistentPhaseError(){
 
 
 void testQuadratureCounterWrapDoesNotLoseDetent(){
-    setEncoder(1,1);
+    setEncoder(0,0);
     hal::ControlPanel c; c.begin();
     hal::platform::setQuadratureEncoderCountForTest(0xFFFFFFFCU);
     TEST_ASSERT_EQUAL(-1,c.sample(1U).encoderDelta);
@@ -337,7 +339,7 @@ void testQuadratureCounterWrapDoesNotLoseDetent(){
 }
 
 void testMissingTransitionRecoveryRespectsReversedSetting(){
-    setEncoder(1,1);
+    setEncoder(0,0);
     hal::ControlPanel c; c.begin(); c.setEncoderDirectionReversed(true);
     hal::platform::setQuadratureEncoderCountForTest(3U);
     TEST_ASSERT_EQUAL(-1,c.sample(1U).encoderDelta);
@@ -357,11 +359,11 @@ void testLongAlternatingSingleDetentsNeverDropFirstClick(){
 }
 
 void testOneEdgeResidueBeforeReverseDetentIsRecoveredAtAnchor(){
-    setEncoder(1,1);
+    setEncoder(0,0);
     hal::ControlPanel c; c.begin();
-    setEncoder(1,0);
+    setEncoder(0,1);
     TEST_ASSERT_EQUAL(0,c.sample(1U).encoderDelta);
-    setEncoder(1,1);
+    setEncoder(0,0);
     reverseDetent();
     const int delta=c.sample(2U).encoderDelta;
     TEST_ASSERT_TRUE(delta==1 || delta==-1);
@@ -377,64 +379,211 @@ void testFastTurnAfterImmediateReversalPreservesAllDetents(){
     TEST_ASSERT_EQUAL(sign*256,drainAllEncoder(c,now));
 }
 
-void testEncoderReleaseReanchorsPartialPhaseBeforeDirectionChange(){
-    setEncoder(1,1);
-    hal::ControlPanel c; c.begin();
-    forwardDetent(); const int sign=c.sample(1U).encoderDelta;
-    TEST_ASSERT_TRUE(sign==1 || sign==-1);
+// F-010 / W-068 / W-069 / W-070: the detent state is A = B = LOW (datasheet), and an
+// anchor requested by an encoder-button release is taken only there, after
+// kEncoderAnchorQuietMs (3 ms) without a quadrature transition.
 
-    // Entering a menu uses the encoder push switch. Model an axial-push-induced
-    // one-edge A/B displacement while the switch is held, then a normal
-    // debounced release at that new stable electrical phase.
+/** @brief Presses the encoder push switch at @p nowMs; returns the next free sample time. */
+std::uint32_t pressEncoderButton(hal::ControlPanel& c, std::uint32_t nowMs, int& delta){
     fakefw::setPin(pinmap::kEncoderPushButtonPin,LOW);
-    (void)c.sample(2U);
-    auto pressed=c.sample(27U);
+    delta+=c.sample(nowMs).encoderDelta;
+    const auto pressed=c.sample(nowMs+25U);
     TEST_ASSERT_EQUAL(hal::ButtonEdge::Pressed,pressed.encoderButton.edge);
-    setEncoder(1,0);
-    TEST_ASSERT_EQUAL(0,c.sample(28U).encoderDelta);
+    delta+=pressed.encoderDelta;
+    return nowMs+26U;
+}
+/** @brief Releases the encoder push switch at @p nowMs; returns the next free sample time. */
+std::uint32_t releaseEncoderButton(hal::ControlPanel& c, std::uint32_t nowMs, int& delta){
     fakefw::setPin(pinmap::kEncoderPushButtonPin,HIGH);
-    (void)c.sample(29U);
-    auto released=c.sample(54U);
+    delta+=c.sample(nowMs).encoderDelta;
+    const auto released=c.sample(nowMs+25U);
     TEST_ASSERT_EQUAL(hal::ButtonEdge::Released,released.encoderButton.edge);
-    TEST_ASSERT_EQUAL(0,released.encoderDelta);
-
-    // A complete cycle beginning/ending at 10 must count immediately. More
-    // importantly, the very next opposite detent must not be consumed by the
-    // partial transition that happened during the menu-entry push.
-    setEncoder(0,0); setEncoder(0,1); setEncoder(1,1); setEncoder(1,0);
-    TEST_ASSERT_EQUAL(sign,c.sample(55U).encoderDelta);
-    setEncoder(1,1); setEncoder(0,1); setEncoder(0,0); setEncoder(1,0);
-    TEST_ASSERT_EQUAL(-sign,c.sample(56U).encoderDelta);
+    delta+=released.encoderDelta;
+    return nowMs+26U;
+}
+/** @brief Gray path from the detent state 00 to @p phase (bit1 = A, bit0 = B). */
+void moveFromDetentTo(std::uint8_t phase){
+    switch(phase){
+        case 0b10U: setEncoder(1,0); break;
+        case 0b11U: setEncoder(1,0); setEncoder(1,1); break;
+        case 0b01U: setEncoder(0,1); break;
+        default: break;
+    }
+}
+/** @brief Gray path from @p phase back to the detent state 00. */
+void moveToDetentFrom(std::uint8_t phase){
+    switch(phase){
+        case 0b10U: setEncoder(0,0); break;
+        case 0b11U: setEncoder(1,0); setEncoder(0,0); break;
+        case 0b01U: setEncoder(0,0); break;
+        default: break;
+    }
+}
+/** @brief Three detents each way and back, one sample per detent, starting at @p nowMs. */
+void assertAlternatingTriples(hal::ControlPanel& c, std::uint32_t& nowMs, int sign){
+    for(int i=0;i<3;++i){ forwardDetent(); TEST_ASSERT_EQUAL(sign,c.sample(nowMs++).encoderDelta); }
+    for(int i=0;i<3;++i){ reverseDetent(); TEST_ASSERT_EQUAL(-sign,c.sample(nowMs++).encoderDelta); }
+    for(int i=0;i<3;++i){ forwardDetent(); TEST_ASSERT_EQUAL(sign,c.sample(nowMs++).encoderDelta); }
 }
 
-void testAlternatingDetentsRemainExactAfterMenuPushPhaseShift(){
-    setEncoder(1,1);
+void testAnchorRequestInEveryPhaseKeepsAlternatingDetentsExact(){
+    // F-010 model: an anchor taken in phase 1 or 2 lost one detent per direction change.
+    for(const std::uint8_t phase : {std::uint8_t{0b00U},std::uint8_t{0b10U},std::uint8_t{0b11U},std::uint8_t{0b01U}}){
+        setUp();
+        hal::ControlPanel c; c.begin();
+        forwardDetent(); const int sign=c.sample(1U).encoderDelta;
+        TEST_ASSERT_TRUE(sign==1 || sign==-1);
+        int delta=0;
+        std::uint32_t now=pressEncoderButton(c,2U,delta);
+        // The push displaces A/B; the release is accepted while they are displaced.
+        moveFromDetentTo(phase);
+        delta+=c.sample(now++).encoderDelta;
+        now=releaseEncoderButton(c,now,delta);
+        TEST_ASSERT_EQUAL_UINT8(phase,c.encoderDiagnosticsForTest().anchorRequestPhase);
+        // The shaft settles back into the detent.
+        moveToDetentFrom(phase);
+        delta+=c.sample(now++).encoderDelta;
+        now+=5U;
+        delta+=c.sample(now++).encoderDelta;
+        TEST_ASSERT_EQUAL(0,delta);
+        TEST_ASSERT_EQUAL_UINT32(1U,c.encoderDiagnosticsForTest().anchors);
+        assertAlternatingTriples(c,now,sign);
+    }
+}
+
+void testAnchorWaitsForQuietTimeInTheDetentState(){
     hal::ControlPanel c; c.begin();
     forwardDetent(); const int sign=c.sample(1U).encoderDelta;
-    TEST_ASSERT_TRUE(sign==1 || sign==-1);
-
-    fakefw::setPin(pinmap::kEncoderPushButtonPin,LOW);
-    (void)c.sample(2U);
-    (void)c.sample(27U);
-    setEncoder(1,0);
-    (void)c.sample(28U);
+    int delta=0;
+    std::uint32_t now=pressEncoderButton(c,2U,delta);           // 28
     fakefw::setPin(pinmap::kEncoderPushButtonPin,HIGH);
-    (void)c.sample(29U);
-    (void)c.sample(54U);
+    delta+=c.sample(now).encoderDelta;                          // raw release at 28
+    forwardDetent();                                            // still turning
+    delta+=c.sample(now+25U).encoderDelta;                      // release accepted at 53
+    TEST_ASSERT_EQUAL_UINT32(0U,c.encoderDiagnosticsForTest().anchors);
+    TEST_ASSERT_EQUAL_UINT8(0b00U,c.encoderDiagnosticsForTest().anchorRequestPhase);
+    delta+=c.sample(55U).encoderDelta;                          // 2 ms quiet
+    TEST_ASSERT_EQUAL_UINT32(0U,c.encoderDiagnosticsForTest().anchors);
+    forwardDetent();
+    delta+=c.sample(56U).encoderDelta;                          // turning again
+    delta+=c.sample(58U).encoderDelta;
+    TEST_ASSERT_EQUAL_UINT32(0U,c.encoderDiagnosticsForTest().anchors);
+    // Mid-cycle at rest: not the detent state, no anchor however long.
+    setEncoder(0,1);
+    delta+=c.sample(59U).encoderDelta;
+    delta+=c.sample(100U).encoderDelta;
+    TEST_ASSERT_EQUAL_UINT32(0U,c.encoderDiagnosticsForTest().anchors);
+    setEncoder(0,0);
+    delta+=c.sample(101U).encoderDelta;
+    delta+=c.sample(103U).encoderDelta;
+    TEST_ASSERT_EQUAL_UINT32(0U,c.encoderDiagnosticsForTest().anchors);
+    delta+=c.sample(104U).encoderDelta;                         // 3 ms quiet in the detent
+    TEST_ASSERT_EQUAL_UINT32(1U,c.encoderDiagnosticsForTest().anchors);
+    TEST_ASSERT_EQUAL(sign*2,delta);
+    // One request, one anchor.
+    delta+=c.sample(200U).encoderDelta;
+    TEST_ASSERT_EQUAL_UINT32(1U,c.encoderDiagnosticsForTest().anchors);
+}
 
-    std::uint32_t now=55U;
-    for(int i=0;i<100;++i){
-        setEncoder(0,0); setEncoder(0,1); setEncoder(1,1); setEncoder(1,0);
-        TEST_ASSERT_EQUAL(sign,c.sample(now++).encoderDelta);
-        setEncoder(1,1); setEncoder(0,1); setEncoder(0,0); setEncoder(1,0);
-        TEST_ASSERT_EQUAL(-sign,c.sample(now++).encoderDelta);
+void testAnchorDiscardsRemainderLeftByLostEdges(){
+    hal::ControlPanel c; c.begin();
+    forwardDetent(); const int sign=c.sample(1U).encoderDelta;
+    setEncoder(1,0);
+    TEST_ASSERT_EQUAL(0,c.sample(2U).encoderDelta);
+    // The way back to the detent is not counted (lost edge): a remainder of one.
+    fakefw::setPinSilently(pinmap::kEncoderPhaseAPin,LOW);
+    TEST_ASSERT_EQUAL(0,c.sample(3U).encoderDelta);
+    int delta=0;
+    std::uint32_t now=pressEncoderButton(c,4U,delta);
+    now=releaseEncoderButton(c,now,delta);
+    TEST_ASSERT_EQUAL(0,delta);
+    TEST_ASSERT_EQUAL_UINT32(1U,c.encoderDiagnosticsForTest().anchors);
+    TEST_ASSERT_EQUAL_UINT32(1U,c.encoderDiagnosticsForTest().discardedRemainders);
+    assertAlternatingTriples(c,now,sign);
+}
+
+void testMergedEdgesAtTheDetentAreRoundedAndCounted(){
+    hal::ControlPanel c; c.begin();
+    // Five transitions reported at the detent: one detent, one edge discarded.
+    hal::platform::setQuadratureEncoderCountForTest(5U);
+    const int sign=c.sample(1U).encoderDelta;
+    TEST_ASSERT_TRUE(sign==1 || sign==-1);
+    TEST_ASSERT_EQUAL_UINT32(1U,c.encoderDiagnosticsForTest().discardedRemainders);
+    // Two transitions missing at the detent: a tie, no detent, discarded as well.
+    hal::platform::setQuadratureEncoderCountForTest(7U);
+    TEST_ASSERT_EQUAL(0,c.sample(2U).encoderDelta);
+    TEST_ASSERT_EQUAL_UINT32(2U,c.encoderDiagnosticsForTest().discardedRemainders);
+    std::uint32_t now=3U;
+    assertAlternatingTriples(c,now,-sign);
+}
+
+void testMenuVisitAndReturnKeepsAlternatingDetents(){
+    hal::ControlPanel c; c.begin();
+    forwardDetent(); const int sign=c.sample(1U).encoderDelta;
+    std::uint32_t now=2U;
+    for(int visit=0;visit<3;++visit){
+        int delta=0;
+        // Long press opens the menu; the push moves A/B by one edge while held.
+        now=pressEncoderButton(c,now,delta);
+        setEncoder(0,1);
+        delta+=c.sample(now).encoderDelta;
+        now+=600U;
+        // Menu: a few detents, then back.
+        setEncoder(0,0);
+        for(int i=0;i<2;++i){ forwardDetent(); delta+=c.sample(now++).encoderDelta; }
+        reverseDetent(); delta+=c.sample(now++).encoderDelta;
+        setEncoder(0,1);
+        now=releaseEncoderButton(c,now,delta);
+        setEncoder(0,0);
+        delta+=c.sample(now++).encoderDelta;
+        now+=5U;
+        delta+=c.sample(now++).encoderDelta;
+        TEST_ASSERT_EQUAL(sign,delta);
+        assertAlternatingTriples(c,now,sign);
     }
+    TEST_ASSERT_EQUAL_UINT32(3U,c.encoderDiagnosticsForTest().anchors);
+}
+
+void testEncoderButtonDuringFastTurnKeepsEveryDetent(){
+    hal::ControlPanel c; c.begin();
+    forwardDetent(); const int sign=c.sample(1U).encoderDelta;
+    int total=0;
+    fakefw::setPin(pinmap::kEncoderPushButtonPin,LOW);
+    std::uint32_t now=2U;
+    for(int i=0;i<200;++i){
+        forwardDetent();
+        if(i==100){ fakefw::setPin(pinmap::kEncoderPushButtonPin,HIGH); }
+        total+=c.sample(now++).encoderDelta;
+    }
+    TEST_ASSERT_EQUAL_UINT32(0U,c.encoderDiagnosticsForTest().anchors);
+    total+=drainAllEncoder(c,now);
+    now+=5U;
+    total+=c.sample(now++).encoderDelta;
+    TEST_ASSERT_EQUAL(sign*200,total);
+    TEST_ASSERT_EQUAL_UINT32(1U,c.encoderDiagnosticsForTest().anchors);
+    TEST_ASSERT_EQUAL_UINT32(0U,c.encoderDiagnosticsForTest().discardedRemainders);
+}
+
+void testAnchorAcrossQuadratureCounterWrap(){
+    hal::ControlPanel c; c.begin();
+    // Four transitions up, then every forward detent counts down through 0.
+    hal::platform::setQuadratureEncoderCountForTest(4U);
+    const int sign=-c.sample(1U).encoderDelta;
+    TEST_ASSERT_TRUE(sign==1 || sign==-1);
+    int delta=0;
+    std::uint32_t now=pressEncoderButton(c,2U,delta);
+    now=releaseEncoderButton(c,now,delta);
+    TEST_ASSERT_EQUAL(0,delta);
+    TEST_ASSERT_EQUAL_UINT32(1U,c.encoderDiagnosticsForTest().anchors);
+    // The next detents count across the 32-bit wrap of the transition counter.
+    assertAlternatingTriples(c,now,sign);
+    assertAlternatingTriples(c,now,sign);
 }
 
 int main(){UNITY_BEGIN();
 RUN_TEST(testIdleSampleDoesNotMaskInterrupts);RUN_TEST(testGrayCycleAProducesOneDetent);RUN_TEST(testGrayCycleBProducesOppositeDetent);RUN_TEST(testPartialGrayCycleProducesNoDetent);RUN_TEST(testEncoderBounceReturnsToSameStateWithoutDetent);RUN_TEST(testSixFastDetentsAccumulateWithoutForegroundPoll);RUN_TEST(testEncoderDrainIsEmptyAfterSample);RUN_TEST(testEncoderDrainCapsAt127AndPreservesRemainderForCycleA);RUN_TEST(testEncoderDrainCapsAt127AndPreservesRemainderForCycleB);RUN_TEST(testDirectionReversalCancelsPendingMovement);RUN_TEST(testEncoderLowAtStartupDoesNotManufactureDetent);RUN_TEST(testAllEncoderPinsUsePullups);
 RUN_TEST(testEncoderDirectionReversalInvertsCompletedDetentWithoutChangingDecoder);RUN_TEST(testEncoderDirectionReversalPreservesFastTurnBacklog);RUN_TEST(testFastTurnThousandDetentsAreNotLostForward);RUN_TEST(testFastTurnThousandDetentsAreNotLostReverse);RUN_TEST(testFastTurnRepeatedForegroundDrainsPreserveTotal);RUN_TEST(testFastTurnDirectionReversalCancelsLargeBacklog);RUN_TEST(testFastTurnBacklogSaturatesWithoutSignedOverflow);RUN_TEST(testFastTurnDuringButtonBouncePreservesAllDetents);RUN_TEST(testFirstDetentCountsImmediatelyFromEveryElectricalPhase);RUN_TEST(testFirstReverseDetentCountsImmediatelyFromEveryElectricalPhase);RUN_TEST(testEverySingleDetentAfterDirectionChangeIsReported);RUN_TEST(testMidCycleDirectionReversalDoesNotPoisonNextDetent);
-RUN_TEST(testMissedTransitionAtDetentStillReportsFirstClick);RUN_TEST(testMissedTransitionRecoveryDoesNotPoisonImmediateReverse);RUN_TEST(testHalfCycleCorruptionIsDiscardedAtDetentBoundary);RUN_TEST(testExtraTransitionAtDetentDoesNotCreatePersistentPhaseError);RUN_TEST(testQuadratureCounterWrapDoesNotLoseDetent);RUN_TEST(testMissingTransitionRecoveryRespectsReversedSetting);RUN_TEST(testLongAlternatingSingleDetentsNeverDropFirstClick);RUN_TEST(testOneEdgeResidueBeforeReverseDetentIsRecoveredAtAnchor);RUN_TEST(testFastTurnAfterImmediateReversalPreservesAllDetents);RUN_TEST(testEncoderReleaseReanchorsPartialPhaseBeforeDirectionChange);RUN_TEST(testAlternatingDetentsRemainExactAfterMenuPushPhaseShift);
+RUN_TEST(testMissedTransitionAtDetentStillReportsFirstClick);RUN_TEST(testMissedTransitionRecoveryDoesNotPoisonImmediateReverse);RUN_TEST(testHalfCycleCorruptionIsDiscardedAtDetentBoundary);RUN_TEST(testExtraTransitionAtDetentDoesNotCreatePersistentPhaseError);RUN_TEST(testQuadratureCounterWrapDoesNotLoseDetent);RUN_TEST(testMissingTransitionRecoveryRespectsReversedSetting);RUN_TEST(testLongAlternatingSingleDetentsNeverDropFirstClick);RUN_TEST(testOneEdgeResidueBeforeReverseDetentIsRecoveredAtAnchor);RUN_TEST(testFastTurnAfterImmediateReversalPreservesAllDetents);RUN_TEST(testAnchorRequestInEveryPhaseKeepsAlternatingDetentsExact);RUN_TEST(testAnchorWaitsForQuietTimeInTheDetentState);RUN_TEST(testAnchorDiscardsRemainderLeftByLostEdges);RUN_TEST(testMergedEdgesAtTheDetentAreRoundedAndCounted);RUN_TEST(testMenuVisitAndReturnKeepsAlternatingDetents);RUN_TEST(testEncoderButtonDuringFastTurnKeepsEveryDetent);RUN_TEST(testAnchorAcrossQuadratureCounterWrap);
 RUN_TEST(testEncoderPushDebouncesPress);RUN_TEST(testPlayPauseDebouncesPress);RUN_TEST(testTapDebouncesPress);RUN_TEST(testResetBackDebouncesPress);RUN_TEST(testEncoderPushDebouncesRelease);RUN_TEST(testPlayPauseDebouncesRelease);RUN_TEST(testTapDebouncesRelease);RUN_TEST(testResetBackDebouncesRelease);RUN_TEST(testEncoderPushHoldDoesNotRepeat);RUN_TEST(testPlayPauseHoldDoesNotRepeat);RUN_TEST(testTapHoldDoesNotRepeat);RUN_TEST(testResetBackHoldDoesNotRepeat);RUN_TEST(testButtonBounceBeforeDebounceDoesNotPress);RUN_TEST(testSimultaneousButtonsReportIndependentEdges);RUN_TEST(testButtonActivityDoesNotLoseEncoderDetent);RUN_TEST(testInitiallyPressedButtonIsStableWithoutSyntheticEdge);
 RUN_TEST(testBouncingPressKeepsTheFirstEdgeTimestamp);RUN_TEST(testPressShorterThanTheDebounceTimeIsDiscarded);RUN_TEST(testTwoQuickPressesKeepTheirOwnFirstEdges);RUN_TEST(testBounceAcrossTheTim5WrapKeepsTheFirstEdge);RUN_TEST(testFirstEdgeAtTimestampZeroIsValid);RUN_TEST(testPressHeldAtBootHasNoPressTimestamp);
 return UNITY_END();}

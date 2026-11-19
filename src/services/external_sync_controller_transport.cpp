@@ -19,13 +19,13 @@ void ExternalSyncController::startOrDeferFromIsr() {
         deferredStart_ = true;
         return;
     }
-    engine_.play();
+    engine_.playFromIsr();
     pendingTransportTransition_ = static_cast<std::uint8_t>(TransportState::Playing);
 }
 
 void ExternalSyncController::stopFromIsr() {
     deferredStart_ = false;
-    engine_.stop();
+    engine_.stopFromIsr();
     pendingTransportTransition_ = static_cast<std::uint8_t>(TransportState::Stopped);
 }
 
@@ -39,13 +39,29 @@ bool ExternalSyncController::tryOpenCommitWindow() {
 }
 
 void ExternalSyncController::closeCommitWindow() {
-    hal::InterruptLock interruptLock;
-    commitWindowOpen_ = false;
-    if (deferredStart_) {
-        deferredStart_ = false;
-        engine_.play();
-        pendingTransportTransition_ = static_cast<std::uint8_t>(TransportState::Playing);
+    {
+        hal::InterruptLock interruptLock;
+        if (!deferredStart_) {
+            commitWindowOpen_ = false;
+            return;
+        }
     }
+    // F-075: the start is prepared outside any lock. The engine swaps it in under its
+    // own lock and, in that same lock, the callback closes the window and takes the
+    // deferred start. An input STOP in between clears deferredStart_; then the window
+    // closes and nothing starts. The callback has applied the outcome either way.
+    (void)engine_.playWhen(&ExternalSyncController::takeDeferredStartUnsafe, this);
+}
+
+bool ExternalSyncController::takeDeferredStartUnsafe(void* const context) {
+    ExternalSyncController& self = *static_cast<ExternalSyncController*>(context);
+    self.commitWindowOpen_ = false;
+    if (!self.deferredStart_) {
+        return false;
+    }
+    self.deferredStart_ = false;
+    self.pendingTransportTransition_ = static_cast<std::uint8_t>(TransportState::Playing);
+    return true;
 }
 
 void ExternalSyncController::requestPlayFromInput() {
@@ -60,7 +76,7 @@ void ExternalSyncController::requestStopFromInput() {
 
 void ExternalSyncController::requestRestartFromInput() {
     autoTransportArmed_ = true;
-    engine_.stop();
+    engine_.stopFromIsr();
     startOrDeferFromIsr();
 }
 

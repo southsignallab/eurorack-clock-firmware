@@ -30,6 +30,18 @@ void ClockEngine::play() {
     applyTransportRequest(TransportRequest::Play);
 }
 
+void ClockEngine::playFromIsr() {
+    applyTransportRequestUnsafe(TransportRequest::Play, nullptr);
+}
+
+void ClockEngine::stopFromIsr() {
+    applyTransportRequestUnsafe(TransportRequest::Stop, nullptr);
+}
+
+bool ClockEngine::playWhen(const StartCondition condition, void* const context) {
+    return applyTransportRequestWhen(TransportRequest::Play, condition, context);
+}
+
 bool ClockEngine::transportRequestRestarts(const TransportRequest request) const {
     if (request != TransportRequest::Play) {
         return true;
@@ -42,6 +54,13 @@ bool ClockEngine::transportRequestRestarts(const TransportRequest request) const
 }
 
 void ClockEngine::applyTransportRequest(const TransportRequest request) {
+    (void)applyTransportRequestWhen(request, nullptr, nullptr);  // no condition: always applies
+}
+
+bool ClockEngine::applyTransportRequestWhen(
+    const TransportRequest request,
+    const StartCondition condition,
+    void* const context) {
     if (transportRequestRestarts(request)) {
         // Not value-initialized: prepareRestart() writes every field (see PreparedRestart).
         PreparedRestart restart;
@@ -59,14 +78,25 @@ void ClockEngine::applyTransportRequest(const TransportRequest request) {
 #endif
             hal::InterruptLock interruptLock;
             if (scheduleGeneration_ == tempo.generation) {
-                applyTransportRequestUnsafe(request, &restart);
-                return;
+                return applyTransportRequestIfUnsafe(request, &restart, condition, context);
             }
         }
         countStagedSwapFallback();
     }
     hal::InterruptLock interruptLock;
-    applyTransportRequestUnsafe(request, nullptr);
+    return applyTransportRequestIfUnsafe(request, nullptr, condition, context);
+}
+
+bool ClockEngine::applyTransportRequestIfUnsafe(
+    const TransportRequest request,
+    const PreparedRestart* const restart,
+    const StartCondition condition,
+    void* const context) {
+    if (condition != nullptr && !condition(context)) {
+        return false;
+    }
+    applyTransportRequestUnsafe(request, restart);
+    return true;
 }
 
 void ClockEngine::applyTransportRequestUnsafe(

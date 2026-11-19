@@ -13,6 +13,7 @@
 #include <initializer_list>
 #include <iostream>
 #include <map>
+#include <stdexcept>
 #include <unity.h>
 #include <Arduino.h>
 
@@ -24,8 +25,10 @@
 #include "domain/sequencer_step_metadata.h"
 #include "domain/default_configuration.h"
 #include "engine/clock_engine.h"
+#include "hal/exti_dispatch.h"
 #include "hal/external_input_capture.h"
 #include "hal/gate_output_driver.h"
+#include "hal/interrupt_lock.h"
 #include "hal/platform_io.h"
 #include "pin_map.h"
 #include "services/external_sync_controller.h"
@@ -98,6 +101,8 @@ void runTicks(engine::ClockEngine& engine, const std::uint32_t count) {
 #include "cases/scheduler_catch_up.inc"
 #include "cases/configuration_swap.inc"
 #include "cases/staged_swaps.inc"
+#include "cases/exti_dispatch.inc"
+#include "cases/isr_transport.inc"
 
 }  // namespace
 
@@ -190,5 +195,12 @@ int main() {
     RUN_TEST(testStagedPathsComputeUnderTheLockWhenTheSchedulerKeepsMovingTheBasis);
     RUN_TEST(testCaptureEstimatesMatchTheSchedulerTimeline);
     std::cout << "Realtime assertions: " << checks << "\n";
+    RUN_TEST(testExti15To10DispatchEndsAndServesLine15);
+    RUN_TEST(testExti9To5DispatchServesTheInputLines);
+    RUN_TEST(testSettledLevelReadsAgainAfterAnEdgeInTheWindow);
+    RUN_TEST(testInputTransportRolesOpenNoLockInTheSchedulerTick);
+    RUN_TEST(testSyncLockAndLossOpenNoLockInTheSchedulerTick);
+    RUN_TEST(testClosingTheCommitWindowStartsOutsideItsLock);
+    RUN_TEST(testInputStopDuringTheDeferredStartPreparationWins);
     return UNITY_END();
 }

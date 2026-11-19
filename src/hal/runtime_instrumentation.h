@@ -41,6 +41,14 @@ struct ClockRuntimeCounters {
     std::uint32_t caughtUpSchedulerTicks;
     /** Staged swaps that computed under the lock after repeated preparations (count, F-072). */
     std::uint32_t stagedSwapFallbacks;
+    /** Opposite edges queued for merged EXTI interrupts on INPUT 1/2 (count, F-016). */
+    std::uint32_t synthesizedInputEdges;
+    /** Encoder anchors taken at rest in the detent state (count, F-010). */
+    std::uint32_t encoderAnchors;
+    /** A/B state when the last anchor was requested by an encoder-button release (bit1 = A, bit0 = B). */
+    std::uint32_t encoderAnchorRequestPhase;
+    /** Partial quadrature counts discarded in the detent state (count, F-010). */
+    std::uint32_t encoderDiscardedRemainders;
 };
 
 extern "C" volatile ClockRuntimeCounters gClockRuntimeCounters;
@@ -70,6 +78,18 @@ void countCaughtUpSchedulerTicks(std::uint32_t elapsedTicks);
 
 /** @brief Counts one staged swap that had to compute under the lock after repeated preparations. */
 void countStagedSwapFallback();
+
+/** @brief Counts one opposite edge queued for a merged EXTI interrupt. */
+void countSynthesizedInputEdge();
+
+/** @brief Counts one encoder anchor taken at rest in the detent state. */
+void countEncoderAnchor();
+
+/** @brief Records the A/B state seen when an encoder anchor was requested. */
+void recordEncoderAnchorRequestPhase(std::uint8_t phase);
+
+/** @brief Counts one partial quadrature count discarded in the detent state. */
+void countEncoderDiscardedRemainder();
 
 }  // namespace clockfw::hal::instrumentation
 #endif

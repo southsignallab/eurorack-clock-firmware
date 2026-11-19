@@ -54,9 +54,30 @@ The physical encoder and the external timing inputs deliberately use different c
 
 The PEC11R A/B contacts are wired to PB6/PB7 and decoded by **TIM4 encoder mode**. The timer counts quadrature transitions in hardware; foreground control processing converts the wrapping transition count into mechanical detents and applies detent-phase resynchronization plus the user `NORMAL / REVERSED` semantic direction. The encoder therefore does not depend on GPIO EXTI delivery or display-loop latency.
 
-Both conditioned comparator paths remain GPIO-interrupt driven. Their ISR work is limited to timestamping/queuing physical INPUT 1 / INPUT 2 levels; musical role interpretation happens in the 20 kHz scheduler. Factory roles remain SYNC/RESET, but either physical path may own a supported role. RESET processing retains precedence over SYNC when both assigned roles are pending at the same scheduler boundary; edge-controlled transport commands follow, with STOP winning simultaneous START/RESTART, and an assigned RUN level applied last as the authoritative transport state.
+The detent state comes from the encoder datasheet: in a detent both contacts are closed to the grounded common pin, so A and B read LOW (Bourns PEC11R, REV. 04/26, p. 3; 24 detents and 24 pulses, one detent per quadrature cycle). Each time the count reaches that state it is rounded to whole detents. Releasing the encoder push switch requests an anchor that drops a partial count left by the axial push; it is taken only when A and B rest in the detent state and no transition came for 3 ms, longer than the 2 ms contact bounce of the datasheet. A release while the shaft still moves or bounces therefore cannot fix a wrong phase.
+
+Both conditioned comparator paths remain GPIO-interrupt driven (EXTI, priority 4). Their ISR work is limited to timestamping/queuing physical INPUT 1 / INPUT 2 levels; musical role interpretation happens in the 20 kHz scheduler. Factory roles remain SYNC/RESET, but either physical path may own a supported role. RESET processing retains precedence over SYNC when both assigned roles are pending at the same scheduler boundary; edge-controlled transport commands follow, with STOP winning simultaneous START/RESTART, and an assigned RUN level applied last as the authoritative transport state.
 
 The current baseline timestamps conditioned comparator edges through GPIO EXTI; when one path owns the SYNC role, those timestamps feed the external-period estimator. Final hardware qualification must measure capture/output jitter under representative worst-case load. PA8 remains timer Input Capture capable, so hardware capture remains an escalation option if measured EXTI timing misses the requirement.
+
+### Short triggers: parity rule
+
+One EXTI pending bit stands for any number of edges. The interrupt clears it, reads the pin and compares the level with the last stored level:
+
+- **Level changed:** an odd number of edges, counted as one edge of the new direction.
+- **Level unchanged:** at least two edges merged, for example a trigger that was already over when the interrupt ran. The capture queues the missing opposite edge and then the observed edge, both with the same timestamp.
+
+Trigger roles (START, STOP, RESTART, TAP, RESET as trigger) therefore fire exactly once for a short pulse; level roles (RUN, RESET as gate) follow only the level. Several pulses within one interrupt latency still count as one, which can only happen while the CPU is blocked. An edge between clearing the pending bit and reading the pin is already part of that level but sets the bit again; the interrupt clears it and reads again (at most three times), so the next interrupt does not count it a second time. The synthesized and the observed edge share one timestamp; the tempo estimator rejects the resulting zero period, so neither can cause a tempo step.
+
+The edge queue between the EXTI handler (producer) and the scheduler interrupt (consumer, which preempts the producer) publishes each slot with a release store of its head index and reads it after an acquire load, so the consumer never sees a slot before its contents.
+
+### Input timestamp jitter
+
+The timestamp is the TIM5 microsecond counter read in the EXTI handler; the scheduler interrupt (priority 0) and foreground interrupt locks can delay it. With the internal budget of at most 20 µs for the scheduler interrupt and 10 µs for an interrupt lock, the firmware contributes at most **30 µs** of input timestamp jitter (calculated, not yet measured; the comparator stage adds its own share). All gate outputs sit on the 50 µs scheduler grid and the tempo estimator averages, so this stays below one scheduler quantum at the outputs.
+
+Flash erase runs only with the engine stopped (D-04) and stalls the CPU. A trigger during an erase is not lost: the pending bit holds it, and the parity rule counts it when the erase has finished. It arrives late, by up to the rest of the erase.
+
+The scheduler interrupt changes transport only through the lock-free `playFromIsr()`/`stopFromIsr()` variants; `scripts/check_architecture.py` reports an `InterruptLock` or a call to a locking variant on any path from an interrupt entry point. Closing the Flash commit window starts a deferred START outside any lock; the engine swaps the prepared start in under its own lock, and in that same lock the window closes.
 
 ## Groove and TAP-record timing
 
@@ -118,7 +139,8 @@ The following invariants are release requirements:
 - foreground interrupt locks cover copying and swapping only, not schedule calculations, and copy no structure byte by byte;
 - configured gate lengths remain scheduler-quantized but transport-independent;
 - TIM4 encoder transitions must continue accumulating while foreground display work is active, and foreground detent conversion must not lose a complete mechanical detent;
-- conditioned SYNC/RST edges must remain capturable while OLED traffic is active;
+- conditioned SYNC/RST edges must remain capturable while OLED traffic is active, and a trigger shorter than the interrupt latency fires its role exactly once;
+- interrupt code opens no interrupt lock;
 - legacy I2C regression builds may lower visual frame rate or skip stale frames under load;
 - persistence writes remain prohibited while the engine runs because STM32F4 Flash programming can stall instruction/data fetches; immediately before each erase the commit gate checks the engine and opens a commit window under one interrupt lock, and scheduler-initiated starts (RUN/START/RESTART, auto-start on lock) inside that window are deferred until the commit has finished;
 - Groove/Swing offsets must preserve monotonic event order and cannot move a rising event beyond its neighboring event boundary;

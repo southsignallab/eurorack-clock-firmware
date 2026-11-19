@@ -423,6 +423,119 @@ def check_header_executable_logic(errors: list[str]) -> None:
             )
 
 
+# Interrupt entry points (F-030): TIM3/EXTI handlers and HAL callbacks, their thunks,
+# the scheduler tick and every *FromIsr function. Calls without an object qualifier
+# (same class or free function) are followed; they run in interrupt context too.
+ISR_ROOT_PATTERN = re.compile(r"(?:FromIsr|IRQHandler|_Callback|InterruptThunk|^processSchedulerTick)$")
+FUNCTION_DEFINITION_PATTERN = re.compile(
+    r"(?:^|[\s*&])(?:(?P<owner>[A-Za-z_]\w*)::)?(?P<name>~?[A-Za-z_]\w*)\s*"
+    r"\((?P<parameters>[^;{}()]*(?:\([^;{}()]*\)[^;{}()]*)*)\)"
+    r"\s*(?:const\s*)?(?:noexcept\s*)?(?:override\s*)?\{",
+    re.MULTILINE,
+)
+CALL_PATTERN = re.compile(r"(?P<qualifier>\.|->|::)?\s*\b(?P<name>[A-Za-z_]\w*)\s*\(")
+# A construction, not a static member access such as InterruptLock::activeCountForTest().
+LOCK_CONSTRUCTION_PATTERN = re.compile(r"\bInterruptLock\b(?!\s*::)")
+NON_FUNCTION_KEYWORDS = frozenset(
+    {"if", "for", "while", "switch", "return", "sizeof", "alignof", "static_assert", "catch", "decltype"}
+)
+
+
+def function_definitions(code: str) -> list[tuple[str, str, str]]:
+    """Return (owner, name, body) for each function definition in comment-free C++ code."""
+    definitions: list[tuple[str, str, str]] = []
+    for match in FUNCTION_DEFINITION_PATTERN.finditer(code):
+        name = match.group("name")
+        if name in NON_FUNCTION_KEYWORDS:
+            continue
+        start = match.end() - 1
+        depth = 0
+        for index in range(start, len(code)):
+            if code[index] == "{":
+                depth += 1
+            elif code[index] == "}":
+                depth -= 1
+                if depth == 0:
+                    definitions.append((match.group("owner") or "", name, code[start + 1:index]))
+                    break
+    return definitions
+
+
+def isr_lock_violations(sources: dict[str, str]) -> list[str]:
+    """Report InterruptLocks and lock-taking calls reachable from interrupt context.
+
+    A function takes a lock when its body constructs an InterruptLock or calls such a
+    function of its own class without a qualifier; every X with an XFromIsr variant
+    counts as well. Calls through an object (engine_.play()) are matched by name;
+    the transitive closure behind them is the host-test lock counter's job.
+    """
+    definitions: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    for label, text in sources.items():
+        code = CPP_COMMENT_OR_LITERAL_PATTERN.sub(" ", text)
+        for owner, name, body in function_definitions(code):
+            definitions.setdefault((owner, name), []).append((label, body))
+
+    def unqualified_calls(body: str) -> set[str]:
+        return {
+            call.group("name")
+            for call in CALL_PATTERN.finditer(body)
+            if call.group("qualifier") is None and call.group("name") not in NON_FUNCTION_KEYWORDS
+        }
+
+    locking_keys = {
+        key for key, bodies in definitions.items()
+        if any(LOCK_CONSTRUCTION_PATTERN.search(body) for _, body in bodies)
+    }
+    changed = True
+    while changed:
+        changed = False
+        for key, bodies in definitions.items():
+            if key in locking_keys:
+                continue
+            owner = key[0]
+            if any((owner, callee) in locking_keys for _, body in bodies for callee in unqualified_calls(body)):
+                locking_keys.add(key)
+                changed = True
+    locking = {name for _, name in locking_keys}
+    locking |= {name[: -len("FromIsr")] for _, name in definitions if name.endswith("FromIsr")}
+
+    violations: list[str] = []
+    pending = [key for key in definitions if ISR_ROOT_PATTERN.search(key[1])]
+    reached = set(pending)
+    while pending:
+        owner, name = pending.pop()
+        for label, body in definitions[(owner, name)]:
+            where = f"{label}: {owner + '::' if owner else ''}{name}()"
+            if LOCK_CONSTRUCTION_PATTERN.search(body):
+                violations.append(f"{where} runs in interrupt context and constructs an InterruptLock")
+            for call in CALL_PATTERN.finditer(body):
+                callee = call.group("name")
+                qualifier = call.group("qualifier")
+                if callee in NON_FUNCTION_KEYWORDS or qualifier == "::":
+                    continue
+                if qualifier in {".", "->"}:
+                    if callee in locking:
+                        violations.append(
+                            f"{where} runs in interrupt context and calls {callee}(), which takes an "
+                            f"InterruptLock; call {callee}FromIsr() or another lock-free variant"
+                        )
+                    continue
+                for key in ((owner, callee), ("", callee)):
+                    if key in definitions and key not in reached:
+                        reached.add(key)
+                        pending.append(key)
+    return sorted(set(violations))
+
+
+def check_isr_lock_free(errors: list[str]) -> None:
+    """Interrupt code calls only lock-free (FromIsr) variants and opens no InterruptLock (F-030)."""
+    sources = {
+        repository_relative(path).as_posix(): path.read_text(encoding="utf-8")
+        for path in sorted((ROOT / "src").rglob("*.cpp"))
+    }
+    errors.extend(isr_lock_violations(sources))
+
+
 def count_lines(path: Path) -> int:
     """Count logical source lines using the repository's UTF-8 convention."""
     return len(path.read_text(encoding="utf-8").splitlines())
@@ -476,6 +589,7 @@ def main() -> int:
     check_ui_text_centralization(errors)
     check_external_library_policy(errors)
     check_header_executable_logic(errors)
+    check_isr_lock_free(errors)
     check_heap_free_firmware(errors)
     check_source_sizes(errors)
 
@@ -493,6 +607,7 @@ def main() -> int:
     print("  VCV Rack API: confined to vcv/; Rack SDK must remain external")
     print("  Storybook/media dependencies: confined to host-only simulator/publication tooling")
     print("  Embedded heap allocation: prohibited in src/ and lib/")
+    print("  Interrupt context: no InterruptLock, only FromIsr transport variants")
     print("  Headers: explicit @file/@brief metadata and production API briefs; colocated implementations; executable header-only logic prohibited")
     return 0
 

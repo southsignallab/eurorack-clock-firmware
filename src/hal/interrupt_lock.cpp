@@ -18,15 +18,29 @@ namespace clockfw::hal {
 #if defined(CLOCK_HOST_TEST)
 namespace {
 std::uint32_t gActiveLocksForTest = 0U;
+std::uint32_t gConstructedLocksForTest = 0U;
+std::uint32_t gNestedLocksForTest = 0U;
 }  // namespace
 
 std::uint32_t InterruptLock::activeCountForTest() {
     return gActiveLocksForTest;
 }
+
+std::uint32_t InterruptLock::constructionCountForTest() {
+    return gConstructedLocksForTest;
+}
+
+std::uint32_t InterruptLock::nestedCountForTest() {
+    return gNestedLocksForTest;
+}
 #endif
 
 InterruptLock::InterruptLock() {
 #if defined(CLOCK_HOST_TEST)
+    ++gConstructedLocksForTest;
+    if (gActiveLocksForTest != 0U) {
+        ++gNestedLocksForTest;
+    }
     ++gActiveLocksForTest;
 #endif
     previousPrimask_ = platform::enterCritical();

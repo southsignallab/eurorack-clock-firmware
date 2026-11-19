@@ -79,6 +79,13 @@ private:
     /** @brief Stops the engine and drops a start recorded during a commit window. */
     void stopFromIsr();
 
+    /**
+     * @brief Closes the commit window and takes a deferred start; runs under the engine's lock.
+     * @param context The controller.
+     * @return True when a start was still deferred, so the engine starts.
+     */
+    static bool takeDeferredStartUnsafe(void* context);
+
     /** @brief Processes the input assigned to RESET. */
     void processResetEdges();
     /** @brief Processes the input assigned to SYNC. */

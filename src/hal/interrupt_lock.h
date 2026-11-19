@@ -35,6 +35,12 @@ public:
 #if defined(CLOCK_HOST_TEST)
     /** @brief Returns how many InterruptLock scopes are open (host tests only). */
     static std::uint32_t activeCountForTest();
+
+    /** @brief Returns how many InterruptLock scopes were opened so far (host tests only). */
+    static std::uint32_t constructionCountForTest();
+
+    /** @brief Returns how many were opened while another was open (host tests only). */
+    static std::uint32_t nestedCountForTest();
 #endif
 
 private:

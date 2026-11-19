@@ -13,6 +13,10 @@
 #include "hal/system_clock.h"
 #include "pin_map.h"
 
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+#include "hal/runtime_instrumentation.h"
+#endif
+
 namespace clockfw::hal {
 
 ExternalInputCapture* ExternalInputCapture::activeInstance_ = nullptr;
@@ -72,17 +76,33 @@ void ExternalInputCapture::resetInterruptThunk() {
 }
 
 void ExternalInputCapture::captureSyncFromIsr() {
-    const bool high = platform::read(pinmap::kExternalSyncSignalPin);
-    syncLevelHigh_ = high;
-    ++activitySequence_;
-    pushFromIsr(syncQueue_, {SystemClock::microseconds(), high});
+    captureFromIsr(syncQueue_, syncLevelHigh_, platform::readInterruptLevel(pinmap::kExternalSyncSignalPin));
 }
 
 void ExternalInputCapture::captureResetFromIsr() {
-    const bool high = platform::read(pinmap::kExternalResetSignalPin);
-    resetLevelHigh_ = high;
+    captureFromIsr(resetQueue_, resetLevelHigh_, platform::readInterruptLevel(pinmap::kExternalResetSignalPin));
+}
+
+void ExternalInputCapture::captureFromIsr(
+    EdgeQueue& queue,
+    volatile bool& storedLevelHigh,
+    const bool high) {
+    const std::uint32_t timestampUs = SystemClock::microseconds();
+    // The pending bit was set, so at least one edge came. The same level as last
+    // time means an even number, at least two: a pulse shorter than the latency.
+    const bool merged = high == storedLevelHigh;
+    storedLevelHigh = high;
     ++activitySequence_;
-    pushFromIsr(resetQueue_, {SystemClock::microseconds(), high});
+    if (merged) {
+#ifdef CLOCK_HOST_TEST
+        ++synthesizedEdgesForTest_;
+#endif
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+        instrumentation::countSynthesizedInputEdge();
+#endif
+        pushFromIsr(queue, {timestampUs, !high});
+    }
+    pushFromIsr(queue, {timestampUs, high});
 }
 
 void ExternalInputCapture::pushFromIsr(EdgeQueue& queue, const ExternalInputEdge edge) {
@@ -92,13 +112,15 @@ void ExternalInputCapture::pushFromIsr(EdgeQueue& queue, const ExternalInputEdge
     // TIM3 has drained the queue and consumed the marker; the next physical edge
     // then starts a clean acquisition epoch. RST gate mode still has the separate
     // resetLevelHigh_ level latch, so its authoritative level is not lost here.
-    if (queue.overflowPending) {
+    if (queue.overflowPending.load(std::memory_order_acquire)) {
         ++queue.overflowCount;
         return;
     }
 
-    const std::uint8_t next = static_cast<std::uint8_t>((queue.head + 1U) % kQueueCapacity);
-    if (next == queue.tail) {
+    // Only this producer writes head; only the consumer writes tail.
+    const std::uint8_t head = queue.head.load(std::memory_order_relaxed);
+    const std::uint8_t next = static_cast<std::uint8_t>((head + 1U) % kQueueCapacity);
+    if (next == queue.tail.load(std::memory_order_acquire)) {
         ++queue.overflowCount;
         // TIM3 intentionally has higher priority than EXTI and may preempt this
         // producer. Publish the overflow marker only after its multi-field payload
@@ -107,26 +129,32 @@ void ExternalInputCapture::pushFromIsr(EdgeQueue& queue, const ExternalInputEdge
         // continuous.
         queue.overflowTimestampUs = edge.timestampUs;
         queue.overflowLevelHigh = edge.high;
-        queue.overflowPending = true;
+        queue.overflowPending.store(true, std::memory_order_release);
         return;
     }
-    queue.edges[queue.head] = edge;
-    queue.head = next;
+    queue.edges[head] = edge;
+    // Release: the slot above is complete before the consumer can see it.
+    queue.head.store(next, std::memory_order_release);
 }
 
 bool ExternalInputCapture::pop(EdgeQueue& queue, ExternalInputEdge& edge) {
-    if (queue.tail != queue.head) {
-        edge = queue.edges[queue.tail];
-        queue.tail = static_cast<std::uint8_t>((queue.tail + 1U) % kQueueCapacity);
+    // Acquire on head: the slot is read after the producer's release of head.
+    const std::uint8_t tail = queue.tail.load(std::memory_order_relaxed);
+    if (tail != queue.head.load(std::memory_order_acquire)) {
+        edge = queue.edges[tail];
+        // Release: the slot is read before the producer may reuse it.
+        queue.tail.store(
+            static_cast<std::uint8_t>((tail + 1U) % kQueueCapacity),
+            std::memory_order_release);
         return true;
     }
-    if (!queue.overflowPending) {
+    if (!queue.overflowPending.load(std::memory_order_acquire)) {
         return false;
     }
     edge.timestampUs = queue.overflowTimestampUs;
     edge.high = queue.overflowLevelHigh;
     edge.continuityLost = true;
-    queue.overflowPending = false;
+    queue.overflowPending.store(false, std::memory_order_release);
     return true;
 }
 

@@ -20,6 +20,14 @@ void configureInputPullup(mcu::Pin pin);
 void configureOutput(mcu::Pin pin);
 /** @brief Reads one GPIO logic level. */
 bool read(mcu::Pin pin);
+/**
+ * @brief Reads the level of an EXTI input inside its interrupt callback (F-016).
+ *
+ * Production clears the pending bit again and rereads while an edge set it after
+ * the read (exti::readSettledLevel()), so the next interrupt does not count an edge
+ * that this level already contains. Host and simulator read the pin.
+ */
+bool readInterruptLevel(mcu::Pin pin);
 /** @brief Writes one GPIO logic level. */
 void write(mcu::Pin pin, bool high);
 /**

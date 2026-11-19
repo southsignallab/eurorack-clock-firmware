@@ -28,8 +28,12 @@ constexpr std::uint64_t kForegroundPeriodUs = 1000ULL;
 constexpr std::uint64_t kPersistenceFlushPeriodUs = 500000ULL;
 constexpr std::uint64_t kMinimumButtonPulseUs = 30000ULL;
 
-constexpr std::array<std::uint8_t, 5U> kClockwisePhases{{3U, 1U, 0U, 2U, 3U}};
-constexpr std::array<std::uint8_t, 5U> kCounterClockwisePhases{{3U, 2U, 0U, 1U, 3U}};
+// A/B states (bit1 = A, bit0 = B). The PEC11R rests in a detent with both contacts
+// closed to the grounded common pin, so A = B = LOW (datasheet REV. 04/26, p. 3);
+// the firmware rounds at that state (F-010). One detent is one full cycle.
+constexpr std::uint8_t kEncoderDetentPhase = 0U;
+constexpr std::array<std::uint8_t, 5U> kClockwisePhases{{0U, 2U, 3U, 1U, 0U}};
+constexpr std::array<std::uint8_t, 5U> kCounterClockwisePhases{{0U, 1U, 3U, 2U, 0U}};
 
 }  // namespace
 
@@ -248,7 +252,7 @@ void SimulatorRuntime::setPower(const bool powered) {
 
     simfw::resetArduino();
     simfw::resetTimer();
-    setEncoderPhase(3U);
+    setEncoderPhase(kEncoderDetentPhase);
     applyStoredButtonLevels();
     persistence_.load();
     application_ = std::make_unique<app::ClockApplication>();

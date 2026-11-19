@@ -12,11 +12,34 @@
 
 #include "pin_map.h"
 
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+#include "hal/runtime_instrumentation.h"
+#endif
+
 namespace clockfw::hal {
 namespace {
 
 /** Debounce interval applied to active-low button inputs. */
 constexpr std::uint32_t kDebounceMs = 25UL;
+
+/**
+ * A/B state in a detent (bit1 = A, bit0 = B, as platform::quadratureEncoderState()).
+ * Bourns PEC11R datasheet REV. 04/26, p. 3, "Quadrature Output Table": at the detent
+ * marked D both contacts are ON, i.e. closed to C. C is at GND and A/B have pull-ups,
+ * so both read LOW. The fitted PEC11R-4220F-S0024 has 24 detents and 24 pulses: one
+ * detent per quadrature cycle, every detent in this state.
+ */
+constexpr std::uint8_t kEncoderDetentState = 0b00U;
+
+/** Contact bounce of the PEC11R, datasheet p. 1: "Contact Bounce (15 RPM) 2.0 ms max." */
+constexpr std::uint32_t kEncoderContactBounceMs = 2UL;
+
+/**
+ * Quiet time before an anchor: no quadrature transition for this long. The
+ * millisecond clock advances in whole ticks, so samples three ticks apart are more
+ * than the 2 ms contact bounce apart.
+ */
+constexpr std::uint32_t kEncoderAnchorQuietMs = kEncoderContactBounceMs + 1UL;
 
 }  // namespace
 
@@ -89,17 +112,15 @@ void ControlPanel::begin() {
         pinmap::kEncoderPhaseAPin,
         pinmap::kEncoderPhaseBPin);
     encoderLastTransitionCount_ = platform::quadratureEncoderCount();
-    // Hardware Rev C fits a Bourns PEC11R-4220F-S0024: 24 detents / 24 PPR, i.e.
-    // one quadrature cycle per mechanical detent. Capture the electrical state
-    // seen at rest as a recovery anchor. The anchor is measured at runtime and
-    // deliberately refreshed after every debounced encoder-button release rather
-    // than assumed from the datasheet or treated as an immutable phase for the
-    // lifetime of the firmware.
-    encoderDetentPhase_ = platform::quadratureEncoderState();
+    // Hardware Rev C fits a Bourns PEC11R-4220F-S0024: 24 detents / 24 PPR, one
+    // quadrature cycle per mechanical detent. The detent state comes from the
+    // datasheet (kEncoderDetentState), not from the state seen at boot (F-010).
     encoderTransitionRemainder_ = 0;
     pendingEncoderDetents_ = 0;
+    encoderAnchorPending_ = false;
 
     const std::uint32_t nowMs = platform::milliseconds();
+    encoderLastActivityMs_ = nowMs;
     encoderButton_.begin(nowMs);
     transportButton_.begin(nowMs);
     tapButton_.begin(nowMs);
@@ -108,17 +129,17 @@ void ControlPanel::begin() {
 
 ControlSample ControlPanel::sample(const std::uint32_t nowMs) {
     const ButtonSample encoderButton = encoderButton_.sample(nowMs);
-    std::int8_t encoderDelta = sampleEncoder();
+    std::int8_t encoderDelta = sampleEncoder(nowMs);
 
     // The PEC11R push switch is part of the same mechanical shaft as A/B. Axial
     // push/release and contact bounce can leave the transition accumulator
-    // between detents even when no intentional turn happened. The
-    // debounced release means the switch and shaft have already been stable for
-    // kDebounceMs, making this a safe point to discard only the partial residue
-    // and re-anchor the electrical phase. Completed/pending detents are kept.
+    // between detents even when no intentional turn happened. The debounced
+    // release requests an anchor; it is taken only at rest in the detent state,
+    // where the partial residue is surely error (F-010).
     if (encoderButton.edge == ButtonEdge::Released) {
-        resynchronizeEncoderAtRest();
+        requestEncoderAnchor();
     }
+    anchorEncoderAtRest(nowMs);
 
     if (encoderDirectionReversed_) {
         encoderDelta = static_cast<std::int8_t>(-encoderDelta);
@@ -136,13 +157,50 @@ void ControlPanel::setEncoderDirectionReversed(const bool reversed) {
     encoderDirectionReversed_ = reversed;
 }
 
-void ControlPanel::resynchronizeEncoderAtRest() {
-    encoderLastTransitionCount_ = platform::quadratureEncoderCount();
-    encoderDetentPhase_ = platform::quadratureEncoderState();
-    encoderTransitionRemainder_ = 0;
+void ControlPanel::requestEncoderAnchor() {
+    encoderAnchorPending_ = true;
+    const std::uint8_t phase = platform::quadratureEncoderState();
+#if defined(CLOCK_HOST_TEST)
+    encoderDiagnostics_.anchorRequestPhase = phase;
+#endif
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+    instrumentation::recordEncoderAnchorRequestPhase(phase);
+#endif
+    (void)phase;  // read only by the diagnostics
 }
 
-std::int8_t ControlPanel::sampleEncoder() {
+void ControlPanel::anchorEncoderAtRest(const std::uint32_t nowMs) {
+    // Unsigned difference: exact across the 2^32 ms wrap.
+    if (!encoderAnchorPending_ ||
+        nowMs - encoderLastActivityMs_ < kEncoderAnchorQuietMs ||
+        platform::quadratureEncoderState() != kEncoderDetentState) {
+        return;
+    }
+    encoderAnchorPending_ = false;
+    // The count consumed by sampleEncoder() stays the baseline, so no transition
+    // that arrives meanwhile is lost; only the partial residue is dropped.
+    if (encoderTransitionRemainder_ != 0) {
+        encoderTransitionRemainder_ = 0;
+        countDiscardedEncoderRemainder();
+    }
+#if defined(CLOCK_HOST_TEST)
+    ++encoderDiagnostics_.anchors;
+#endif
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+    instrumentation::countEncoderAnchor();
+#endif
+}
+
+void ControlPanel::countDiscardedEncoderRemainder() {
+#if defined(CLOCK_HOST_TEST)
+    ++encoderDiagnostics_.discardedRemainders;
+#endif
+#if defined(CLOCK_RUNTIME_INSTRUMENTATION)
+    instrumentation::countEncoderDiscardedRemainder();
+#endif
+}
+
+std::int8_t ControlPanel::sampleEncoder(const std::uint32_t nowMs) {
     constexpr std::int32_t kTransitionsPerDetent = 4;
     constexpr std::int16_t kMaximumPendingDetents = 32767;
     constexpr std::int16_t kMinimumPendingDetents = -32767;
@@ -155,15 +213,16 @@ std::int8_t ControlPanel::sampleEncoder() {
     encoderLastTransitionCount_ = currentCount;
 
     if (transitionDelta != 0) {
+        encoderLastActivityMs_ = nowMs;
         const std::int64_t accumulatedTransitions =
             static_cast<std::int64_t>(encoderTransitionRemainder_) + transitionDelta;
         const bool atDetentPhase =
-            platform::quadratureEncoderState() == encoderDetentPhase_;
+            platform::quadratureEncoderState() == kEncoderDetentState;
 
         std::int32_t newDetents = 0;
         if (atDetentPhase) {
             // PEC11R-4220F-S0024 has one quadrature pulse per mechanical detent
-            // (24 detents / 24 PPR). Returning to the current rest-phase anchor
+            // (24 detents / 24 PPR). Returning to the datasheet detent state
             // is therefore a useful recovery boundary. Round a one-edge count
             // error to the nearest complete cycle and discard any remaining
             // half-cycle corruption instead of carrying it across a later
@@ -175,6 +234,10 @@ std::int8_t ControlPanel::sampleEncoder() {
                 (magnitude + 1) / kTransitionsPerDetent);
             newDetents = accumulatedTransitions < 0 ? -completedCycles : completedCycles;
             encoderTransitionRemainder_ = 0;
+            if (accumulatedTransitions !=
+                static_cast<std::int64_t>(newDetents) * kTransitionsPerDetent) {
+                countDiscardedEncoderRemainder();
+            }
         } else {
             newDetents = static_cast<std::int32_t>(
                 accumulatedTransitions / kTransitionsPerDetent);

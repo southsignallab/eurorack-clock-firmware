@@ -142,6 +142,33 @@ public:
     /** @brief Stops scheduler progression and resets the master/global channel phase. */
     void stop();
 
+    /**
+     * @brief Interrupt variant of play(): constructs no InterruptLock (F-030).
+     *
+     * For the scheduler interrupt, which nothing it races with can preempt, or for
+     * foreground code that already holds the lock. Prepares and installs a fresh
+     * start in one step, like resetGlobalPhaseFromIsr().
+     */
+    void playFromIsr();
+
+    /** @brief Interrupt variant of stop(): constructs no InterruptLock (F-030), see playFromIsr(). */
+    void stopFromIsr();
+
+    /** @brief Decides under the lock whether a prepared start still applies; gets the caller's context. */
+    using StartCondition = bool (*)(void* context);
+
+    /**
+     * @brief Starts like play() if @p condition, called under the lock, returns true (F-075).
+     * @param condition Called exactly once, under the lock that installs the start; it
+     *        may update caller state guarded by the same decision.
+     * @param context Passed to @p condition.
+     * @return The value @p condition returned; false means nothing started.
+     *
+     * The restart is prepared outside the lock and the lock only swaps it in, so a
+     * caller that must decide and start atomically needs no lock of its own around it.
+     */
+    [[nodiscard]] bool playWhen(StartCondition condition, void* context);
+
     /** @brief Applies a global reset while respecting each channel's GLOBAL/FREE reset policy. */
     void resetGlobalPhase();
 
@@ -715,6 +742,29 @@ private:
      * it repeats, and after kStagedSwapAttempts the request computes under the lock.
      */
     void applyTransportRequest(TransportRequest request);
+
+    /**
+     * @brief applyTransportRequest() that applies only if @p condition agrees under the lock.
+     * @param request Transport change.
+     * @param condition Called once under the installing lock; nullptr always applies.
+     * @param context Passed to @p condition.
+     * @return False when @p condition declined.
+     */
+    bool applyTransportRequestWhen(TransportRequest request, StartCondition condition, void* context);
+
+    /**
+     * @brief Calls @p condition and applies @p request if it agrees; caller holds the lock.
+     * @param request Transport change.
+     * @param restart Prepared restart, or nullptr to compute it under the lock.
+     * @param condition nullptr always applies.
+     * @param context Passed to @p condition.
+     * @return False when @p condition declined.
+     */
+    bool applyTransportRequestIfUnsafe(
+        TransportRequest request,
+        const PreparedRestart* restart,
+        StartCondition condition,
+        void* context);
 
     /**
      * @brief Applies @p request; caller holds the lock.

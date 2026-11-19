@@ -27,7 +27,11 @@ void ControlPanel::DebouncedButton::begin(const std::uint32_t nowMs) {
     rawPressed_ = !platform::read(pin_);
     stablePressed_ = rawPressed_;
     rawChangedAtMs_ = nowMs;
-    rawChangedAtUs_ = platform::microseconds();
+    transitionPending_ = false;
+    transitionStartedAtUs_ = 0U;
+    // A button held at boot has no observed first edge and no press timestamp.
+    pressStartedAtUs_ = 0U;
+    pressStartKnown_ = false;
 }
 
 ButtonSample ControlPanel::DebouncedButton::sample(const std::uint32_t nowMs) {
@@ -35,16 +39,39 @@ ButtonSample ControlPanel::DebouncedButton::sample(const std::uint32_t nowMs) {
     if (currentRawPressed != rawPressed_) {
         rawPressed_ = currentRawPressed;
         rawChangedAtMs_ = nowMs;
-        rawChangedAtUs_ = platform::microseconds();
+        // Only the first edge away from the stable state starts a transition;
+        // bounce edges until it is accepted or settles back keep that timestamp.
+        if (!transitionPending_ && rawPressed_ != stablePressed_) {
+            transitionPending_ = true;
+            transitionStartedAtUs_ = platform::microseconds();
+        }
     }
 
-    ButtonEdge edge = ButtonEdge::None;
-    if (rawPressed_ != stablePressed_ && nowMs - rawChangedAtMs_ >= kDebounceMs) {
+    ButtonSample result{};
+    const bool settled = nowMs - rawChangedAtMs_ >= kDebounceMs;
+    if (rawPressed_ != stablePressed_ && settled) {
         stablePressed_ = rawPressed_;
-        edge = stablePressed_ ? ButtonEdge::Pressed : ButtonEdge::Released;
+        result.edge = stablePressed_ ? ButtonEdge::Pressed : ButtonEdge::Released;
+        result.edgeTimestampUs = transitionStartedAtUs_;
+        result.edgeTimestampValid = true;
+        transitionPending_ = false;
+        if (stablePressed_) {
+            pressStartedAtUs_ = transitionStartedAtUs_;
+            pressStartKnown_ = true;
+        }
+    } else if (rawPressed_ == stablePressed_ && settled) {
+        // Back at the stable state for the full debounce time: the transition was
+        // bounce or a press shorter than the debounce time and is discarded.
+        transitionPending_ = false;
     }
-
-    return {edge, stablePressed_, edge == ButtonEdge::None ? 0U : rawChangedAtUs_};
+    result.pressed = stablePressed_;
+    result.pressTimestampValid =
+        pressStartKnown_ && (stablePressed_ || result.edge == ButtonEdge::Released);
+    result.pressTimestampUs = result.pressTimestampValid ? pressStartedAtUs_ : 0U;
+    if (!stablePressed_) {
+        pressStartKnown_ = false;
+    }
+    return result;
 }
 
 ControlPanel::ControlPanel()

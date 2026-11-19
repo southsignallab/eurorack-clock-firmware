@@ -244,7 +244,9 @@ void UiController::handleTapButton(
             (navigation_.grooveCursor + 1U) % navigation_.grooveDraft.length);
         invalidate();
     } else if (navigation_.screen == Screen::Performance) {
-        registerTapTempo(nowMs, nowUs);
+        // TAP registers on release (it is also a modifier) but times the press:
+        // the first raw edge of the press, not the debounced release (F-029).
+        registerTapTempo(nowMs, button.pressTimestampValid ? button.pressTimestampUs : nowUs);
     } else if (navigation_.screen == Screen::SequencerEditor && navigation_.sequencerPage > 0U) {
         --navigation_.sequencerPage;
         navigation_.sequencerCursor = 0U;

@@ -43,19 +43,21 @@ std::uint32_t ClockEngine::effectiveBpmMilli(
 ClockEngine::ScheduleInputs ClockEngine::makeScheduleInputs(
     const EngineConfiguration& configuration,
     const std::uint32_t* const customGrooveSpacingQ16,
+    const GrooveSources& grooves,
     const bool externalLocked,
     const std::uint32_t externalBpmMilli) {
     ScheduleInputs inputs{};
     inputs.configuration = &configuration;
     inputs.customGrooveSpacingQ16 = customGrooveSpacingQ16;
+    inputs.grooves = &grooves;
     inputs.bpmMilli = effectiveBpmMilli(configuration, externalLocked, externalBpmMilli);
     inputs.minimumIntervalQ32 = minimumOutputIntervalQ32(inputs.bpmMilli, configuration.beatUnit);
     return inputs;
 }
 
 ClockEngine::ScheduleInputs ClockEngine::liveScheduleInputs() const {
-    return makeScheduleInputs(
-        *configuration_, customGrooveSpacingQ16_, externalLocked_, externalBpmMilli_);
+    return makeScheduleInputs(*configuration_, customGrooveSpacingQ16_, *grooveSources_,
+                              externalLocked_, externalBpmMilli_);
 }
 
 std::uint64_t ClockEngine::minimumOutputIntervalQ32() const {
@@ -100,11 +102,6 @@ void ClockEngine::resolveChannelRate(
             numerator,
             denominator);
     }
-}
-
-std::uint64_t ClockEngine::calculateNominalBaseIntervalQ32(
-    const std::size_t channelIndex) const {
-    return calculateNominalBaseIntervalQ32(liveScheduleInputs(), channelIndex);
 }
 
 std::uint64_t ClockEngine::calculateNominalBaseIntervalQ32(
@@ -217,18 +214,19 @@ std::uint64_t ClockEngine::calculateEventPositionQ32(
     const std::uint64_t nominalPositionQ32 = phasePositionQ32 + baseOffsetQ32;
 
     std::uint64_t shapedPositionQ32 = nominalPositionQ32;
-    const bool previewActive = customGroovePreviewActive_[channelIndex];
+    const GrooveSources& grooves = *inputs.grooves;
+    const bool previewActive = grooves.previewActive[channelIndex];
     if (previewActive ||
         (grooveSettings.preset == GroovePreset::Custom &&
          grooveSettings.customSlot < kCustomGrooveSlotCount)) {
         const CustomGroovePattern& customPattern = previewActive
-            ? customGroovePreviews_[channelIndex]
-            : customGrooves_[grooveSettings.customSlot];
+            ? *grooves.previews[channelIndex]
+            : *grooves.slots[grooveSettings.customSlot];
         const std::uint8_t customAmount = previewActive
-            ? customGroovePreviewAmount_[channelIndex]
+            ? grooves.previewAmount[channelIndex]
             : grooveSettings.amountPercent;
         const std::uint8_t customRotation = previewActive
-            ? customGroovePreviewRotation_[channelIndex]
+            ? grooves.previewRotation[channelIndex]
             : grooveSettings.rotation;
         const std::int16_t offset256 = customGrooveOffset256(
             customPattern,
@@ -319,23 +317,23 @@ std::uint64_t ClockEngine::calculateBaseIntervalUs(
 }
 
 std::uint32_t ClockEngine::calculateCustomGrooveSpacingQ16(
+    const GrooveSources& grooves,
     const std::size_t channelIndex,
-    const ChannelConfig& channel,
-    const bool previewActive) const {
+    const ChannelConfig& channel) {
     // Same pattern selection as calculateEventPositionQ32(). Foreground only: the
     // library, previews and channel configuration have no writer in interrupt context.
-    if (previewActive) {
+    if (grooves.previewActive[channelIndex]) {
         return customGrooveMinimumSpacingQ16(
-            customGroovePreviews_[channelIndex],
-            customGroovePreviewAmount_[channelIndex],
-            customGroovePreviewRotation_[channelIndex],
+            *grooves.previews[channelIndex],
+            grooves.previewAmount[channelIndex],
+            grooves.previewRotation[channelIndex],
             channel.common.swingPercent);
     }
     const GrooveSettings& grooveSettings = channel.common.groove;
     if (grooveSettings.preset == GroovePreset::Custom &&
         grooveSettings.customSlot < kCustomGrooveSlotCount) {
         return customGrooveMinimumSpacingQ16(
-            customGrooves_[grooveSettings.customSlot],
+            *grooves.slots[grooveSettings.customSlot],
             grooveSettings.amountPercent,
             grooveSettings.rotation,
             channel.common.swingPercent);
@@ -356,7 +354,7 @@ std::uint16_t ClockEngine::effectiveHumanizeUs(
     const std::uint64_t baseIntervalUs = calculateBaseIntervalUs(inputs, channelIndex);
     std::uint64_t shortestShapedIntervalUs = baseIntervalUs;
     const GrooveSettings& grooveSettings = channel.common.groove;
-    if (customGroovePreviewActive_[channelIndex] ||
+    if (inputs.grooves->previewActive[channelIndex] ||
         (grooveSettings.preset == GroovePreset::Custom &&
          grooveSettings.customSlot < kCustomGrooveSlotCount)) {
         // Custom offsets are signed, so the factory maximum-delay bound does not

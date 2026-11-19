@@ -137,7 +137,9 @@ void UiController::captureGrooveTap(
     const services::GrooveRecorderView before = grooveRecorder_.view();
     if (before.state != services::GrooveRecordState::Recording) return;
 
-    const std::uint32_t physicalTapUs = button.edgeTimestampUs != 0U
+    // TIM5 0 is a valid timestamp (F-073): the flag, not the value, says whether
+    // the first raw edge of the press is known.
+    const std::uint32_t physicalTapUs = button.edgeTimestampValid
         ? button.edgeTimestampUs
         : nowUs;
     const std::uint64_t tapPositionQ32 = engine_.estimateMasterPositionAtUs(

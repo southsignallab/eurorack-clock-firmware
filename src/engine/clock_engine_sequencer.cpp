@@ -33,9 +33,21 @@ void ClockEngine::updateSequencerPattern(
     if (channelIndex >= kChannelCount || !isSequencerPatternValid(pattern)) {
         return;
     }
-    hal::InterruptLock interruptLock;
+    // Foreground: the clamped pattern goes into the spare buffer; the swap
+    // exchanges pointers and prepares schedule and step phase outside the lock.
+    *spareSequencerPattern_ = pattern;
+    clampSequencerPattern(*spareSequencerPattern_);
+    StagedConfiguration staged = stageLiveConfiguration(grooveSources_);
+    staged.sequencerChannel = channelIndex;
+    staged.sequencerPattern = spareSequencerPattern_;
+    swapConfiguration(staged, static_cast<std::uint8_t>(1U << channelIndex), rescheduleChannel);
+}
+
+void ClockEngine::installSequencerPatternUnsafe(
+    const std::size_t channelIndex,
+    SequencerPatternV2* const pattern) {
+    spareSequencerPattern_ = sequencerPatterns_[channelIndex];
     sequencerPatterns_[channelIndex] = pattern;
-    clampSequencerPattern(sequencerPatterns_[channelIndex]);
     sequencerPatternV2Active_[channelIndex] = true;
     ChannelRuntime& runtime = channelRuntime_[channelIndex];
     if (runtime.tieHold) {
@@ -43,26 +55,30 @@ void ClockEngine::updateSequencerPattern(
     }
     runtime.tieHold = false;
     runtime.ratchetRemaining = 0U;
-    if (rescheduleChannel) {
-        scheduleChannelFromCurrentPosition(channelIndex);
-    }
-    synchronizeChannelStepPhase(channelIndex);
 }
 
 void ClockEngine::updateSequencerStepMetadata(
     const std::size_t channelIndex,
-    const std::array<SequencerStepMetadataWord, kSequencerMaximumSteps>& metadata) {
+    const StepMetadataTable& metadata) {
     if (channelIndex >= kChannelCount) {
         return;
     }
-    hal::InterruptLock interruptLock;
-    sequencerStepMetadata_[channelIndex] = metadata;
-    ChannelRuntime& runtime = channelRuntime_[channelIndex];
-    if (runtime.tieHold) {
-        setGateState(channelIndex, false);
+    // 256 B: copied into the spare table outside the lock, which only swaps the
+    // table pointer (F-071; memcpy is a byte loop in the release image).
+    *spareSequencerStepMetadata_ = metadata;
+    StepMetadataTable* released = nullptr;
+    {
+        hal::InterruptLock interruptLock;
+        released = sequencerStepMetadata_[channelIndex];
+        sequencerStepMetadata_[channelIndex] = spareSequencerStepMetadata_;
+        ChannelRuntime& runtime = channelRuntime_[channelIndex];
+        if (runtime.tieHold) {
+            setGateState(channelIndex, false);
+        }
+        runtime.tieHold = false;
+        runtime.ratchetRemaining = 0U;
     }
-    runtime.tieHold = false;
-    runtime.ratchetRemaining = 0U;
+    spareSequencerStepMetadata_ = released;
 }
 
 void ClockEngine::serviceSequencerRatchets() {
@@ -114,7 +130,7 @@ void ClockEngine::fireChannelEvent(const std::size_t channelIndex) {
         case ChannelMode::Sequencer:
             if (sequencerPatternV2Active_[channelIndex]) {
                 sequencerV2 = true;
-                activePattern = &sequencerPatterns_[channelIndex];
+                activePattern = sequencerPatterns_[channelIndex];
                 const std::uint32_t seed = 0x53455132UL ^
                     (static_cast<std::uint32_t>(channelIndex + 1U) * 0x9E3779B9UL);
                 const SequencerTraversalResult traversal = resolveSequencerTraversal(
@@ -123,7 +139,7 @@ void ClockEngine::fireChannelEvent(const std::size_t channelIndex) {
                     runtime.displayedStep = rotateSequencerStep(traversal.step, *activePattern);
                     hit = sequencerPatternGate(*activePattern, runtime.displayedStep);
                     stepMetadata = unpackSequencerStepMetadata(
-                        sequencerStepMetadata_[channelIndex][runtime.displayedStep]);
+                        (*sequencerStepMetadata_[channelIndex])[runtime.displayedStep]);
                 }
             } else {
                 hit = core::isSequencerHit(runtime.step, channel.sequencer);
@@ -206,7 +222,7 @@ void ClockEngine::fireChannelEvent(const std::size_t channelIndex) {
         if (nextTraversal.active) {
             const std::uint8_t nextStep = rotateSequencerStep(nextTraversal.step, *activePattern);
             const SequencerStepMetadata nextMetadata = unpackSequencerStepMetadata(
-                sequencerStepMetadata_[channelIndex][nextStep]);
+                (*sequencerStepMetadata_[channelIndex])[nextStep]);
             tieEnabled = sequencerPatternGate(*activePattern, nextStep) &&
                 nextMetadata.ratchetCount == 1U;
         }

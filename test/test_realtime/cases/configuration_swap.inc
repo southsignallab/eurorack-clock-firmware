@@ -31,8 +31,7 @@ void testConfigurationSwapComputesNoScheduleUnderTheLock() {
 
 void testEveryRescheduleCauseWithASchedulerTickInsideTheSwap() {
     // The twelve W-327 causes again, now with one scheduler tick between preparation
-    // and swap. Causes that do not swap a configuration (Custom Groove slot and
-    // preview, pattern, tempo, sync, reset) run unchanged.
+    // and swap. Tempo and sync do not prepare a swap and run unchanged.
     gTickInsideConfigurationSwap = true;
     gTicksInsideConfigurationSwap = 0U;
     testCustomGrooveChangeDoesNotRefireLastEvent();
@@ -47,8 +46,9 @@ void testEveryRescheduleCauseWithASchedulerTickInsideTheSwap() {
     testExternalSyncCorrectionDoesNotRefireOrDropEvents();
     testResetRestartsTheBarExactlyOnce();
     gTickInsideConfigurationSwap = false;
-    // Swing, preset, rotation, phase, rate twice and mode swap a configuration.
-    CHECK_EQ(gTicksInsideConfigurationSwap, 7U);
+    // Swing, preset, rotation, phase, rate twice and mode swap a configuration;
+    // Custom Groove slot, preview, Sequencer pattern and reset swap since F-072.
+    CHECK_EQ(gTicksInsideConfigurationSwap, 11U);
 }
 
 /** @brief Traces CLOCK x1 with @p change before @p changeTick and @p windowTicks in its swap. */

@@ -1,6 +1,6 @@
 /**
  * @file runtime_instrumentation.h
- * @brief Debug-build cycle counters for TIM3 ISR runtime, InterruptLock duration and deferred gate rises.
+ * @brief Debug-build counters: TIM3 ISR runtime, InterruptLock duration, deferred rises, fallbacks.
  * @author Axel Napolitano
  * @copyright 2026 Axel Napolitano
  * @license PolyForm-Noncommercial-1.0.0
@@ -39,6 +39,8 @@ struct ClockRuntimeCounters {
     std::uint32_t schedulerCatchUpLimitHits;
     /** Ticks caught up beyond one per interrupt, summed (count, F-012). */
     std::uint32_t caughtUpSchedulerTicks;
+    /** Staged swaps that computed under the lock after repeated preparations (count, F-072). */
+    std::uint32_t stagedSwapFallbacks;
 };
 
 extern "C" volatile ClockRuntimeCounters gClockRuntimeCounters;
@@ -65,6 +67,9 @@ void countSchedulerCatchUpLimit();
 
 /** @brief Adds the ticks beyond one that a scheduler interrupt caught up (@p elapsedTicks > 1). */
 void countCaughtUpSchedulerTicks(std::uint32_t elapsedTicks);
+
+/** @brief Counts one staged swap that had to compute under the lock after repeated preparations. */
+void countStagedSwapFallback();
 
 }  // namespace clockfw::hal::instrumentation
 #endif

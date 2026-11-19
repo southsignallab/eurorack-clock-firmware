@@ -1,6 +1,6 @@
 /**
  * @file runtime_instrumentation.cpp
- * @brief Debug-build counters: TIM3 ISR runtime, InterruptLock duration, deferred rises, catch-up.
+ * @brief Debug-build counters: TIM3 ISR, InterruptLock, deferred rises, catch-up, swap fallbacks.
  * @author Axel Napolitano
  * @copyright 2026 Axel Napolitano
  * @license PolyForm-Noncommercial-1.0.0
@@ -29,6 +29,7 @@ void begin() {
     gClockRuntimeCounters.schedulerIsrSamples = 0U;
     gClockRuntimeCounters.schedulerCatchUpLimitHits = 0U;
     gClockRuntimeCounters.caughtUpSchedulerTicks = 0U;
+    gClockRuntimeCounters.stagedSwapFallbacks = 0U;
     const std::uint32_t first = cycleCount();
     const std::uint32_t second = cycleCount();
     gClockRuntimeCounters.measurementOverheadCycles = second - first;
@@ -78,6 +79,10 @@ void countCaughtUpSchedulerTicks(const std::uint32_t elapsedTicks) {
         gClockRuntimeCounters.caughtUpSchedulerTicks =
             gClockRuntimeCounters.caughtUpSchedulerTicks + (elapsedTicks - 1U);
     }
+}
+
+void countStagedSwapFallback() {
+    gClockRuntimeCounters.stagedSwapFallbacks = gClockRuntimeCounters.stagedSwapFallbacks + 1U;
 }
 
 }  // namespace clockfw::hal::instrumentation

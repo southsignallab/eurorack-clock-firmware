@@ -11,6 +11,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 #include "domain/clock_types.h"
 #include "domain/custom_groove.h"
@@ -46,6 +47,9 @@ struct EngineSnapshot {
  */
 class ClockEngine final {
 public:
+    /** @brief Packed DEFAULT/Probability/Gate/Tie/Ratchet values of steps 0..127 of a channel. */
+    using StepMetadataTable = std::array<SequencerStepMetadataWord, kSequencerMaximumSteps>;
+
     /**
      * @brief Constructs the engine around the physical gate output driver.
      * @param gateOutputs HAL driver used for all gate/LED GPIO state changes.
@@ -103,7 +107,7 @@ public:
      */
     void updateSequencerStepMetadata(
         std::size_t channelIndex,
-        const std::array<SequencerStepMetadataWord, kSequencerMaximumSteps>& metadata);
+        const StepMetadataTable& metadata);
 
     /**
      * @brief Replaces one in-memory Custom Groove library slot used by real-time scheduling.
@@ -248,19 +252,24 @@ public:
     std::uint32_t scheduleCalculationsUnderLockForTest() const {
         return scheduleCalculationsUnderLockForTest_;
     }
-    /** @brief Returns how many configuration swaps had to compute under the lock. */
+    /** @brief Returns how many staged swaps computed under the lock (all staged paths). */
     std::uint32_t configurationSwapFallbackCountForTest() const {
         return configurationSwapFallbackCountForTest_;
     }
 
     /** @brief Returns the engine's in-RAM copy of one Custom Groove library slot. */
     const CustomGroovePattern& customGrooveSlotForTest(std::uint8_t slotIndex) const {
-        return customGrooves_[slotIndex < kCustomGrooveSlotCount ? slotIndex : 0U];
+        return *grooveSources_->slots[slotIndex < kCustomGrooveSlotCount ? slotIndex : 0U];
     }
 
     /** @brief Returns the engine's active Sequencer 2.0 pattern of one channel. */
     const SequencerPatternV2& sequencerPatternForTest(std::size_t channelIndex) const {
-        return sequencerPatterns_[channelIndex < kChannelCount ? channelIndex : 0U];
+        return *sequencerPatterns_[channelIndex < kChannelCount ? channelIndex : 0U];
+    }
+
+    /** @brief Returns the engine's 128-step expression snapshot of one channel. */
+    const StepMetadataTable& sequencerStepMetadataForTest(std::size_t channelIndex) const {
+        return *sequencerStepMetadata_[channelIndex < kChannelCount ? channelIndex : 0U];
     }
 #endif
 
@@ -278,16 +287,41 @@ private:
         ChannelConfig channels[kChannelCount]{};
     };
 
-    /** @brief In-memory Custom Groove library; Flash is never read from scheduler context. */
-    CustomGroovePattern customGrooves_[kCustomGrooveSlotCount]{};
-    SequencerPatternV2 sequencerPatterns_[kChannelCount]{};
-    std::array<SequencerStepMetadataWord, kSequencerMaximumSteps>
-        sequencerStepMetadata_[kChannelCount]{};
+    /**
+     * @brief Custom Groove patterns the schedule calculations read (F-071, F-072).
+     *
+     * The scheduler reads the table that grooveSources_ points to. A change fills a
+     * spare pattern buffer and a copy of the table outside the interrupt lock; the
+     * lock swaps the table pointer, so no pattern is copied under it.
+     */
+    struct GrooveSources {
+        /** In-memory Custom Groove library; Flash is never read from scheduler context. */
+        CustomGroovePattern* slots[kCustomGrooveSlotCount]{};
+        /** Runtime-only preview per channel; used while previewActive is set. */
+        CustomGroovePattern* previews[kChannelCount]{};
+        std::uint8_t previewAmount[kChannelCount]{};
+        std::uint8_t previewRotation[kChannelCount]{};
+        bool previewActive[kChannelCount]{};
+    };
+
+    /** Library slots, one preview per channel and one spare buffer. */
+    static constexpr std::size_t kCustomGrooveBufferCount =
+        static_cast<std::size_t>(kCustomGrooveSlotCount) + kChannelCount + 1U;
+    CustomGroovePattern customGrooveBuffers_[kCustomGrooveBufferCount]{};
+    /** The pattern buffer no table refers to; only the foreground writes it. */
+    CustomGroovePattern* spareCustomGroove_ = nullptr;
+    GrooveSources grooveSourceBuffers_[2]{};
+    GrooveSources* grooveSources_ = &grooveSourceBuffers_[0];
+
+    /** One pattern per channel and one spare; the lock swaps pointers (F-072). */
+    SequencerPatternV2 sequencerPatternBuffers_[kChannelCount + 1U]{};
+    SequencerPatternV2* sequencerPatterns_[kChannelCount]{};
+    SequencerPatternV2* spareSequencerPattern_ = nullptr;
+    /** One expression table per channel and one spare; the lock swaps pointers (F-071). */
+    StepMetadataTable sequencerStepMetadataBuffers_[kChannelCount + 1U]{};
+    StepMetadataTable* sequencerStepMetadata_[kChannelCount]{};
+    StepMetadataTable* spareSequencerStepMetadata_ = nullptr;
     bool sequencerPatternV2Active_[kChannelCount]{};
-    CustomGroovePattern customGroovePreviews_[kChannelCount]{};
-    std::uint8_t customGroovePreviewAmount_[kChannelCount]{};
-    std::uint8_t customGroovePreviewRotation_[kChannelCount]{};
-    bool customGroovePreviewActive_[kChannelCount]{};
     /**
      * @brief Cached smallest adjacent Custom Groove event spacing per channel (Q16 of one interval).
      *
@@ -328,6 +362,8 @@ private:
         const EngineConfiguration* configuration = nullptr;
         /** Humanize spacing cache that belongs to that configuration (one per channel). */
         const std::uint32_t* customGrooveSpacingQ16 = nullptr;
+        /** Custom Groove library and previews that belong to that configuration. */
+        const GrooveSources* grooves = nullptr;
         /** Effective master tempo in milli-BPM. */
         std::uint32_t bpmMilli = 0U;
         /** Shortest representable interval at that tempo, Q32 master beats. */
@@ -343,27 +379,79 @@ private:
         bool mayUseCurrentBoundary = false;
     };
 
-    /** @brief A computed channel schedule; installing it needs no division. */
+    /**
+     * @brief A computed channel schedule; installing it needs no division.
+     *
+     * Trivially constructible like PreparedStepPhase: the producers write every
+     * field, so no lock or interrupt path clears it byte by byte first.
+     */
     struct PreparedChannelSchedule {
-        std::uint64_t epochQ32 = 0U;
-        std::uint64_t nextEventSerial = 0U;
-        std::uint64_t nextEventQ32 = 0U;
-        std::uint64_t nextEventSlotQ32 = 0U;
+        std::uint64_t epochQ32;
+        std::uint64_t nextEventSerial;
+        std::uint64_t nextEventQ32;
+        std::uint64_t nextEventSlotQ32;
     };
+    static_assert(std::is_trivially_default_constructible<PreparedChannelSchedule>::value,
+                  "A schedule must not be cleared byte by byte under the lock");
 
-    /** @brief A computed pattern step phase; FREE channels are bounded at install. */
+    /**
+     * @brief A computed pattern step phase; FREE channels are bounded at install.
+     *
+     * No default member initializers, so PreparedRestart stays trivially constructible
+     * in the scheduler interrupt; every user value-initializes it with {}.
+     */
     struct PreparedStepPhase {
-        bool derivedFromSerial = false;
-        std::uint8_t step = 0U;
-        std::uint8_t displayedStep = 0U;
+        bool derivedFromSerial;
+        std::uint8_t step;
+        std::uint8_t displayedStep;
     };
+    static_assert(std::is_trivially_default_constructible<PreparedStepPhase>::value,
+                  "A restart must not clear its prepared step phases byte by byte");
 
-    /** @brief Configuration buffer and Humanize spacings that one swap installs. */
+    /** @brief Configuration, groove table, pattern and Humanize spacings that one swap installs. */
     struct StagedConfiguration {
-        /** The buffer the scheduler does not read (inactiveConfiguration()). */
+        /** The buffer the scheduler does not read (inactiveConfiguration()), or the live one. */
         EngineConfiguration* configuration = nullptr;
         std::uint32_t customGrooveSpacingQ16[kChannelCount]{};
+        /** Groove table to install: the inactive one with the change, or the live one. */
+        GrooveSources* grooves = nullptr;
+        /** Pattern buffer that the swap releases; it becomes the spare (nullptr: none). */
+        CustomGroovePattern* releasedGroove = nullptr;
+        /** Channel whose Sequencer 2.0 pattern the swap replaces; kChannelCount for none. */
+        std::size_t sequencerChannel = kChannelCount;
+        /** Staged pattern of sequencerChannel (the spare buffer, already clamped). */
+        SequencerPatternV2* sequencerPattern = nullptr;
     };
+
+    /** @brief Scheduler state a restart preparation depends on, taken under a short lock. */
+    struct TempoSnapshot {
+        std::uint32_t generation = 0U;
+        bool externalLocked = false;
+        std::uint32_t externalBpmMilli = 0U;
+    };
+
+    /**
+     * @brief Position-independent first event of every GLOBAL channel after a restart.
+     *
+     * A restart puts the epoch on the current master position P, so the next event of
+     * a GLOBAL channel is P plus an offset that only the configuration and the tempo
+     * determine. No default member initializers: prepareRestart() writes every field,
+     * so the scheduler interrupt does not clear it byte by byte first.
+     */
+    struct PreparedRestart {
+        std::uint64_t firstEventOffsetQ32[kChannelCount];
+        PreparedStepPhase phases[kChannelCount];
+        /** Channels the restart reschedules (GLOBAL; bit n = channel n). */
+        std::uint8_t resetMask;
+    };
+    static_assert(std::is_trivially_default_constructible<PreparedRestart>::value,
+                  "The scheduler interrupt must not clear a restart byte by byte");
+
+    /** @brief Transport change that restarts the GLOBAL schedules. */
+    enum class TransportRequest : std::uint8_t { Play, Stop, Reset };
+
+    /** Preparations outside the lock before one staged swap computes under the lock. */
+    static constexpr std::uint8_t kStagedSwapAttempts = 3U;
 
     /** @brief Copy of the scheduler state a preparation starts from, taken under a short lock. */
     struct ScheduleSnapshot {
@@ -393,8 +481,12 @@ private:
     static ScheduleInputs makeScheduleInputs(
         const EngineConfiguration& configuration,
         const std::uint32_t* customGrooveSpacingQ16,
+        const GrooveSources& grooves,
         bool externalLocked,
         std::uint32_t externalBpmMilli);
+
+    /** @brief Calculation inputs of the installed configuration at @p tempo (foreground). */
+    ScheduleInputs foregroundScheduleInputs(const TempoSnapshot& tempo) const;
 
     /** @brief Returns the calculation inputs of the installed configuration. */
     ScheduleInputs liveScheduleInputs() const;
@@ -411,9 +503,6 @@ private:
         std::size_t channelIndex,
         std::uint32_t& numerator,
         std::uint32_t& denominator);
-
-    /** @brief Calculates one nominal interval without consuming the channel remainder accumulator. */
-    std::uint64_t calculateNominalBaseIntervalQ32(std::size_t channelIndex) const;
 
     /** @brief Nominal interval of one channel for the given calculation inputs. */
     static std::uint64_t calculateNominalBaseIntervalQ32(
@@ -447,15 +536,15 @@ private:
 
     /**
      * @brief Computes the Custom Groove spacing cache value for one channel configuration.
+     * @param grooves Library and previews that will be active after the pending change.
      * @param channelIndex Zero-based channel whose preview state and library slot apply.
      * @param channel Channel configuration that will be active after the pending change.
-     * @param previewActive True when the channel's runtime preview will drive the groove.
      * @return Q16 spacing; kCustomGrooveSpacingQ16One when no Custom Groove is active.
      */
-    std::uint32_t calculateCustomGrooveSpacingQ16(
+    static std::uint32_t calculateCustomGrooveSpacingQ16(
+        const GrooveSources& grooves,
         std::size_t channelIndex,
-        const ChannelConfig& channel,
-        bool previewActive) const;
+        const ChannelConfig& channel);
 
     /** @brief Returns the safely capped ONE CLOCK humanization amount for one output. */
     std::uint16_t effectiveHumanizeUs(const ScheduleInputs& inputs, std::size_t channelIndex) const;
@@ -468,6 +557,9 @@ private:
 
     /** @brief Drives one output only when its logical state changes; staged inside a quantum. */
     void setGateState(std::size_t channelIndex, bool high);
+
+    /** @brief setGateState(channel, false) for every channel; writes only the HIGH ones. */
+    void lowerAllGatesUnsafe();
 
     /** @brief Scheduler body over @p elapsedTicks ticks, before the single gate write. */
     void runSchedulerTick(std::uint32_t elapsedTicks);
@@ -518,11 +610,24 @@ private:
     /** @brief Re-establishes GLOBAL pattern phase or bounds FREE local phase after edits. */
     void synchronizeChannelStepPhase(std::size_t channelIndex);
 
-    /** @brief Computes the step phase that @p nextEventSerial implies under @p configuration. */
+    /**
+     * @brief Computes the step phase that @p nextEventSerial implies under @p configuration.
+     * @param configuration Configuration that will be installed.
+     * @param channelIndex Zero-based channel.
+     * @param nextEventSerial Serial of the channel's next event.
+     * @param sequencerPattern Active Sequencer 2.0 pattern of the channel, nullptr if none.
+     */
     PreparedStepPhase prepareStepPhase(
         const EngineConfiguration& configuration,
         std::size_t channelIndex,
-        std::uint64_t nextEventSerial) const;
+        std::uint64_t nextEventSerial,
+        const SequencerPatternV2* sequencerPattern) const;
+
+    /** @brief Installs a staged Sequencer 2.0 pattern; the old buffer becomes the spare. */
+    void installSequencerPatternUnsafe(std::size_t channelIndex, SequencerPatternV2* pattern);
+
+    /** @brief Returns the installed Sequencer 2.0 pattern of a channel, nullptr if inactive. */
+    const SequencerPatternV2* liveSequencerPattern(std::size_t channelIndex) const;
 
     /** @brief Installs a prepared step phase under the installed configuration. */
     void installStepPhase(std::size_t channelIndex, const PreparedStepPhase& phase);
@@ -540,6 +645,12 @@ private:
 
     /** @brief Returns the configuration buffer that is not installed (foreground only). */
     EngineConfiguration* inactiveConfiguration();
+
+    /** @brief Copies the installed groove table into the inactive one; returns it (foreground). */
+    GrooveSources* stageGrooveSources();
+
+    /** @brief A staged swap of the live configuration with @p grooves and the live spacings. */
+    StagedConfiguration stageLiveConfiguration(GrooveSources* grooves) const;
 
     /** @brief Copies the scheduler state into @p snapshot; caller holds the lock. */
     void takeScheduleSnapshotUnsafe(ScheduleSnapshot& snapshot) const;
@@ -566,6 +677,11 @@ private:
         const PreparedChannelSchedule (&schedules)[kChannelCount],
         const PreparedStepPhase (&phases)[kChannelCount]);
 
+#ifdef CLOCK_HOST_TEST
+    /** @brief Counts one schedule calculation if it runs under an InterruptLock (host tests). */
+    void countCalculationUnderLockForTest() const;
+#endif
+
     /** @brief Returns the swing displacement used by the epoch-anchored event grid. */
     static std::uint64_t calculateSwingDeltaQ32(
         const ScheduleInputs& inputs,
@@ -583,6 +699,36 @@ private:
     /** @brief Resets master/runtime state while respecting each channel's GLOBAL/FREE policy. */
     void resetRuntime();
 
+    /** @brief Copies the state a restart preparation depends on; caller holds the lock. */
+    TempoSnapshot takeTempoSnapshotUnsafe() const;
+
+    /** @brief Computes the first event offset and step phase of every GLOBAL channel. */
+    void prepareRestart(const ScheduleInputs& inputs, PreparedRestart& restart) const;
+
+    /** @brief Restarts master and GLOBAL schedules at the current position; no division. */
+    void installRestartUnsafe(const PreparedRestart& restart);
+
+    /**
+     * @brief Applies @p request with the restart schedules prepared outside the lock (F-072).
+     *
+     * A preparation is current while the schedule generation is unchanged; otherwise
+     * it repeats, and after kStagedSwapAttempts the request computes under the lock.
+     */
+    void applyTransportRequest(TransportRequest request);
+
+    /**
+     * @brief Applies @p request; caller holds the lock.
+     * @param request Transport change.
+     * @param restart Prepared restart, or nullptr to compute it under the lock.
+     */
+    void applyTransportRequestUnsafe(TransportRequest request, const PreparedRestart* restart);
+
+    /** @brief True when @p request will restart the GLOBAL schedules (pre-check without lock). */
+    bool transportRequestRestarts(TransportRequest request) const;
+
+    /** @brief Counts one staged swap that computed under the lock (test and debug counters). */
+    void countStagedSwapFallback();
+
     /** @brief Arms the silent STOP->PLAY count-in from the configured master-beat count. */
     void startPreCountUnsafe();
 
@@ -592,11 +738,11 @@ private:
     /** @brief Drops the AUTO freewheel tempo after a manual tempo change while unlocked; caller holds the lock. */
     void discardFreewheelTempoAfterManualChangeUnsafe();
 
-    /** @brief Restarts all schedules and the external musical position at the current master position; caller holds the lock. */
-    void restartFromCurrentPositionUnsafe();
-
     /** @brief Copies master and channel configuration without entering a critical section. */
     void copyConfigurationUnsafe(const ClockState& state);
+
+    /** @brief Points every groove, pattern and expression table at its own buffer. */
+    void initializeBufferTables();
 
     /** @brief Resolves @p state into an engine configuration (no shared state). */
     static void resolveConfiguration(const ClockState& state, EngineConfiguration& configuration);

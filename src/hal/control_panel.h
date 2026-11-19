@@ -15,12 +15,25 @@ namespace clockfw::hal {
 /** @brief Edge event emitted by one debounced push button. */
 enum class ButtonEdge : std::uint8_t { None, Pressed, Released };
 
-/** @brief Debounced state and edge event for one physical button. */
+/**
+ * @brief Debounced state and edge event for one physical button.
+ *
+ * Timestamps are TIM5 microseconds of the first raw edge the control loop saw for
+ * the accepted transition (F-029); debouncing only decides acceptance. Every value
+ * of the wrapping 32-bit time base is valid, including 0, so validity is carried
+ * separately (F-073).
+ */
 struct ButtonSample {
     ButtonEdge edge = ButtonEdge::None;
     bool pressed = false;
-    /** Raw physical transition timestamp associated with this validated edge. */
+    /** First raw edge of the transition that this validated edge accepts. */
     std::uint32_t edgeTimestampUs = 0U;
+    /** True when edge is not None and edgeTimestampUs holds its first raw edge. */
+    bool edgeTimestampValid = false;
+    /** First raw edge of the press that is held or released in this sample. */
+    std::uint32_t pressTimestampUs = 0U;
+    /** True while a press is held and on the sample that reports its release. */
+    bool pressTimestampValid = false;
 };
 
 /** @brief Complete control-panel sample produced once per application loop. */
@@ -72,8 +85,16 @@ private:
         std::uint32_t pin_;
         bool rawPressed_ = false;
         bool stablePressed_ = false;
+        /** Last raw change (ms); the debounce interval runs from here. */
         std::uint32_t rawChangedAtMs_ = 0U;
-        std::uint32_t rawChangedAtUs_ = 0U;
+        /** True from the first raw edge away from the stable state until it settles. */
+        bool transitionPending_ = false;
+        /** TIM5 microseconds of that first raw edge. */
+        std::uint32_t transitionStartedAtUs_ = 0U;
+        /** First raw edge of the accepted press, valid while it is held. */
+        std::uint32_t pressStartedAtUs_ = 0U;
+        /** False for a press already held at begin(): its first edge was not observed. */
+        bool pressStartKnown_ = false;
     };
 
     /** @brief Converts the wrapping quadrature transition counter into complete detents. */

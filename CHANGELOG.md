@@ -10,6 +10,18 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline; earlie
 
 ## [Unreleased]
 
+### Fix: front-panel taps keep their press time
+
+- TAP TEMPO and Groove Record now time a front-panel press from its first contact edge instead of from the debounced edge. Debouncing (25 ms) still decides whether a press counts. Previously a Groove Record tap was late by the contact bounce plus up to one control pass, and TAP TEMPO measured from release to release, so holding TAP longer or shorter for one tap changed the tempo. The same applies to every front-panel button and the encoder push.
+- A Groove Record tap whose contact edge falls exactly on microsecond 0 of the timer (once every 71.6 minutes) keeps its time. Previously it fell back to the debounced time, about 25 ms later.
+
+### Fix: short interrupt locks for every live change
+
+- Custom Groove library and preview changes, Sequencer pattern changes and PLAY, STOP and RESET now prepare the channel schedules outside the interrupt lock, as configuration changes already did; the lock only exchanges pointers and installs prepared values. Previously up to eight channels were recomputed with interrupts disabled. Not yet measured on hardware (`blackpill_f401cc_timing`).
+- Custom Groove patterns and the Sequencer step expressions are no longer copied byte by byte with interrupts disabled (65 and 256 bytes); a spare buffer is filled first and swapped in.
+- STOP and RESET lower all HIGH gates with one register access instead of one per output.
+- The debug counters in `gClockRuntimeCounters` also count staged changes that had to compute under the lock (`stagedSwapFallbacks`).
+
 ### Fix: exact tempo while editing, one time base
 
 - The master timeline no longer loses scheduler ticks while the foreground holds an interrupt lock. Each scheduler interrupt counts the ticks since the previous one from the microsecond timer (TIM5) and catches up up to 8 ticks (400 µs) at once; events that fall into those ticks fire once each and in order. Previously several 50-µs ticks merged into one, so the clock ran slightly slow while settings were edited during PLAY (not measured).

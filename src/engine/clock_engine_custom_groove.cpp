@@ -8,7 +8,6 @@
 #include "engine/clock_engine_custom_groove.h"
 
 #include "engine/output_mode_resolver.h"
-#include "hal/interrupt_lock.h"
 
 namespace clockfw::engine {
 
@@ -17,9 +16,9 @@ void ClockEngine::calculateCustomGrooveSpacingsQ16(
     std::uint32_t (&spacingQ16)[kChannelCount]) const {
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
         spacingQ16[channelIndex] = calculateCustomGrooveSpacingQ16(
+            *grooveSources_,
             channelIndex,
-            resolvePhysicalOutputConfiguration(state, channelIndex),
-            customGroovePreviewActive_[channelIndex]);
+            resolvePhysicalOutputConfiguration(state, channelIndex));
     }
 }
 
@@ -38,36 +37,26 @@ void ClockEngine::updateCustomGrooveSlot(
         return;
     }
 
-    // Foreground: compute the Humanize spacing bound before entering the critical section.
-    std::uint32_t spacingQ16[kChannelCount]{};
-    bool usesSlot[kChannelCount]{};
+    // Foreground: the pattern goes into the spare buffer, the scheduler keeps
+    // reading the old one until the swap exchanges the table pointer (F-072).
+    GrooveSources* const grooves = stageGrooveSources();
+    *spareCustomGroove_ = pattern;
+    StagedConfiguration staged = stageLiveConfiguration(grooves);
+    staged.releasedGroove = grooves->slots[slotIndex];
+    grooves->slots[slotIndex] = spareCustomGroove_;
+    std::uint8_t affected = 0U;
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
         const ChannelConfig& channel = configuration_->channels[channelIndex];
         const GrooveSettings& grooveSettings = channel.common.groove;
-        usesSlot[channelIndex] = grooveSettings.preset == GroovePreset::Custom &&
-            grooveSettings.customSlot == slotIndex;
-        if (usesSlot[channelIndex] && !customGroovePreviewActive_[channelIndex]) {
-            spacingQ16[channelIndex] = customGrooveMinimumSpacingQ16(
-                pattern, grooveSettings.amountPercent, grooveSettings.rotation,
-                channel.common.swingPercent);
+        if (grooveSettings.preset != GroovePreset::Custom ||
+            grooveSettings.customSlot != slotIndex) {
+            continue;
         }
+        affected = static_cast<std::uint8_t>(affected | (1U << channelIndex));
+        staged.customGrooveSpacingQ16[channelIndex] =
+            calculateCustomGrooveSpacingQ16(*grooves, channelIndex, channel);
     }
-
-    hal::InterruptLock interruptLock;
-    customGrooves_[slotIndex] = pattern;
-    for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
-        if (usesSlot[channelIndex] && !customGroovePreviewActive_[channelIndex]) {
-            customGrooveSpacingQ16_[channelIndex] = spacingQ16[channelIndex];
-        }
-    }
-    if (!rescheduleAffected) {
-        return;
-    }
-    for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
-        if (usesSlot[channelIndex]) {
-            scheduleChannelFromCurrentPosition(channelIndex);
-        }
-    }
+    swapConfiguration(staged, rescheduleAffected ? affected : std::uint8_t{0U}, rescheduleAffected);
 }
 
 void ClockEngine::setCustomGroovePreview(
@@ -80,18 +69,19 @@ void ClockEngine::setCustomGroovePreview(
         amountPercent > 100U || rotation >= pattern.length) {
         return;
     }
-    const std::uint32_t spacingQ16 = customGrooveMinimumSpacingQ16(
-        pattern, amountPercent, rotation,
-        configuration_->channels[channelIndex].common.swingPercent);
-    hal::InterruptLock interruptLock;
-    customGroovePreviews_[channelIndex] = pattern;
-    customGroovePreviewAmount_[channelIndex] = amountPercent;
-    customGroovePreviewRotation_[channelIndex] = rotation;
-    customGroovePreviewActive_[channelIndex] = true;
-    customGrooveSpacingQ16_[channelIndex] = spacingQ16;
-    if (rescheduleChannel) {
-        scheduleChannelFromCurrentPosition(channelIndex);
-    }
+    GrooveSources* const grooves = stageGrooveSources();
+    *spareCustomGroove_ = pattern;
+    StagedConfiguration staged = stageLiveConfiguration(grooves);
+    staged.releasedGroove = grooves->previews[channelIndex];
+    grooves->previews[channelIndex] = spareCustomGroove_;
+    grooves->previewAmount[channelIndex] = amountPercent;
+    grooves->previewRotation[channelIndex] = rotation;
+    grooves->previewActive[channelIndex] = true;
+    staged.customGrooveSpacingQ16[channelIndex] = calculateCustomGrooveSpacingQ16(
+        *grooves, channelIndex, configuration_->channels[channelIndex]);
+    swapConfiguration(
+        staged, static_cast<std::uint8_t>(rescheduleChannel ? (1U << channelIndex) : 0U),
+        rescheduleChannel);
 }
 
 void ClockEngine::clearCustomGroovePreview(
@@ -100,15 +90,15 @@ void ClockEngine::clearCustomGroovePreview(
     if (channelIndex >= kChannelCount) {
         return;
     }
-    const std::uint32_t spacingQ16 = calculateCustomGrooveSpacingQ16(
-        channelIndex, configuration_->channels[channelIndex], false);
-    hal::InterruptLock interruptLock;
-    customGroovePreviewActive_[channelIndex] = false;
-    customGrooveSpacingQ16_[channelIndex] = spacingQ16;
-    if (rescheduleChannel) {
-        scheduleChannelFromCurrentPosition(channelIndex);
-    }
+    // The preview buffer stays where it is; only the table no longer uses it.
+    GrooveSources* const grooves = stageGrooveSources();
+    StagedConfiguration staged = stageLiveConfiguration(grooves);
+    grooves->previewActive[channelIndex] = false;
+    staged.customGrooveSpacingQ16[channelIndex] = calculateCustomGrooveSpacingQ16(
+        *grooves, channelIndex, configuration_->channels[channelIndex]);
+    swapConfiguration(
+        staged, static_cast<std::uint8_t>(rescheduleChannel ? (1U << channelIndex) : 0U),
+        rescheduleChannel);
 }
-
 
 }  // namespace clockfw::engine

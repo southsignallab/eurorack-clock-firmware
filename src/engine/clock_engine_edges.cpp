@@ -118,6 +118,30 @@ void ClockEngine::setGateState(const std::size_t channelIndex, const bool high) 
     gateOutputs_.stageChannelState(channelIndex, high);
 }
 
+void ClockEngine::lowerAllGatesUnsafe() {
+    // Same end state as setGateState(channel, false) for every channel.
+    deferredRiseMask_ = 0U;
+    for (ChannelRuntime& runtime : channelRuntime_) {
+        runtime.gateOffScheduled = false;
+        runtime.gateHigh = false;
+    }
+    const std::uint8_t lowered = gateHighMask_;
+    gateHighMask_ = 0U;
+    if (lowered == 0U) {
+        return;
+    }
+    if (!schedulerQuantumOpen_) {
+        // Foreground (always under InterruptLock): every line LOW in one GPIOB write.
+        gateOutputs_.setChannelStates(0U);
+        return;
+    }
+    for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
+        if ((lowered & channelBit(channelIndex)) != 0U) {
+            gateOutputs_.stageChannelState(channelIndex, false);
+        }
+    }
+}
+
 void ClockEngine::serviceDeferredGateRises() {
     const std::uint8_t pending = deferredRiseMask_;
     if (pending == 0U) {

@@ -70,6 +70,137 @@ void testButtonBounceBeforeDebounceDoesNotPress(){ hal::ControlPanel c;c.begin()
 void testSimultaneousButtonsReportIndependentEdges(){ hal::ControlPanel c;c.begin();fakefw::setPin(pinmap::kPlayPauseButtonPin,LOW);fakefw::setPin(pinmap::kTapTempoButtonPin,LOW);(void)c.sample(1U);auto s=c.sample(26U);TEST_ASSERT_EQUAL(hal::ButtonEdge::Pressed,s.transportButton.edge);TEST_ASSERT_EQUAL(hal::ButtonEdge::Pressed,s.tapButton.edge); }
 void testButtonActivityDoesNotLoseEncoderDetent(){ hal::ControlPanel c;c.begin();fakefw::setPin(pinmap::kTapTempoButtonPin,LOW);forwardDetent();auto s=c.sample(1U);TEST_ASSERT_TRUE(s.encoderDelta==1 || s.encoderDelta==-1);s=c.sample(26U);TEST_ASSERT_EQUAL(hal::ButtonEdge::Pressed,s.tapButton.edge); }
 void testInitiallyPressedButtonIsStableWithoutSyntheticEdge(){ fakefw::setPin(pinmap::kResetBackButtonPin,LOW);hal::ControlPanel c;c.begin();auto s=c.sample(0U);TEST_ASSERT_TRUE(s.resetButton.pressed);TEST_ASSERT_EQUAL(hal::ButtonEdge::None,s.resetButton.edge); }
+
+// F-029 / W-106: a press keeps the TIM5 timestamp of its first detected edge;
+// debouncing (25 ms) only decides whether it is accepted.
+
+/** @brief Sets @p pin to @p level at @p nowUs and samples the panel at @p nowMs. */
+hal::ControlSample levelAt(hal::ControlPanel& c, std::uint32_t pin, std::uint8_t level, std::uint32_t nowMs, std::uint32_t nowUs){
+    fakefw::setPin(pin, level);
+    fakefw::nowUs = nowUs;
+    return c.sample(nowMs);
+}
+/** @brief Samples the panel at @p nowMs without a level change. */
+hal::ControlSample sampleAt(hal::ControlPanel& c, std::uint32_t nowMs, std::uint32_t nowUs){
+    fakefw::nowUs = nowUs;
+    return c.sample(nowMs);
+}
+
+void testBouncingPressKeepsTheFirstEdgeTimestamp(){
+    for (std::size_t index = 0U; index < 4U; ++index) {
+        fakefw::resetArduino();
+        hal::ControlPanel c; c.begin();
+        const auto pin = pinFor(index);
+        (void)levelAt(c, pin, LOW, 1U, 1'000U);
+        (void)levelAt(c, pin, HIGH, 3U, 3'000U);
+        (void)levelAt(c, pin, LOW, 5U, 5'000U);
+        TEST_ASSERT_EQUAL(hal::ButtonEdge::None, buttonFrom(sampleAt(c, 29U, 29'000U), index).edge);
+        const hal::ButtonSample pressed = buttonFrom(sampleAt(c, 30U, 30'000U), index);
+        TEST_ASSERT_EQUAL(hal::ButtonEdge::Pressed, pressed.edge);
+        TEST_ASSERT_EQUAL_UINT32(1'000U, pressed.edgeTimestampUs);
+        // The release bounces as well and keeps its own first edge.
+        (void)levelAt(c, pin, HIGH, 100U, 100'000U);
+        (void)levelAt(c, pin, LOW, 102U, 102'000U);
+        (void)levelAt(c, pin, HIGH, 104U, 104'000U);
+        const hal::ButtonSample released = buttonFrom(sampleAt(c, 129U, 129'000U), index);
+        TEST_ASSERT_EQUAL(hal::ButtonEdge::Released, released.edge);
+        TEST_ASSERT_EQUAL_UINT32(100'000U, released.edgeTimestampUs);
+    }
+}
+
+void testPressShorterThanTheDebounceTimeIsDiscarded(){
+    hal::ControlPanel c; c.begin();
+    const auto pin = pinmap::kTapTempoButtonPin;
+    (void)levelAt(c, pin, LOW, 1U, 1'000U);
+    (void)levelAt(c, pin, HIGH, 10U, 10'000U);
+    for (std::uint32_t ms = 11U; ms <= 60U; ++ms) {
+        TEST_ASSERT_EQUAL(hal::ButtonEdge::None, sampleAt(c, ms, ms * 1'000U).tapButton.edge);
+    }
+    // The next real press does not inherit the discarded first edge.
+    (void)levelAt(c, pin, LOW, 100U, 100'000U);
+    const hal::ButtonSample pressed = sampleAt(c, 125U, 125'000U).tapButton;
+    TEST_ASSERT_EQUAL(hal::ButtonEdge::Pressed, pressed.edge);
+    TEST_ASSERT_EQUAL_UINT32(100'000U, pressed.edgeTimestampUs);
+}
+
+void testTwoQuickPressesKeepTheirOwnFirstEdges(){
+    hal::ControlPanel c; c.begin();
+    const auto pin = pinmap::kTapTempoButtonPin;
+    (void)levelAt(c, pin, LOW, 1U, 1'000U);
+    (void)levelAt(c, pin, HIGH, 2U, 2'000U);
+    (void)levelAt(c, pin, LOW, 3U, 3'000U);
+    hal::ButtonSample tap = sampleAt(c, 28U, 28'000U).tapButton;
+    TEST_ASSERT_EQUAL(hal::ButtonEdge::Pressed, tap.edge);
+    TEST_ASSERT_EQUAL_UINT32(1'000U, tap.edgeTimestampUs);
+    (void)levelAt(c, pin, HIGH, 40U, 40'000U);
+    (void)levelAt(c, pin, LOW, 41U, 41'000U);
+    (void)levelAt(c, pin, HIGH, 42U, 42'000U);
+    tap = sampleAt(c, 67U, 67'000U).tapButton;
+    TEST_ASSERT_EQUAL(hal::ButtonEdge::Released, tap.edge);
+    TEST_ASSERT_EQUAL_UINT32(40'000U, tap.edgeTimestampUs);
+    (void)levelAt(c, pin, LOW, 70U, 70'000U);
+    (void)levelAt(c, pin, HIGH, 71U, 71'000U);
+    (void)levelAt(c, pin, LOW, 72U, 72'000U);
+    tap = sampleAt(c, 97U, 97'000U).tapButton;
+    TEST_ASSERT_EQUAL(hal::ButtonEdge::Pressed, tap.edge);
+    TEST_ASSERT_EQUAL_UINT32(70'000U, tap.edgeTimestampUs);
+}
+
+void testBounceAcrossTheTim5WrapKeepsTheFirstEdge(){
+    hal::ControlPanel c; c.begin();
+    const auto pin = pinmap::kTapTempoButtonPin;
+    constexpr std::uint32_t kFirstEdgeUs = 0xFFFF'FC18U;  // 1 ms before the wrap
+    (void)levelAt(c, pin, LOW, 1U, kFirstEdgeUs);
+    (void)levelAt(c, pin, HIGH, 3U, kFirstEdgeUs + 2'000U);
+    (void)levelAt(c, pin, LOW, 5U, kFirstEdgeUs + 4'000U);
+    const hal::ButtonSample pressed = sampleAt(c, 30U, kFirstEdgeUs + 29'000U).tapButton;
+    TEST_ASSERT_EQUAL(hal::ButtonEdge::Pressed, pressed.edge);
+    TEST_ASSERT_EQUAL_UINT32(kFirstEdgeUs, pressed.edgeTimestampUs);
+    TEST_ASSERT_EQUAL_UINT32(29'000U, (kFirstEdgeUs + 29'000U) - pressed.edgeTimestampUs);
+}
+
+// F-073 / W-336: TIM5 0 is a valid timestamp; validity is a flag.
+void testFirstEdgeAtTimestampZeroIsValid(){
+    hal::ControlPanel c; c.begin();
+    const auto pin = pinmap::kTapTempoButtonPin;
+    hal::ButtonSample tap = levelAt(c, pin, LOW, 1U, 0U).tapButton;  // micros() == 0
+    TEST_ASSERT_FALSE(tap.edgeTimestampValid);
+    TEST_ASSERT_FALSE(tap.pressTimestampValid);
+    tap = sampleAt(c, 26U, 25'000U).tapButton;
+    TEST_ASSERT_EQUAL(hal::ButtonEdge::Pressed, tap.edge);
+    TEST_ASSERT_TRUE(tap.edgeTimestampValid);
+    TEST_ASSERT_EQUAL_UINT32(0U, tap.edgeTimestampUs);
+    TEST_ASSERT_TRUE(tap.pressTimestampValid);
+    TEST_ASSERT_EQUAL_UINT32(0U, tap.pressTimestampUs);
+    // While held and on the release the press keeps its first edge.
+    tap = sampleAt(c, 80U, 80'000U).tapButton;
+    TEST_ASSERT_EQUAL(hal::ButtonEdge::None, tap.edge);
+    TEST_ASSERT_FALSE(tap.edgeTimestampValid);
+    TEST_ASSERT_TRUE(tap.pressTimestampValid);
+    (void)levelAt(c, pin, HIGH, 90U, 90'000U);
+    tap = sampleAt(c, 115U, 115'000U).tapButton;
+    TEST_ASSERT_EQUAL(hal::ButtonEdge::Released, tap.edge);
+    TEST_ASSERT_EQUAL_UINT32(90'000U, tap.edgeTimestampUs);
+    TEST_ASSERT_TRUE(tap.pressTimestampValid);
+    TEST_ASSERT_EQUAL_UINT32(0U, tap.pressTimestampUs);
+    tap = sampleAt(c, 130U, 130'000U).tapButton;
+    TEST_ASSERT_FALSE(tap.pressTimestampValid);
+}
+
+void testPressHeldAtBootHasNoPressTimestamp(){
+    fakefw::setPin(pinmap::kTapTempoButtonPin, LOW);
+    fakefw::nowUs = 5'000U;
+    hal::ControlPanel c; c.begin();
+    hal::ButtonSample tap = sampleAt(c, 10U, 10'000U).tapButton;
+    TEST_ASSERT_TRUE(tap.pressed);
+    TEST_ASSERT_FALSE(tap.pressTimestampValid);
+    (void)levelAt(c, pinmap::kTapTempoButtonPin, HIGH, 20U, 20'000U);
+    tap = sampleAt(c, 45U, 45'000U).tapButton;
+    TEST_ASSERT_EQUAL(hal::ButtonEdge::Released, tap.edge);
+    TEST_ASSERT_TRUE(tap.edgeTimestampValid);
+    TEST_ASSERT_EQUAL_UINT32(20'000U, tap.edgeTimestampUs);
+    TEST_ASSERT_FALSE(tap.pressTimestampValid);
+}
 }
 
 
@@ -305,4 +436,5 @@ RUN_TEST(testIdleSampleDoesNotMaskInterrupts);RUN_TEST(testGrayCycleAProducesOne
 RUN_TEST(testEncoderDirectionReversalInvertsCompletedDetentWithoutChangingDecoder);RUN_TEST(testEncoderDirectionReversalPreservesFastTurnBacklog);RUN_TEST(testFastTurnThousandDetentsAreNotLostForward);RUN_TEST(testFastTurnThousandDetentsAreNotLostReverse);RUN_TEST(testFastTurnRepeatedForegroundDrainsPreserveTotal);RUN_TEST(testFastTurnDirectionReversalCancelsLargeBacklog);RUN_TEST(testFastTurnBacklogSaturatesWithoutSignedOverflow);RUN_TEST(testFastTurnDuringButtonBouncePreservesAllDetents);RUN_TEST(testFirstDetentCountsImmediatelyFromEveryElectricalPhase);RUN_TEST(testFirstReverseDetentCountsImmediatelyFromEveryElectricalPhase);RUN_TEST(testEverySingleDetentAfterDirectionChangeIsReported);RUN_TEST(testMidCycleDirectionReversalDoesNotPoisonNextDetent);
 RUN_TEST(testMissedTransitionAtDetentStillReportsFirstClick);RUN_TEST(testMissedTransitionRecoveryDoesNotPoisonImmediateReverse);RUN_TEST(testHalfCycleCorruptionIsDiscardedAtDetentBoundary);RUN_TEST(testExtraTransitionAtDetentDoesNotCreatePersistentPhaseError);RUN_TEST(testQuadratureCounterWrapDoesNotLoseDetent);RUN_TEST(testMissingTransitionRecoveryRespectsReversedSetting);RUN_TEST(testLongAlternatingSingleDetentsNeverDropFirstClick);RUN_TEST(testOneEdgeResidueBeforeReverseDetentIsRecoveredAtAnchor);RUN_TEST(testFastTurnAfterImmediateReversalPreservesAllDetents);RUN_TEST(testEncoderReleaseReanchorsPartialPhaseBeforeDirectionChange);RUN_TEST(testAlternatingDetentsRemainExactAfterMenuPushPhaseShift);
 RUN_TEST(testEncoderPushDebouncesPress);RUN_TEST(testPlayPauseDebouncesPress);RUN_TEST(testTapDebouncesPress);RUN_TEST(testResetBackDebouncesPress);RUN_TEST(testEncoderPushDebouncesRelease);RUN_TEST(testPlayPauseDebouncesRelease);RUN_TEST(testTapDebouncesRelease);RUN_TEST(testResetBackDebouncesRelease);RUN_TEST(testEncoderPushHoldDoesNotRepeat);RUN_TEST(testPlayPauseHoldDoesNotRepeat);RUN_TEST(testTapHoldDoesNotRepeat);RUN_TEST(testResetBackHoldDoesNotRepeat);RUN_TEST(testButtonBounceBeforeDebounceDoesNotPress);RUN_TEST(testSimultaneousButtonsReportIndependentEdges);RUN_TEST(testButtonActivityDoesNotLoseEncoderDetent);RUN_TEST(testInitiallyPressedButtonIsStableWithoutSyntheticEdge);
+RUN_TEST(testBouncingPressKeepsTheFirstEdgeTimestamp);RUN_TEST(testPressShorterThanTheDebounceTimeIsDiscarded);RUN_TEST(testTwoQuickPressesKeepTheirOwnFirstEdges);RUN_TEST(testBounceAcrossTheTim5WrapKeepsTheFirstEdge);RUN_TEST(testFirstEdgeAtTimestampZeroIsValid);RUN_TEST(testPressHeldAtBootHasNoPressTimestamp);
 return UNITY_END();}

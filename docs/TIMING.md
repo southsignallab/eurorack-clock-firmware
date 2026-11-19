@@ -40,6 +40,10 @@ Milliseconds and microseconds derive from one source: a 64-bit extension of the 
 
 A configuration change recomputes the next event of up to eight channels, with several 64-bit divisions each. That work runs in the foreground against a staged second configuration buffer and a short snapshot of the scheduler state; the interrupt lock covers only the swap, which exchanges the configuration pointer, installs the prepared values and divides nothing. If the scheduler moved a schedule basis meanwhile (an event of that channel, a restart, a phase correction, an external tempo or lock change), the preparation repeats; after three attempts the swap computes under the lock as before, so no change is lost. An event that the preparation placed between snapshot and swap fires in the next tick.
 
+Custom Groove library and preview changes and Sequencer pattern changes use the same swap: the new pattern goes into a spare buffer and a copy of the groove table outside the lock, and the lock exchanges pointers. Sequencer step expressions are swapped the same way. No pattern or table is copied under the lock (`memcpy` is a byte loop in the release image).
+
+PLAY, STOP and RESET restart the GLOBAL schedules on the current master position. Every term of an event position is relative to the epoch, so the first event of each GLOBAL channel is that position plus an offset that only the configuration and the tempo determine. The foreground computes these offsets and step phases outside the lock; the lock adds the position, installs them and lowers all HIGH gates with one register write. A tempo or lock change in between repeats the preparation, as above. A reset from the scheduler itself (RST input, end of Pre-Count, first SYNC pulse) prepares and installs in one step.
+
 ### External phase correction
 
 Each accepted sync pulse snaps the GLOBAL grid onto the pulse. A late pulse moves the GLOBAL grid later. An early pulse moves the master timeline and every FREE schedule later instead of the GLOBAL grid earlier, which is the same relative correction; schedule positions therefore never move backwards and cannot saturate at the start of the timeline.
@@ -111,7 +115,7 @@ The following invariants are release requirements:
 - all gate edges of one scheduler tick are written with one `BSRR` access, and a HIGH gate ends before it rises again;
 - scheduler ticks merged during an interrupt lock are caught up from TIM5 (bounded, see above), so the master tempo does not depend on foreground locks;
 - milliseconds and microseconds come from the same TIM5 time base;
-- foreground interrupt locks cover copying and swapping only, not schedule calculations;
+- foreground interrupt locks cover copying and swapping only, not schedule calculations, and copy no structure byte by byte;
 - configured gate lengths remain scheduler-quantized but transport-independent;
 - TIM4 encoder transitions must continue accumulating while foreground display work is active, and foreground detent conversion must not lose a complete mechanical detent;
 - conditioned SYNC/RST edges must remain capturable while OLED traffic is active;

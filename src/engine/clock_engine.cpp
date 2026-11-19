@@ -24,7 +24,28 @@ static_assert(config::kMaximumSchedulerCatchUpTicks <= kMaximumChannelEventsPerQ
 }  // namespace
 
 ClockEngine::ClockEngine(hal::GateOutputDriver& gateOutputs)
-    : gateOutputs_(gateOutputs) {}
+    : gateOutputs_(gateOutputs) {
+    initializeBufferTables();
+}
+
+void ClockEngine::initializeBufferTables() {
+    for (GrooveSources& table : grooveSourceBuffers_) {
+        for (std::size_t slot = 0U; slot < kCustomGrooveSlotCount; ++slot) {
+            table.slots[slot] = &customGrooveBuffers_[slot];
+        }
+        for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
+            table.previews[channelIndex] =
+                &customGrooveBuffers_[kCustomGrooveSlotCount + channelIndex];
+        }
+    }
+    spareCustomGroove_ = &customGrooveBuffers_[kCustomGrooveBufferCount - 1U];
+    for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
+        sequencerPatterns_[channelIndex] = &sequencerPatternBuffers_[channelIndex];
+        sequencerStepMetadata_[channelIndex] = &sequencerStepMetadataBuffers_[channelIndex];
+    }
+    spareSequencerPattern_ = &sequencerPatternBuffers_[kChannelCount];
+    spareSequencerStepMetadata_ = &sequencerStepMetadataBuffers_[kChannelCount];
+}
 
 void ClockEngine::begin(const ClockState& state) {
     std::uint32_t spacingQ16[kChannelCount]{};
@@ -67,32 +88,6 @@ void ClockEngine::discardFreewheelTempoAfterManualChangeUnsafe() {
     }
 }
 
-void ClockEngine::play() {
-    hal::InterruptLock interruptLock;
-    if (playing_) {
-        return;
-    }
-    const bool freshStart = restartPending_;
-    playing_ = true;
-    if (freshStart) {
-        startPreCountUnsafe();
-        if (!preCountActive_) {
-            // Without Pre-Count a fresh start begins at step 1 and beat 1 now;
-            // external pulses received while stopped must not shift that downbeat.
-            restartFromCurrentPositionUnsafe();
-        }
-    }
-}
-
-void ClockEngine::restartFromCurrentPositionUnsafe() {
-    resetRuntime();
-    if (externalPhaseInitialized_) {
-        externalReferenceQ32_ = masterPositionQ32_;
-        externalMusicalPositionQ32_ = 0U;
-        externalPulseRemainder_ = 0U;
-    }
-}
-
 void ClockEngine::pause() {
     hal::InterruptLock interruptLock;
     playing_ = false;
@@ -103,32 +98,6 @@ void ClockEngine::pause() {
         runtime.ratchetRemaining = 0U;
         setGateState(channelIndex, false);
     }
-}
-
-void ClockEngine::stop() {
-    hal::InterruptLock interruptLock;
-    playing_ = false;
-    preCountActive_ = false;
-    preCountRemaining_ = 0U;
-    preCountPhaseQ32_ = 0U;
-    preCountRemainder_ = 0U;
-    preCountExternalPulseRemainder_ = 0U;
-    for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
-        ChannelRuntime& runtime = channelRuntime_[channelIndex];
-        runtime.tieHold = false;
-        runtime.ratchetRemaining = 0U;
-        setGateState(channelIndex, false);
-    }
-    resetRuntime();
-}
-
-void ClockEngine::resetGlobalPhase() {
-    hal::InterruptLock interruptLock;
-    resetRuntime();
-}
-
-void ClockEngine::resetGlobalPhaseFromIsr() {
-    resetRuntime();
 }
 
 void ClockEngine::runSchedulerTick(const std::uint32_t elapsedTicks) {
@@ -286,44 +255,6 @@ void ClockEngine::finishPreCountUnsafe() {
     preCountRemainder_ = 0U;
     preCountExternalPulseRemainder_ = 0U;
     resetRuntime();
-}
-
-void ClockEngine::resetRuntime() {
-#ifdef CLOCK_HOST_TEST
-    ++resetRuntimeCountForTest_;
-#endif
-    restartPending_ = true;
-    ++scheduleGeneration_;
-    globalScheduleEpochQ32_ = masterPositionQ32_;
-    masterBeatPhaseQ32_ = 0U;
-    masterBeatSerial_ = 0U;
-    masterRemainder_ = 0U;
-    masterBeat_ = 1U;
-    masterBar_ = 1U;
-
-    for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
-        setGateState(channelIndex, false);
-        if (!core::shouldResetChannel(
-                configuration_->channels[channelIndex].common.resetMode,
-                false)) {
-            continue;
-        }
-
-        ChannelRuntime& runtime = channelRuntime_[channelIndex];
-        runtime.scheduleEpochQ32 = globalScheduleEpochQ32_;
-        runtime.step = 0U;
-        runtime.displayedStep = 0U;
-        runtime.nextEventSerial = 0U;
-        runtime.gateOffTick = 0U;
-        runtime.gateOffScheduled = false;
-        runtime.tieHold = false;
-        runtime.ratchetRemaining = 0U;
-        runtime.nextRatchetQ32 = 0U;
-        runtime.ratchetSpacingQ32 = 0U;
-        runtime.ratchetGateTicks = 1U;
-        runtime.lastEventSlotValid = false;
-        scheduleChannelFromCurrentPosition(channelIndex, true);
-    }
 }
 
 void ClockEngine::copyConfigurationUnsafe(const ClockState& state) {

@@ -17,8 +17,12 @@
  * Everything else that moves a schedule basis invalidates it: a processed event of
  * that channel (its next serial changes) or a restart, phase correction, external
  * tempo or lock change (scheduleGeneration_). The swap then repeats the
- * preparation, at most kConfigurationSwapAttempts times, and finally computes
- * under the lock as before, so a change is never lost.
+ * preparation, at most kStagedSwapAttempts times, and finally computes under the
+ * lock as before, so a change is never lost.
+ *
+ * Custom Groove library and preview changes and Sequencer 2.0 pattern changes use
+ * the same swap (F-072): the new pattern goes into a spare buffer and a copy of
+ * the groove table outside the lock, and the lock exchanges pointers.
  */
 #include "engine/clock_engine_schedule.h"
 
@@ -27,8 +31,6 @@
 namespace clockfw::engine {
 namespace {
 
-/** Preparations outside the lock before one swap computes under the lock. */
-constexpr std::uint8_t kConfigurationSwapAttempts = 3U;
 constexpr std::uint8_t kAllChannelsMask = static_cast<std::uint8_t>((1U << kChannelCount) - 1U);
 static_assert(kChannelCount <= 8U, "Channel masks are 8 bits wide");
 
@@ -44,9 +46,41 @@ ClockEngine::EngineConfiguration* ClockEngine::inactiveConfiguration() {
                                                        : &configurationBuffers_[0];
 }
 
+ClockEngine::GrooveSources* ClockEngine::stageGrooveSources() {
+    // Foreground only, like the configuration buffers; no pattern is copied here.
+    GrooveSources* const staged = grooveSources_ == &grooveSourceBuffers_[0]
+        ? &grooveSourceBuffers_[1]
+        : &grooveSourceBuffers_[0];
+    *staged = *grooveSources_;
+    return staged;
+}
+
+ClockEngine::StagedConfiguration ClockEngine::stageLiveConfiguration(
+    GrooveSources* const grooves) const {
+    StagedConfiguration staged{};
+    // The installed configuration stays: the foreground is its only writer.
+    staged.configuration = configuration_;
+    staged.grooves = grooves;
+    for (std::size_t index = 0U; index < kChannelCount; ++index) {
+        staged.customGrooveSpacingQ16[index] = customGrooveSpacingQ16_[index];
+    }
+    return staged;
+}
+
+ClockEngine::ScheduleInputs ClockEngine::foregroundScheduleInputs(
+    const TempoSnapshot& tempo) const {
+    return makeScheduleInputs(*configuration_, customGrooveSpacingQ16_, *grooveSources_,
+                              tempo.externalLocked, tempo.externalBpmMilli);
+}
+
+const SequencerPatternV2* ClockEngine::liveSequencerPattern(const std::size_t channelIndex) const {
+    return sequencerPatternV2Active_[channelIndex] ? sequencerPatterns_[channelIndex] : nullptr;
+}
+
 void ClockEngine::updateConfiguration(const ClockState& state, const bool rescheduleChannels) {
     StagedConfiguration staged{};
     staged.configuration = inactiveConfiguration();
+    staged.grooves = grooveSources_;
     resolveConfiguration(state, *staged.configuration);
     calculateCustomGrooveSpacingsQ16(state, staged.customGrooveSpacingQ16);
     swapConfiguration(staged, kAllChannelsMask, rescheduleChannels);
@@ -62,13 +96,14 @@ void ClockEngine::updateChannel(
     // The foreground is the only writer of the configuration and the spacings.
     StagedConfiguration staged{};
     staged.configuration = inactiveConfiguration();
+    staged.grooves = grooveSources_;
     *staged.configuration = *configuration_;
     for (std::size_t index = 0U; index < kChannelCount; ++index) {
         staged.customGrooveSpacingQ16[index] = customGrooveSpacingQ16_[index];
     }
     staged.configuration->channels[channelIndex] = channelConfiguration;
-    staged.customGrooveSpacingQ16[channelIndex] = calculateCustomGrooveSpacingQ16(
-        channelIndex, channelConfiguration, customGroovePreviewActive_[channelIndex]);
+    staged.customGrooveSpacingQ16[channelIndex] =
+        calculateCustomGrooveSpacingQ16(*grooveSources_, channelIndex, channelConfiguration);
     swapConfiguration(
         staged, static_cast<std::uint8_t>(1U << channelIndex), rescheduleChannel);
 }
@@ -80,7 +115,7 @@ void ClockEngine::swapConfiguration(
     PreparedChannelSchedule schedules[kChannelCount]{};
     PreparedStepPhase phases[kChannelCount]{};
     ScheduleSnapshot snapshot{};
-    for (std::uint8_t attempt = 0U; attempt < kConfigurationSwapAttempts; ++attempt) {
+    for (std::uint8_t attempt = 0U; attempt < kStagedSwapAttempts; ++attempt) {
         {
             hal::InterruptLock interruptLock;
             takeScheduleSnapshotUnsafe(snapshot);
@@ -100,9 +135,7 @@ void ClockEngine::swapConfiguration(
         }
     }
     // The scheduler kept moving the basis: compute under the lock, as before W-060.
-#ifdef CLOCK_HOST_TEST
-    ++configurationSwapFallbackCountForTest_;
-#endif
+    countStagedSwapFallback();
     hal::InterruptLock interruptLock;
     takeScheduleSnapshotUnsafe(snapshot);
     prepareConfigurationSwap(staged, snapshot, channelMask, rescheduleChannels, schedules, phases);
@@ -141,6 +174,7 @@ void ClockEngine::prepareConfigurationSwap(
     const ScheduleInputs inputs = makeScheduleInputs(
         configuration,
         staged.customGrooveSpacingQ16,
+        *staged.grooves,
         snapshot.externalLocked,
         freewheelTempoDropped ? 0U : snapshot.externalBpmMilli);
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
@@ -160,7 +194,11 @@ void ClockEngine::prepareConfigurationSwap(
             schedules[channelIndex] = prepareChannelSchedule(inputs, channelIndex, basis);
             nextEventSerial = schedules[channelIndex].nextEventSerial;
         }
-        phases[channelIndex] = prepareStepPhase(configuration, channelIndex, nextEventSerial);
+        const SequencerPatternV2* const pattern = channelIndex == staged.sequencerChannel
+            ? staged.sequencerPattern
+            : liveSequencerPattern(channelIndex);
+        phases[channelIndex] =
+            prepareStepPhase(configuration, channelIndex, nextEventSerial, pattern);
     }
 }
 
@@ -187,9 +225,17 @@ void ClockEngine::installConfigurationSwapUnsafe(
     const PreparedChannelSchedule (&schedules)[kChannelCount],
     const PreparedStepPhase (&phases)[kChannelCount]) {
     const std::uint16_t previousBpm = configuration_->bpm;
-    // The staged buffer becomes the scheduler's configuration: one pointer store.
+    // The staged buffers become the scheduler's configuration and groove table:
+    // pointer stores only, no copy of a configuration or a pattern (F-071).
     configuration_ = staged.configuration;
+    grooveSources_ = staged.grooves;
+    if (staged.releasedGroove != nullptr) {
+        spareCustomGroove_ = staged.releasedGroove;
+    }
     installCustomGrooveSpacingsUnsafe(staged.customGrooveSpacingQ16);
+    if (staged.sequencerChannel < kChannelCount) {
+        installSequencerPatternUnsafe(staged.sequencerChannel, staged.sequencerPattern);
+    }
     if (configuration_->bpm != previousBpm) {
         discardFreewheelTempoAfterManualChangeUnsafe();
     }
@@ -241,14 +287,20 @@ ClockEngine::ChannelScheduleBasis ClockEngine::liveScheduleBasis(
     return basis;
 }
 
+#ifdef CLOCK_HOST_TEST
+void ClockEngine::countCalculationUnderLockForTest() const {
+    if (hal::InterruptLock::activeCountForTest() != 0U) {
+        ++scheduleCalculationsUnderLockForTest_;
+    }
+}
+#endif
+
 ClockEngine::PreparedChannelSchedule ClockEngine::prepareChannelSchedule(
     const ScheduleInputs& inputs,
     const std::size_t channelIndex,
     const ChannelScheduleBasis& basis) const {
 #ifdef CLOCK_HOST_TEST
-    if (hal::InterruptLock::activeCountForTest() != 0U) {
-        ++scheduleCalculationsUnderLockForTest_;
-    }
+    countCalculationUnderLockForTest();
 #endif
     const std::uint64_t epochQ32 = basis.epochQ32;
     const std::uint64_t positionQ32 = basis.positionQ32;
@@ -293,7 +345,7 @@ ClockEngine::PreparedChannelSchedule ClockEngine::prepareChannelSchedule(
 
     // A reschedule never re-emits an event slot that has already been processed.
     eventSerial = firstSerialAfterLastEvent(inputs, channelIndex, basis, eventSerial);
-    PreparedChannelSchedule schedule{};
+    PreparedChannelSchedule schedule;
     schedule.epochQ32 = epochQ32;
     schedule.nextEventSerial = eventSerial;
     schedule.nextEventQ32 = calculateEventPositionQ32(
@@ -330,22 +382,23 @@ std::uint8_t ClockEngine::channelCycleLength(
 void ClockEngine::synchronizeChannelStepPhase(const std::size_t channelIndex) {
     const std::uint64_t nextEventSerial = channelRuntime_[channelIndex].nextEventSerial;
     installStepPhase(
-        channelIndex, prepareStepPhase(*configuration_, channelIndex, nextEventSerial));
+        channelIndex,
+        prepareStepPhase(
+            *configuration_, channelIndex, nextEventSerial, liveSequencerPattern(channelIndex)));
 }
 
 ClockEngine::PreparedStepPhase ClockEngine::prepareStepPhase(
     const EngineConfiguration& configuration,
     const std::size_t channelIndex,
-    const std::uint64_t nextEventSerial) const {
+    const std::uint64_t nextEventSerial,
+    const SequencerPatternV2* const sequencerPattern) const {
 #ifdef CLOCK_HOST_TEST
-    if (hal::InterruptLock::activeCountForTest() != 0U) {
-        ++scheduleCalculationsUnderLockForTest_;
-    }
+    countCalculationUnderLockForTest();
 #endif
     PreparedStepPhase phase{};
     if (configuration.channels[channelIndex].common.mode == ChannelMode::Sequencer &&
-        sequencerPatternV2Active_[channelIndex]) {
-        const SequencerPatternV2& pattern = sequencerPatterns_[channelIndex];
+        sequencerPattern != nullptr) {
+        const SequencerPatternV2& pattern = *sequencerPattern;
         const std::uint32_t seed = 0x53455132UL ^
             (static_cast<std::uint32_t>(channelIndex + 1U) * 0x9E3779B9UL);
         const SequencerTraversalResult current = resolveSequencerTraversal(

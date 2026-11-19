@@ -17,14 +17,32 @@ std::uint64_t ClockEngine::nominalIntervalQ32(const std::size_t channelIndex) co
     if (channelIndex >= kChannelCount) {
         return 0U;
     }
-    hal::InterruptLock interruptLock;
-    return calculateNominalBaseIntervalQ32(channelIndex);
+    // Foreground: the configuration has no other writer; only the external tempo
+    // is copied under the lock, the division runs after it (F-072).
+    TempoSnapshot tempo{};
+    {
+        hal::InterruptLock interruptLock;
+        tempo = takeTempoSnapshotUnsafe();
+    }
+#ifdef CLOCK_HOST_TEST
+    countCalculationUnderLockForTest();
+#endif
+    return calculateNominalBaseIntervalQ32(foregroundScheduleInputs(tempo), channelIndex);
 }
 
 std::uint64_t ClockEngine::estimateMasterPositionAtUs(
     const std::uint32_t eventTimestampUs,
     const std::uint32_t nowUs) const {
-    hal::InterruptLock interruptLock;
+    TempoSnapshot tempo{};
+    std::uint64_t positionQ32 = 0U;
+    {
+        hal::InterruptLock interruptLock;
+        tempo = takeTempoSnapshotUnsafe();
+        positionQ32 = masterPositionQ32_;
+    }
+#ifdef CLOCK_HOST_TEST
+    countCalculationUnderLockForTest();
+#endif
     const std::uint32_t elapsedUs = nowUs - eventTimestampUs;
     // A debounced front-panel edge should be only about 25 ms old. Bounding the
     // compensation avoids treating an invalid/stale timestamp as a wrap-sized
@@ -33,7 +51,7 @@ std::uint64_t ClockEngine::estimateMasterPositionAtUs(
     const std::uint64_t elapsedTicks = boundedElapsedUs / config::kSchedulerTickUs;
     volatile std::uint64_t remainder = 0U;
     const std::uint64_t incrementQ32 = core::calculateMasterIncrementMilliBpmQ32(
-        effectiveBpmMilli(),
+        effectiveBpmMilli(*configuration_, tempo.externalLocked, tempo.externalBpmMilli),
         configuration_->beatUnit,
         config::kSchedulerFrequencyHz,
         remainder);
@@ -41,8 +59,7 @@ std::uint64_t ClockEngine::estimateMasterPositionAtUs(
             elapsedTicks > UINT64_MAX / incrementQ32
         ? UINT64_MAX
         : incrementQ32 * elapsedTicks;
-    return rewindQ32 >= masterPositionQ32_ ? 0U : masterPositionQ32_ - rewindQ32;
+    return rewindQ32 >= positionQ32 ? 0U : positionQ32 - rewindQ32;
 }
-
 
 }  // namespace clockfw::engine

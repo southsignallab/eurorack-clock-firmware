@@ -633,6 +633,7 @@ int main() {
     RUN_TEST(testTapIndicatorSequenceResetsAfterConfiguredMinimumBpmInterval);
     RUN_TEST(testTapIndicatorIsExclusiveToPerformanceTapTempo);
     RUN_TEST(testTapSequenceStalenessUsesMicrosecondTimeBase);
+    RUN_TEST(testPanelTapTempoUsesTheFirstEdgeOfEachPress);
     RUN_TEST(testScreensaverRenderingAndPolicy);
     RUN_TEST(testNestedGroupNavigationCoverage);
     RUN_TEST(testCustomGrooveEditorControllerWorkflow);

@@ -97,6 +97,7 @@ void runTicks(engine::ClockEngine& engine, const std::uint32_t count) {
 #include "cases/sync_phase_alignment.inc"
 #include "cases/scheduler_catch_up.inc"
 #include "cases/configuration_swap.inc"
+#include "cases/staged_swaps.inc"
 
 }  // namespace
 
@@ -179,6 +180,15 @@ int main() {
     RUN_TEST(testSwapAtTheTickOfAnEventFiresItOnce);
     RUN_TEST(testEventDueInsideTheSwapWindowFiresInTheNextTick);
     RUN_TEST(testSwapComputesUnderTheLockWhenTheSchedulerKeepsMovingTheBasis);
+    RUN_TEST(testStagedPathsComputeNoScheduleUnderTheLock);
+    RUN_TEST(testEveryStagedPathSwapsAfterItsPreparation);
+    RUN_TEST(testGrooveSlotSwapAtTheTickOfAnEventFiresItOnce);
+    RUN_TEST(testSequencerPatternSwapAtTheTickOfAnEventFiresItOnce);
+    RUN_TEST(testResetSwapAtTheTickOfAnEventRestartsTheBarOnce);
+    RUN_TEST(testStopAndPlayWithATickInsideTheSwapLoseAndDoubleNothing);
+    RUN_TEST(testStopLowersEveryHighGateInOneWrite);
+    RUN_TEST(testStagedPathsComputeUnderTheLockWhenTheSchedulerKeepsMovingTheBasis);
+    RUN_TEST(testCaptureEstimatesMatchTheSchedulerTimeline);
     std::cout << "Realtime assertions: " << checks << "\n";
     return UNITY_END();
 }

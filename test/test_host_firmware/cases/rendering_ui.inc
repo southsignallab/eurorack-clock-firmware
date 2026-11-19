@@ -1424,3 +1424,35 @@ void testNestedGroupNavigationCoverage() {
     controllerReset(controller, now);
     CHECK_EQ(controller.navigation().screen, ui::Screen::Performance);
 }
+
+void testPanelTapTempoUsesTheFirstEdgeOfEachPress() {
+    // F-029 / W-106: TAP TEMPO registers on release but measures from the first
+    // detected edge of each press, so bounce and hold time do not shift a tap.
+    resetFakes(); prepareDisplaySuccess();
+    hal::OledDisplay display; CHECK(display.begin());
+    ClockState state = makeDefaultState();
+    state.bpm = 90U;
+    hal::GateOutputDriver gates; gates.beginDisabled();
+    engine::ClockEngine engine(gates); engine.begin(state);
+    hal::PersistentStorage::resetForTest(); hal::PersistentStorage storage;
+    services::PersistentStateService persistence(storage); persistence.begin();
+    ui::UiRenderer renderer(display, persistence);
+    ui::UiController controller(state, engine, renderer, persistence);
+    hal::ControlPanel panel; panel.begin();
+
+    const std::uint32_t tapPin = pinmap::kTapTempoButtonPin;
+    const auto at = [&](const int level, const std::uint32_t nowMs) {
+        if (level >= 0) {
+            fakefw::setPin(tapPin, static_cast<std::uint8_t>(level));
+        }
+        fakefw::nowUs = nowMs * 1000U;
+        controller.processControls(panel.sample(nowMs), nowMs, nowMs * 1000U);
+    };
+    // Press 1 at 1000 ms bounces and is held 100 ms; press 2 at 1500 ms bounces
+    // and is held 300 ms. The releases are 700 ms apart, the first edges 500 ms.
+    at(LOW, 1000U); at(HIGH, 1002U); at(LOW, 1004U); at(-1, 1029U);
+    at(HIGH, 1100U); at(-1, 1125U);
+    at(LOW, 1500U); at(HIGH, 1502U); at(LOW, 1504U); at(-1, 1529U);
+    at(HIGH, 1800U); at(-1, 1825U);
+    CHECK_EQ(state.bpm, 120U);
+}

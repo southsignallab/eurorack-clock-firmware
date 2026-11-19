@@ -69,7 +69,7 @@ void writePortLines(const mcu::Pin portReference, const std::uint16_t setMask, c
     gLastPortWrite = PortWriteRecord{portBase >> 8U, setMask, resetMask};
 #endif
     for (std::uint32_t line = 0U; line < 16U; ++line) {
-        const std::uint32_t lineMask = 1UL << line;
+        const std::uint32_t lineMask = 1U << line;
         if ((resetMask & lineMask) != 0U) {
             digitalWrite(portBase | line, LOW);
         } else if ((setMask & lineMask) != 0U) {

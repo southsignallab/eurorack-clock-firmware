@@ -439,6 +439,30 @@ void testCustomGrooveRecorderControllerWorkflow() {
     CHECK((controller.navigation().grooveRecordCapturedMask & 0x2ULL) != 0ULL);
     CHECK(controller.navigation().grooveDraft.offsets256[1] > 0);
 
+    // F-073 / W-336: a TAP whose first edge has TIM5 timestamp 0 is a valid edge.
+    // "Now" is one eighth of a step after the step and the edge exactly on it; the
+    // debounced time would record +32/256. 120 BPM: one beat is 500 ms.
+    const std::uint32_t eighthUs =
+        static_cast<std::uint32_t>(((intervalQ32 / 8ULL) * 500'000ULL) >> 32U);
+    CHECK(eighthUs > 0U && eighthUs < 100'000U);
+    const auto tapOneEighthLate = [&](const std::uint8_t step, const std::uint32_t edgeUs) {
+        const std::uint64_t stepQ32 = intervalQ32 * step;
+        std::uint32_t ticks = 0U;
+        while (engine.snapshot().masterPositionQ32 < stepQ32 + intervalQ32 / 8ULL &&
+               ticks++ < 40'000U) {
+            engine.processSchedulerTick();
+        }
+        CHECK(ticks < 40'000U);
+        sample = {};
+        sample.tapButton = {hal::ButtonEdge::Pressed, true, edgeUs, true};
+        controller.processControls(sample, now++, edgeUs + eighthUs);
+        CHECK(((controller.navigation().grooveRecordCapturedMask >> step) & 1ULL) != 0ULL);
+        CHECK_EQ(controller.navigation().grooveDraft.offsets256[step], 0);
+    };
+    tapOneEighthLate(2U, 0U);
+    // The same across the TIM5 wrap: edge 16.4 ms before 2^32, now after it.
+    tapOneEighthLate(3U, 0xFFFF'C000U);
+
     // BACK stops capture before presenting the normal dirty-draft confirmation.
     // Cancelling that dialog returns to RECORD in READY; recording never runs
     // invisibly behind the modal screen.
@@ -720,10 +744,14 @@ void inputTapPulse(app::ClockApplication& application) {
     fakefw::setPin(pinmap::kExternalSyncSignalPin, LOW);
 }
 
-/** Front-panel TAP whose 25-ms debounced release is recognized at @p releaseMs (+ one pass). */
-void panelTapReleasedAt(app::ClockApplication& application, const std::uint32_t releaseMs) {
+/**
+ * Front-panel TAP pressed now and released 60 ms later. The tap counts from the first
+ * edge of the press, which the next foreground pass sees (F-029); TAP TEMPO registers it
+ * when the debounced release arrives.
+ */
+void panelTapPressedNow(app::ClockApplication& application) {
     fakefw::setPin(pinmap::kTapTempoButtonPin, LOW);
-    runPassesOnBothClocks(application, releaseMs - 25U);
+    runPassesOnBothClocks(application, fakefw::nowMs + 60U);
     fakefw::setPin(pinmap::kTapTempoButtonPin, HIGH);
 }
 
@@ -741,8 +769,8 @@ std::uint16_t tempoAfterFourTaps(
     for (std::uint32_t tap = 0U; tap < 4U; ++tap) {
         const std::uint32_t tapMs = firstTapMs + tap * 500U;
         if ((panelMask & (1U << tap)) != 0U) {
-            runPassesOnBothClocks(application, tapMs - 100U);
-            panelTapReleasedAt(application, tapMs);
+            runPassesOnBothClocks(application, tapMs);
+            panelTapPressedNow(application);
             runPassesOnBothClocks(application, tapMs + 100U);
         } else {
             runPassesOnBothClocks(application, tapMs);
@@ -776,8 +804,8 @@ void testExternalTapTempoSurvivesMicrosecondWrap() {
 /**
  * @brief Panel and INPUT 1 taps form one sequence in one time base, also after the wrap.
  *
- * The panel release is recognized within one 5-ms foreground pass, so the mixed tempo may
- * deviate by one BPM; it must be identical before and well after the timer wraps.
+ * The first edge of a panel press is seen within one 5-ms foreground pass, so the mixed
+ * tempo may deviate by one BPM; it must be identical before and well after the timer wraps.
  */
 void testMixedPanelAndInputTapsShareOneTimeBase() {
     for (const std::uint8_t mask :

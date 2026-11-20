@@ -6,6 +6,7 @@ License: PolyForm-Noncommercial-1.0.0
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import tempfile
 import unittest
 import sys
@@ -843,6 +844,41 @@ class ManualToolDiscoveryTests(unittest.TestCase):
         self.assertNotIn("pdfinfo,", message)
         self.assertIn("poppler-utils", message)
         self.assertIn("mingw-w64-ucrt-x86_64-poppler", message)
+
+    def test_xpdf_pdftotext_first_on_path_is_named_with_an_install_hint(self) -> None:
+        """F-080: Git for Windows ships the Xpdf pdftotext, which does not write UTF-8."""
+        from unittest import mock
+
+        xpdf = r"C:\Program Files\Git\mingw64\bin\pdftotext.EXE"
+        tools = {"pdfinfo": "/ucrt64/bin/pdfinfo", "pdftotext": xpdf}
+
+        def fake_run(command, **kwargs):  # noqa: ANN001
+            banner = b"pdftotext version 4.00\r\nCopyright 1996-2017 Glyph & Cog, LLC\r\n" \
+                if command[0] == xpdf else b"pdfinfo version 26.08.0\nCopyright 2005-2026 The Poppler Developers\n"
+            return subprocess.CompletedProcess(command, 0 if command[0] != xpdf else 99, b"", banner)
+
+        with mock.patch.object(CHECK.shutil, "which", side_effect=tools.get), \
+                mock.patch.object(CHECK.subprocess, "run", side_effect=fake_run):
+            with self.assertRaises(RuntimeError) as raised:
+                CHECK.require_poppler_tools(("pdfinfo", "pdftotext"))
+        message = str(raised.exception)
+        self.assertIn("not the Poppler", message)
+        self.assertIn(xpdf, message)
+        self.assertIn("pdftotext version 4.00", message)
+        self.assertNotIn("pdfinfo at", message)
+        self.assertIn("mingw-w64-ucrt-x86_64-poppler", message)
+
+    def test_poppler_tools_pass_the_version_check(self) -> None:
+        from unittest import mock
+
+        def fake_run(command, **kwargs):  # noqa: ANN001
+            return subprocess.CompletedProcess(command, 0, b"", b"pdftotext version 26.08.0\nCopyright 2005-2026 The Poppler Developers\n")
+
+        with mock.patch.object(CHECK.shutil, "which", side_effect=lambda name: f"/ucrt64/bin/{name}"), \
+                mock.patch.object(CHECK.subprocess, "run", side_effect=fake_run) as run:
+            CHECK.require_poppler_tools(("pdfinfo", "pdftotext"))
+        self.assertEqual([["/ucrt64/bin/pdfinfo", "-v"], ["/ucrt64/bin/pdftotext", "-v"]],
+                         [call.args[0] for call in run.call_args_list])
 
     def test_pdf_check_names_missing_poppler_tools(self) -> None:
         from unittest import mock

@@ -44,7 +44,7 @@ Decision branches:  7432/8187  (90.78%)
 
 This is a host-coverage result as well; the physical HIL ledger for 1.2.0 remains pending.
 
-Post-1.1 r45 development aggregate after adding the Sequencer 2.0 model/store and 8-KiB migration path:
+1.2.0 development history, r45 aggregate after adding the Sequencer 2.0 model/store and 8-KiB migration path:
 
 ```text
 Executable lines:   9534/9940 (95.92%)
@@ -53,9 +53,9 @@ Decision branches:   5811/6424 (90.46%)
 Compiler branches:   5812/7517 (77.32%, informational only)
 ```
 
-The r45 aggregate includes the current focused behavioral suites plus rebuilt SPI/I2C host-firmware variants. It is host evidence only; the enlarged 12-KiB target staging image still requires a real STM32F401 ELF memory-gate result before release approval.
+The r45 aggregate includes the current focused behavioral suites plus rebuilt SPI/I2C host-firmware variants. It is host evidence only; the enlarged 12-KiB target staging image passed the target memory gate before the 1.2.0 release.
 
-Post-1.1 r46 development aggregate after wiring the active P1-P8 bank into the production engine, adding the 8-step/128-step UI path, the SUPPORT CLOCK page and current support documentation:
+1.2.0 development history, r46 aggregate after wiring the active P1-P8 bank into the production engine, adding the 8-step/128-step UI path, the SUPPORT CLOCK page and current support documentation:
 
 ```text
 Executable lines:   9800/10236 (95.74%)
@@ -64,9 +64,9 @@ Decision branches:   5992/6656 (90.02%)
 Compiler branches:   5993/7795 (76.88%, informational only)
 ```
 
-The r46 aggregate passes the unchanged 95/95/90 host gate. The decision-branch margin is deliberately visible and must not be treated as permission to reduce the threshold. Target SRAM/Flash approval for the 12-KiB persistence staging image remains pending a real STM32F401 ELF memory-gate run.
+The r46 aggregate passes the unchanged 95/95/90 host gate. The decision-branch margin is deliberately visible and must not be treated as permission to reduce the threshold. Target SRAM/Flash approval for the 12-KiB persistence staging image came later from the target memory gate (1.2.0).
 
-Post-1.1 r47 development adds persistent step expression, live Tie-edit safety and the Sequencer editor redesign. The focused r47d step-store hardening slice brought `sequencer_step_store.cpp` to **99.15% lines / 100.00% functions / 91.62% decision branches**. These are source-narrowed diagnostics, not a replacement for the repository-wide 95/95/90 gate.
+1.2.0 development history: r47 added persistent step expression, live Tie-edit safety and the Sequencer editor redesign. The focused r47d step-store hardening slice brought `sequencer_step_store.cpp` to **99.15% lines / 100.00% functions / 91.62% decision branches**. These are source-narrowed diagnostics, not a replacement for the repository-wide 95/95/90 gate.
 
 The complete r47f aggregate after the editor-grid/playhead redesign, Ratchet 1-8 production regression, visual grid polish and additional UI/expression branch coverage is:
 
@@ -85,11 +85,11 @@ Functions:            990/1007  (98.31%)
 Decision branches:   6841/7591 (90.12%)
 ```
 
-The r47f aggregate passes the unchanged 95/95/90 gate. ASan/UBSan, simulator and VCV adapter qualification remain separate gates; none of these host results substitute for the still-open STM32F401 ELF/RAM memory-gate evidence for the 12-KiB development persistence image.
+The r47f aggregate passes the unchanged 95/95/90 gate. ASan/UBSan, simulator and VCV adapter qualification remain separate gates; none of these host results substitute for the STM32F401 ELF/RAM memory-gate evidence for the 12-KiB persistence image, which was still open at r47f and passed before the 1.2.0 release.
 
-### Sequencer 2.0 development slice
+### Sequencer 2.0 slice
 
-The post-1.1 Sequencer 2.0 work has its own `--focus sequencer2` slice. The current suite contains 20 named cases; the r45 figures below remain the historical foundation measurements. Source-narrowed r45 measurements for the new files are **98.90% lines / 100.00% functions / 93.65% decision branches** for `src/domain/sequencer_pattern.cpp` and **100.00% / 100.00% / 96.00%** for `src/services/sequencer_pattern_store.cpp`. These are change-local diagnostics; the repository-wide gate remains authoritative.
+The Sequencer 2.0 work released in 1.2.0 has its own `--focus sequencer2` slice. The current suite contains 20 named cases; the r45 figures below remain the historical foundation measurements. Source-narrowed r45 measurements for the new files are **98.90% lines / 100.00% functions / 93.65% decision branches** for `src/domain/sequencer_pattern.cpp` and **100.00% / 100.00% / 96.00%** for `src/services/sequencer_pattern_store.cpp`. These are change-local diagnostics; the repository-wide gate remains authoritative.
 
 ## Focused change-local coverage
 
@@ -115,7 +115,7 @@ python scripts/check_vcv_runtime_coverage.py
 
 The gate builds and runs `vcv_runtime_adapter_tests` with GCC coverage and applies the same quality floors used for project-owned production code: **>=95% executable lines, >=95% functions, and >=90% non-throw decision branches**. The report is written to `coverage/vcv_runtime_coverage.txt` and `.json`, so CI retains it together with the full firmware coverage artifacts.
 
-Current post-1.1 VCV adapter baseline after the focused edge/control coverage expansion:
+VCV adapter baseline after the focused edge/control coverage expansion (1.2.0):
 
 ```text
 Executable lines:    106/106 (100.00%)
@@ -170,7 +170,7 @@ The complete firmware variants compile the real production `.cpp` files against 
 - complete CURRENT-state persistence plus CRC/schema validation, 8 named user preset slots, and the 10-record Custom Groove store, including screensaver mode/start/dim/off plus device-local encoder-direction/OLED-orientation preferences
 - schema-v11 to schema-v12 migration for Custom Groove slot references, schema-v10 to schema-v11 migration for configurable input roles, schema-v9 to schema-v10 Groove migration, the earlier v8/v7/v6/v5/v4/v3 migration chain, corrupt-record isolation, preset/Custom-Groove name validation, CRC-protected 10-slot Groove records, and preservation of unrelated NVM bytes
 - external-sync regression cases for 20/120/999 BPM, 1/2/4/24 PPQN, jitter, adaptive lock timeout, queue overflow/reacquisition, timestamp wraparound, effective-tempo gate release, monotonic scheduler time, phase alignment, ISR-safe pulse entry, and PPQN interpretation
-- 117-case atomic input/SYNC behavior: external clocks at 1/20/30/60/120/240/300/600/900/999 BPM plus configurable SYNC/RESET/RUN/START/STOP/RESTART/TAP roles on either physical input, role-change queue invalidation, input exclusivity, transport-neutral RUN assignment/boot baselining, level-authoritative RUN after a physical change, timestamp-preserving TAP, jitter/glitches, runtime PPQN/edge changes, loss policies and continuity recovery
+- 125-case atomic input/SYNC behavior: external clocks at 1/20/30/60/120/240/300/600/900/999 BPM plus configurable SYNC/RESET/RUN/START/STOP/RESTART/TAP roles on either physical input, role-change queue invalidation, input exclusivity, transport-neutral RUN assignment/boot baselining, level-authoritative RUN after a physical change, timestamp-preserving TAP, jitter/glitches, runtime PPQN/edge changes, loss policies and continuity recovery
 - external-SYNC `SMOOTHING` OFF/LOW/MEDIUM/FULL weighting, factory LOW default, live smoothing changes after lock, and menu-label coverage for all four modes
 - continuous external-tempo movement including 60->180 and 180->60 ramps, slow drift, repeated tempo steps, ramp-plus-jitter and 24-PPQN acceleration; permanently asserted SYNC is checked for one-edge behavior and natural lock timeout rather than a synthetic pulse train
 - dedicated Swing edge-train tests, One Clock Humanize bounds/repeatability/mode isolation, Tap Tempo rolling-estimator boundaries, encoder NORMAL/REVERSED plus TIM4 detent-recovery/fast-turn backlog behavior, exact OLED 0°/180° transfer-frame rotation, and atomic button debounce/queue behavior

@@ -2,7 +2,7 @@
 
 # South Signal Lab CLOCK for VCV Rack
 
-> **VCV Rack edition — post-1.1.0 development preview**
+> **VCV Rack edition — experimental preview, built from the 1.2.0 source tree**
 
 The VCV Rack version exists so you can try **South Signal Lab CLOCK** before building the Eurorack hardware. It is not a separate clock implementation: the plugin compiles the production CLOCK application, timing engine, UI, persistence and 128×64 renderer, then adapts only the Rack-facing controls, ports, sample timing and patch storage.
 
@@ -65,11 +65,11 @@ Mouse and keyboard can be mixed. For example, hold `Shift` and use the mouse whe
 
 Right-click the module and choose **General Settings...**. This opens CLOCK's existing production **GENERAL SETTINGS** page on the OLED. It does not create a Rack-only configuration panel or duplicate CLOCK state.
 
-The page is the same settings hierarchy used by the hardware/firmware UI: **MODE & CLOCK**, **INPUTS**, **SCREENSAVER**, **DIAGNOSTICS**, and **HARDWARE**. Use the normal encoder and BACK controls from there.
+The page is the same settings hierarchy used by the hardware/firmware UI: **CLOCK**, **INPUTS**, **SCREENSAVER**, **DIAGNOSTICS**, and **HARDWARE**. Use the normal encoder and BACK controls from there.
 
 ## Inputs and outputs
 
-The hardware panel engraves the two comparator inputs as **IN 1** and **IN 2**; firmware 1.1.0 treats them as configurable digital inputs with the factory roles SYNC and RESET. The VCV panel and Rack's port tooltips use the same **IN 1** / **IN 2** names.
+The hardware panel engraves the two comparator inputs as **IN 1** and **IN 2**; the firmware (since 1.1.0) treats them as configurable digital inputs with the factory roles SYNC and RESET. The VCV panel and Rack's port tooltips use the same **IN 1** / **IN 2** names.
 
 Outputs **1–8** follow the instantaneous production gate state. Panel LEDs are visual indicators only; they do not stretch the actual gate voltage.
 
@@ -83,7 +83,7 @@ For source builds and Rack SDK setup, use the developer guide: [`docs/VCV_DEVELO
 
 The VCV port is a software trial of CLOCK's digital behavior. It does **not** model the analogue LM393 input stage, real Eurorack electrical tolerances, jack loading, propagation delay or physical output jitter. Those remain hardware/HIL topics.
 
-The canonical project documentation remains [`README.md`](README.md) and [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md).
+The canonical project documentation remains [`README.md`](README.md) and the chapter-oriented [User Guide](docs/user-guide/README.md).
 
 ## Support CLOCK
 

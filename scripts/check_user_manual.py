@@ -86,11 +86,33 @@ POPPLER_INSTALL_HINT = (
 )
 
 
+#: Seconds a tool may take to print its version banner.
+TOOL_VERSION_TIMEOUT_S = 10
+
+
 def require_poppler_tools(names: tuple[str, ...]) -> None:
-    """Fail with one clear message naming every missing Poppler tool."""
-    missing = [name for name in names if shutil.which(name) is None]
+    """Fail with one clear message naming every missing or non-Poppler PDF tool.
+
+    Git for Windows ships the Xpdf ``pdftotext``. It writes Latin-1 instead of UTF-8, so a
+    run that finds it first on PATH failed later with an unrelated decoding error (F-080).
+    Each tool's ``-v`` banner must therefore name Poppler.
+    """
+    found = {name: shutil.which(name) for name in names}
+    missing = [name for name, path in found.items() if path is None]
     if missing:
         raise RuntimeError(f"Poppler tools are missing: {', '.join(missing)}. {POPPLER_INSTALL_HINT}")
+    foreign = []
+    for name, path in found.items():
+        result = subprocess.run([path, "-v"], capture_output=True, timeout=TOOL_VERSION_TIMEOUT_S, check=False)
+        banner = (result.stdout + result.stderr).decode("utf-8", "replace")
+        if "poppler" not in banner.lower():
+            first_line = next((line.strip() for line in banner.splitlines() if line.strip()), "no version output")
+            foreign.append(f"{name} at {path} ({first_line})")
+    if foreign:
+        raise RuntimeError(
+            f"PDF tools found first on PATH are not the Poppler tools: {'; '.join(foreign)}. "
+            f"{POPPLER_INSTALL_HINT} Put the Poppler directory before other tool directories on PATH."
+        )
 
 
 def page_images(content_xml: str, archive: zipfile.ZipFile) -> list[str]:

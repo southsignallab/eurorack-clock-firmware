@@ -20,7 +20,7 @@ flowchart LR
 
 ## Product-level I/O boundary
 
-CLOCK Hardware Rev 1 is architected as a digital event instrument, not as a mixed-signal modulation generator. The eight output channels are gate/trigger outputs; the only analog-conditioned inputs in scope are the two LM393 comparator paths physically/net-named SYNC and RST. Current 1.1 firmware interprets them as configurable INPUT 1 / INPUT 2 digital roles with factory SYNC/RESET assignment. General parameter-CV inputs, analog modulation outputs, and an analog modulation matrix are intentionally outside the hardware contract.
+CLOCK Hardware Rev 1 is architected as a digital event instrument, not as a mixed-signal modulation generator. The eight output channels are gate/trigger outputs; the only analog-conditioned inputs in scope are the two LM393 comparator paths physically/net-named SYNC and RST. The firmware (since 1.1.0) interprets them as configurable INPUT 1 / INPUT 2 digital roles with factory SYNC/RESET assignment. General parameter-CV inputs, analog modulation outputs, and an analog modulation matrix are intentionally outside the hardware contract.
 
 This matters architecturally: the timing core should not acquire dependencies on a future DAC/ADC subsystem simply to mirror feature sets from modulation-centric clock products. Internal cross-channel behavior can evolve post-1.0 as deterministic event processing while the HAL boundary remains digital. The product rationale and cost/buildability trade-off are recorded in [`ROADMAP.md`](ROADMAP.md).
 
@@ -250,7 +250,7 @@ Layout:
 0x08020000  Sector 5  128 KiB   firmware
 ```
 
-Firmware budget: **224 KiB**. Persistence: **2 × 16 KiB**. Released 1.1.0 uses an 8-KiB logical image. The post-1.1 Sequencer-2.0 development slice exercises the already documented **12-KiB architectural ceiling**: bytes 8192–10239 hold the first 2-KiB Sequencer pattern-bank extension and 10240–12287 remain reserved for later sparse step/Song data. Valid 8-KiB and older 4-KiB generations remain readable and are promoted only on a later durable write. This 12-KiB target is not release-approved until a real STM32F401 ELF passes the existing RAM/Flash memory gate. The lower 8 KiB retain the released settings, Custom Groove, score and leaderboard layout unchanged.
+Firmware budget: **224 KiB**. Persistence: **2 × 16 KiB**. Released 1.1.0 used an 8-KiB logical image. Released 1.2.0 uses the already documented **12-KiB architectural ceiling** for Sequencer 2.0: bytes 8192–10239 hold the first 2-KiB Sequencer pattern-bank extension and 10240–12287 remain reserved for later sparse step/Song data. Valid 8-KiB and older 4-KiB generations remain readable and are promoted only on a later durable write. The release ELF passes the 90 % memory gate of `scripts/platformio_memory_gate.py`: Flash 116 212 of 229 376 B, RAM 37 836 of 65 536 B (`release_default`, 1.2.0). The lower 8 KiB retain the released settings, Custom Groove, score and leaderboard layout unchanged.
 
 `PersistentStateService` serializes fields explicitly, validates ranges, checks CRC, and migrates supported prior schemas. The storage layer writes the inactive slot and programs COMMIT last.
 

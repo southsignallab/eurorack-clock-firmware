@@ -21,7 +21,7 @@
 2. Set `STEPS = 16`.
 3. Choose **HITS**.
 4. Use **ROTATE** to place the hits.
-5. Add **PROBABILITY** only if controlled omissions are wanted.
+5. Add **PROB** (probability) only if controlled omissions are wanted.
 
 ### An expressive 64-step gate phrase
 

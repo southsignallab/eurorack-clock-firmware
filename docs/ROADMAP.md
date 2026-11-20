@@ -116,7 +116,7 @@ Definition of done:
 
 **Goal:** turn the existing binary trigger pattern into a compact but expressive gate sequencer without turning the 128×64 UI into a miniature DAW.
 
-**Implemented in current post-1.1 development (through r47f):**
+**Released in 1.2.0:**
 
 - compact 1–128-step pattern model using two 64-bit gate words;
 - eight persistent pattern slots per physical channel (64 global pattern records) plus persistent active-slot selection;
@@ -129,7 +129,7 @@ Definition of done:
 - timing-grid presentation with solid beat boundaries, dotted step boundaries, independent edit cursor and live playback-head triangle;
 - compact `%`, Tie, Ratchet, direction and LOOP/ONCE visual language plus an edit-page indicator independent from playback position;
 - Pattern Operations and persistent step-expression defensive/corruption tests;
-- development 8-KiB → 12-KiB logical-image migration while preserving the released first 8 KiB byte-for-byte.
+- 8-KiB → 12-KiB logical-image migration while preserving the released first 8 KiB byte-for-byte; the 12-KiB image passed the target memory gate before release.
 
 Design constraints:
 
@@ -141,14 +141,13 @@ Design constraints:
 - gate length cannot consume or erase the next legal rising edge unless Tie explicitly requests continuity;
 - per-step microtiming is intentionally excluded: deterministic displacement belongs to Swing/Groove, while Humanize remains the separate One Clock stochastic layer.
 
-**Still open for the complete 1.2 milestone:**
+**Not part of 1.2.0, parked without a target version:**
 
 - Song Mode as a global topology peer to Independent / One Clock / Divider Bank, with eight channel columns and row cells selecting `-` or P1–P8;
 - Song arrangement persistence and final CONTINUE/RESTART transition semantics;
-- USB full-device backup/restore transport;
-- real STM32F401 ELF/RAM memory-gate qualification for the 12-KiB logical persistence image.
+- USB full-device backup/restore transport.
 
-The completed Sequencer expression/UI path still requires the normal repository-wide coverage/sanitizer gates and, before release approval of the enlarged persistence layout, the target memory proof. Host tests do not substitute for the latter.
+The release ELF passes the 90 % memory gate of `scripts/platformio_memory_gate.py`: Flash 116 212 of 229 376 B, RAM 37 836 of 65 536 B (`release_default`, 1.2.0). Host tests do not substitute for that target proof.
 
 ### 1.3.x — Euclid Auto-Fill and Trigger Conditions
 

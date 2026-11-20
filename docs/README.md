@@ -2,13 +2,13 @@
 
 # South Signal Lab CLOCK Documentation
 
-This directory is the documentation entry point for CLOCK. Documents are grouped by task and audience; the root [`README.md`](../README.md) is the project landing page, while [`user-guide/README.md`](user-guide/README.md) is the chapter-oriented GitHub-readable operating reference. [`USER_GUIDE.md`](USER_GUIDE.md) remains the consolidated reference view used by documentation consistency checks.
+This directory is the documentation entry point for CLOCK. Documents are grouped by task and audience; the root [`README.md`](../README.md) is the project landing page, while [`user-guide/README.md`](user-guide/README.md) is the chapter-oriented GitHub-readable operating reference. [`USER_GUIDE.md`](USER_GUIDE.md) is only an index of those chapters.
 
 ## Start here
 
 | I want to… | Document |
 | --- | --- |
-| learn the module as a musician, including 1.1 Grooves/Record | [`user-guide/README.md`](user-guide/README.md) — 24 manual-aligned chapters |
+| learn the module as a musician | [`user-guide/README.md`](user-guide/README.md) — 24 manual-aligned chapters |
 | install or update firmware | [`FIRMWARE_UPDATE.md`](FIRMWARE_UPDATE.md) |
 | run or configure the native simulator | [`SIMULATOR.md`](SIMULATOR.md) |
 | understand the experimental VCV Rack Trial-First port | [`VCV_RACK.md`](VCV_RACK.md) |
@@ -24,12 +24,13 @@ This directory is the documentation entry point for CLOCK. Documents are grouped
 | understand release/licensing constraints | [`LICENSING.md`](LICENSING.md) |
 | build and publish a release | [`RELEASE_PROCESS.md`](RELEASE_PROCESS.md) |
 | understand citation, DOI, and project identity | [`PROJECT_IDENTITY.md`](PROJECT_IDENTITY.md) |
-| review the released 1.1 Groove/Pre-Count scope and later feature plan | [`ROADMAP.md`](ROADMAP.md) |
-| review the Sequencer 2.0 development contract | [`SEQUENCER_2.md`](SEQUENCER_2.md) |
+| review the released scope and the later feature plan | [`ROADMAP.md`](ROADMAP.md) |
+| review the Sequencer 2.0 contract | [`SEQUENCER_2.md`](SEQUENCER_2.md) |
 | support CLOCK development | [`SUPPORT.md`](SUPPORT.md) |
 | understand or maintain the generated GitHub Wiki | [`WIKI.md`](WIKI.md) |
 | maintain or publish the end-user manual | [`manual-source/README.md`](manual-source/README.md) |
 | write or review repository documentation | [`DOCUMENTATION_STYLE.md`](DOCUMENTATION_STYLE.md) |
+| find the authoritative document for a topic, or the purpose of a document | [`DOCUMENTATION_MAP.md`](DOCUMENTATION_MAP.md) |
 | contribute to CLOCK | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) |
 | review security reporting | [`../.github/SECURITY.md`](../.github/SECURITY.md) |
 

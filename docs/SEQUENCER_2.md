@@ -1,10 +1,10 @@
 <!-- Author: Axel Napolitano | License: PolyForm-Noncommercial-1.0.0 -->
 
-# Sequencer 2.0 — development contract
+# Sequencer 2.0 — contract
 
-This document separates the implemented post-1.1 development state from later Sequencer 2.0 work. The frozen 1.1 release manual remains authoritative for released 1.1.0 behavior; this file describes the current development tree.
+This document separates the Sequencer 2.0 scope released in 1.2.0 from later Sequencer work. The frozen 1.1.0 manual remains authoritative for 1.1.0 behavior; the frozen 1.2.0 manual and this file describe 1.2.0.
 
-## CURRENT development state (r47f)
+## Released in 1.2.0
 
 - Maximum pattern length: **128 steps**. The OLED editor is an eight-step viewport, not a length limit.
 - **8 pattern slots per channel × 8 physical channels = 64 pattern slots**. The active slot is persisted per channel.
@@ -43,12 +43,11 @@ Song Mode is a global topology peer to Independent, One Clock and Divider Bank, 
 
 Polymeter therefore comes from different pattern lengths; polyrhythm comes from the existing rational per-channel rates. Pattern changes must remain anchored to the shared musical timeline. Exact CONTINUE/RESTART transition semantics still require a final contract before implementation.
 
-## OPEN after r47f
+## Not part of 1.2.0 (parked without a target version)
 
 - Song Mode topology and arrangement persistence;
-- USB full-device backup/restore transport and guarded device-side USB DATA mode;
-- target STM32F401 ELF/RAM proof for the 12-KiB logical image.
+- USB full-device backup/restore transport and guarded device-side USB DATA mode.
 
 ## Persistence qualification boundary
 
-The 12-KiB logical-image source configuration consumes 4 KiB more static staging RAM than released 1.1.0. Host migration and power-loss tests do not prove the target RAM budget. A real STM32F401 ELF must pass the repository memory gate before this layout is release-approved.
+The 12-KiB logical image consumes 4 KiB more static staging RAM than 1.1.0. Host migration and power-loss tests do not prove the target RAM budget. The release ELF passes the 90 % memory gate of `scripts/platformio_memory_gate.py`: Flash 116 212 of 229 376 B, RAM 37 836 of 65 536 B (`release_default`, 1.2.0).

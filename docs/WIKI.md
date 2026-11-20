@@ -15,7 +15,7 @@ The generator publishes a curated hierarchy instead of blindly copying every Mar
 - Developer Setup, VCV Plugin Development, Development Workflow, Dependencies, and Documentation Index;
 - Support CLOCK, Licensing, Project Identity, Contributing, and Security.
 
-The chapter-oriented repository source lives in `docs/user-guide/`. `docs/USER_GUIDE.md` remains the consolidated operating-reference view, but the generated Wiki uses the split chapter set so its navigation follows the same mental model as the ODT/PDF manual instead of presenting one very long page.
+The User Guide source is the chapter set in `docs/user-guide/`; `docs/USER_GUIDE.md` is only an index of those chapters. The generated Wiki uses the chapter set so its navigation follows the same mental model as the ODT/PDF manual instead of presenting one very long page.
 
 `_Sidebar.md` is generated from the same page manifest so navigation cannot silently drift away from the page set. Repository-relative Markdown links are rewritten either to the corresponding Wiki page or to the exact source commit in the main repository. Direct edits in the GitHub Wiki are intentionally overwritten on the next successful publication.
 

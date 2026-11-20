@@ -2,7 +2,7 @@
 
 # 24 Technical status and specifications
 
-The current firmware uses a deterministic **20 kHz scheduler**, giving a 50 µs service quantum. UI rendering and I/O transport do not decide musical gate timing. SPI remains the preferred/reference display path; I2C uses deferred, bounded foreground transactions so display work is deliberately subordinate to musical timing. The physical encoder uses PB6/PB7 in STM32 TIM4 encoder mode; SYNC/RST remain interrupt-captured inputs.
+The current firmware uses a deterministic **20 kHz scheduler**, giving a 50 µs service quantum. UI rendering and I/O transport do not decide musical gate timing. The display is connected over SPI, the only production display path; PB6/PB7 belong to the encoder, so no firmware environment builds an I2C display profile. A legacy I2C transport with deferred, bounded foreground transactions remains in the source only as a regression path. The physical encoder uses PB6/PB7 in STM32 TIM4 encoder mode; SYNC/RST remain interrupt-captured inputs.
 
 Persistence uses internal STM32 Flash A/B records. Large persistence staging buffers are static rather than runtime-stack allocations, embedded production code is guarded against dynamic heap allocation, and the build includes a production stack-frame gate.
 

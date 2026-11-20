@@ -2,12 +2,12 @@
 
 # CLOCK Manual Workspace
 
-This directory contains the maintained, publication-layout CLOCK end-user manual together with its reusable diagrams and deterministic UI screenshots. The chapter-oriented repository User Guide under `docs/user-guide/` is the canonical GitHub/Wiki-readable operating structure; the ODT is the editable source for the typeset publication manual. `docs/USER_GUIDE.md` remains the consolidated reference view.
+This directory contains the maintained, publication-layout CLOCK end-user manual together with its reusable diagrams and deterministic UI screenshots. The chapter-oriented repository User Guide under `docs/user-guide/` is the canonical GitHub/Wiki-readable operating structure; the ODT is the editable source for the typeset publication manual. `docs/USER_GUIDE.md` is only an index of the chapters.
 
 
 ## Maintained user manual source
 
-The editable end-user manual is maintained as [`clock-user-manual.odt`](clock-user-manual.odt). The browser-readable operating guide is split under [`../user-guide/`](../user-guide/README.md) along the same 24-chapter structure as the publication manual. [`../USER_GUIDE.md`](../USER_GUIDE.md) remains the consolidated compatibility/reference view; user-visible facts must remain synchronized across the chapter set, consolidated guide, and ODT. Its manual-specific license is documented in [`LICENSE.md`](LICENSE.md). The ODT represents the maintained working source. Final-release preparation freezes a version-matched copy as `../manual/clock-user-manual.<firmware-version>.odt`. The sibling `docs/manual/` directory is reserved exclusively for manuals of final stable releases (`X.Y.Z`); Alpha, Beta and RC manuals are publication artifacts and are not retained in that archive.
+The editable end-user manual is maintained as [`clock-user-manual.odt`](clock-user-manual.odt). The browser-readable operating guide is split under [`../user-guide/`](../user-guide/README.md) along the same 24-chapter structure as the publication manual. The chapter files are authoritative for user-visible facts; [`../USER_GUIDE.md`](../USER_GUIDE.md) is only an index, and the ODT must stay synchronized with the chapters. Its manual-specific license is documented in [`LICENSE.md`](LICENSE.md). The ODT represents the maintained working source. Final-release preparation freezes a version-matched copy as `../manual/clock-user-manual.<firmware-version>.odt`. The sibling `docs/manual/` directory is reserved exclusively for manuals of final stable releases (`X.Y.Z`); Alpha, Beta and RC manuals are publication artifacts and are not retained in that archive.
 
 The release artifact naming contract follows the Quantizer/Drift convention:
 

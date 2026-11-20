@@ -14,7 +14,7 @@ The important design choice is that Independent does **not** mean eight unrelate
 
 ### Product boundary
 
-CLOCK is intentionally an eight-channel **digital timing, gate, and trigger instrument**. Hardware Rev 1 provides two LM393-conditioned digital comparator inputs on the physical SYNC/PA8 and RST/PA9 nets. Current 1.1 firmware can assign their musical roles globally, but this does not turn them into general parameter-CV inputs; analog CV/modulation outputs and a general modulation matrix remain outside scope.
+CLOCK is intentionally an eight-channel **digital timing, gate, and trigger instrument**. Hardware Rev 1 provides two LM393-conditioned digital comparator inputs on the physical SYNC/PA8 and RST/PA9 nets. The firmware (since 1.1.0) can assign their musical roles globally, but this does not turn them into general parameter-CV inputs; analog CV/modulation outputs and a general modulation matrix remain outside scope.
 
 That boundary protects both signal quality and DIY buildability. A quality eight-channel analog modulation-output path would require an eight-channel 16-bit DAC-class solution plus two quad output-op-amp stages; a 12-bit MCP-class implementation is not considered an acceptable quality compromise for this product direction. The project currently estimates roughly EUR 30-40 of additional BOM cost before the added fine-pitch SMD assembly, PCB, calibration, validation, and documentation burden. General parameter-CV inputs would also require additional analog front ends, routing, and panel I/O.
 

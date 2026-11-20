@@ -12,6 +12,8 @@ import re
 import subprocess
 import sys
 import tempfile
+import unicodedata
+from fnmatch import fnmatchcase
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
@@ -24,6 +26,12 @@ RETIRED_FOOTER_HISTORY = ('CHANGELOG.md', 'docs/releases/')
 RUNNING_MANUAL = ROOT / 'docs' / 'manual-source' / 'clock-user-manual.odt'
 MARKDOWN_LINK_RE = re.compile(r'!?(?:\[[^\]]*\])\(([^)]+)\)')
 HTML_LINK_RE = re.compile(r'(?:href|src)="([^"]+)"')
+HTML_ANCHOR_RE = re.compile(r'<a\s+(?:[^>]*\s)?(?:id|name)="([^"]+)"', re.IGNORECASE)
+HEADING_RE = re.compile(r'^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$')
+FENCE_RE = re.compile(r'^ {0,3}(```|~~~)')
+USER_GUIDE_INDEX = ROOT / 'docs' / 'USER_GUIDE.md'
+DOCUMENTATION_MAP = ROOT / 'docs' / 'DOCUMENTATION_MAP.md'
+USER_GUIDE_INDEX_HEADINGS = ('Chapters', 'Related documents')
 STABLE_VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 VERSION_RE = re.compile(r'^#define\s+CLOCK_FIRMWARE_VERSION\s+"([^"]+)"\s*$', re.MULTILINE)
 
@@ -38,16 +46,71 @@ UPDATE_URL = 'https://southsignallab.com/clock/firmware'
 
 def markdown_files() -> list[Path]:
     """Return project-owned Markdown files that participate in documentation validation."""
-    roots = [ROOT, ROOT / 'docs', ROOT / 'test', ROOT / '.github']
+    roots = [ROOT, ROOT / 'docs', ROOT / 'test', ROOT / '.github', ROOT / 'vcv']
     files: set[Path] = set()
     for root in roots:
         if not root.exists():
             continue
-        if root == ROOT:
+        if root in (ROOT, ROOT / 'vcv'):
+            # Top level only: the VCV build tree can carry third-party SDK documents.
             files.update(root.glob('*.md'))
         else:
             files.update(root.rglob('*.md'))
     return sorted(files)
+
+
+def github_slug(heading: str) -> str:
+    """Return the anchor GitHub generates for a Markdown heading (without duplicate suffix).
+
+    GitHub does not specify the rule normatively; this follows the observed behavior:
+    inline Markdown is reduced to its text, the text is lower-cased, every character that
+    is not a letter, mark, number, connector punctuation, space or hyphen is removed, and
+    each space becomes a hyphen. The examples in scripts/tests/test_documentation_links.py
+    pin the behavior.
+    """
+    text = re.sub(r'!?\[([^\]]*)\]\([^)]*\)', r'\1', heading)
+    text = re.sub(r'<[^>]+>', '', text)
+    text = text.replace('`', '').replace('*', '')
+    kept = []
+    for char in text.lower():
+        category = unicodedata.category(char)
+        if char in ' -' or category[0] in 'LMN' or category == 'Pc':
+            kept.append(char)
+    return ''.join(kept).replace(' ', '-')
+
+
+def unfenced_lines(text: str) -> list[str]:
+    """Return the lines of a Markdown text with fenced code blocks blanked out."""
+    lines: list[str] = []
+    fence: str | None = None
+    for line in text.splitlines():
+        match = FENCE_RE.match(line)
+        if fence is None and match:
+            fence = match.group(1)
+            lines.append('')
+        elif fence is not None:
+            if line.strip().startswith(fence):
+                fence = None
+            lines.append('')
+        else:
+            lines.append(line)
+    return lines
+
+
+def markdown_anchors(text: str) -> set[str]:
+    """Return every anchor a Markdown document defines: headings and explicit HTML anchors."""
+    anchors: set[str] = set()
+    seen: dict[str, int] = {}
+    for line in unfenced_lines(text):
+        anchors.update(HTML_ANCHOR_RE.findall(line))
+        match = HEADING_RE.match(line)
+        if not match:
+            continue
+        slug = github_slug(match.group(2))
+        count = seen.get(slug, 0)
+        seen[slug] = count + 1
+        anchors.add(slug if count == 0 else f'{slug}-{count}')
+    return anchors
 
 
 def local_link_target(source: Path, raw_target: str) -> Path | None:
@@ -61,22 +124,42 @@ def local_link_target(source: Path, raw_target: str) -> Path | None:
     return (source.parent / unquote(target)).resolve()
 
 
-def check_links(errors: list[str]) -> None:
-    """Require every repository-local Markdown and HTML link target to exist."""
-    for path in markdown_files():
+def check_links(errors: list[str], paths: list[Path] | None = None, root: Path = ROOT) -> None:
+    """Require every repository-local link target to exist and every anchor into a Markdown
+    document to be defined there. Anchors inside fenced code blocks are not checked."""
+    anchor_cache: dict[Path, set[str]] = {}
+
+    def anchors_of(document: Path) -> set[str]:
+        if document not in anchor_cache:
+            anchor_cache[document] = markdown_anchors(document.read_text(encoding='utf-8'))
+        return anchor_cache[document]
+
+    for path in markdown_files() if paths is None else paths:
         text = path.read_text(encoding='utf-8')
+        name = path.relative_to(root)
         targets = MARKDOWN_LINK_RE.findall(text) + HTML_LINK_RE.findall(text)
         for raw_target in targets:
             target = local_link_target(path, raw_target)
             if target is None:
                 continue
             try:
-                target.relative_to(ROOT.resolve())
+                target.relative_to(root.resolve())
             except ValueError:
-                errors.append(f'{path.relative_to(ROOT)}: link escapes repository: {raw_target}')
+                errors.append(f'{name}: link escapes repository: {raw_target}')
                 continue
             if not target.exists():
-                errors.append(f'{path.relative_to(ROOT)}: missing local link target: {raw_target}')
+                errors.append(f'{name}: missing local link target: {raw_target}')
+        unfenced = '\n'.join(unfenced_lines(text))
+        for raw_target in MARKDOWN_LINK_RE.findall(unfenced) + HTML_LINK_RE.findall(unfenced):
+            target = raw_target.strip()
+            if '#' not in target or target.startswith(('http://', 'https://', 'mailto:', 'data:')):
+                continue
+            document_part, fragment = target.split('#', 1)
+            document = path.resolve() if not document_part else local_link_target(path, document_part)
+            if document is None or document.suffix.lower() != '.md' or not document.is_file():
+                continue
+            if unquote(fragment) not in anchors_of(document):
+                errors.append(f'{name}: missing anchor in link: {raw_target}')
 
 
 def check_fences(errors: list[str]) -> None:
@@ -151,6 +234,15 @@ def check_generated_front_panel(errors: list[str]) -> None:
         errors.append(f'docs/manual-source/assets/front-panel-anatomy.svg: generated illustration is stale ({detail})')
 
 
+def check_generated_reference_tables(errors: list[str]) -> None:
+    """Keep the tables generated from code (pins, display macros) synchronized with the code (W-355)."""
+    command = [sys.executable, str(ROOT / 'scripts' / 'generate_reference_tables.py'), '--check']
+    result = subprocess.run(command, text=True, capture_output=True)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
+        errors.append(f'reference tables generated from code are stale ({detail})')
+
+
 def check_generated_readme_hero(errors: list[str]) -> None:
     """Keep the README hero images synchronized with the firmware version and their inputs."""
     command = [sys.executable, str(ROOT / 'scripts' / 'generate_readme_hero.py'), '--check']
@@ -186,7 +278,7 @@ def check_v1_scope_contract(errors: list[str]) -> None:
     """Keep the deliberate no-general-CV V1 boundary and migration audit visible."""
     required = {
         ROOT / 'README.md': ('Why no general CV modulation?', 'no general parameter-CV inputs'),
-        ROOT / 'docs/USER_GUIDE.md': ('Product boundary: timing rather than analog CV', 'not a missing V1 feature'),
+        ROOT / 'docs/user-guide/01-start-here.md': ('Product boundary', 'not a missing V1 feature'),
         ROOT / 'docs/CONFIGURATION.md': ('Analog/CV product boundary', '16-bit DAC-class'),
         ROOT / 'docs/ROADMAP.md': ('V1 feature freeze', 'digital timing, gate, and trigger'),
         ROOT / 'docs/V1_FORWARD_COMPATIBILITY.md': ('2,891 bytes', '20 bytes', 'schema v12', 'schema v13'),
@@ -293,9 +385,9 @@ def check_project_metadata(errors: list[str]) -> None:
     update_source = (ROOT / 'src' / 'ui' / 'settings_renderer.cpp').read_text(encoding='utf-8')
     if f'QR payload for exactly: {UPDATE_URL}' not in update_source:
         errors.append('settings_renderer.cpp: update QR canonical URL comment mismatch')
-    user_guide = (ROOT / 'docs' / 'USER_GUIDE.md').read_text(encoding='utf-8')
-    if UPDATE_URL not in user_guide:
-        errors.append('docs/USER_GUIDE.md: canonical update URL mismatch')
+    settings_map = (ROOT / 'docs' / 'user-guide' / '15-settings-map.md').read_text(encoding='utf-8')
+    if UPDATE_URL not in settings_map:
+        errors.append('docs/user-guide/15-settings-map.md: canonical update URL mismatch')
 
     readme = (ROOT / 'README.md').read_text(encoding='utf-8')
     for required in (CANONICAL_PROJECT_NAME, '(CITATION.cff)', '(codemeta.json)'):
@@ -381,6 +473,74 @@ def check_user_guide_chapter_contract(errors: list[str]) -> None:
                 errors.append(f'docs/user-guide/README.md: missing chapter link {path.name}')
 
 
+def check_user_guide_index(errors: list[str], index_path: Path = USER_GUIDE_INDEX) -> None:
+    """Keep docs/USER_GUIDE.md an index of the authoritative chapter files (D-17, W-354)."""
+    if not index_path.is_file():
+        errors.append('docs/USER_GUIDE.md: User Guide index missing')
+        return
+    text = index_path.read_text(encoding='utf-8')
+    for path in sorted((ROOT / 'docs' / 'user-guide').glob('[0-9][0-9]-*.md')):
+        if f'](user-guide/{path.name})' not in text:
+            errors.append(f'docs/USER_GUIDE.md: missing chapter link user-guide/{path.name}')
+    for line in unfenced_lines(text):
+        match = HEADING_RE.match(line)
+        if match and len(match.group(1)) > 1 and match.group(2) not in USER_GUIDE_INDEX_HEADINGS:
+            errors.append(
+                f'docs/USER_GUIDE.md: section {match.group(2)!r} belongs in a chapter file under '
+                'docs/user-guide/; the index repeats no operating facts'
+            )
+
+
+def git_ignored(path: Path) -> bool:
+    """Return True for a file Git ignores, such as local notes excluded in .git/info/exclude.
+
+    Outside a Git checkout nothing counts as ignored.
+    """
+    result = subprocess.run(
+        ['git', 'check-ignore', '--quiet', '--no-index', str(path)],
+        cwd=ROOT,
+        capture_output=True,
+        check=False,
+    )
+    return result.returncode == 0
+
+
+def inventory_patterns(map_text: str) -> list[str]:
+    """Return the path patterns of the inventory table in the documentation map."""
+    patterns: list[str] = []
+    in_inventory = False
+    for line in map_text.splitlines():
+        if line.startswith('## '):
+            in_inventory = line.strip() == '## Inventory'
+            continue
+        match = re.match(r'^\|\s*`([^`]+)`\s*\|', line) if in_inventory else None
+        if match:
+            patterns.append(match.group(1))
+    return patterns
+
+
+def check_documentation_map(
+    errors: list[str],
+    map_path: Path = DOCUMENTATION_MAP,
+    documents: list[Path] | None = None,
+    root: Path = ROOT,
+) -> None:
+    """Require one inventory row for every Markdown document and an existing file for every row (W-245)."""
+    if not map_path.is_file():
+        errors.append('docs/DOCUMENTATION_MAP.md: documentation map missing')
+        return
+    patterns = inventory_patterns(map_path.read_text(encoding='utf-8'))
+    for pattern in patterns:
+        if not any(path.is_file() for path in root.glob(pattern)):
+            errors.append(f'docs/DOCUMENTATION_MAP.md: inventory row {pattern!r} matches no file')
+    if documents is None:
+        documents = [path for path in markdown_files() if not git_ignored(path)]
+    for path in documents:
+        relative = path.relative_to(root).as_posix()
+        if not any(fnmatchcase(relative, pattern) for pattern in patterns):
+            errors.append(f'{relative}: not listed in the docs/DOCUMENTATION_MAP.md inventory')
+
+
 def check_wiki_publication_contract(errors: list[str]) -> None:
     """Keep the generated GitHub Wiki and ODT-download publication path buildable."""
     required = (
@@ -463,6 +623,7 @@ def main() -> int:
     check_manual_svgs(errors)
     check_generated_front_panel(errors)
     check_generated_readme_hero(errors)
+    check_generated_reference_tables(errors)
     check_version_identity(errors)
     check_v1_scope_contract(errors)
     check_hil_qualification_contract(errors)
@@ -470,6 +631,8 @@ def main() -> int:
     check_manual_archive_contract(errors)
     check_storybook_sb0_contract(errors)
     check_user_guide_chapter_contract(errors)
+    check_user_guide_index(errors)
+    check_documentation_map(errors)
     check_wiki_publication_contract(errors)
     if errors:
         print('Documentation check failed:', file=sys.stderr)

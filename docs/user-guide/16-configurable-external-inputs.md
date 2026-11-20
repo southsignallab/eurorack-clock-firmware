@@ -9,8 +9,8 @@ Three controls answer three different questions and should not be conflated:
 | Control | Question it answers |
 | --- | --- |
 | **INPUT role** | What does this jack mean right now — SYNC, RESET, RUN, START, STOP, RESTART, TAP or OFF? |
-| **SOURCE** | Who owns musical time — CLOCK itself (`INTERNAL`), the assigned SYNC input (`EXTERNAL`), or automatic handover (`AUTO`)? |
-| **LOSS** | After an external clock had lock, what happens if that clock disappears — `STOP`, `FREE`, or `INTERNAL`? |
+| **SOURCE** | Who owns musical time — CLOCK itself (`INT`), the assigned SYNC input (`EXT`), or automatic handover (`AUTO`)? |
+| **LOSS** | After an external clock had lock, what happens if that clock disappears — `STOP`, `FREE`, or `INT`? |
 
 A jack assigned to **SYNC** does not by itself force external timing ownership. The role makes that jack available as the clock input; `SOURCE` decides whether the timing engine follows it.
 
@@ -20,7 +20,7 @@ A jack assigned to **SYNC** does not by itself force external timing ownership. 
 | --- | --- |
 | `OFF` | Ignore the conditioned input. `OFF` may be assigned to both inputs. |
 | `SYNC` | Use selected edges for external period measurement, lock and phase alignment. |
-| `RESET` | Apply global phase reset; `RESET INPUT` selects `TRIGGER` or `GATE` semantics. |
+| `RESET` | Apply global phase reset; `RST MODE` selects `TRIGGER` or `GATE` semantics. |
 | `RUN` | After arming, conditioned `HIGH = PLAY`, `LOW = STOP`. Assigning/restoring RUN first baselines the present level and waits for a later physical change. A front-panel START/PAUSE or STOP wins until the RUN level changes the next time. |
 | `START` | A positive edge requests PLAY. |
 | `STOP` | A positive edge requests STOP. |
@@ -42,8 +42,8 @@ Short triggers count. A trigger that is already over when the input interrupt ru
 
 | SOURCE | Behavior |
 | --- | --- |
-| `INTERNAL` | CLOCK is the master. Configured internal BPM and meter drive musical time. |
-| `EXTERNAL` | CLOCK follows a valid assigned SYNC input. The first accepted selected edge starts acquisition; the second establishes the first measurable period, BPM and lock. |
+| `INT` | CLOCK is the master. Configured internal BPM and meter drive musical time. |
+| `EXT` | CLOCK follows a valid assigned SYNC input. The first accepted selected edge starts acquisition; the second establishes the first measurable period, BPM and lock. |
 | `AUTO` | CLOCK runs internally until a valid external period is acquired, then hands timing ownership to external SYNC. Loss is handled by `LOSS`. |
 
 `AUTO` acquisition is deliberately staged:
@@ -61,7 +61,7 @@ An explicit user STOP or PAUSE has priority; incoming clock cannot silently undo
 | --- | --- |
 | `STOP` | Stop transport. A later valid reacquisition may restart only if the stop was caused by sync loss; a manual STOP remains authoritative. |
 | `FREE` | Continue at the last measured external tempo and keep that BPM as the effective/visible tempo after lock loss. |
-| `INTERNAL` | Continue using the configured internal/fallback BPM. |
+| `INT` | Continue using the configured internal/fallback BPM. |
 
 #### State diagrams: automatic start and tempo ownership
 
@@ -76,7 +76,7 @@ stateDiagram-v2
     AutoStartArmed --> NoAutoStart: STOP or PAUSE on the panel, STOP input, RUN level goes LOW
     NoAutoStart --> AutoStartArmed: AUTOSTART switched ON while stopped
     AutoStartArmed --> NoAutoStart: AUTOSTART switched OFF while stopped
-    AutoStartArmed --> AutoStartArmed: SYNC lock acquired, transport starts (SOURCE EXTERNAL or AUTO)
+    AutoStartArmed --> AutoStartArmed: SYNC lock acquired, transport starts (SOURCE EXT or AUTO)
     AutoStartArmed --> AutoStartArmed: lock lost with LOSS STOP, transport stops and restarts on the next lock
 ```
 
@@ -90,13 +90,13 @@ stateDiagram-v2
     [*] --> Internal
     Internal --> Acquiring: first selected SYNC edge
     Acquiring --> Locked: second valid edge sets period, BPM and phase zero
-    Locked --> Internal: no edge within TIMEOUT, LOSS INTERNAL or STOP
+    Locked --> Internal: no edge within TIMEOUT, LOSS INT or STOP
     Locked --> Freewheel: no edge within TIMEOUT, LOSS FREE
-    Freewheel --> Internal: tempo changed by hand (encoder, TAP or MASTER BPM)
+    Freewheel --> Internal: tempo changed by hand (encoder, TAP or TEMPO)
     Freewheel --> Acquiring: selected SYNC edge
 ```
 
-While `Locked`, the encoder and TAP on the Performance screen do not change the tempo and the display shows **EXTERNAL CLOCK**. With `SOURCE = EXTERNAL` the same lock states apply, but the encoder and TAP never change the tempo, and with `LOSS = FREE` the last measured tempo stays until the next lock.
+While `Locked`, the encoder and TAP on the Performance screen do not change the tempo and the display shows **EXTERNAL CLOCK**. With `SOURCE = EXT` the same lock states apply, but the encoder and TAP never change the tempo, and with `LOSS = FREE` the last measured tempo stays until the next lock.
 
 ### PPQN, EDGE, FILTER, SMOOTHING, TIMEOUT and AUTOSTART
 
@@ -113,7 +113,7 @@ While `Locked`, the encoder and TAP on the Performance screen do not change the 
 
 ### RESET — `TRIGGER` versus `GATE`
 
-| RESET INPUT | Behavior |
+| RST MODE | Behavior |
 | --- | --- |
 | `TRIGGER` | One accepted active/high edge requests one global phase reset. Holding the input HIGH does not repeatedly reset and RESET does not itself PLAY, PAUSE or STOP transport. |
 | `GATE` | The conditioned input level becomes a held reset state. HIGH resets phase and holds musical progression; LOW releases the hold and re-anchors runtime at the transition. |

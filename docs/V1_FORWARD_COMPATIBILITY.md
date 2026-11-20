@@ -78,17 +78,17 @@ Accordingly, 99 slots are **architecturally plausible but not yet release-proven
 
 If the final groove representation cannot satisfy that budget safely, the slot count must be reduced or the storage architecture changed deliberately; it must not be achieved by weakening the persistence or memory gates.
 
-### Post-1.1 r46 implementation status
+### Implementation status (released in 1.2.0)
 
-Sequencer 2.0 now implements option 4 **experimentally**: the source layout accepts/promotes prior 8-KiB generations to a 12-KiB logical image and places a 2-KiB global 8×8 pattern bank at offset 8192. It does **not** enlarge schema-v12 `ClockState`; legacy 64-bit channel sequences are copied into each channel's P1 slot on first initialization. The active P1-P8 slot is persisted per channel, the production engine consumes the selected 1-128-step pattern directly, and the production UI exposes pattern selection, length, rotation, direction, loop mode and an 8-step viewport editor. Sparse four-byte per-step expression records occupy the following extension area for Probability/Gate/Tie/Ratchet overrides while leaving the final 512 bytes reserved for later Song Mode data.
+Sequencer 2.0 implements option 4, released in 1.2.0: the source layout accepts/promotes prior 8-KiB generations to a 12-KiB logical image and places a 2-KiB global 8×8 pattern bank at offset 8192. It does **not** enlarge schema-v12 `ClockState`; legacy 64-bit channel sequences are copied into each channel's P1 slot on first initialization. The active P1-P8 slot is persisted per channel, the production engine consumes the selected 1-128-step pattern directly, and the production UI exposes pattern selection, length, rotation, direction, loop mode and an 8-step viewport editor. Sparse four-byte per-step expression records occupy the following extension area for Probability/Gate/Tie/Ratchet overrides while leaving the final 512 bytes reserved for later Song Mode data.
 
-This source change does not waive the audit gate below. The r46 host aggregate passes 95/95/90 coverage, and migration/CRC/interrupted-commit contracts are tested, but this environment does not contain PlatformIO/the ARM toolchain, so the required real STM32F401 ELF/RAM measurement has **not** been produced here. The 12-KiB configuration therefore remains development-only rather than release-approved.
+The audit gate below was not waived. The host aggregate passes 95/95/90 coverage, migration/CRC/interrupted-commit contracts are tested, and the 12-KiB configuration passed the target memory proof before release: The release ELF passes the 90 % memory gate of `scripts/platformio_memory_gate.py`: Flash 116 212 of 229 376 B, RAM 37 836 of 65 536 B (`release_default`, 1.2.0).
 
 ## RAM consequence of increasing the logical image
 
 `PersistentStorage` deliberately owns one complete staging image in BSS so Flash commits do not create multi-kilobyte stack frames. V1 therefore reserves **8 KiB static RAM** for persistence staging.
 
-Raising the logical image directly from 8 KiB to the 12-KiB policy ceiling with the same implementation would reserve another **4 KiB of BSS**. On the STM32F401CCU6's 64-KiB SRAM this is material. No image-size increase is approved until a real target ELF is built and the existing 90% memory gate plus explicit headroom review pass.
+Raising the logical image directly from 8 KiB to the 12-KiB policy ceiling with the same implementation would reserve another **4 KiB of BSS**. On the STM32F401CCU6's 64-KiB SRAM this is material. The increase to 12 KiB in 1.2.0 was approved only after a real target ELF passed the existing 90% memory gate; any further increase needs the same proof plus an explicit headroom review.
 
 ## Real-time architecture boundary
 
@@ -101,7 +101,7 @@ Post-1.0 storage-heavy rhythm data must therefore remain outside the small hot-p
 ## Public-contract decisions frozen for V1
 
 - Hardware Rev 1 remains gate/trigger focused; no analog CV subsystem is required for 1.0.
-- Persistent schema v12 is the 1.1.0 write format; the post-1.1 development write format is schema v13, and v12 is its explicit migration source. Schema v11, schema v10, schema v9, stable 1.0.x schema v8, schema v7, and the earlier supported formats remain explicit migration sources for upgrades. Schema v10 migrates with the factory input roles `SYNC / RESET` injected.
+- Persistent schema v12 is the 1.1.0 write format; schema v13 is the 1.2.0 write format, and v12 is its explicit migration source. Schema v11, schema v10, schema v9, stable 1.0.x schema v8, schema v7, and the earlier supported formats remain explicit migration sources for upgrades. Schema v10 migrates with the factory input roles `SYNC / RESET` injected.
 - Boot always enters STOP regardless of stored transport history.
 - CURRENT and eight named presets remain the user-facing persistence model.
 - No future 1.x feature may silently invalidate V1 presets; migration or explicit compatibility handling is required.

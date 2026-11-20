@@ -2,7 +2,7 @@
 
 # CLOCK VCV Rack Trial-First Port
 
-Status: **EXPERIMENTAL / post-1.1.0**.
+Status: **EXPERIMENTAL**, built from the 1.2.0 source tree; not a release asset.
 
 The VCV Rack track exists so prospective builders can try CLOCK before committing to the hardware build. Its product requirement is therefore unusually strict: it should behave like CLOCK, not merely reproduce a similar feature list.
 

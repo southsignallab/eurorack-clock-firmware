@@ -2,7 +2,7 @@
 
 # CLOCK VCV Rack Developer Guide
 
-Status: **EXPERIMENTAL / post-1.1.0**.
+Status: **EXPERIMENTAL**, built from the 1.2.0 source tree; not a release asset.
 
 This guide describes how to build, install, package, inspect and smoke-test the CLOCK Trial-First plugin locally without vendoring the VCV Rack SDK into this repository.
 

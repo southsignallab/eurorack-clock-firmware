@@ -35,17 +35,26 @@ GENERAL SETTINGS contains values shared by the whole device, not one output chan
 
 | Setting | Meaning |
 | --- | --- |
-| **BPM** | Internal/fallback quarter-note tempo reference. |
+| **TEMPO** | Internal/fallback quarter-note tempo reference in BPM. |
 | **MIN BPM / MAX BPM** | User/Tap-Tempo editing bounds: 1…999 with `MIN ≤ MAX`; factory range 20…999. These limits do not clamp a valid measured external clock. |
 | **METER BEATS** | 1…16 beats per bar. Used by the bar/beat counter and Pre-Count beat cells. |
 | **METER UNIT** | 2 / 4 / 8 / 16. Selects the note value represented by one master beat. |
 | **PRE COUNT** | OFF or 1…64 silent beats before a fresh STOP→PLAY. All gates stay LOW and pattern phase remains zero until the count completes. |
 
-The BPM number remains the quarter-note reference. At 120 BPM, `/4` produces 500 ms master beats, `/8` produces 250 ms master beats, and `/2` produces 1000 ms master beats. `METER BEATS` then determines the bar length from those beats.
+The BPM number remains the quarter-note reference. `METER UNIT` chooses the note value represented by one master beat, and `METER BEATS` chooses how many of those beats form one bar. At 120 BPM this means, for example:
+
+| Meter | Master beat | Bar duration |
+| --- | --- | --- |
+| `4/4` | 500 ms quarter-note beat | 2.0 s |
+| `3/4` | 500 ms quarter-note beat | 1.5 s |
+| `6/8` | 250 ms eighth-note beat | 1.5 s |
+| `2/2` | 1000 ms half-note beat | 2.0 s |
+
+The same meter definition drives the bar/beat counter and Pre-Count. With external SYNC, PPQN remains pulses per **quarter note**; CLOCK converts accepted pulses into the configured master-beat unit.
 
 ### CHANNEL SETTINGS
 
-Independent mode separates pattern generation from shared timing/output behavior. The most important controls are `RATE/NUM/DEN`, Swing, Groove, Probability, Gate length, Phase, Reset and Mute. Gate length is an absolute time value rather than a duty cycle; an otherwise-too-long pulse is shortened before the next rising event so it cannot consume the following onset.
+Independent mode separates pattern generation from shared timing/output behavior. The most important controls are `DIV/MULT`, `POLY N`, `POLY D`, Swing, Groove, Probability, Gate length, Phase, Reset and Mute. Gate length is an absolute time value rather than a duty cycle; an otherwise-too-long pulse is shortened before the next rising event so it cannot consume the following onset.
 
 One Clock exposes shared **TIMING** (rate, Swing, Groove, Humanize) and **OUTPUT** (Gate, Phase) pages. Divider Bank exposes divider family and one shared Gate length.
 
@@ -62,10 +71,24 @@ The publication manual also carries the Ko-fi QR code. The canonical repository 
 
 ### INFO and read-only overflow
 
-`INFO → UPDATES` shows a full-screen QR code for the firmware update address `https://southsignallab.com/clock/firmware`, which leads to the firmware releases.
+`SETTINGS → INFO` groups identity, maintenance information and the deliberately buried factory-reset action:
 
-Long read-only information is shortened with `...` in the row and can be opened in full. The license page is the canonical example: `CORE LIC` may display a truncated `BSD-3-Cl...` row while preserving the complete identifier in the full-value view.
+- **NAME** — CLOCK product identity
+- **VERSION** — currently running firmware version
+- **AUTHOR** — project attribution; deliberately not treated as primary UI content
+- **LICENSES** — firmware/framework/core/HAL/CMSIS license identifiers
+- **UPDATES** — full-screen QR code for the firmware update address `https://southsignallab.com/clock/firmware`, which leads to the firmware releases
 
-<p align="center"><img src="../manual-source/assets/settings-licenses.png" alt="License information page showing CORE LIC overflow." width="360"></p>
+Long read-only values use a separate overflow rule from editable Settings values. If a value does not fit its row, CLOCK shortens only that informational value with `...`; pressing the row opens the complete value. Editable values keep their normal edit/confirm behavior. The license page is the canonical example: `CORE LIC` may display a truncated `BSD-3-Cl...` row while preserving the complete `BSD-3-Clause` identifier in the full-value view.
 
-`PHASE RESET` is non-destructive. `FACTORY RESET`, by contrast, is the final guarded INFO action and clears CURRENT, named presets, Custom Grooves, the Sequencer banks and score data before restoring factory configuration.
+<table>
+<tr>
+<td align="center"><img src="../manual-source/assets/settings-info.png" alt="INFO page showing product, firmware and compact identity information." width="220"><br><sub>INFO</sub></td>
+<td align="center"><img src="../manual-source/assets/settings-licenses.png" alt="Licenses page showing firmware and bundled framework/core license rows, including truncated CORE LIC." width="220"><br><sub>License identifiers and overflow</sub></td>
+<td align="center"><img src="../manual-source/assets/settings-updates.png" alt="Updates page showing the full-screen QR code for the firmware project-update location." width="220"><br><sub>Updates</sub></td>
+</tr>
+</table>
+
+`PHASE RESET` is non-destructive: it applies the global musical reset immediately without stopping to erase or replace any saved configuration.
+
+**FACTORY RESET**, by contrast, is the final INFO entry so it is not exposed as a routine performance control. Selecting it opens a separate confirmation screen with **NO** selected by default. Confirming **YES** stops transport, clears CURRENT, all eight named presets, all Custom Grooves, both Sequencer pattern and step-expression banks, legacy score data and all Top-100 leaderboards, then restores the documented factory configuration. It also lifts an **UPDATE FIRMWARE** lock.

@@ -2,7 +2,7 @@
 
 # 11 Sequencer mode
 
-The current post-1.1 development Sequencer stores **eight patterns (P1–P8) per channel**, each with an active length of **1–128 steps**. The selected pattern slot is persistent.
+Since firmware 1.2.0 the Sequencer stores **eight patterns (P1–P8) per channel**, each with an active length of **1–128 steps**. The selected pattern slot is persistent.
 
 ![Sequencer 2.0 editor showing the eight-step viewport, timing grid, expression symbols, independent edit cursor and playback head.](../manual-source/assets/sequencer-editor.png)
 

@@ -18,7 +18,7 @@ For the current SPI hardware, verify the physical pins before functional UI test
 - PB15 -> OLED RES (active low)
 - 3.3 V logic/power and common GND as required by the selected module
 
-On every firmware boot, PA4 must be driven HIGH before PB15 is pulsed high -> low -> high. After RESET returns HIGH, the firmware waits before the selected SSD1306/SSD1315 command stream. PA4 must then pulse LOW only for command/data transactions. The default SPI clock is held to 1 MHz during bring-up; remapped builds must verify the configured pins instead of assuming these defaults. A panel that only works with RESET hard-wired high or CS hard-wired low fails this bring-up check and indicates firmware-target, GPIO-routing, or wiring mismatch.
+On every firmware boot, PA4 must be driven HIGH before PB15 is pulsed high -> low -> high. After RESET returns HIGH, the firmware waits before the selected SSD1306/SSD1315 command stream. PA4 must then pulse LOW only for command/data transactions. The display SPI requests at most **1 MHz** (`CLOCK_DISPLAY_SPI_FREQUENCY_HZ`, a ceiling); on the DIY Blackpill build the SPI prescaler then gives an effective SCK of **656.25 kHz** (calculated, not measured; derivation in [`TIMING.md`](TIMING.md#spi--reference-transport)); remapped builds must verify the configured pins instead of assuming these defaults. A panel that only works with RESET hard-wired high or CS hard-wired low fails this bring-up check and indicates firmware-target, GPIO-routing, or wiring mismatch.
 
 
 ## 1. Purpose

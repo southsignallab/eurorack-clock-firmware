@@ -927,7 +927,7 @@ class RepositoryAddressTests(unittest.TestCase):
 
     def test_documentation_check_and_documents_use_the_module_update_address(self) -> None:
         self.assertEqual(MODULE_UPDATE_URL, load_script("check_documentation").UPDATE_URL)
-        for document in ("docs/USER_GUIDE.md", "docs/user-guide/15-settings-map.md", "docs/PROJECT_IDENTITY.md"):
+        for document in ("docs/user-guide/15-settings-map.md", "docs/PROJECT_IDENTITY.md"):
             with self.subTest(document=document):
                 self.assertIn(MODULE_UPDATE_URL, (ROOT / document).read_text(encoding="utf-8"))
 

@@ -24,4 +24,4 @@ The boot sequence initializes the scheduler in STOP and keeps all eight gate sou
 
 ![Boot screen halfway through its one-second progress sequence, showing the CLOCK wordmark and the two-pixel progress bar at the bottom.](../manual-source/assets/boot-500.png)
 
-The normal boot screen lasts about one second. Holding the encoder push continuously through the complete boot sequence enters the compile-time selected Easter egg; see [Section 21](#21-hidden-boot-easter-eggs).
+The normal boot screen lasts about one second. Holding the encoder push continuously through the complete boot sequence enters the compile-time selected Easter egg; see [20 Hidden boot features](20-hidden-boot-features.md).

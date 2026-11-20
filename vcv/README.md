@@ -8,7 +8,7 @@ For normal Rack use, start with the repository-root **[`README_VCV.md`](../READM
 
 ## Current status
 
-`EXPERIMENTAL` — post-1.1.0 development.
+`EXPERIMENTAL` — built from the 1.2.0 source tree; not a release asset.
 
 Implemented in this first slice:
 

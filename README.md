@@ -69,7 +69,7 @@ This is an independent South Signal Lab development. It is not a firmware port f
 
 ### Why no general CV modulation?
 
-CLOCK deliberately stays in the **digital timing, gate, and trigger** domain. Hardware Rev 1 has two LM393-conditioned digital comparator inputs, physically/net-named SYNC and RST on the current PCB, but no general parameter-CV inputs, analog modulation outputs, or CV modulation matrix. In firmware 1.1.0 their roles are configurable globally; the factory assignment remains `INPUT 1 = SYNC`, `INPUT 2 = RESET`. This is a product boundary, not a general CV subsystem.
+CLOCK deliberately stays in the **digital timing, gate, and trigger** domain. Hardware Rev 1 has two LM393-conditioned digital comparator inputs, physically/net-named SYNC and RST on the current PCB, but no general parameter-CV inputs, analog modulation outputs, or CV modulation matrix. Since firmware 1.1.0 their roles are configurable globally; the factory assignment remains `INPUT 1 = SYNC`, `INPUT 2 = RESET`. This is a product boundary, not a general CV subsystem.
 
 A quality eight-channel analog modulation-output stage would move the module into a different cost and assembly class. Our quality target would require an eight-channel **16-bit DAC-class solution** plus two quad output-op-amp stages; a 12-bit MCP-class compromise is not considered good enough for this direction. The current project estimate is roughly **EUR 30-40 additional BOM cost**, before the wider impact of fine-pitch SMD assembly, PCB complexity, calibration, testing, and documentation. General CV parameter inputs would add their own analog front ends, routing, jacks, and validation scope.
 
@@ -89,7 +89,7 @@ The hard physical-HIL release gate deliberately starts at **1.5.0**; before then
 
 ### Try CLOCK in VCV Rack — experimental
 
-The post-1.1 development tree now contains a **VCV Rack edition** under [`vcv/`](vcv/). It compiles the production CLOCK application/engine/UI rather than reimplementing the musical behavior, drives the same 20 kHz scheduler from Rack sample time, renders the real 128x64 framebuffer, exposes eight hardware-faithful 0/+5-V gates, and embeds CLOCK's logical persistence image in the Rack patch. The first alpha deliberately permits only one active CLOCK instance because the current host HAL/application callback boundary is process-global. See the **[VCV Rack end-user guide](README_VCV.md)** and the engineering status in [`docs/VCV_RACK.md`](docs/VCV_RACK.md).
+The 1.2.0 source tree contains an experimental **VCV Rack edition** under [`vcv/`](vcv/); it is not published as a release asset. It compiles the production CLOCK application/engine/UI rather than reimplementing the musical behavior, drives the same 20 kHz scheduler from Rack sample time, renders the real 128x64 framebuffer, exposes eight hardware-faithful 0/+5-V gates, and embeds CLOCK's logical persistence image in the Rack patch. The first alpha deliberately permits only one active CLOCK instance because the current host HAL/application callback boundary is process-global. See the **[VCV Rack end-user guide](README_VCV.md)** and the engineering status in [`docs/VCV_RACK.md`](docs/VCV_RACK.md).
 
 <p align="center">
   <img src="docs/assets/vcv-rack-clock.png" alt="South Signal Lab CLOCK running as a black 10 HP module in VCV Rack." width="360">
@@ -101,7 +101,7 @@ The post-1.1 development tree now contains a **VCV Rack edition** under [`vcv/`]
 | --- | --- |
 | Format | Eurorack, 3U, 10 HP reference panel |
 | Outputs | 8 gate/clock outputs, target 0/+5 V, individual activity LEDs |
-| Inputs | Two LM393-conditioned digital comparator inputs; Rev 1 physical nets remain SYNC/PA8 and RST/PA9, while firmware 1.1.0 assigns their musical roles globally |
+| Inputs | Two LM393-conditioned digital comparator inputs; Rev 1 physical nets remain SYNC/PA8 and RST/PA9, while the firmware (since 1.1.0) assigns their musical roles globally |
 | MCU | STM32F401CCU6 Black Pill, 84 MHz Cortex-M4 |
 | Display | 128×64 SSD1306/SSD1315 over the final 4-wire SPI pin map |
 | Controls | Push encoder + START/PAUSE + TAP TEMPO + STOP/BACK |
@@ -109,7 +109,7 @@ The post-1.1 development tree now contains a **VCV Rack edition** under [`vcv/`]
 | Channel functions | Off, Clock, Euclid, Sequencer |
 | Tempo | 1–999 BPM technical range; factory user range 20–999 BPM |
 | Euclid | 1–64 steps, hits and rotation |
-| Sequencer | post-1.1 dev: P1–P8 per channel, 1–128 steps, 8-step viewport, direction/loop modes and sparse Probability/Gate/Tie/Ratchet expression |
+| Sequencer | 1.2.0: P1–P8 per channel, 1–128 steps, 8-step viewport, direction/loop modes and sparse Probability/Gate/Tie/Ratchet expression |
 | Groove Engine | Factory Swing/Pocket grooves, Amount/Rotate, 1–64-step Custom Editor and TAP Record |
 | Custom Groove library | 10 named durable slots with save/load/overwrite/rename/delete |
 | Pre-Count | Optional silent 1–64-beat count-in before a fresh STOP→PLAY |
@@ -177,7 +177,7 @@ The detailed timing contract is normative: [`docs/TIMING.md`](docs/TIMING.md).
 
 ## Configurable external inputs
 
-Hardware Rev 1 provides two electrically equivalent LM393-conditioned digital comparator paths. The current PCB/net names remain **SYNC on PA8** and **RST on PA9**, but firmware 1.1.0 treats them as **INPUT 1** and **INPUT 2** at the product layer. Factory assignment remains `INPUT 1 = SYNC` and `INPUT 2 = RESET`, so existing patches keep their expected behavior.
+Hardware Rev 1 provides two electrically equivalent LM393-conditioned digital comparator paths. The current PCB/net names remain **SYNC on PA8** and **RST on PA9**, but the firmware (since 1.1.0) treats them as **INPUT 1** and **INPUT 2** at the product layer. Factory assignment remains `INPUT 1 = SYNC` and `INPUT 2 = RESET`, so existing patches keep their expected behavior.
 
 Open `SETTINGS → GENERAL SETTINGS → INPUTS` to assign a role. Current selectable roles are:
 
@@ -194,7 +194,7 @@ Open `SETTINGS → GENERAL SETTINGS → INPUTS` to assign a role. Current select
 
 `INPUTS → CONFIG` contains the shared external timing/reset parameters:
 
-- source: `INTERNAL`, `EXTERNAL`, `AUTO` (factory default: `AUTO`);
+- source: `INT`, `EXT`, `AUTO` (factory default: `AUTO`);
 - PPQN: `1`, `2`, `4`, `24`;
 - rising/falling edge selection for `SYNC`;
 - configurable glitch filter;
@@ -205,7 +205,7 @@ Open `SETTINGS → GENERAL SETTINGS → INPUTS` to assign a role. Current select
 
 Physical input transitions are captured by GPIO interrupts and timestamped before scheduler-side role interpretation. A role change discards already queued edges from the old assignment, so an electrical pulse captured as SYNC can never become START, STOP or TAP merely because the menu was changed before the scheduler consumed it. `RUN` is level-authoritative after assignment, but assigning RUN is transport-neutral: the current comparator level is adopted as a baseline and only a later physical level change may command PLAY/STOP. This also preserves the boot STOP contract for a persisted RUN assignment.
 
-With `LOSS = FREE`, both the timing engine and the Performance BPM display retain the last measured external tempo after lock is lost. `LOSS = INTERNAL` returns both to the configured internal fallback BPM; `LOSS = STOP` stops transport.
+With `LOSS = FREE`, both the timing engine and the Performance BPM display retain the last measured external tempo after lock is lost. `LOSS = INT` returns both to the configured internal fallback BPM; `LOSS = STOP` stops transport.
 
 > [!CAUTION]
 > Host tests prove the digital firmware semantics, not the analog input stage. Comparator thresholds, signal integrity, physical input latency/jitter and resulting output jitter remain real-hardware HIL qualification items. The Rev 1 pin/net names SYNC/RST are hardware facts even when firmware assigns different musical roles. See [`docs/HIL_TEST_PLAN.md`](docs/HIL_TEST_PLAN.md).
@@ -307,7 +307,7 @@ Current inventory: **682 explicitly named Native test cases**. PlatformIO expose
 | `test_easter_eggs` | 41 | launch gating, reset state, host-safe output behavior and game-specific control/state contracts |
 | `test_host_firmware` | 97 | complete firmware/UI/HAL/persistence scenarios, Groove Editor/Record workflows, schema migration and framebuffer/navigation contracts against deterministic framework fakes |
 
-The default Native run executes more than **447,000 assertions**. Exhaustive loops remain useful for mathematical invariants, but user-visible musical and control contracts now also have independently reported cases. The nominal front-end tests exercise 2.5 V, 3 V and 4 V clock amplitudes through the documented resistor/hysteresis model; they do **not** replace physical comparator HIL.
+Each suite reports its assertion count when `scripts/run_host_tests.py` runs it; the counts change with every test and are not repeated here. Exhaustive loops remain useful for mathematical invariants, but user-visible musical and control contracts now also have independently reported cases. The nominal front-end tests exercise 2.5 V, 3 V and 4 V clock amplitudes through the documented resistor/hysteresis model; they do **not** replace physical comparator HIL.
 
 The broader host matrix additionally recompiles display variants, runs sanitizer configurations and produces aggregate coverage:
 
@@ -315,15 +315,7 @@ The broader host matrix additionally recompiles display variants, runs sanitizer
 python scripts/run_host_tests.py
 ```
 
-Current post-1.1 r47f validated aggregate baseline:
-
-```text
-Executable lines    10485 / 10993  95.38 %
-Functions              899 / 916    98.14 %
-Decision branches     6492 / 7208   90.07 %
-```
-
-The project enforces a 90% decision-branch gate. Production-source architecture checks additionally reject heap allocation in embedded code and flag stack frames larger than 4 KiB. Full details: [`test/README.md`](test/README.md) and [`docs/TEST_COVERAGE.md`](docs/TEST_COVERAGE.md).
+The current aggregate coverage figures are kept in one place, the release baseline in [`docs/TEST_COVERAGE.md`](docs/TEST_COVERAGE.md). The gate is 95% executable lines, 95% functions and 90% decision branches. Production-source architecture checks additionally reject heap allocation in embedded code and flag stack frames larger than 4 KiB. Full details: [`test/README.md`](test/README.md) and [`docs/TEST_COVERAGE.md`](docs/TEST_COVERAGE.md).
 
 ## Documentation
 

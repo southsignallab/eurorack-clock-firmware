@@ -46,9 +46,20 @@ pio run -e blackpill_f401cc
 pio run -e blackpill_f401cc_spi
 ```
 
+### Proving that a change leaves the firmware image unchanged
+
+A change that only formats code or edits comments must leave `firmware.bin` byte-identical in all ten firmware environments (the five target builds and the five `release_*` flavors). Record the reference on the commit before the change, then compare the working tree:
+
+```bash
+python scripts/check_image_identity.py record --manifest build/image-identity/reference.json
+python scripts/check_image_identity.py compare --manifest build/image-identity/reference.json
+```
+
+Each environment is built into its own directory under `build/image-identity/`. The script reports `equal` or `UNEQUAL` per environment and exits non-zero on any difference; for a difference it names the loaded ELF sections that changed. Debug information and the linker map are not compared because they depend on line numbers and the build directory. A refactoring without intended behavior change is proven by equal test results instead; any image difference it causes must be explained in its commit message.
+
 ## Documentation changes
 
-Update the documentation in the same change when behavior, wiring, settings, persistence schema, simulator controls, architecture, or build procedure changes. Mermaid diagrams belong in Markdown; reusable publication artwork belongs in `docs/manual-source/assets/` as plain SVG.
+Update the documentation in the same change when behavior, wiring, settings, persistence schema, simulator controls, architecture, or build procedure changes. [`docs/DOCUMENTATION_MAP.md`](docs/DOCUMENTATION_MAP.md) names the authoritative document for each topic and lists every documentation file; a new Markdown file needs a row there. The pin and display-macro tables in `docs/CONFIGURATION.md` are generated from `src/pin_map.h` and `src/config.h`: run `python scripts/generate_reference_tables.py` after changing them. Mermaid diagrams belong in Markdown; reusable publication artwork belongs in `docs/manual-source/assets/` as plain SVG.
 
 ## Commit hygiene
 

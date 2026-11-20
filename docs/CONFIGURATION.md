@@ -42,7 +42,7 @@ pio run -e blackpill_f401cc_spi_ssd1315
 pio run -e blackpill_f401cc_spi_ssd1306
 ```
 
-`blackpill_f401cc_spi` remains a compatibility alias for the SSD1306 SPI profile. `default_envs` and all `release_*` environments select the SPI SSD1315 reference build. The controller can also be selected directly with `CLOCK_DISPLAY_CONTROLLER=1306` or `1315`.
+`blackpill_f401cc_spi` remains a compatibility alias for the SSD1306 SPI profile. `default_envs` and all `release_*` environments select the SPI SSD1315 reference build. The controller can also be selected directly with `CLOCK_DISPLAY_CONTROLLER=1306` or `1315`. In the current firmware this flag has **no effect on the image**: `blackpill_f401cc_spi_ssd1306` (and its alias `blackpill_f401cc_spi`) and `blackpill_f401cc_spi_ssd1315` build a byte-identical `firmware.bin`. The flag stays until the SSD1315 command stream has been checked against the controller datasheet.
 
 ### Boot Easter egg
 
@@ -83,7 +83,7 @@ The current hardware target is **0 V LOW / nominal +5 V HIGH** at OUT 1–8. The
 
 ## Analog/CV product boundary
 
-Hardware Rev 1 deliberately stops at digital timing I/O: eight 0/+5 V gate/trigger outputs plus two LM393-conditioned digital comparator inputs. Their current PCB/net names remain SYNC and RST, but firmware 1.1.0 exposes them globally as configurable INPUT 1 / INPUT 2 roles. They are **not** general parameter-CV inputs; analog CV/modulation outputs and a general modulation matrix remain outside the hardware contract.
+Hardware Rev 1 deliberately stops at digital timing I/O: eight 0/+5 V gate/trigger outputs plus two LM393-conditioned digital comparator inputs. Their current PCB/net names remain SYNC and RST, but the firmware (since 1.1.0) exposes them globally as configurable INPUT 1 / INPUT 2 roles. They are **not** general parameter-CV inputs; analog CV/modulation outputs and a general modulation matrix remain outside the hardware contract.
 
 For analog modulation outputs, the project quality target would require an eight-channel 16-bit DAC-class path and two quad output-op-amp stages. A 12-bit MCP-class DAC is not accepted as a quality shortcut for this use. The current project estimate is roughly EUR 30-40 extra BOM cost before the additional fine-pitch SMD assembly, PCB routing, calibration, and validation effort. General CV inputs would add separate analog input-conditioning/routing and panel-I/O costs.
 
@@ -95,22 +95,23 @@ Use this file when hardware wiring changes. Names intentionally describe the con
 
 Current mappings include. Gate/LED channels are also exposed as individually named constants (`kChannel1GateLedPin` through `kChannel8GateLedPin`) before being assembled into the ordered driver array:
 
+<!-- generated:pins begin (scripts/generate_reference_tables.py) -->
 | Function | STM32 pin |
 | --- | --- |
 | START/PAUSE button | PA1 |
-| RESET/BACK button | PA2 |
+| STOP/BACK button | PA2 |
 | TAP TEMPO button | PA3 |
 | OLED SPI CS | PA4 |
 | OLED clock (`CLK`; `SCL` on the prototype module) | PA5 |
 | OLED data (`DIN`; SPI MOSI; `SDA` on the prototype module) | PA7 |
-| SYNC comparator input | PA8 |
-| RST comparator input | PA9 |
+| IN 1 comparator input (SYNC net) | PA8 |
+| IN 2 comparator input (RST net) | PA9 |
 | Gate/LED channel 1 | PB0 |
 | Gate/LED channel 2 | PB1 |
 | Gate/LED channel 3 | PB2 |
 | Gate/LED channel 4 | PB5 |
-| Encoder phase A / CLK | PB6 (TIM4_CH1) |
-| Encoder phase B / DT | PB7 (TIM4_CH2) |
+| Encoder phase A / CLK (TIM4_CH1) | PB6 |
+| Encoder phase B / DT (TIM4_CH2) | PB7 |
 | Gate/LED channel 5 | PB8 |
 | OLED data/command (`DC`) | PB9 |
 | Gate/LED channel 6 | PB10 |
@@ -119,9 +120,11 @@ Current mappings include. Gate/LED channels are also exposed as individually nam
 | Encoder push | PB14 |
 | OLED reset (`RES`) | PB15 |
 | Gate-buffer `/OE` | not MCU-controlled in the final pin map |
+<!-- generated:pins end -->
 
 SPI display signals remain independently overridable from PlatformIO build flags:
 
+<!-- generated:display-macros begin (scripts/generate_reference_tables.py) -->
 | Build macro | Default |
 | --- | --- |
 | `CLOCK_DISPLAY_SPI_SCK_PIN` | `PA5` |
@@ -130,6 +133,7 @@ SPI display signals remain independently overridable from PlatformIO build flags
 | `CLOCK_DISPLAY_SPI_DC_PIN` | `PB9` |
 | `CLOCK_DISPLAY_RESET_PIN` | `PB15` |
 | `CLOCK_DISPLAY_SPI_FREQUENCY_HZ` | `1000000` |
+<!-- generated:display-macros end -->
 
 A board revision can therefore remap the OLED without editing source code, for example:
 
@@ -145,9 +149,9 @@ build_flags =
 
 Use CLOCK's framework-independent encoded pin constants (`clockfw::mcu::PA7`, `clockfw::mcu::PB9`, etc.) for these macros. The STM32Cube HAL maps those identifiers to the selected GPIO/alternate-function configuration.
 
-The SPI bus is deliberately limited to **1 MHz** for prototype/first-PCB bring-up margin. Both supported controller families permit substantially faster serial operation, but the prototype wiring is not treated as a controlled-impedance PCB interconnect.
+The display SPI requests at most **1 MHz** (`CLOCK_DISPLAY_SPI_FREQUENCY_HZ`, a ceiling); on the DIY Blackpill build the SPI prescaler then gives an effective SCK of **656.25 kHz** (calculated, not measured; derivation in [`TIMING.md`](TIMING.md#spi--reference-transport)). The ceiling is deliberately low for prototype/first-PCB bring-up margin. Both supported controller families permit substantially faster serial operation, but the prototype wiring is not treated as a controlled-impedance PCB interconnect.
 
-The final comparator outputs are physically fixed at PA8 for the SYNC-net path and PA9 for the RST-net path. These are hardware/net identities, not fixed musical roles: firmware 1.1.0 factory-assigns them as `INPUT 1 = SYNC` and `INPUT 2 = RESET`, and the global INPUTS page may reassign supported digital roles. Jack-detect contacts remain unassigned in firmware unless a later PCB revision routes dedicated detect signals.
+The final comparator outputs are physically fixed at PA8 for the SYNC-net path and PA9 for the RST-net path. These are hardware/net identities, not fixed musical roles: the firmware (since 1.1.0) factory-assigns them as `INPUT 1 = SYNC` and `INPUT 2 = RESET`, and the global INPUTS page may reassign supported digital roles. Jack-detect contacts remain unassigned in firmware unless a later PCB revision routes dedicated detect signals.
 
 ## `src/ui_text.h`
 
@@ -160,12 +164,12 @@ This arrangement means adding another language does not require changes to scree
 
 ## Persistent configuration
 
-Persistent user state is not configured by scattered constants. `PersistentStateService` stores one autosaved `CURRENT` state plus eight named user preset slots. Each state includes master settings (including Pre-Count), configurable INPUT 1/2 roles and external-sync parameters, display/screensaver preferences, every channel's common settings including Groove selection, CLOCK meter data, Euclid parameters, complete 64-bit Sequencer patterns, and the active Custom Groove slot reference. Firmware 1.1.0 writes **schema v12**; the post-1.1 development firmware writes **schema v13**, which appends the SYNC `AUTOSTART` setting and migrates v12 records with `AUTOSTART = OFF`. Schema v11, v10, v9, stable 1.0.x schema v8, schema v7, and earlier supported formats remain explicit migration sources; missing newer fields are injected with their documented factory-safe defaults.
+Persistent user state is not configured by scattered constants. `PersistentStateService` stores one autosaved `CURRENT` state plus eight named user preset slots. Each state includes master settings (including Pre-Count), configurable INPUT 1/2 roles and external-sync parameters, display/screensaver preferences, every channel's common settings including Groove selection, CLOCK meter data, Euclid parameters, complete 64-bit Sequencer patterns, and the active Custom Groove slot reference. Firmware 1.2.0 writes **schema v13**, which appends the SYNC `AUTOSTART` setting and migrates v12 records (the 1.1.0 write format) with `AUTOSTART = OFF`. Schema v11, v10, v9, stable 1.0.x schema v8, schema v7, and earlier supported formats remain explicit migration sources; missing newer fields are injected with their documented factory-safe defaults.
 
-Firmware 1.1.0 uses an **8192-byte** logical persistence image. The lower 4096 bytes preserve the established settings/preset and legacy-score layout while using bytes **3136–4095** for ten fixed 96-byte named Custom Groove records; the upper half stores the four independent arcade Top-100 tables. A Custom Groove record carries a 16-character name, one signed 1–64-step microtiming pattern, metadata and its own CRC. Ten slots are the frozen 1.1.0 release scope.
+Firmware 1.1.0 used an **8192-byte** logical persistence image. The lower 4096 bytes preserve the established settings/preset and legacy-score layout while using bytes **3136–4095** for ten fixed 96-byte named Custom Groove records; the upper half stores the four independent arcade Top-100 tables. A Custom Groove record carries a 16-character name, one signed 1–64-step microtiming pattern, metadata and its own CRC. Ten slots are the frozen 1.1.0 release scope.
 
-The post-1.1 Sequencer-2.0 development source raises the logical image to the existing **12288-byte architectural ceiling** and reserves bytes **8192–10239** for a 64-slot Sequencer pattern bank. The historical first 8192 bytes are unchanged. Valid 8192-byte and older 4096-byte A/B generations remain readable; reads beyond their payload return erased bytes and the next durable write promotes the image without altering the old prefix. On STM32F401 the complete logical image is still committed into two independent 16 KiB A/B slots with COMMIT programmed last.
+Firmware 1.2.0 raises the logical image to the existing **12288-byte architectural ceiling** for Sequencer 2.0 and reserves bytes **8192–10239** for a 64-slot Sequencer pattern bank. The historical first 8192 bytes are unchanged. Valid 8192-byte and older 4096-byte A/B generations remain readable; reads beyond their payload return erased bytes and the next durable write promotes the image without altering the old prefix. On STM32F401 the complete logical image is still committed into two independent 16 KiB A/B slots with COMMIT programmed last.
 
-Because the existing storage implementation keeps a complete staging image in static RAM, the 12-KiB development configuration adds 4 KiB of BSS versus 1.1.0. It remains **development-only until a real STM32F401 ELF passes the 90% RAM/Flash gate**; host persistence tests are not target-memory evidence. Firmware owns sector 0 plus sectors 3..5, for 224 KiB total Flash. `scripts/platformio_memory_gate.py` enforces the additional 90% Flash/RAM headroom policy after linking.
+Because the existing storage implementation keeps a complete staging image in static RAM, the 12-KiB configuration adds 4 KiB of BSS versus 1.1.0. The release ELF passes the 90 % memory gate of `scripts/platformio_memory_gate.py`: Flash 116 212 of 229 376 B, RAM 37 836 of 65 536 B (`release_default`, 1.2.0). Host persistence tests are not target-memory evidence. Firmware owns sector 0 plus sectors 3..5, for 224 KiB total Flash. `scripts/platformio_memory_gate.py` enforces the additional 90% Flash/RAM headroom policy after linking.
 
 Preset names are limited to 16 display-supported characters. Storage records are schema-versioned and CRC-32 protected; do not serialize raw C++ structs into Flash.

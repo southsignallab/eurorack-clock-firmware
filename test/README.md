@@ -26,7 +26,7 @@ This is the developer-facing Native entry point. The suite deliberately makes ti
 | `test_host_firmware` | 97 | complete firmware/UI/HAL/persistence behavior, Groove Editor/Record workflows, schema migrations and framebuffer/navigation contracts using deterministic host fakes |
 | **Total** | **682** | public Native inventory |
 
-The default Native configuration executes more than **433,000 assertions**. `scripts/check_test_inventory.py` enforces the visible-suite inventory contract so a broad test-count increase cannot hide a regression in one focused suite.
+Each suite reports its assertion count when `scripts/run_host_tests.py` runs it; the counts change with every test and are not repeated here. `scripts/check_test_inventory.py` enforces the visible-suite inventory contract so a broad test-count increase cannot hide a regression in one focused suite.
 
 ### Swing, Groove, Recorder, and Humanize behavior
 
@@ -72,14 +72,7 @@ python scripts/run_host_tests.py
 
 This is the authoritative coverage gate. It compiles the complete project-owned firmware against deterministic framework fakes in I2C, SPI and fixed-address/reset-pin configurations.
 
-Current validated 1.1 development baseline (r26 production source):
-
-```text
-Executable lines:   9258 / 9665   95.79%
-Functions:            805 / 819    98.29%
-Decision branches:   5639 / 6246   90.28%
-Compiler branches:   5640 / 7322   77.03% (informational)
-```
+The current aggregate figures are recorded once, as the release baseline in [`../docs/TEST_COVERAGE.md`](../docs/TEST_COVERAGE.md); the run writes them to `coverage/full_coverage.txt`.
 
 The hard gates remain >=95% executable lines, >=95% functions and >=90% non-throw decision branches.
 

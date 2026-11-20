@@ -8,10 +8,10 @@ Use the channel overview to select an output, then open its settings. Generator 
 
 | Shared control | Meaning |
 | --- | --- |
-| `RATE / NUM / DEN` | Integer or exact rational relation to the master timeline. |
+| `DIV/MULT / POLY N / POLY D` | Integer or exact rational relation to the master timeline. |
 | `SWING` | 0–50% alternating timing displacement. |
 | `GROOVE` | Factory/Custom deterministic microtiming with Amount and Rotate. |
-| `PROBABILITY` | Chance that an eligible event emits a physical gate. |
+| `PROB` | Chance that an eligible event emits a physical gate. |
 | `GATE` | Fixed 1 / 2 / 5 / 10 / 20 / 50 / 100 ms HIGH time. |
 | `PHASE` | 0–99% offset against the common timeline. |
 | `RESET` | `GLOBAL` re-anchors on global reset; `FREE` keeps the local cycle relationship. |

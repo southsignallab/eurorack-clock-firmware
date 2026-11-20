@@ -13,6 +13,14 @@
 namespace clockfw {
 namespace {
 
+/**
+ * @brief Returns whether @p direction is a known traversal order.
+ * @param direction Value to check.
+ * @return True for FORWARD, REVERSE, PINGPONG and RANDOM.
+ *
+ * @isr TIM3 scheduler interrupt: constant time, non-blocking, no allocation, opens no
+ *      interrupt lock.
+ */
 bool validDirection(const SequencerPlayDirection direction) {
     return direction == SequencerPlayDirection::Forward ||
         direction == SequencerPlayDirection::Reverse ||
@@ -20,10 +28,27 @@ bool validDirection(const SequencerPlayDirection direction) {
         direction == SequencerPlayDirection::Random;
 }
 
+/**
+ * @brief Returns whether @p mode is a known end-of-pattern behavior.
+ * @param mode Value to check.
+ * @return True for LOOP and ONCE.
+ *
+ * @isr TIM3 scheduler interrupt: constant time, non-blocking, no allocation, opens no
+ *      interrupt lock.
+ */
 bool validLoopMode(const SequencerLoopMode mode) {
     return mode == SequencerLoopMode::Loop || mode == SequencerLoopMode::Once;
 }
 
+/**
+ * @brief Hashes an event serial and a seed into a pseudo-random step selector.
+ * @param eventSerial Event serial on the channel grid.
+ * @param seed Seed of the transport run.
+ * @return Hash value; the same arguments always give the same value.
+ *
+ * @isr TIM3 scheduler interrupt: constant time, non-blocking, no allocation, opens no
+ *      interrupt lock.
+ */
 std::uint32_t mixRandomEvent(std::uint64_t eventSerial, std::uint32_t seed) {
     // Small deterministic avalanche hash. It is not cryptographic randomness;
     // it merely provides independent, history-free musical step selection.

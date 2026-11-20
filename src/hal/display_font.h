@@ -43,13 +43,17 @@ inline constexpr std::uint8_t kLargeTempoGlyphSpacing = 2U;
 
 /** @brief One proportional, unscaled normal tempo glyph stored as eighteen 12-bit rows. */
 struct TempoGlyph {
+    /** Bitmap width in pixels, at most kTempoGlyphMaximumWidth; 0 for a blank glyph. */
     std::uint8_t width = 0U;
+    /** One bitmap row per pixel line, top to bottom. */
     std::array<std::uint16_t, kTempoGlyphHeight> rows{};
 };
 
 /** @brief One native, unscaled large tempo glyph stored as twenty-eight 32-bit rows. */
 struct LargeTempoGlyph {
+    /** Bitmap width in pixels, at most kLargeTempoGlyphMaximumWidth; 0 for a blank glyph. */
     std::uint8_t width = 0U;
+    /** One bitmap row per pixel line, top to bottom. */
     std::array<std::uint32_t, kLargeTempoGlyphHeight> rows{};
 };
 

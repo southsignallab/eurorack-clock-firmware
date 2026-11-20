@@ -14,7 +14,12 @@
 
 namespace clockfw::ui {
 
-/** @brief Formats one external synchronization settings row. */
+/**
+ * @brief Formats one external synchronization settings row.
+ * @param rowIndex Zero-based row index.
+ * @param state Complete clock state.
+ * @return Formatted row.
+ */
 MenuRow buildSyncMenuRow(std::uint8_t rowIndex, const ClockState& state);
 
 }  // namespace clockfw::ui

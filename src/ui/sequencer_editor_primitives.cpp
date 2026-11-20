@@ -7,6 +7,7 @@
  */
 
 #include "ui/sequencer_editor_primitives.h"
+#include "text_format.h"
 
 #include <algorithm>
 #include <array>
@@ -99,7 +100,7 @@ void drawTimingGrid(hal::OledDisplay& display, const std::uint8_t pageBaseStep) 
         const std::uint16_t beatNumber =
             static_cast<std::uint16_t>(pageBaseStep / 4U + visibleBeat + 1U);
         char label[4]{};
-        std::snprintf(label, sizeof(label), "%u", static_cast<unsigned>(beatNumber));
+        text::formatInto(label, sizeof(label), "%u", static_cast<unsigned>(beatNumber));
         const std::int16_t beatX = static_cast<std::int16_t>(
             kGridLeft + static_cast<int>(visibleBeat) * 4 * kStepPitch + 2);
         display.drawText(beatX, kBeatLabelY, label);

@@ -7,6 +7,7 @@
  */
 #include "ui/menu_model_groove.h"
 #include "domain/groove_catalog.h"
+#include "text_format.h"
 #include "ui_text.h"
 #include <cstdio>
 namespace clockfw::ui {
@@ -19,18 +20,18 @@ MenuRow buildGrooveMenuRow(
         ? state.unifiedClock.groove
         : state.channels[selectedChannel].common.groove;
     if (rowIndex == 0U) {
-        std::snprintf(row.label, sizeof(row.label), "%s", text::get(text::TextId::GroovePreset));
-        std::snprintf(row.value, sizeof(row.value), "%s", groove::presetLabel(settings.preset));
+        text::formatInto(row.label, sizeof(row.label), "%s", text::get(text::TextId::GroovePreset));
+        text::formatInto(row.value, sizeof(row.value), "%s", groove::presetLabel(settings.preset));
     } else if (rowIndex == 1U) {
-        std::snprintf(row.label, sizeof(row.label), "%s", text::get(text::TextId::Amount));
-        std::snprintf(row.value, sizeof(row.value), "%u%%", settings.amountPercent);
+        text::formatInto(row.label, sizeof(row.label), "%s", text::get(text::TextId::Amount));
+        text::formatInto(row.value, sizeof(row.value), "%u%%", settings.amountPercent);
     } else if (rowIndex == 2U) {
-        std::snprintf(row.label, sizeof(row.label), "%s", text::get(text::TextId::Rotate));
+        text::formatInto(row.label, sizeof(row.label), "%s", text::get(text::TextId::Rotate));
         if (settings.preset == GroovePreset::Custom) {
-            std::snprintf(row.value, sizeof(row.value), "%u", settings.rotation);
+            text::formatInto(row.value, sizeof(row.value), "%u", settings.rotation);
         } else {
             const std::uint8_t length = groove::patternLength(settings.preset);
-            std::snprintf(
+            text::formatInto(
                 row.value,
                 sizeof(row.value),
                 "%u/%u",
@@ -38,20 +39,20 @@ MenuRow buildGrooveMenuRow(
                 length > 0U ? length - 1U : 0U);
         }
     } else if (rowIndex == 3U) {
-        std::snprintf(row.label, sizeof(row.label), "%s", text::get(text::TextId::Load));
-        std::snprintf(row.value, sizeof(row.value), "%s", text::get(text::TextId::Arrow));
+        text::formatInto(row.label, sizeof(row.label), "%s", text::get(text::TextId::Load));
+        text::formatInto(row.value, sizeof(row.value), "%s", text::get(text::TextId::Arrow));
     } else if (rowIndex == 4U) {
-        std::snprintf(row.label, sizeof(row.label), "%s", text::get(text::TextId::Editor));
-        std::snprintf(row.value, sizeof(row.value), "%s", text::get(text::TextId::Arrow));
+        text::formatInto(row.label, sizeof(row.label), "%s", text::get(text::TextId::Editor));
+        text::formatInto(row.value, sizeof(row.value), "%s", text::get(text::TextId::Arrow));
     } else if (rowIndex == 5U) {
-        std::snprintf(row.label, sizeof(row.label), "%s", text::get(text::TextId::Record));
-        std::snprintf(row.value, sizeof(row.value), "%s", text::get(text::TextId::Arrow));
+        text::formatInto(row.label, sizeof(row.label), "%s", text::get(text::TextId::Record));
+        text::formatInto(row.value, sizeof(row.value), "%s", text::get(text::TextId::Arrow));
     } else if (rowIndex == 6U) {
-        std::snprintf(row.label, sizeof(row.label), "%s", text::get(text::TextId::Rename));
-        std::snprintf(row.value, sizeof(row.value), "%s", text::get(text::TextId::Arrow));
+        text::formatInto(row.label, sizeof(row.label), "%s", text::get(text::TextId::Rename));
+        text::formatInto(row.value, sizeof(row.value), "%s", text::get(text::TextId::Arrow));
     } else if (rowIndex == 7U) {
-        std::snprintf(row.label, sizeof(row.label), "%s", text::get(text::TextId::Delete));
-        std::snprintf(row.value, sizeof(row.value), "%s", text::get(text::TextId::Arrow));
+        text::formatInto(row.label, sizeof(row.label), "%s", text::get(text::TextId::Delete));
+        text::formatInto(row.value, sizeof(row.value), "%s", text::get(text::TextId::Arrow));
     }
     return row;
 }

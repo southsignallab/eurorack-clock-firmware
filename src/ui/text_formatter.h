@@ -14,13 +14,28 @@
 
 namespace clockfw::ui {
 
-/** @brief Formats a channel rate using compact xN, /N, and optional N:D notation. */
+/**
+ * @brief Formats a channel rate using compact xN, /N, and optional N:D notation.
+ * @param settings Channel settings holding the rate.
+ * @param output Destination text buffer.
+ * @param outputSize Size of @p output in bytes.
+ */
 void formatRate(const CommonChannelSettings& settings, char* output, std::size_t outputSize);
 
-/** @brief Formats the primary performance-screen value for one channel. */
+/**
+ * @brief Formats the primary performance-screen value for one channel.
+ * @param channel Channel configuration.
+ * @param output Destination text buffer.
+ * @param outputSize Size of @p output in bytes.
+ */
 void formatChannelDetail(const ChannelConfig& channel, char* output, std::size_t outputSize);
 
-/** @brief Formats the compact second-line summary shown in a channel overview tile. */
+/**
+ * @brief Formats the compact second-line summary shown in a channel overview tile.
+ * @param channel Channel configuration.
+ * @param output Destination text buffer.
+ * @param outputSize Size of @p output in bytes.
+ */
 void formatChannelSummary(const ChannelConfig& channel, char* output, std::size_t outputSize);
 
 }  // namespace clockfw::ui

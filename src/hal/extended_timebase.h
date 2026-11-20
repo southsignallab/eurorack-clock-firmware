@@ -32,13 +32,17 @@ class ExtendedTimebase final {
 
     /**
      * @brief Scheduler-ISR only (single writer): folds the counter up to @p counterUs in.
-     * @param counterUs Current 32-bit TIM5 counter value.
+     * @param counterUs Current 32-bit TIM5 counter value in microseconds.
+     *
+     * @isr Runs in the TIM3 scheduler interrupt: bounded (a few loads and stores),
+     * non-blocking, no allocation, no output, opens no interrupt lock.
      */
     void advanceFromIsr(std::uint32_t counterUs);
 
     /**
      * @brief Returns the 64-bit microsecond time; safe in foreground and interrupt context.
      * @param readCounter Returns the current 32-bit TIM5 counter value.
+     * @return Microseconds since the first advanceFromIsr() anchor at 0, without wrap.
      *
      * Read order: sequence, anchor, counter, sequence. A writer that runs anywhere
      * before the second sequence read changes it, and the reader repeats. A writer
@@ -47,12 +51,19 @@ class ExtendedTimebase final {
      */
     std::uint64_t read(CounterReader readCounter) const;
 
-    /** @brief Milliseconds of @p microseconds, wrapping at 2^32 ms like HAL_GetTick(). */
+    /**
+     * @brief Milliseconds of @p microseconds, wrapping at 2^32 ms like HAL_GetTick().
+     * @param microseconds 64-bit time in microseconds, as returned by read().
+     * @return @p microseconds / 1000, truncated to 32 bits.
+     */
     static std::uint32_t millisecondsFrom(std::uint64_t microseconds);
 
   private:
+    /** 64-bit microsecond time at the last advanceFromIsr() call. */
     volatile std::uint64_t anchorExtendedUs_ = 0U;
+    /** 32-bit counter value (microseconds) at the last advanceFromIsr() call. */
     volatile std::uint32_t anchorCounterUs_ = 0U;
+    /** Incremented by every advanceFromIsr() call; readers repeat when it changed. */
     volatile std::uint32_t sequence_ = 0U;
 };
 

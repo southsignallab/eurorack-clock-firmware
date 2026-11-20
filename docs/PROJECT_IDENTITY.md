@@ -21,7 +21,7 @@ The product name shown on the front panel and boot identity remains CLOCK. `Sout
 
 ## Product scope boundary
 
-The canonical product identity includes a deliberate functional boundary: **South Signal Lab CLOCK is a digital timing, gate, and trigger instrument.** Hardware Rev 1 is not positioned as a general CV/modulation generator. It has dedicated SYNC/RST inputs and eight digital outputs, but no general parameter-CV inputs or analog CV/modulation output subsystem.
+The canonical product identity includes a deliberate functional boundary: **South Signal Lab CLOCK is a digital timing, gate, and trigger instrument.** Hardware Rev 1 (the first hardware generation; its current board revision is Rev C) is not positioned as a general CV/modulation generator. It has dedicated SYNC/RST inputs and eight digital outputs, but no general parameter-CV inputs or analog CV/modulation output subsystem.
 
 This distinction should remain explicit in README, manual, release notes, and comparisons. Missing analog modulation is not a prerelease defect; it is a DIY cost/buildability and signal-quality decision. See [`ROADMAP.md`](ROADMAP.md) for the product rationale and the separate post-1.0 feature path.
 

@@ -15,27 +15,61 @@
 
 namespace clockfw::ui::sequencer_editor {
 
+/** X of the left step boundary of the 8-step editor grid, in pixels. */
 inline constexpr std::int16_t kGridLeft = 4;
+/** Horizontal distance between two editor steps, in pixels. */
 inline constexpr std::int16_t kStepPitch = 15;
+/** Top row of the 9x9 gate cells, in pixels. */
 inline constexpr std::int16_t kGateY = 22;
 /** Baseline row of the beat numbers above the step grid, shared by the Groove editor. */
 inline constexpr std::int16_t kBeatLabelY = 11;
 
-/** @brief Draws the solid beat and dotted intermediate-step timing grid. */
+/**
+ * @brief Draws the solid beat and dotted intermediate-step timing grid.
+ * @param display Target display.
+ * @param pageBaseStep First absolute step of the shown 8-step page; numbers the beats.
+ */
 void drawTimingGrid(hal::OledDisplay& display, std::uint8_t pageBaseStep);
-/** @brief Draws the compact percent marker used for a non-selected Probability override. */
+/**
+ * @brief Draws the compact percent marker used for a non-selected Probability override.
+ * @param display Target display.
+ * @param centerX Horizontal centre of the step, in pixels.
+ * @param topY Top row of the marker, in pixels.
+ */
 void drawProbabilitySymbol(hal::OledDisplay& display, std::int16_t centerX, std::int16_t topY);
-/** @brief Draws the selected Probability value as compact 3x5 digits in place of the percent marker. */
+/**
+ * @brief Draws the selected Probability value as compact 3x5 digits in place of the percent
+ *        marker.
+ * @param display Target display.
+ * @param centerX Horizontal centre of the step, in pixels.
+ * @param topY Top row of the digits, in pixels.
+ * @param probabilityPercent Probability in percent.
+ */
 void drawProbabilityValue(
     hal::OledDisplay& display,
     std::int16_t centerX,
     std::int16_t topY,
     std::uint8_t probabilityPercent);
-/** @brief Draws the one- or two-row Ratchet dot symbol for counts 2..8. */
+/**
+ * @brief Draws the one- or two-row Ratchet dot symbol for counts 2..8.
+ * @param display Target display.
+ * @param centerX Horizontal centre of the step, in pixels.
+ * @param ratchetCount Ratchet count; 1 or less draws nothing.
+ */
 void drawRatchetSymbol(hal::OledDisplay& display, std::int16_t centerX, std::uint8_t ratchetCount);
-/** @brief Draws the independent live-playback triangle below one visible editor step. */
+/**
+ * @brief Draws the independent live-playback triangle below one visible editor step.
+ * @param display Target display.
+ * @param centerX Horizontal centre of the step, in pixels.
+ */
 void drawPlayheadTriangle(hal::OledDisplay& display, std::int16_t centerX);
-/** @brief Draws the pattern traversal direction pictogram. */
+/**
+ * @brief Draws the pattern traversal direction pictogram.
+ * @param display Target display.
+ * @param direction Traversal direction to show.
+ * @param x Left edge, in pixels.
+ * @param y Top edge, in pixels.
+ */
 void drawDirectionIcon(
     hal::OledDisplay& display,
     SequencerPlayDirection direction,

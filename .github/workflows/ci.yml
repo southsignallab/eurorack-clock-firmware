@@ -96,6 +96,38 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  static-analysis:
+    name: clang-tidy baseline gate
+    # Same configuration as the local check in CONTRIBUTING.md: pinned clang-tidy, Windows GNU
+    # target and the UCRT64 sysroot. Findings are compared by message, and messages name the
+    # platform types, so the gate runs where the baseline was recorded.
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install MSYS2 UCRT64 headers
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: false
+          install: mingw-w64-ucrt-x86_64-gcc
+
+      - name: Install pinned clang-tidy
+        run: python -m pip install "clang-tidy==23.1.4"
+
+      - name: Enforce the clang-tidy baseline
+        shell: pwsh
+        run: |
+          $sysroot = (Join-Path '${{ steps.msys2.outputs.msys2-location }}' 'ucrt64').Replace('\', '/')
+          python scripts/check_static_analysis.py --clang-tidy clang-tidy --extra-arg=--target=x86_64-w64-windows-gnu "--extra-arg=--sysroot=$sysroot"
+
   native-simulator:
     name: Native simulator (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

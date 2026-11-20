@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include "text_format.h"
 #include "ui_text.h"
 
 namespace clockfw::game {
@@ -279,7 +280,7 @@ void ArcadeShell::renderNameEntry() {
     display_.setTextColor(hal::PixelColor::White);
     drawCentered(5, text::get(text::TextId::ArcadeNewTop100));
     char scoreText[20]{};
-    std::snprintf(
+    text::formatInto(
         scoreText,
         sizeof(scoreText),
         text::get(text::TextId::ArcadeScoreFormat),
@@ -322,7 +323,7 @@ void ArcadeShell::renderLeaderboard() {
         const std::uint8_t first = static_cast<std::uint8_t>(leaderboardScroll_ + 1U);
         const std::uint8_t last = static_cast<std::uint8_t>(
             std::min<int>(table_.count, leaderboardScroll_ + kVisibleLeaderboardRows));
-        std::snprintf(
+        text::formatInto(
             range,
             sizeof(range),
             text::get(text::TextId::ArcadeRangeFormat),
@@ -341,7 +342,7 @@ void ArcadeShell::renderLeaderboard() {
                 break;
             }
             char line[24]{};
-            std::snprintf(
+            text::formatInto(
                 line,
                 sizeof(line),
                 text::get(text::TextId::ArcadeRankFormat),

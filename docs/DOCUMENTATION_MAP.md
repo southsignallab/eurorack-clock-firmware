@@ -9,7 +9,7 @@ Each topic has one authoritative document. Other documents link to it instead of
 | Topic | Authoritative document | Source in code or data |
 | --- | --- | --- |
 | Operating behavior | the chapter files in [`user-guide/`](user-guide/README.md) | — |
-| Menus and settings | [`user-guide/15-settings-map.md`](user-guide/15-settings-map.md) | `src/ui_text.h`, `src/ui/menu_model.cpp` |
+| Menus and settings | [`user-guide/15-settings-map.md`](user-guide/15-settings-map.md) | `src/ui_text.h`, `src/ui/menu_model.cpp`, `src/ui/menu_model_rows.cpp` |
 | Display variants and build flags | [`CONFIGURATION.md`](CONFIGURATION.md) | `platformio.ini`, `src/config.h` |
 | Pin assignment | [`CONFIGURATION.md`](CONFIGURATION.md) | `src/pin_map.h` |
 | Factory defaults | [`CONFIGURATION.md`](CONFIGURATION.md) | `src/defaults.h` |

@@ -232,7 +232,9 @@ def main() -> int:
     parser = read_layout(args.layout)
     generated = outputs(parser)
     if args.check:
-        stale = [path for path, content in generated.items() if not path.exists() or path.read_text(encoding="utf-8") != content]
+        # Bytes, not text: a CRLF copy must count as stale (F-089).
+        stale = [path for path, content in generated.items()
+                 if not path.exists() or path.read_bytes() != content.encode("utf-8")]
         obsolete = [path for path in LEGACY_ENCODER_ASSETS if path.exists()]
         if stale or obsolete:
             details = [str(path.relative_to(ROOT)) for path in stale]
@@ -247,7 +249,7 @@ def main() -> int:
 
     for path, content in generated.items():
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
+        path.write_bytes(content.encode("utf-8"))  # LF on every platform (F-089)
         print(path.relative_to(ROOT))
     return 0
 

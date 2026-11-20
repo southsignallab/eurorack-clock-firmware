@@ -223,7 +223,7 @@ Two further environments build the SSD1315 profile with `-DCLOCK_RUNTIME_INSTRUM
 | `blackpill_f401cc_debug_instrumented` | PlatformIO debug default (`-Og -g2 -ggdb2`) |
 | `blackpill_f401cc_timing` | Release level `-Os` with debug symbols, for timing numbers that transfer to release images |
 
-The firmware enables the DWT cycle counter at boot and records the longest TIM3 scheduler ISR body, the longest foreground `InterruptLock` section (both in CPU cycles at 84 MHz), the number of rising gate edges moved by one scheduler tick, the scheduler ticks caught up beyond one per interrupt (`caughtUpSchedulerTicks`), the interrupts that reached the catch-up limit (`schedulerCatchUpLimitHits`) the staged changes that had to compute under the lock after three stale preparations (`stagedSwapFallbacks`), the opposite edges queued for merged INPUT 1/2 interrupts (`synthesizedInputEdges`), the encoder anchors taken at rest (`encoderAnchors`), the A/B state at the last anchor request (`encoderAnchorRequestPhase`, bit 1 = A, bit 0 = B) and the partial encoder counts discarded in the detent state (`encoderDiscardedRemainders`). Read them over SWD from the C symbol `gClockRuntimeCounters` (for example `print gClockRuntimeCounters` in GDB); `measurementOverheadCycles` holds the cost of two back-to-back counter reads, and `cycleCounterRunning` is zero if the counter did not start. Nothing is printed from an interrupt. Release environments contain none of this code: the flag stops the build unless `build_type = debug`.
+The firmware enables the DWT cycle counter at boot and records the longest TIM3 scheduler ISR body, the longest foreground `InterruptLock` section (both in CPU cycles at 84 MHz), the number of rising gate edges moved by one scheduler tick, the scheduler ticks caught up beyond one per interrupt (`caughtUpSchedulerTicks`), the interrupts that reached the catch-up limit (`schedulerCatchUpLimitHits`) the staged changes that had to compute under the lock after three stale preparations (`stagedSwapFallbacks`), the opposite edges queued for merged INPUT 1/2 interrupts (`synthesizedInputEdges`), the encoder anchors taken at rest (`encoderAnchors`), the A/B state at the last anchor request (`encoderAnchorRequestPhase`, bit 1 = A, bit 0 = B) and the partial encoder counts discarded in the detent state (`encoderDiscardedRemainders`). Read them over SWD from the C symbol `gClockRuntimeCounters` (for example `print gClockRuntimeCounters` in GDB); `measurementOverheadCycles` holds the cost of two back-to-back counter reads, `cycleCounterRunning` is zero if the counter did not start, and `schedulerIsrBudgetCycles` and `interruptLockBudgetCycles` hold the internal budgets from `src/config.h` (see [`TIMING.md`](TIMING.md)) in cycles for comparison with the two maxima. Nothing is printed from an interrupt. Release environments contain none of this code: the flag stops the build unless `build_type = debug`.
 
 ## 12. Windows: upload through DFU
 
@@ -746,20 +746,9 @@ Do not add the Rack SDK as a submodule, vendor directory or repository artifact.
 
 ## 31. GitHub Actions and releases
 
-CI runs automatically on pushes and pull requests. It checks architecture, Python tooling, native tests, complete host coverage, sanitizers, the headless simulator on Windows/macOS/Linux, the SDL3 frontend build, the production SPI firmware builds, and memory budgets. Firmware binary packaging is enabled from the STM32CubeF4 target; release publication remains controlled by the release workflow.
+CI runs automatically on pushes and pull requests. It checks architecture, Python tooling, the clang-tidy baseline, native tests, complete host coverage, sanitizers, the headless simulator on Windows/macOS/Linux, the SDL3 frontend build, the production SPI firmware builds, and memory budgets. Firmware binary packaging is enabled from the STM32CubeF4 target; release publication remains controlled by the release workflow.
 
-Release tags must exactly match `src/version.h`:
-
-```text
-Firmware: 1.2.0
-Tag:      v1.2.0
-```
-
-Prerelease tags containing `-` are published as GitHub prereleases.
-
-Release preparation freezes two human-authored sources: the versioned ODT manual and `docs/releases/<version>/RELEASE_SUMMARY.md`. The summary is intentionally user-facing; `CHANGELOG.md` remains the detailed engineering history.
-
-`scripts/package_release.py firmware` turns each release ELF into a persistence-safe sparse DfuSe image with the boot and application Flash elements only. Release filenames are `eurorack-clock-firmware-<flavor>-<version>.dfu` for `default`, `pixel-raid`, `formula-1`, `breakout`, and `egg-journey`. `finalize` adds the versioned ODT/PDF manual, full changelog, user summary, generated release notes, project/manual licenses, third-party notices, build provenance, and SHA-256/MD5 manifests. The simulator is explicitly excluded from release assets. A future VCV Rack build can publish versioned packages through `dist/vcv/`.
+Releases are described only in [`RELEASE_PROCESS.md`](RELEASE_PROCESS.md): tag format and the check against `src/version.h`, prerelease tags, the frozen manual and release summary, the firmware flavors and the release payload.
 
 ## 32. Recommended first-day validation
 

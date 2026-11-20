@@ -13,6 +13,7 @@
 #include <cstdio>
 
 #include "config.h"
+#include "text_format.h"
 #include "ui/clock_logo_bitmap.h"
 #include "ui_text.h"
 #include "version.h"
@@ -222,7 +223,7 @@ void UiRenderer::renderBootScreen(std::uint32_t elapsedMs) {
     drawBootLogoBitmap(display_);
 
     char versionText[24]{};
-    std::snprintf(
+    text::formatInto(
         versionText,
         sizeof(versionText),
         text::get(text::TextId::FirmwareVersionFormat),

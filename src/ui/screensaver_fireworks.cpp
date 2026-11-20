@@ -76,7 +76,11 @@ void ScreensaverRenderer::renderFireworks(const std::uint32_t frameIndex) {
     } else if (cycleFrame < kLaunchFrames + kBurstFrames) {
         const std::uint32_t age = cycleFrame - kLaunchFrames;
         if (age == 0U) {
-            display_.fillRectangle(burstX - 1, targetY - 1, 3, 3);
+            display_.fillRectangle(
+                static_cast<std::int16_t>(burstX - 1),
+                static_cast<std::int16_t>(targetY - 1),
+                3,
+                3);
         }
         const std::int32_t radius = static_cast<std::int32_t>(age + 1U);
         const std::int32_t gravity = static_cast<std::int32_t>((age * age) / 10U);

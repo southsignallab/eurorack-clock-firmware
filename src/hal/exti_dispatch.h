@@ -43,6 +43,14 @@ inline constexpr std::uint32_t kMaximumLevelRereads = 3U;
  *
  * Iterates over bit indices, so the last line 15 ends the loop (F-024).
  * Requires @p lastLine <= 15.
+ *
+ * @param firstLine First EXTI line number to check.
+ * @param lastLine Last EXTI line number to check, inclusive, at most 15.
+ * @param isPending Reads the EXTI_PR bit of one line.
+ * @param handle Called with the EXTI_PR bit mask of every pending line, in ascending order.
+ *
+ * @isr Runs in the EXTI input-edge interrupts: bounded (at most 16 lines), non-blocking, no
+ * allocation, no output, opens no interrupt lock; @p handle runs in the same context.
  */
 void dispatchPendingLines(
     std::uint32_t firstLine,
@@ -65,6 +73,9 @@ void dispatchPendingLines(
  * further edge came and count a merged pulse that did not happen. While the bit is
  * set again after a read, it is cleared and the level read again, at most
  * kMaximumLevelRereads times.
+ *
+ * @isr Runs in the EXTI input-edge interrupts: bounded (at most kMaximumLevelRereads
+ * rereads), non-blocking, no allocation, no output, opens no interrupt lock.
  */
 bool readSettledLevel(
     std::uint32_t pin,

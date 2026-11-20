@@ -17,11 +17,17 @@
 
 namespace clockfw::ui::bootlogo {
 
+/** Left edge of the logo on the display, in pixels. */
 inline constexpr std::int16_t kX = 7;
+/** Top edge of the logo on the display, in pixels. */
 inline constexpr std::int16_t kY = 8;
+/** Logo width in pixels. */
 inline constexpr std::uint16_t kWidth = 112U;
+/** Logo height in pixels (rows). */
 inline constexpr std::uint16_t kHeight = 25U;
+/** Bytes per bitmap row: kWidth / 8. */
 inline constexpr std::uint16_t kBytesPerRow = 14U;
+/** Row-major 1-bit bitmap, kBytesPerRow bytes per row; the MSB is the leftmost pixel. */
 inline constexpr std::array<std::uint8_t, 350> kBitmap{
     {0x01U, 0xFFU, 0x80U, 0x00U, 0x00U, 0x00U, 0x7FU, 0x80U, 0x00U, 0x1FU, 0xF8U, 0x00U, 0x00U,
      0x00U, 0x07U, 0xFFU, 0xF0U, 0x03U, 0x00U, 0x01U, 0xFFU, 0xE0U, 0x00U, 0x7FU, 0xFFU, 0x00U,

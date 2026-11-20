@@ -45,7 +45,10 @@ class ClockApplication final {
     /** @brief Constructs all firmware components in dependency order. */
     ClockApplication();
 
-    /** @brief Initializes factory defaults, persisted metadata, hardware, boot UI, and scheduler safely. */
+    /**
+     * @brief Initializes factory defaults, persisted metadata, hardware, boot UI, and
+     *        scheduler safely.
+     */
     void begin();
 
     /**
@@ -136,7 +139,16 @@ class ClockApplication final {
 #endif
 
   private:
-    /** @brief Timer ISR thunk used by the HAL periodic-timer callback boundary. */
+    /**
+     * @brief Timer ISR thunk used by the HAL periodic-timer callback boundary.
+     *
+     * Opens the engine quantum, runs the sync service, then the engine tick over the
+     * elapsed ticks, which ends with the single gate write.
+     *
+     * @isr TIM3 scheduler interrupt: bounded (catch-up limited to
+     *      config::kMaximumSchedulerCatchUpTicks), non-blocking, no allocation, opens no
+     *      interrupt lock.
+     */
     static void schedulerInterruptThunk();
 
     /**
@@ -150,13 +162,24 @@ class ClockApplication final {
      *
      * Foreground precondition of the persistence coordinator. The storage commit
      * gate (ExternalSyncController) re-checks the engine atomically before erase.
+     *
+     * @return True when neither the foreground transport nor the engine is playing.
      */
     bool flashWriteAllowed() const;
 
-    /** @brief Runs the persistence coordinator and forwards new failures to the UI. */
+    /**
+     * @brief Runs the persistence coordinator and forwards new failures to the UI.
+     * @param nowMs Current monotonic time in milliseconds.
+     */
     void servicePersistence(std::uint32_t nowMs);
 
-    /** @brief Renders the boot screen and returns true only when encoder push stayed held throughout. */
+    /**
+     * @brief Renders the boot screen and returns true only when encoder push stayed held
+     *        throughout.
+     * @return True when the encoder button was pressed for the whole boot duration.
+     *
+     * Blocks for config::kBootDurationMs with the output stage disabled and all gates LOW.
+     */
     bool runBootSequence();
 
     /** @brief Runs the compile-time selected boot Easter egg synchronously. */
@@ -176,7 +199,11 @@ class ClockApplication final {
     /** @brief Loads every channel's persisted active Sequencer 2.0 pattern into the engine. */
     void loadSequencerPatternBank();
 
-    /** @brief Applies persistent device-local control/display preferences to the HAL only when they change. */
+    /**
+     * @brief Applies persistent device-local control/display preferences to the HAL only when
+     *        they change.
+     * @param force True applies both preferences even when they did not change.
+     */
     void synchronizeDevicePreferences(bool force = false);
 
     /** @brief Enters a safe permanent failure state when the display cannot be initialized. */
@@ -193,39 +220,69 @@ class ClockApplication final {
     /** Active composition-root instance used only by the static timer ISR thunk. */
     static ClockApplication* activeInstance_;
 
+    /** Application state edited by the UI; foreground only. */
     ClockState state_{};
+    /** Driver of the eight gate outputs. */
     hal::GateOutputDriver gateOutputs_{};
+    /** Encoder and button input. */
     hal::ControlPanel controlPanel_{};
+    /** Edge capture of the two comparator inputs. */
     hal::ExternalInputCapture externalInputs_{};
+    /** OLED display. */
     hal::OledDisplay display_{};
+    /** TIM3 scheduler timer. */
     hal::PeriodicTimer schedulerTimer_{};
+    /** Internal Flash storage shared by every store and game. */
     hal::PersistentStorage persistentStorage_{};
+    /** Pixel Raid high scores. */
     game::ArcadeLeaderboardStore pixelRaidLeaderboard_;
+    /** Formula 1 high scores. */
     game::ArcadeLeaderboardStore formula1Leaderboard_;
+    /** Breakout high scores. */
     game::ArcadeLeaderboardStore breakoutLeaderboard_;
+    /** Egg Journey high scores. */
     game::ArcadeLeaderboardStore eggJourneyLeaderboard_;
+    /** Leaderboard of the compile-time selected game; nullptr when it has none. */
     game::ArcadeLeaderboardStore* selectedLeaderboard_ = nullptr;
+    /** Pixel Raid boot game. */
     game::PixelRaidGame pixelRaidGame_;
+    /** Formula 1 boot game. */
     game::Formula1Game formula1Game_;
+    /** Breakout boot game. */
     game::BreakoutGame breakoutGame_;
+    /** Egg Journey boot game. */
     game::EggJourneyGame eggJourneyGame_;
+    /** Beatknecht boot game. */
     game::Beatknecht beatknecht_;
+    /** Persistent ClockState store. */
     services::PersistentStateService persistentState_;
+    /** Persistent Custom Groove library. */
     services::CustomGrooveStore customGrooveStore_;
+    /** Persistent Sequencer 2.0 patterns. */
     services::SequencerPatternStore sequencerPatternStore_;
+    /** Persistent Sequencer 2.0 step expressions. */
     services::SequencerStepStore sequencerStepStore_;
+    /** Real-time scheduler engine. */
     engine::ClockEngine engine_;
+    /** External sync and input service; also the Flash commit gate (D-04). */
     services::ExternalSyncController externalSyncController_;
+    /** Schedules and retries the Flash commits of every store. */
     services::PersistenceCoordinator persistenceCoordinator_;
+    /** Persistence notice revision already shown by the UI. */
     std::uint32_t announcedPersistenceNotice_ = 0U;
     /** Input transport-command count already reported to the UI as activity (E-11). */
     std::uint32_t seenInputTransportCommands_ = 0U;
     /** Control-activity revision seen by the last persistence pass (W-311 reminder). */
     std::uint32_t remindedControlActivity_ = 0U;
+    /** Screen renderer. */
     ui::UiRenderer renderer_;
+    /** Front-panel interaction controller. */
     ui::UiController uiController_;
+    /** Encoder direction last applied to the control panel. */
     bool appliedEncoderDirectionReversed_ = false;
+    /** Display rotation last applied to the display. */
     bool appliedDisplayRotated180_ = false;
+    /** True once synchronizeDevicePreferences() has applied both preferences. */
     bool devicePreferencesApplied_ = false;
 #ifdef CLOCK_SIMULATOR
     enum class SimulatorLifecycle : std::uint8_t { Booting, EasterEgg, Running, PoweredOff };

@@ -13,6 +13,7 @@
 
 #include "config.h"
 #include "engine/output_mode_resolver.h"
+#include "text_format.h"
 #include "ui/text_formatter.h"
 #include "ui_text.h"
 
@@ -67,12 +68,12 @@ void formatClockPerformanceRate(
     }
 
     if (settings.rate.numerator != 1U || settings.rate.denominator != 1U) {
-        std::snprintf(
+        text::formatInto(
             output, outputSize, "%u:%u", settings.rate.numerator, settings.rate.denominator);
         return;
     }
 
-    std::snprintf(
+    text::formatInto(
         output,
         outputSize,
         "%c%u",
@@ -113,7 +114,7 @@ void PerformanceRenderer::render(
     }
 
     char meterText[8]{};
-    std::snprintf(
+    text::formatInto(
         meterText,
         sizeof(meterText),
         text::get(text::TextId::MeterFormat),
@@ -145,7 +146,7 @@ void PerformanceRenderer::render(
         displayedBpm = (engineSnapshot.externalBpmMilli + 500U) / 1000U;
     }
     displayedBpm = std::min<std::uint32_t>(displayedBpm, config::kSupportedMaximumBpm);
-    std::snprintf(tempoText, sizeof(tempoText), "%u", static_cast<unsigned>(displayedBpm));
+    text::formatInto(tempoText, sizeof(tempoText), "%u", static_cast<unsigned>(displayedBpm));
 
     const bool dividerView = state.operatingMode == OperatingMode::DividerBank;
     const bool clockOnlyView = state.operatingMode != OperatingMode::Independent ||
@@ -176,7 +177,7 @@ void PerformanceRenderer::render(
 
     if (selectedChannel.common.swingPercent > 0U) {
         char swingText[8]{};
-        std::snprintf(
+        text::formatInto(
             swingText,
             sizeof(swingText),
             text::get(text::TextId::PercentFormat),
@@ -213,7 +214,7 @@ void PerformanceRenderer::render(
     if (configuredChannel.common.mode == ChannelMode::Sequencer &&
         activeSequencerPattern != nullptr) {
         // Sequencer 2.0 owns the pattern length; the legacy field is not updated (F-035).
-        std::snprintf(
+        text::formatInto(
             detailText,
             sizeof(detailText),
             "%u",
@@ -276,16 +277,26 @@ void PerformanceRenderer::drawDividerRateSlot(
     const std::int16_t symbolY = static_cast<std::int16_t>(y + 3);
 
     if (multiply) {
-        display_.drawLine(symbolX, symbolY, symbolX + 4, symbolY + 4);
-        display_.drawLine(symbolX + 4, symbolY, symbolX, symbolY + 4);
+        display_.drawLine(
+            symbolX,
+            symbolY,
+            static_cast<std::int16_t>(symbolX + 4),
+            static_cast<std::int16_t>(symbolY + 4));
+        display_.drawLine(
+            static_cast<std::int16_t>(symbolX + 4),
+            symbolY,
+            symbolX,
+            static_cast<std::int16_t>(symbolY + 4));
     } else {
-        display_.fillRectangle(symbolX + 2, symbolY - 1, 1, 1);
-        display_.drawHorizontalLine(symbolX, symbolY + 2, 5);
-        display_.fillRectangle(symbolX + 2, symbolY + 5, 1, 1);
+        display_.fillRectangle(
+            static_cast<std::int16_t>(symbolX + 2), static_cast<std::int16_t>(symbolY - 1), 1, 1);
+        display_.drawHorizontalLine(symbolX, static_cast<std::int16_t>(symbolY + 2), 5);
+        display_.fillRectangle(
+            static_cast<std::int16_t>(symbolX + 2), static_cast<std::int16_t>(symbolY + 5), 1, 1);
     }
 
     char factorText[4]{};
-    std::snprintf(factorText, sizeof(factorText), "%u", static_cast<unsigned>(rate.factor));
+    text::formatInto(factorText, sizeof(factorText), "%u", static_cast<unsigned>(rate.factor));
     display_.drawText(
         static_cast<std::int16_t>(x + 11), static_cast<std::int16_t>(y + 2), factorText);
 }
@@ -348,7 +359,7 @@ void PerformanceRenderer::drawChannelStatus(
     }
 
     char status[8]{};
-    std::snprintf(
+    text::formatInto(
         status,
         sizeof(status),
         text::get(text::TextId::ChannelStatusFormat),
@@ -379,32 +390,6 @@ void PerformanceRenderer::drawClockRoleStatus(const ClockSource source, const bo
     display_.setTextColor(hal::PixelColor::White);
 }
 
-void PerformanceRenderer::drawLockIcon(const std::int16_t x, const std::int16_t y) {
-    display_.drawRectangle(x, static_cast<std::int16_t>(y + 3), 5, 4);
-    display_.drawHorizontalLine(static_cast<std::int16_t>(x + 1), y, 3);
-    display_.drawVerticalLine(x, static_cast<std::int16_t>(y + 1), 3);
-    display_.drawVerticalLine(
-        static_cast<std::int16_t>(x + 4), static_cast<std::int16_t>(y + 1), 3);
-}
-
-void PerformanceRenderer::drawHumanizeIcon(const std::int16_t x, const std::int16_t y) {
-    // Compact stick figure made only from public OLED primitives.
-    display_.drawRectangle(static_cast<std::int16_t>(x + 2), y, 3, 3);
-    display_.drawVerticalLine(
-        static_cast<std::int16_t>(x + 3), static_cast<std::int16_t>(y + 3), 3);
-    display_.drawHorizontalLine(x, static_cast<std::int16_t>(y + 4), 7);
-    display_.drawLine(
-        static_cast<std::int16_t>(x + 3),
-        static_cast<std::int16_t>(y + 5),
-        static_cast<std::int16_t>(x + 1),
-        static_cast<std::int16_t>(y + 7));
-    display_.drawLine(
-        static_cast<std::int16_t>(x + 3),
-        static_cast<std::int16_t>(y + 5),
-        static_cast<std::int16_t>(x + 5),
-        static_cast<std::int16_t>(y + 7));
-}
-
 void PerformanceRenderer::drawTapIndicator(
     const std::int16_t x,
     const std::int16_t y,
@@ -428,20 +413,6 @@ void PerformanceRenderer::drawTapIndicator(
                     hal::PixelColor::White);
             }
         }
-    }
-}
-
-char PerformanceRenderer::statusModeCharacter(const ChannelMode mode) {
-    switch (mode) {
-        case ChannelMode::Off:
-            return 'O';
-        case ChannelMode::Euclid:
-            return 'E';
-        case ChannelMode::Sequencer:
-            return 'S';
-        case ChannelMode::Clock:
-        default:
-            return 'C';
     }
 }
 

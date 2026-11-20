@@ -79,6 +79,12 @@ std::uint32_t PeriodicTimer::elapsedSinceUpdateUsFromIsr() {
 #endif
 }  // namespace clockfw::hal
 #if !defined(CLOCK_HOST_TEST) && !defined(CLOCK_SIMULATOR)
+/**
+ * @brief TIM3 interrupt vector: the scheduler interrupt.
+ *
+ * Advances the 64-bit TIM5 time base on every entry, then clears a pending, enabled
+ * update flag and calls the callback registered by PeriodicTimer::start().
+ */
 extern "C" void TIM3_IRQHandler() {
 #if defined(CLOCK_RUNTIME_INSTRUMENTATION)
     // W-056: handler body from entry to exit; exception stacking is not included.

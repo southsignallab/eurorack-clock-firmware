@@ -66,6 +66,10 @@ def parse_findings(output: str, root: Path = ROOT) -> Counter:
         if match is None:
             continue
         path, _, _, message, check = match.groups()
+        if not Path(path).is_absolute():
+            # clang-tidy prints absolute paths. A path that is not absolute here comes from
+            # another platform (C:/msys64/... on Linux) and would resolve into the repository.
+            continue
         try:
             relative = Path(path).resolve().relative_to(root.resolve()).as_posix()
         except ValueError:

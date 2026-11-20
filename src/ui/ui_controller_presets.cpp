@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include "text_format.h"
 #include "ui/preset_name_alphabet.h"
 #include "ui_text.h"
 
@@ -39,7 +40,7 @@ void UiController::preparePresetName() {
         std::copy_n(existingName, length, navigation_.presetNameBuffer.begin());
     } else {
         char defaultName[services::PersistentStateService::kPresetNameLength + 1U]{};
-        std::snprintf(
+        text::formatInto(
             defaultName,
             sizeof(defaultName),
             text::get(text::TextId::PresetDefaultFormat),

@@ -10,6 +10,7 @@
 
 #include <cstdio>
 
+#include "text_format.h"
 #include "ui_text.h"
 
 namespace clockfw::ui {
@@ -17,7 +18,7 @@ namespace {
 
 /** Copies one localized static string into a bounded menu field. */
 void copyText(char* const destination, const std::size_t size, const text::TextId id) {
-    std::snprintf(destination, size, "%s", text::get(id));
+    text::formatInto(destination, size, "%s", text::get(id));
 }
 
 }  // namespace
@@ -41,15 +42,15 @@ MenuRow buildSequencerV2MenuRow(
     if (rowIndex == 0U) {
         copyText(row.value, sizeof(row.value), text::TextId::Arrow);
     } else if (rowIndex == 1U) {
-        std::snprintf(
+        text::formatInto(
             row.value,
             sizeof(row.value),
             text::get(text::TextId::PatternSlotFormat),
             activeSlot + 1U);
     } else if (rowIndex == 2U) {
-        std::snprintf(row.value, sizeof(row.value), "%u", pattern.length);
+        text::formatInto(row.value, sizeof(row.value), "%u", pattern.length);
     } else if (rowIndex == 3U) {
-        std::snprintf(row.value, sizeof(row.value), "%u", pattern.rotation);
+        text::formatInto(row.value, sizeof(row.value), "%u", pattern.rotation);
     } else if (rowIndex == 4U) {
         text::TextId id = text::TextId::Forward;
         switch (pattern.direction) {

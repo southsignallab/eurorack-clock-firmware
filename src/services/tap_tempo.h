@@ -54,9 +54,13 @@ class TapTempo final {
         std::uint16_t maximumBpm);
 
   private:
+    /** Time of the last accepted tap in microseconds (TIM5 time base). */
     std::uint32_t previousTapAtUs_ = 0U;
+    /** True once a tap has started the current sequence. */
     bool havePreviousTap_ = false;
+    /** Rolling window of the most recent valid inter-tap intervals in microseconds. */
     std::array<std::uint32_t, 4U> intervalsUs_{};
+    /** Number of valid entries in intervalsUs_ (0..4). */
     std::uint8_t intervalCount_ = 0U;
 };
 

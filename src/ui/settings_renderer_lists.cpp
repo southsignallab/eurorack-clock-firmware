@@ -14,6 +14,7 @@
 #include <cstring>
 
 #include "services/template_service.h"
+#include "text_format.h"
 #include "ui/preset_name_alphabet.h"
 #include "ui_text.h"
 
@@ -78,7 +79,7 @@ void SettingsRenderer::renderInformationPopover(const NavigationState& navigatio
         std::memcpy(first, value, std::min(split, sizeof(first) - 1U));
         first[std::min(split, sizeof(first) - 1U)] = '\0';
         const std::size_t secondStart = split < length && value[split] == ' ' ? split + 1U : split;
-        std::snprintf(second, sizeof(second), "%s", value + secondStart);
+        text::formatInto(second, sizeof(second), "%s", value + secondStart);
         drawCenteredTextLine(display_, 22, first);
         drawCenteredTextLine(display_, 34, second);
     }
@@ -101,7 +102,7 @@ void SettingsRenderer::renderTemplates(const NavigationState& navigation) {
         const std::int16_t y = static_cast<std::int16_t>(13 + static_cast<int>(visibleRow) * 12);
         const bool selected = templateIndex == navigation.cursor;
         if (selected) {
-            display_.fillRectangle(0, y - 1, 124, 10);
+            display_.fillRectangle(0, static_cast<std::int16_t>(y - 1), 124, 10);
             display_.setTextColor(hal::PixelColor::Black);
         }
         display_.drawText(2, y, services::TemplateService::name(templateIndex));
@@ -139,9 +140,9 @@ void SettingsRenderer::renderPresetSlots(
         const bool selected = navigation.cursor == slotIndex;
 
         char slotNumber[3]{};
-        std::snprintf(slotNumber, sizeof(slotNumber), "%u", slotIndex + 1U);
+        text::formatInto(slotNumber, sizeof(slotNumber), "%u", slotIndex + 1U);
         if (selected) {
-            display_.fillRectangle(0, y - 1, 126, 9);
+            display_.fillRectangle(0, static_cast<std::int16_t>(y - 1), 126, 9);
             display_.setTextColor(hal::PixelColor::Black);
         }
         display_.drawText(2, y, slotNumber);

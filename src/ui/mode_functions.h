@@ -29,10 +29,20 @@ inline constexpr std::array kModeFunctions{
     ModeFunction::Sequencer,
     ModeFunction::Off};
 
-/** @brief Returns the currently active carousel entry for one selected channel/context. */
+/**
+ * @brief Returns the currently active carousel entry for one selected channel/context.
+ * @param state Complete clock state.
+ * @param selectedChannel Zero-based selected channel.
+ * @return Index into kModeFunctions; 0 when no entry matches.
+ */
 std::uint8_t modeFunctionIndexForState(const ClockState& state, std::uint8_t selectedChannel);
 
-/** @brief Applies one mode-selector action to the persistent state model. */
+/**
+ * @brief Applies one mode-selector action to the persistent state model.
+ * @param state Clock state to change.
+ * @param selectedChannel Zero-based channel for the per-channel modes.
+ * @param modeFunction Mode function to apply.
+ */
 void applyModeFunction(ClockState& state, std::uint8_t selectedChannel, ModeFunction modeFunction);
 
 }  // namespace clockfw::ui

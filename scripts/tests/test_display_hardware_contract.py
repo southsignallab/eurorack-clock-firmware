@@ -110,9 +110,9 @@ class DisplayHardwareContractTests(unittest.TestCase):
 
     def test_transmit_path_uses_hal_spi_transmit_without_receive(self) -> None:
         source = TRANSPORT.read_text(encoding="utf-8")
-        self.assertIn("HAL_SPI_Transmit(&gDisplaySpi", source)
-        self.assertNotIn("HAL_SPI_TransmitReceive(&gDisplaySpi", source)
-        self.assertNotIn("HAL_SPI_Receive(&gDisplaySpi", source)
+        self.assertRegex(source, r"HAL_SPI_Transmit\(\s*&gDisplaySpi")  # the call may be wrapped
+        self.assertNotRegex(source, r"HAL_SPI_TransmitReceive\(\s*&gDisplaySpi")
+        self.assertNotRegex(source, r"HAL_SPI_Receive\(\s*&gDisplaySpi")
 
 
 if __name__ == "__main__":

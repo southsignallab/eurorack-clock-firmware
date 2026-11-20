@@ -25,7 +25,12 @@ namespace clockfw::hal {
  */
 class FlashCommitGate {
   public:
-    /** @brief Atomically checks the engine and opens the commit window; false keeps Flash untouched. */
+    /**
+     * @brief Atomically checks the engine and opens the commit window; false keeps Flash
+     * untouched.
+     * @return True when the window is open and the caller must call closeCommitWindow();
+     * false when the engine runs.
+     */
     [[nodiscard]] virtual bool tryOpenCommitWindow() = 0;
     /** @brief Closes the window and executes any start deferred while it was open. */
     virtual void closeCommitWindow() = 0;
@@ -92,6 +97,10 @@ class PersistentStorage final {
      *
      * The staging image lives inside PersistentStorage rather than on the call stack.
      * This is used when several logical records must share one physical Flash commit.
+     *
+     * @return False when the newest committed slot is write-locked (outcome Locked);
+     * true when the staging image holds a copy of the active image (erased bytes where
+     * none exists).
      */
     [[nodiscard]] bool beginUpdate();
 
@@ -102,25 +111,54 @@ class PersistentStorage final {
      * reserved for the guarded ERASE ALL DATA flow; the caller stages every byte
      * it wants to keep. The commit always writes, even when the staged image
      * happens to equal the active one, so the lock is cleared durably.
+     *
+     * @return Always true.
      */
     [[nodiscard]] bool beginFullReplacement();
 
-    /** @brief Applies one byte range to the currently staged image. */
+    /**
+     * @brief Applies one byte range to the currently staged image.
+     * @param offset Byte offset inside the logical image.
+     * @param source Bytes to stage; not retained.
+     * @param size Number of bytes.
+     * @return False when no update is open, @p source is nullptr or the range exceeds
+     * kCapacityBytes; true otherwise, also when the bytes were already staged.
+     */
     [[nodiscard]] bool stageBytes(std::size_t offset, const std::uint8_t* source, std::size_t size);
 
-    /** @brief Fills one byte range in the currently staged image. */
+    /**
+     * @brief Fills one byte range in the currently staged image.
+     * @param offset Byte offset inside the logical image.
+     * @param size Number of bytes.
+     * @param value Fill value.
+     * @return False when no update is open or the range exceeds kCapacityBytes.
+     */
     [[nodiscard]] bool stageFill(std::size_t offset, std::size_t size, std::uint8_t value);
 
-    /** @brief Commits the staged image atomically to the inactive A/B Flash slot. */
+    /**
+     * @brief Commits the staged image atomically to the inactive A/B Flash slot.
+     * @return True when the new generation is committed and verified, or when nothing
+     * changed (outcome Unchanged, Flash untouched). False when no update is open or the
+     * outcome is Locked, Deferred or Failed. The update is closed in every case.
+     *
+     * Blocking: erases and programs one Flash sector; asks the commit gate first.
+     */
     [[nodiscard]] bool commitUpdate();
 
     /** @brief Discards a staged image without touching Flash. */
     void cancelUpdate();
 
-    /** @brief True while the newest committed slot is in a format this firmware must not overwrite. */
+    /**
+     * @brief True while the newest committed slot is in a format this firmware must not
+     * overwrite.
+     * @return True when the newest committed slot is Foreign (F-045).
+     */
     bool writeLocked() const;
 
-    /** @brief Outcome of the most recent commit attempt through this instance. */
+    /**
+     * @brief Outcome of the most recent commit attempt through this instance.
+     * @return None until the first commitUpdate(), writeBytes() or locked beginUpdate().
+     */
     CommitOutcome lastCommitOutcome() const {
         return lastOutcome_;
     }
@@ -130,10 +168,15 @@ class PersistentStorage final {
      *
      * Lets RAM caches of stored records stay coherent with every writer of the
      * shared image without re-reading Flash while it is unchanged.
+     *
+     * @return Revision counter; compare for equality only, it wraps at 2^32.
      */
     static std::uint32_t contentRevision();
 
-    /** @brief Installs the scheduler interlock consulted before every physical commit. */
+    /**
+     * @brief Installs the scheduler interlock consulted before every physical commit.
+     * @param gate Interlock, not owned and kept until replaced; nullptr commits without one.
+     */
     void setCommitGate(FlashCommitGate* gate) {
         commitGate_ = gate;
     }
@@ -203,21 +246,41 @@ class PersistentStorage final {
 #endif
 
   private:
-    /** @brief Returns whether one byte range fits completely inside the logical image. */
+    /**
+     * @brief Returns whether one byte range fits completely inside the logical image.
+     * @param offset Byte offset inside the logical image.
+     * @param size Number of bytes; 0 is valid for any offset up to kCapacityBytes.
+     * @return True when offset + size <= kCapacityBytes, computed without overflow.
+     */
     static bool isRangeValid(std::size_t offset, std::size_t size);
 
     // Deliberately permanent scratch storage: the 12-KiB BSS allocation is predictable
     // and avoids multi-kilobyte stack frames during whole-image A/B commits.
-    /** @brief Opens an update after the target slot and generation are fixed. */
+    /**
+     * @brief Opens an update after the target slot and generation are fixed.
+     * @param replacement True starts from an erased image and marks it dirty; false copies
+     * the active image.
+     *
+     * Target is the slot other than the newest committed one, generation is its
+     * generation + 1 (slot 0 and generation 1 when nothing is committed).
+     */
     void openUpdate(bool replacement);
 
+    /** Staged logical image of the open update. */
     std::array<std::uint8_t, kCapacityBytes> stagingImage_{};
+    /** Interlock asked before every physical commit; not owned, may be nullptr. */
     FlashCommitGate* commitGate_ = nullptr;
+    /** Generation the open update will commit. */
     std::uint32_t stagedGeneration_ = 0U;
+    /** Slot index (0 or 1) the open update will write. */
     std::uint8_t stagedTargetSlot_ = 0U;
+    /** Outcome reported by lastCommitOutcome(). */
     CommitOutcome lastOutcome_ = CommitOutcome::None;
+    /** True between beginUpdate()/beginFullReplacement() and commit or cancel. */
     bool updateOpen_ = false;
+    /** True when the staged image differs from the copy taken at open, or for a replacement. */
     bool updateDirty_ = false;
+    /** True when the open update is a full replacement that may overwrite a Foreign slot. */
     bool replacement_ = false;
 };
 

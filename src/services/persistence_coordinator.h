@@ -43,7 +43,14 @@ class PersistenceCoordinator final {
         SaveLocked,  ///< Flash holds a newer, unknown format; writes are blocked, see F-045.
     };
 
-    /** @brief Binds the coordinator to the shared image and all foreground stores. */
+    /**
+     * @brief Binds the coordinator to the shared image and all foreground stores.
+     * @param storage Shared persistent image; not owned.
+     * @param state CURRENT and preset store; not owned.
+     * @param grooves Custom Groove store; not owned.
+     * @param patterns Sequencer pattern store; not owned.
+     * @param steps Sequencer step store; not owned.
+     */
     PersistenceCoordinator(
         hal::PersistentStorage& storage,
         PersistentStateService& state,
@@ -60,20 +67,32 @@ class PersistenceCoordinator final {
      */
     [[nodiscard]] bool service(std::uint32_t nowMs, bool allowFlashWrite);
 
-    /** @brief True while any store holds a change that is not yet durable. */
+    /**
+     * @brief Reports changes that are not yet durable.
+     * @return True while any store holds a change that is not yet durable.
+     */
     bool hasPendingCommit() const;
 
-    /** @brief Current user-visible persistence status. */
+    /**
+     * @brief Current user-visible persistence status.
+     * @return Status of the last attempt or of the write lock.
+     */
     Status status() const {
         return status_;
     }
 
-    /** @brief Increments with every event the UI should announce (failure, lock). */
+    /**
+     * @brief Revision of events the UI should announce.
+     * @return Counter that increments with every failure or newly detected lock.
+     */
     std::uint32_t noticeRevision() const {
         return noticeRevision_;
     }
 
-    /** @brief Consecutive failed or locked attempts since the last success. */
+    /**
+     * @brief Consecutive failed or locked attempts since the last success.
+     * @return Failure count, bounded by config::kPersistenceRetryCount + 1.
+     */
     std::uint8_t consecutiveFailures() const {
         return consecutiveFailures_;
     }
@@ -81,12 +100,18 @@ class PersistenceCoordinator final {
     /**
      * @brief True after the first attempt and all config::kPersistenceRetryCount
      * retries failed; no attempt follows until the stored data changes again.
+     * @return True while retries are exhausted.
      */
     bool retriesExhausted() const {
         return retriesExhausted_;
     }
 
-    /** @brief Delay before the next attempt after @p failures consecutive failures. */
+    /**
+     * @brief Delay before the next attempt after @p failures consecutive failures.
+     * @param failures Consecutive failures so far (1 = first failure).
+     * @return Delay in milliseconds: config::kPersistenceRetryInitialMs doubled per further
+     *         failure, capped at config::kPersistenceRetryMaximumMs.
+     */
     static std::uint32_t retryDelayMs(std::uint8_t failures);
 
 #ifdef CLOCK_SIMULATOR
@@ -108,36 +133,73 @@ class PersistenceCoordinator final {
 #endif
 
   private:
-    /** @brief Sum of all store change revisions; any difference restarts the quiet timer. */
+    /**
+     * @brief Sum of the CURRENT, Sequencer pattern and Sequencer step change revisions.
+     *
+     * Any difference restarts the quiet timer. Custom Groove edits are urgent and
+     * therefore not part of this sum.
+     * @return Wrapping sum of the three revisions.
+     */
     std::uint32_t combinedRevision() const;
 
-    /** @brief combinedRevision() plus Custom Groove mutations; any difference ends a retry pause. */
+    /**
+     * @brief combinedRevision() plus Custom Groove mutations.
+     * @return Wrapping sum; any difference ends a retry pause after exhausted retries.
+     */
     std::uint32_t storedDataRevision() const;
 
-    /** @brief True for pending work that bypasses the debounce. */
+    /**
+     * @brief Reports pending work that bypasses the debounce.
+     * @return True for preset edits, a pending boot migration or Custom Groove edits.
+     */
     bool hasUrgentCommit() const;
 
-    /** @brief Applies backoff and status after an unsuccessful attempt. */
+    /**
+     * @brief Applies backoff and status after an unsuccessful attempt.
+     * @param nowMs Current monotonic time in milliseconds.
+     * @param locked True when the attempt failed because writes are locked (SaveLocked).
+     */
     void recordFailure(std::uint32_t nowMs, bool locked);
 
-    /** @brief Stages every store into one open update and commits it. */
+    /**
+     * @brief Stages every store into one open update and commits it.
+     * @param nowMs Current monotonic time in milliseconds, used for the retry schedule.
+     * @return True only when a new generation was committed; false on failure, on a
+     *         deferral by the commit gate, or when the commit wrote nothing new.
+     */
     [[nodiscard]] bool commitAll(std::uint32_t nowMs);
 
+    /** Shared persistent image; not owned. */
     hal::PersistentStorage& storage_;
+    /** CURRENT and preset store; not owned. */
     PersistentStateService& state_;
+    /** Custom Groove store; not owned. */
     CustomGrooveStore& grooves_;
+    /** Sequencer pattern store; not owned. */
     SequencerPatternStore& patterns_;
+    /** Sequencer step store; not owned. */
     SequencerStepStore& steps_;
+    /** Time in ms of the first unsaved change of the current debounce window. */
     std::uint32_t firstChangeMs_ = 0U;
+    /** Time in ms of the latest observed revision change. */
     std::uint32_t lastChangeMs_ = 0U;
+    /** combinedRevision() seen at lastChangeMs_. */
     std::uint32_t lastRevision_ = 0U;
+    /** Earliest time in ms of the next attempt after a failure. */
     std::uint32_t retryAtMs_ = 0U;
+    /** Value returned by noticeRevision(). */
     std::uint32_t noticeRevision_ = 0U;
+    /** storedDataRevision() when retries were exhausted. */
     std::uint32_t exhaustedRevision_ = 0U;
+    /** Value returned by status(). */
     Status status_ = Status::Ok;
+    /** Value returned by consecutiveFailures(). */
     std::uint8_t consecutiveFailures_ = 0U;
+    /** True while a debounce window is open. */
     bool debounceActive_ = false;
+    /** True while retryAtMs_ gates the next attempt. */
     bool retryScheduled_ = false;
+    /** Value returned by retriesExhausted(). */
     bool retriesExhausted_ = false;
 };
 

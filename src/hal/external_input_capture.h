@@ -16,8 +16,14 @@ namespace clockfw::hal {
 
 /** @brief One comparator transition with a wrapping microsecond timestamp. */
 struct ExternalInputEdge {
+    /** SystemClock::microseconds() when the interrupt captured the edge; wraps at 2^32 us. */
     std::uint32_t timestampUs = 0U;
+    /** Comparator level after the edge: true = HIGH. */
     bool high = false;
+    /**
+     * True for the marker of the first edge dropped on a full queue: edges between this
+     * and the previous popped edge are missing.
+     */
     bool continuityLost = false;
 };
 
@@ -33,22 +39,54 @@ class ExternalInputCapture final {
     /** @brief Configures assigned comparator GPIOs and attaches edge interrupts. */
     void begin();
 
-    /** @brief Pops the oldest captured SYNC edge; false means the queue is empty. */
+    /**
+     * @brief Pops the oldest captured SYNC edge; false means the queue is empty.
+     * @param edge Receives the edge; unchanged when the call returns false.
+     * @return True when @p edge holds a queued edge or the continuity-loss marker.
+     *
+     * @isr Runs in the TIM3 scheduler interrupt: bounded, non-blocking, no allocation, no output,
+     * opens no interrupt lock.
+     */
     bool popSyncEdge(ExternalInputEdge& edge);
 
-    /** @brief Pops the oldest captured RST edge; false means the queue is empty. */
+    /**
+     * @brief Pops the oldest captured RST edge; false means the queue is empty.
+     * @param edge Receives the edge; unchanged when the call returns false.
+     * @return True when @p edge holds a queued edge or the continuity-loss marker.
+     *
+     * @isr Runs in the TIM3 scheduler interrupt: bounded, non-blocking, no allocation, no output,
+     * opens no interrupt lock.
+     */
     bool popResetEdge(ExternalInputEdge& edge);
 
-    /** @brief Returns the most recently observed SYNC comparator level. */
+    /**
+     * @brief Returns the most recently observed SYNC comparator level.
+     * @return True for HIGH, as latched by begin() or the last SYNC interrupt.
+     *
+     * @isr Runs in the TIM3 scheduler interrupt: bounded, non-blocking, no allocation, no output,
+     * opens no interrupt lock.
+     */
     bool syncLevelHigh() const;
 
-    /** @brief Returns the most recently observed RST comparator level. */
+    /**
+     * @brief Returns the most recently observed RST comparator level.
+     * @return True for HIGH, as latched by begin() or the last RST interrupt.
+     *
+     * @isr Runs in the TIM3 scheduler interrupt: bounded, non-blocking, no allocation, no output,
+     * opens no interrupt lock.
+     */
     bool resetLevelHigh() const;
 
-    /** @brief Returns the number of SYNC edges dropped because the queue was saturated. */
+    /**
+     * @brief Returns the number of SYNC edges dropped because the queue was saturated.
+     * @return Dropped SYNC edges since start, wrapping at 2^32.
+     */
     std::uint32_t droppedSyncEdges() const;
 
-    /** @brief Returns the number of RST edges collapsed because the queue was saturated. */
+    /**
+     * @brief Returns the number of RST edges collapsed because the queue was saturated.
+     * @return Dropped RST edges since start, wrapping at 2^32.
+     */
     std::uint32_t collapsedResetEdges() const;
 
 #ifdef CLOCK_HOST_TEST
@@ -65,6 +103,7 @@ class ExternalInputCapture final {
 #endif
 
   private:
+    /** Ring slots per input; one slot stays free, so a queue holds at most 15 edges. */
     static constexpr std::uint8_t kQueueCapacity = 16U;
 
     /**
@@ -81,13 +120,19 @@ class ExternalInputCapture final {
      * ordered access.
      */
     struct EdgeQueue {
+        /** Ring storage; slot head is written by the producer, slot tail read by the consumer. */
         std::array<ExternalInputEdge, kQueueCapacity> edges{};
+        /** Next slot to write; written only by the producer (EXTI). */
         std::atomic<std::uint8_t> head{0U};
+        /** Next slot to read; written only by the consumer (TIM3). */
         std::atomic<std::uint8_t> tail{0U};
         /** Published with release after the overflow payload below. */
         std::atomic<bool> overflowPending{false};
+        /** Timestamp in microseconds of the first dropped edge. */
         volatile std::uint32_t overflowTimestampUs = 0U;
+        /** Level of the first dropped edge: true = HIGH. */
         volatile bool overflowLevelHigh = false;
+        /** Edges dropped since start; written only by the producer, wraps at 2^32. */
         volatile std::uint32_t overflowCount = 0U;
     };
     static_assert(
@@ -95,16 +140,40 @@ class ExternalInputCapture final {
         "queue indices must not need a lock");
     static_assert(std::atomic<bool>::is_always_lock_free, "overflow flag must not need a lock");
 
-    /** @brief Shared EXTI thunk for the SYNC comparator GPIO. */
+    /**
+     * @brief Shared EXTI thunk for the SYNC comparator GPIO.
+     *
+     * Forwards to captureSyncFromIsr() of the instance set by begin(); does nothing before.
+     *
+     * @isr Runs in the EXTI input-edge interrupts: bounded, non-blocking, no allocation, no output,
+     * opens no interrupt lock.
+     */
     static void syncInterruptThunk();
 
-    /** @brief Shared EXTI thunk for the RST comparator GPIO. */
+    /**
+     * @brief Shared EXTI thunk for the RST comparator GPIO.
+     *
+     * Forwards to captureResetFromIsr() of the instance set by begin(); does nothing before.
+     *
+     * @isr Runs in the EXTI input-edge interrupts: bounded, non-blocking, no allocation, no output,
+     * opens no interrupt lock.
+     */
     static void resetInterruptThunk();
 
-    /** @brief Captures the current SYNC GPIO level and timestamp from interrupt context. */
+    /**
+     * @brief Captures the current SYNC GPIO level and timestamp from interrupt context.
+     *
+     * @isr Runs in the EXTI input-edge interrupts: bounded, non-blocking, no allocation, no output,
+     * opens no interrupt lock.
+     */
     void captureSyncFromIsr();
 
-    /** @brief Captures the current RST GPIO level and timestamp from interrupt context. */
+    /**
+     * @brief Captures the current RST GPIO level and timestamp from interrupt context.
+     *
+     * @isr Runs in the EXTI input-edge interrupts: bounded, non-blocking, no allocation, no output,
+     * opens no interrupt lock.
+     */
     void captureResetFromIsr();
 
     /**
@@ -116,19 +185,47 @@ class ExternalInputCapture final {
      * A changed level is one edge. An unchanged level means at least two edges
      * merged into one interrupt: the missing opposite edge is queued first, then
      * the observed edge, both with the same timestamp.
+     *
+     * @isr Runs in the EXTI input-edge interrupts: bounded, non-blocking, no allocation, no output,
+     * opens no interrupt lock.
      */
     void captureFromIsr(EdgeQueue& queue, volatile bool& storedLevelHigh, bool high);
 
-    /** @brief Pushes one edge into a single-producer/single-consumer ISR queue. */
+    /**
+     * @brief Pushes one edge into a single-producer/single-consumer ISR queue.
+     * @param queue Queue of the input; only the producer side is touched.
+     * @param edge Edge to queue.
+     *
+     * On a full queue the edge is dropped, counted, and, if no loss marker is pending,
+     * kept as the loss marker. While a marker is pending, every new edge is dropped and
+     * counted until the consumer has taken the marker.
+     *
+     * @isr Runs in the EXTI input-edge interrupts: bounded, non-blocking, no allocation, no output,
+     * opens no interrupt lock.
+     */
     static void pushFromIsr(EdgeQueue& queue, ExternalInputEdge edge);
 
-    /** @brief Pops one edge, including a continuity-loss marker for the first dropped edge. */
+    /**
+     * @brief Pops one edge, including a continuity-loss marker for the first dropped edge.
+     * @param queue Queue of the input; only the consumer side is written.
+     * @param edge Receives the oldest edge, or the marker with continuityLost set once the
+     * queue is empty; unchanged when the call returns false.
+     * @return True when @p edge was written.
+     *
+     * @isr Runs in the TIM3 scheduler interrupt: bounded, non-blocking, no allocation, no output,
+     * opens no interrupt lock.
+     */
     static bool pop(EdgeQueue& queue, ExternalInputEdge& edge);
 
+    /** Instance that the static interrupt thunks forward to; set by begin(). */
     static ExternalInputCapture* activeInstance_;
+    /** SYNC edges from the EXTI producer to the TIM3 consumer. */
     EdgeQueue syncQueue_{};
+    /** RST edges from the EXTI producer to the TIM3 consumer. */
     EdgeQueue resetQueue_{};
+    /** Last SYNC level, written by begin() and the SYNC interrupt. */
     volatile bool syncLevelHigh_ = false;
+    /** Last RST level, written by begin() and the RST interrupt. */
     volatile bool resetLevelHigh_ = false;
 #ifdef CLOCK_HOST_TEST
     std::uint32_t synthesizedEdgesForTest_ = 0U;

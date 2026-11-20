@@ -90,7 +90,7 @@ Post-1.0 storage-heavy rhythm data must therefore remain outside the small hot-p
 
 ## Public-contract decisions frozen for V1
 
-- Hardware Rev 1 remains gate/trigger focused; no analog CV subsystem is required for 1.0.
+- Hardware Rev 1 (the first hardware generation; its current board revision is Rev C) remains gate/trigger focused; no analog CV subsystem is required for 1.0.
 - Persistent schema v12 is the 1.1.0 write format; schema v13 is the 1.2.0 write format. The supported migration sources and how long each decoder stays are listed in [`ARCHITECTURE.md`](ARCHITECTURE.md#schema-versions-and-decoder-lifetime).
 - Boot always enters STOP regardless of stored transport history.
 - CURRENT and eight named presets remain the user-facing persistence model.

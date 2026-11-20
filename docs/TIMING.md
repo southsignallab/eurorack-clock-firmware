@@ -32,6 +32,9 @@ The priorities above and the constants below are generated from the code.
 | Scheduler interrupt rate (TIM3) | 20 kHz | `kSchedulerFrequencyHz` |
 | Scheduler quantum | 50 µs | `kSchedulerTickUs` |
 | Ticks caught up in one interrupt, at most | 8 (400 µs) | `kMaximumSchedulerCatchUpTicks` |
+| Scheduler interrupt, worst case (internal budget) | 20 µs | `kSchedulerIsrBudgetUs` |
+| Foreground interrupt lock (internal budget) | 10 µs | `kInterruptLockBudgetUs` |
+| Firmware share of the input timestamp jitter, at most | 30 µs | `kInputTimestampJitterBudgetUs` |
 | Display refresh interval, at least | 30 ms | `kDisplayRefreshMinimumMs` |
 | Display SPI clock request (ceiling) | 1 MHz | `kDisplaySpiFrequencyHz` |
 | Encoder long press | 650 ms | `kEncoderLongPressMs` |
@@ -94,7 +97,7 @@ The edge queue between the EXTI handler (producer) and the scheduler interrupt (
 
 ### Input timestamp jitter
 
-The timestamp is the TIM5 microsecond counter read in the EXTI handler; the scheduler interrupt (priority 0) and foreground interrupt locks can delay it. With the internal budget of at most 20 µs for the scheduler interrupt and 10 µs for an interrupt lock, the firmware contributes at most **30 µs** of input timestamp jitter (calculated, not yet measured; the comparator stage adds its own share). All gate outputs sit on the 50 µs scheduler grid and the tempo estimator averages, so this stays below one scheduler quantum at the outputs.
+The timestamp is the TIM5 microsecond counter read in the EXTI handler; the scheduler interrupt (priority 0) and foreground interrupt locks can delay it. With the internal budgets of at most 20 µs for the scheduler interrupt (`kSchedulerIsrBudgetUs`) and 10 µs for an interrupt lock (`kInterruptLockBudgetUs`), see [Timing constants](#timing-constants), the firmware contributes at most **30 µs** of input timestamp jitter (`kInputTimestampJitterBudgetUs`; calculated, not yet measured; the comparator stage adds its own share). The debug build stores both budgets in CPU cycles next to the measured maxima in `gClockRuntimeCounters`. All gate outputs sit on the 50 µs scheduler grid and the tempo estimator averages, so this stays below one scheduler quantum at the outputs.
 
 Flash erase runs only with the engine stopped (D-04) and stalls the CPU. A trigger during an erase is not lost: the pending bit holds it, and the parity rule counts it when the erase has finished. It arrives late, by up to the rest of the erase.
 

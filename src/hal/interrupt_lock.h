@@ -44,6 +44,7 @@ class InterruptLock final {
 #endif
 
   private:
+    /** PRIMASK value from platform::enterCritical(), passed to exitCritical() on exit. */
     std::uint32_t previousPrimask_ = 0U;
 #if defined(CLOCK_RUNTIME_INSTRUMENTATION)
     /** Cycle counter at entry, only in instrumented debug builds (W-056). */

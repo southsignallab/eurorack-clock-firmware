@@ -27,26 +27,8 @@
   },
   {
    "file": "src/game/arcade_shell.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 3
-  },
-  {
-   "file": "src/game/arcade_shell.cpp",
    "check": "readability-function-cognitive-complexity",
    "message": "function 'update' has cognitive complexity of 28 (threshold 25)",
-   "count": 1
-  },
-  {
-   "file": "src/game/beatknecht.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 1
-  },
-  {
-   "file": "src/game/breakout_game.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
    "count": 1
   },
   {
@@ -62,51 +44,15 @@
    "count": 1
   },
   {
-   "file": "src/game/egg_journey_render.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 4
-  },
-  {
-   "file": "src/game/formula1_game.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 4
-  },
-  {
-   "file": "src/game/formula1_game.cpp",
-   "check": "readability-braces-around-statements",
-   "message": "statement should be inside braces",
-   "count": 18
-  },
-  {
    "file": "src/game/formula1_game.cpp",
    "check": "readability-function-cognitive-complexity",
    "message": "function 'update' has cognitive complexity of 29 (threshold 25)",
    "count": 1
   },
   {
-   "file": "src/game/pixel_raid_game.cpp",
-   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
-   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
-   "count": 5
-  },
-  {
-   "file": "src/game/pixel_raid_game.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 1
-  },
-  {
    "file": "src/hal/display_font.cpp",
    "check": "bugprone-branch-clone",
    "message": "switch has 2 consecutive identical branches",
-   "count": 1
-  },
-  {
-   "file": "src/hal/oled_display_transport.cpp",
-   "check": "readability-braces-around-statements",
-   "message": "statement should be inside braces",
    "count": 1
   },
   {
@@ -140,40 +86,10 @@
    "count": 1
   },
   {
-   "file": "src/ui/channel_navigation_mode_renderer.cpp",
-   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
-   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
-   "count": 63
-  },
-  {
-   "file": "src/ui/channel_navigation_renderer.cpp",
-   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
-   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
-   "count": 30
-  },
-  {
-   "file": "src/ui/channel_navigation_renderer.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 13
-  },
-  {
    "file": "src/ui/channel_navigation_renderer.cpp",
    "check": "readability-function-cognitive-complexity",
    "message": "function 'renderSequencerEditor' has cognitive complexity of 27 (threshold 25)",
    "count": 1
-  },
-  {
-   "file": "src/ui/groove_editor_renderer.cpp",
-   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
-   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
-   "count": 8
-  },
-  {
-   "file": "src/ui/groove_editor_renderer.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 9
   },
   {
    "file": "src/ui/groove_editor_renderer.cpp",
@@ -182,58 +98,16 @@
    "count": 3
   },
   {
-   "file": "src/ui/groove_name_generator.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 1
-  },
-  {
-   "file": "src/ui/menu_model.cpp",
-   "check": "bugprone-branch-clone",
-   "message": "repeated branch body in conditional chain",
-   "count": 1
-  },
-  {
    "file": "src/ui/menu_model.cpp",
    "check": "bugprone-branch-clone",
    "message": "switch has 2 consecutive identical branches",
    "count": 3
   },
   {
-   "file": "src/ui/menu_model.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 15
-  },
-  {
-   "file": "src/ui/menu_model.cpp",
-   "check": "readability-function-cognitive-complexity",
-   "message": "function 'buildMenuRow' has cognitive complexity of 110 (threshold 25)",
+   "file": "src/ui/menu_model_general.cpp",
+   "check": "bugprone-branch-clone",
+   "message": "repeated branch body in conditional chain",
    "count": 1
-  },
-  {
-   "file": "src/ui/menu_model_channel.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 14
-  },
-  {
-   "file": "src/ui/menu_model_groove.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 17
-  },
-  {
-   "file": "src/ui/menu_model_sequencer.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 4
-  },
-  {
-   "file": "src/ui/menu_model_sync.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 5
   },
   {
    "file": "src/ui/menu_model_sync.cpp",
@@ -242,39 +116,9 @@
    "count": 1
   },
   {
-   "file": "src/ui/pattern_strip_renderer.cpp",
-   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
-   "message": "narrowing conversion from 'int' to signed type 'short' is implementation-defined",
-   "count": 1
-  },
-  {
-   "file": "src/ui/performance_renderer.cpp",
-   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
-   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
-   "count": 9
-  },
-  {
-   "file": "src/ui/performance_renderer.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 8
-  },
-  {
    "file": "src/ui/performance_renderer.cpp",
    "check": "readability-function-cognitive-complexity",
    "message": "function 'render' has cognitive complexity of 33 (threshold 25)",
-   "count": 1
-  },
-  {
-   "file": "src/ui/performance_renderer_groove.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 1
-  },
-  {
-   "file": "src/ui/performance_renderer_precount.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
    "count": 1
   },
   {
@@ -296,22 +140,10 @@
    "count": 1
   },
   {
-   "file": "src/ui/screensaver_fireworks.cpp",
-   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
-   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
-   "count": 2
-  },
-  {
    "file": "src/ui/screensaver_labyrinth.cpp",
    "check": "readability-function-cognitive-complexity",
    "message": "function 'generateMaze' has cognitive complexity of 27 (threshold 25)",
    "count": 1
-  },
-  {
-   "file": "src/ui/screensaver_renderer.cpp",
-   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
-   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
-   "count": 2
   },
   {
    "file": "src/ui/screensaver_renderer.cpp",
@@ -326,22 +158,10 @@
    "count": 2
   },
   {
-   "file": "src/ui/screensaver_renderer.cpp",
-   "check": "readability-braces-around-statements",
-   "message": "statement should be inside braces",
-   "count": 2
-  },
-  {
    "file": "src/ui/screensaver_spectrum.cpp",
    "check": "bugprone-signed-char-misuse,cert-str34-c",
    "message": "'signed char' to 'std::int16_t' (aka 'short') conversion; consider casting to 'unsigned char' first.",
    "count": 2
-  },
-  {
-   "file": "src/ui/sequencer_editor_primitives.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 1
   },
   {
    "file": "src/ui/settings_editor.cpp",
@@ -354,42 +174,6 @@
    "check": "readability-braces-around-statements",
    "message": "statement should be inside braces",
    "count": 1
-  },
-  {
-   "file": "src/ui/settings_renderer.cpp",
-   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
-   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
-   "count": 4
-  },
-  {
-   "file": "src/ui/settings_renderer.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 12
-  },
-  {
-   "file": "src/ui/settings_renderer.cpp",
-   "check": "readability-function-cognitive-complexity",
-   "message": "function 'renderSettings' has cognitive complexity of 59 (threshold 25)",
-   "count": 1
-  },
-  {
-   "file": "src/ui/settings_renderer_lists.cpp",
-   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
-   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
-   "count": 2
-  },
-  {
-   "file": "src/ui/settings_renderer_lists.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 2
-  },
-  {
-   "file": "src/ui/text_formatter.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 9
   },
   {
    "file": "src/ui/ui_controller.cpp",
@@ -410,21 +194,9 @@
    "count": 1
   },
   {
-   "file": "src/ui/ui_controller_encoder.cpp",
-   "check": "readability-function-cognitive-complexity",
-   "message": "function 'handleShortEncoderPress' has cognitive complexity of 61 (threshold 25)",
-   "count": 1
-  },
-  {
    "file": "src/ui/ui_controller_encoder_delta.cpp",
    "check": "readability-braces-around-statements",
    "message": "statement should be inside braces",
-   "count": 1
-  },
-  {
-   "file": "src/ui/ui_controller_encoder_delta.cpp",
-   "check": "readability-function-cognitive-complexity",
-   "message": "function 'handleEncoderDelta' has cognitive complexity of 101 (threshold 25)",
    "count": 1
   },
   {
@@ -455,24 +227,6 @@
    "file": "src/ui/ui_controller_navigation.cpp",
    "check": "readability-function-cognitive-complexity",
    "message": "function 'backFromSettings' has cognitive complexity of 61 (threshold 25)",
-   "count": 1
-  },
-  {
-   "file": "src/ui/ui_controller_navigation_activate.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 2
-  },
-  {
-   "file": "src/ui/ui_controller_presets.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
-   "count": 1
-  },
-  {
-   "file": "src/ui/ui_renderer.cpp",
-   "check": "cert-err33-c",
-   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
    "count": 1
   },
   {

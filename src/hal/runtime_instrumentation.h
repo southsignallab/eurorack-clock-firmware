@@ -49,6 +49,10 @@ struct ClockRuntimeCounters {
     std::uint32_t encoderAnchorRequestPhase;
     /** Partial quadrature counts discarded in the detent state (count, F-010). */
     std::uint32_t encoderDiscardedRemainders;
+    /** config::kSchedulerIsrBudgetUs in CPU cycles, written once by begin(); compare maxSchedulerIsrCycles. */
+    std::uint32_t schedulerIsrBudgetCycles;
+    /** config::kInterruptLockBudgetUs in CPU cycles, written once by begin(); compare maxInterruptLockCycles. */
+    std::uint32_t interruptLockBudgetCycles;
 };
 
 extern "C" volatile ClockRuntimeCounters gClockRuntimeCounters;

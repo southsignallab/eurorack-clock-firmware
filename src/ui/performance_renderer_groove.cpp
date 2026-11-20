@@ -11,6 +11,7 @@
 #include <cstdio>
 
 #include "domain/groove_catalog.h"
+#include "text_format.h"
 #include "ui_text.h"
 
 namespace clockfw::ui {
@@ -30,7 +31,8 @@ void PerformanceRenderer::drawGrooveStatus(const GrooveSettings& settings, const
     }
 
     char label[21]{};
-    std::snprintf(label, sizeof(label), "%s%s", text::get(text::TextId::GroovePrefix), grooveLabel);
+    text::formatInto(
+        label, sizeof(label), "%s%s", text::get(text::TextId::GroovePrefix), grooveLabel);
     display_.setFont(hal::DisplayFont::Small);
     display_.drawText(1, y, label);
 }

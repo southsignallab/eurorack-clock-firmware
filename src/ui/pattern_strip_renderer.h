@@ -47,13 +47,22 @@ class PatternStripRenderer final {
         std::uint8_t currentStep,
         std::int16_t topY);
 
-    /** @brief Draws the currently playing 16-step block from a Sequencer 2.0 pattern. */
+    /**
+     * @brief Draws the currently playing 16-step block from a Sequencer 2.0 pattern.
+     * @param pattern Sequencer 2.0 pattern; length 0 is treated as 1.
+     * @param currentStep Zero-based currently sounding step; wrapped to the pattern length.
+     * @param topY Top pixel row of the 16 step cells.
+     */
     void drawSequencerPlaybackBlock(
         const SequencerPatternV2& pattern,
         std::uint8_t currentStep,
         std::int16_t topY);
 
-    /** @brief Draws 8-step editor-page progress for patterns up to 128 steps. */
+    /**
+     * @brief Draws 8-step editor-page progress for patterns up to 128 steps.
+     * @param sequenceLength Pattern length in steps; nothing is drawn up to 8 steps.
+     * @param activeStep Zero-based step that selects the highlighted page.
+     */
     void drawSequencerEditorPageIndicator(std::uint8_t sequenceLength, std::uint8_t activeStep);
 
     /**
@@ -68,15 +77,25 @@ class PatternStripRenderer final {
     void drawSequencerBlockIndicator(std::uint8_t sequenceLength, std::uint8_t activeStep);
 
   private:
-    /** @brief Draws shared 16-step block progress for long Euclid/Sequencer patterns. */
+    /**
+     * @brief Draws shared 16-step block progress for long Euclid/Sequencer patterns.
+     * @param sequenceLength Pattern length in steps; nothing is drawn up to @p blockSize.
+     * @param activeStep Zero-based step that selects the highlighted block.
+     * @param blockSize Steps per block; 0 draws nothing.
+     */
     void drawPatternBlockIndicator(
         std::uint8_t sequenceLength,
         std::uint8_t activeStep,
         std::uint8_t blockSize);
 
-    /** @brief Draws a two-pixel-high underline for one current pattern slot. */
+    /**
+     * @brief Draws a two-pixel-high underline for one current pattern slot.
+     * @param slotX Left edge of the slot, in pixels.
+     * @param slotWidth Slot width in pixels; the underline is one pixel shorter, at least 1.
+     */
     void drawCurrentStepUnderline(std::int16_t slotX, std::int16_t slotWidth);
 
+    /** Display that receives the drawing commands. */
     hal::OledDisplay& display_;
 };
 

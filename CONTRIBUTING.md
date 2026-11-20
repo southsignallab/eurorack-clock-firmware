@@ -30,7 +30,9 @@ Read:
 ```bash
 python scripts/check_architecture.py
 python scripts/check_documentation.py
+python scripts/check_doxygen.py
 python -m unittest discover -s scripts/tests -p 'test_*.py' -v
+python scripts/check_static_analysis.py --clang-tidy <clang-tidy 23.1.4>  # Windows: add the two --extra-arg options below
 pio test -e native
 python scripts/run_host_tests.py --skip-sanitizers
 python scripts/run_host_tests.py --sanitizers-only
@@ -52,7 +54,7 @@ C and C++ sources in `src/`, `lib/`, `sim/` and `vcv/` follow `.clang-format`, f
 
 ### Static analysis
 
-`.clang-tidy` is the project profile, with the reason for every enabled and every disabled check. `python scripts/check_static_analysis.py --clang-tidy <clang-tidy 23.1.4>` analyzes the host configuration of `src/` and `lib/` and fails on a finding that is not in `scripts/static_analysis_baseline.json`; findings are compared by file, check and message, not by line. After fixing findings, lower the baseline with `--write-baseline`. On Windows, pass `--extra-arg=--target=x86_64-w64-windows-gnu --extra-arg=--sysroot=C:/msys64/ucrt64`. The check list is still a proposal and the check is not yet part of CI.
+`.clang-tidy` is the project profile, with the reason for every enabled and every disabled check. `python scripts/check_static_analysis.py --clang-tidy <clang-tidy 23.1.4>` analyzes the host configuration of `src/` and `lib/` and fails on a finding that is not in `scripts/static_analysis_baseline.json`; findings are compared by file, check and message, not by line. After fixing findings, lower the baseline with `--write-baseline`. On Windows, pass `--extra-arg=--target=x86_64-w64-windows-gnu --extra-arg=--sysroot=C:/msys64/ucrt64`. CI runs the same check on Windows (job `static-analysis`) and fails on a new finding.
 
 ### Proving that a change leaves the firmware image unchanged
 
@@ -72,9 +74,9 @@ Public C++ declarations carry concise Doxygen comments. The rules:
 - **What:** every public function, method, type, enumerator, constant and public struct field has a `@brief` (or a one-line `/** ... */` for fields and constants). Parameters and return values get `@param` and `@return` when their meaning is not obvious from the type and name. Relevant shared state and non-obvious data structures are documented as well.
 - **Content:** explain why a declaration exists, ownership and side effects, units and ranges, and non-obvious safety behavior. Inline comments explain why, not what the next line does.
 - **Units:** every time, rate and frequency parameter, field and return value states its unit, in the name (`…Ms`, `…Us`, `…Hz`, `…Q32` for Q32 fixed point) and in the comment when the name does not carry it.
-- **Interrupt context:** a function that may run in an interrupt says so. APIs meant for interrupt context end in `FromIsr()`; their comment and the comment of every other function reachable from an interrupt entry point states the contract: bounded run time, non-blocking, no allocation, no output, no interrupt lock opened.
+- **Interrupt context:** a function that may run in an interrupt says so. APIs meant for interrupt context end in `FromIsr()`; their comment and the comment of every other function reachable from an interrupt entry point states the contract: bounded run time, non-blocking, no allocation, no output, no interrupt lock opened. Mark it with `@isr <contract>`; Doxygen collects every such function on the page *Interrupt-context functions*.
 - **File headers:** `@file`, `@brief`, `@author`, `@copyright` and `@license`; the Doxyfile renders `@license` as a paragraph.
-- **Check:** `python scripts/check_doxygen.py` fails when a source directory has more Doxygen warnings than `scripts/doxygen_warning_baseline.json`; lower the baseline with `--write-baseline` after documenting. CI uploads the generated HTML as the artifact `doxygen-api-<commit>`.
+- **Check:** the tree has no Doxygen warning, and the Doxyfile sets `WARN_AS_ERROR = FAIL_ON_WARNINGS`, so `doxygen Doxyfile` (CI) and `python scripts/check_doxygen.py` (local chain; its baseline `scripts/doxygen_warning_baseline.json` is empty) fail on any new undocumented declaration or documentation error. CI uploads the generated HTML as the artifact `doxygen-api-<commit>`.
 
 ## Documentation changes
 

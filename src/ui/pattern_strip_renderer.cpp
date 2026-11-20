@@ -162,7 +162,8 @@ void PatternStripRenderer::drawPatternBlockIndicator(
 void PatternStripRenderer::drawCurrentStepUnderline(
     const std::int16_t slotX,
     const std::int16_t slotWidth) {
-    const std::int16_t underlineWidth = std::max<std::int16_t>(1, slotWidth - 1);
+    const std::int16_t underlineWidth =
+        std::max<std::int16_t>(1, static_cast<std::int16_t>(slotWidth - 1));
     display_.fillRectangle(slotX, 59, underlineWidth, 2);
 }
 

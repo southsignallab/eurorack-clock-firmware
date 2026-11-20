@@ -7,6 +7,8 @@
  */
 #include "hal/runtime_instrumentation.h"
 
+#include "config.h"
+
 #if defined(CLOCK_RUNTIME_INSTRUMENTATION)
 #if !defined(CLOCK_HOST_TEST) && !defined(CLOCK_SIMULATOR)
 #include <stm32f4xx_hal.h>
@@ -34,6 +36,10 @@ void begin() {
     gClockRuntimeCounters.encoderAnchors = 0U;
     gClockRuntimeCounters.encoderAnchorRequestPhase = 0U;
     gClockRuntimeCounters.encoderDiscardedRemainders = 0U;
+    // SystemCoreClock (CMSIS system_stm32f4xx.h) holds the core clock set by HAL_RCC_ClockConfig().
+    const std::uint32_t cyclesPerUs = SystemCoreClock / 1000000U;
+    gClockRuntimeCounters.schedulerIsrBudgetCycles = config::kSchedulerIsrBudgetUs * cyclesPerUs;
+    gClockRuntimeCounters.interruptLockBudgetCycles = config::kInterruptLockBudgetUs * cyclesPerUs;
     const std::uint32_t first = cycleCount();
     const std::uint32_t second = cycleCount();
     gClockRuntimeCounters.measurementOverheadCycles = second - first;

@@ -52,7 +52,7 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline. The de
 ### Changed: code formatting
 
 - `.clang-format` matches the house style (case labels indented, one argument or parameter per line when a call breaks, two spaces before trailing comments, no comment reflow) and names the pinned version, clang-format 23.1.5; `sim/tutorial/.clang-format` packs call arguments. `CONTRIBUTING.md` names the version.
-- `src/`, `lib/`, `sim/` and `vcv/` are formatted with it, except thirteen implementation files that would exceed the 450-line limit and still need to be split. Bodies of control statements in the HAL, the games and the screensavers have braces. All ten firmware images are byte-identical to the previous commit.
+- `src/`, `lib/`, `sim/` and `vcv/` are formatted with it. Bodies of control statements in the HAL, the games and the screensavers have braces. Formatting leaves all ten firmware images byte-identical.
 - `scripts/check_architecture.py` skips the message of a `static_assert` that is wrapped over several lines when it looks for UI text outside `src/ui_text.h`.
 
 ### Changed: code clean-up without behavior change
@@ -66,7 +66,26 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline. The de
 - `src/config.h` stops an STM32 build that sets `CLOCK_HOST_TEST` or `CLOCK_SIMULATOR`, and the architecture check allows Arduino-style framework includes in `src/` only in the host-test and simulator branch.
 - The gate-buffer comments in `src/pin_map.h` no longer name buffer input positions that differ between hardware variants.
 - `BUILD-INFO.txt` hashes the linker map with the build and package directories replaced by `<build>` and `<packages>`, so the same source gives the same file in any build directory.
-- `.clang-tidy` is the proposed project profile with a reason per check; `scripts/check_static_analysis.py` compares the findings with `scripts/static_analysis_baseline.json` and fails on new ones. It is not yet part of CI.
+- `.clang-tidy` is the project profile with a reason per check; `scripts/check_static_analysis.py` compares the findings with `scripts/static_analysis_baseline.json` and fails on new ones. The baseline holds 61 findings (342 when it was first recorded). CI runs the check in the job `static-analysis` (pinned clang-tidy 23.1.4, Windows GNU target), and the local check chain in `CONTRIBUTING.md` includes it. The gate ignores a reported path that is not absolute on the running platform, so a Windows system header no longer counts as a repository finding on Linux.
+
+### Changed: long files split, no file above 450 lines
+
+- Thirteen implementation files that the formatting would have pushed over the 450-line limit are split along existing seams: the host and simulator adapter of the platform I/O (`platform_io_host.cpp`), the OLED frame refresh (`oled_display_refresh.cpp`), the simulator-only application lifecycle (`clock_application_simulator.cpp`), the Barnsley fern screensaver (`screensaver_fern.cpp`), the settings rows (`menu_model_rows.cpp`), the Formula 1 track geometry and rendering (`formula1_track.cpp`, `formula1_render.cpp`) and seven Storybook files in `sim/`. Function bodies move unchanged; host, simulator and VCV results are equal. The images change only through inlining across the new unit boundaries and the link order, as recorded by a symbol comparison per split: +28 bytes in total for the default image, +60 bytes for the Formula 1 flavor.
+- The performance screen icons move to `performance_renderer_icons.cpp`, which keeps `performance_renderer.cpp` below the limit after the explicit casts below.
+
+### Changed: code clean-up without behavior change, second part
+
+- Formatted text goes through one function, `clockfw::text::formatInto()` (`src/text_format.h`): the text is cut at the buffer end and always NUL-terminated, a cut returns `false`, and host tests count every cut. All 130 former `std::snprintf()` calls use it; the compiler still checks every format string against its arguments. Fixed-width game HUD fields check their buffer sizes at compile time, and a host test renders every row of every settings page without a cut.
+- The 126 implicit `int` to `std::int16_t` conversions of the UI and game drawing code are explicit; the generated code is unchanged.
+- The four longest UI functions (`buildMenuRow()`, `UiController::handleEncoderDelta()`, `UiController::handleShortEncoderPress()`, `SettingsRenderer::renderSettings()`, 198 to 280 lines) are split by page or screen into functions of at most 59 lines; the exhaustive screen switch of the short encoder press stays in place. The images grow by 812 bytes.
+- The factory humanize amount of ONE CLOCK comes from `defaults::kUnifiedClockHumanizeUs` like every other factory value; a unit test checks that the factory initialization applies every constant of `src/defaults.h`.
+- The internal timing budgets (scheduler interrupt 20 µs, foreground interrupt lock 10 µs, firmware share of the input timestamp jitter 30 µs) are constants in `src/config.h`; `docs/TIMING.md` takes them from there, and the debug build stores them in CPU cycles next to the measured maxima in `gClockRuntimeCounters`.
+- `scripts/generate_vcv_panel.py` writes LF line endings on every platform, and its check mode compares bytes, so a CRLF copy counts as stale.
+
+### Documentation: hardware revision and release procedure
+
+- Every document that names a hardware revision explains both terms: Rev 1 is the hardware generation, Rev C its current board revision.
+- `docs/DEVELOPER_README.md` links to `docs/RELEASE_PROCESS.md` instead of summarizing the release steps; the release procedure now states that a tag containing `-` is published as a GitHub prerelease.
 
 ### Changed: code documentation tooling
 
@@ -74,6 +93,9 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline. The de
 - `scripts/check_doxygen.py` counts Doxygen warnings per source directory and fails when a directory exceeds `scripts/doxygen_warning_baseline.json`; a new undocumented declaration, including a public struct field, therefore fails it.
 - CI uploads the generated Doxygen HTML as a workflow artifact.
 - `CONTRIBUTING.md` holds the rules for code documentation: what is documented, units, interrupt-context contracts and the warning baseline.
+- Every declaration in `src/` and `lib/clock_core/` is documented, including private members, every parameter and return value; Doxygen reports no warning, and the Doxyfile turns any new warning into an error (`WARN_AS_ERROR = FAIL_ON_WARNINGS`). `scripts/check_doxygen.py` counts the warnings in this mode too.
+- Every function reachable from an interrupt entry point carries an `@isr` contract (bounded, non-blocking, no allocation, no output, no interrupt lock, with the loop bounds where they apply); the set was taken from the compiler call graph of the target build. Doxygen lists them on the page *Interrupt-context functions*.
+- Comments that contradicted the code were corrected where the documentation pass found them (preset rename and clear only stage the change, the coordinator revision sums three stores).
 
 ## [1.2.0] - YYYY-MM-DD
 

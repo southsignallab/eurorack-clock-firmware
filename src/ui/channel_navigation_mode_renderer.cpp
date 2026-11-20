@@ -162,19 +162,50 @@ void ChannelNavigationRenderer::drawOffModeIcon(
     const std::int16_t y,
     const hal::PixelColor color) {
     display_.drawRectangle(x, y, 12, 12, color);
-    display_.drawLine(x + 2, y + 9, x + 9, y + 2, color);
+    display_.drawLine(
+        static_cast<std::int16_t>(x + 2),
+        static_cast<std::int16_t>(y + 9),
+        static_cast<std::int16_t>(x + 9),
+        static_cast<std::int16_t>(y + 2),
+        color);
 }
 
 void ChannelNavigationRenderer::drawClockModeIcon(
     const std::int16_t x,
     const std::int16_t y,
     const hal::PixelColor color) {
-    display_.drawLine(x, y + 8, x, y + 3, color);
-    display_.drawLine(x, y + 3, x + 7, y + 3, color);
-    display_.drawLine(x + 7, y + 3, x + 7, y + 8, color);
-    display_.drawLine(x + 7, y + 8, x + 14, y + 8, color);
-    display_.drawLine(x + 14, y + 8, x + 14, y + 3, color);
-    display_.drawLine(x + 14, y + 3, x + 21, y + 3, color);
+    display_.drawLine(
+        x, static_cast<std::int16_t>(y + 8), x, static_cast<std::int16_t>(y + 3), color);
+    display_.drawLine(
+        x,
+        static_cast<std::int16_t>(y + 3),
+        static_cast<std::int16_t>(x + 7),
+        static_cast<std::int16_t>(y + 3),
+        color);
+    display_.drawLine(
+        static_cast<std::int16_t>(x + 7),
+        static_cast<std::int16_t>(y + 3),
+        static_cast<std::int16_t>(x + 7),
+        static_cast<std::int16_t>(y + 8),
+        color);
+    display_.drawLine(
+        static_cast<std::int16_t>(x + 7),
+        static_cast<std::int16_t>(y + 8),
+        static_cast<std::int16_t>(x + 14),
+        static_cast<std::int16_t>(y + 8),
+        color);
+    display_.drawLine(
+        static_cast<std::int16_t>(x + 14),
+        static_cast<std::int16_t>(y + 8),
+        static_cast<std::int16_t>(x + 14),
+        static_cast<std::int16_t>(y + 3),
+        color);
+    display_.drawLine(
+        static_cast<std::int16_t>(x + 14),
+        static_cast<std::int16_t>(y + 3),
+        static_cast<std::int16_t>(x + 21),
+        static_cast<std::int16_t>(y + 3),
+        color);
 }
 
 void ChannelNavigationRenderer::drawEuclidModeIcon(
@@ -186,10 +217,15 @@ void ChannelNavigationRenderer::drawEuclidModeIcon(
     constexpr bool kFilledPoints[8] = {true, false, false, true, false, true, false, false};
 
     for (std::uint8_t pointIndex = 0U; pointIndex < 8U; ++pointIndex) {
-        const std::int16_t pointX = centerX + kXOffsets[pointIndex];
-        const std::int16_t pointY = centerY + kYOffsets[pointIndex];
+        const std::int16_t pointX = static_cast<std::int16_t>(centerX + kXOffsets[pointIndex]);
+        const std::int16_t pointY = static_cast<std::int16_t>(centerY + kYOffsets[pointIndex]);
         if (kFilledPoints[pointIndex]) {
-            display_.fillRectangle(pointX - 1, pointY - 1, 3, 3, color);
+            display_.fillRectangle(
+                static_cast<std::int16_t>(pointX - 1),
+                static_cast<std::int16_t>(pointY - 1),
+                3,
+                3,
+                color);
         } else {
             display_.fillRectangle(pointX, pointY, 1, 1, color);
         }
@@ -205,7 +241,7 @@ void ChannelNavigationRenderer::drawSequencerModeIcon(
         if (step == 0U || step == 2U || step == 5U) {
             display_.fillRectangle(stepX, y, 4, 7, color);
         } else {
-            display_.drawRectangle(stepX, y + 3, 4, 4, color);
+            display_.drawRectangle(stepX, static_cast<std::int16_t>(y + 3), 4, 4, color);
         }
     }
 }
@@ -214,15 +250,21 @@ void ChannelNavigationRenderer::drawUnifiedModeIcon(
     const std::int16_t x,
     const std::int16_t y,
     const hal::PixelColor color) {
-    display_.drawVerticalLine(x, y + 3, 8, color);
-    display_.drawHorizontalLine(x, y + 6, 8, color);
-    display_.drawVerticalLine(x + 8, y + 1, 12, color);
-    display_.drawHorizontalLine(x + 8, y + 1, 10, color);
-    display_.drawHorizontalLine(x + 8, y + 6, 10, color);
-    display_.drawHorizontalLine(x + 8, y + 11, 10, color);
-    display_.fillRectangle(x + 18, y, 3, 3, color);
-    display_.fillRectangle(x + 18, y + 5, 3, 3, color);
-    display_.fillRectangle(x + 18, y + 10, 3, 3, color);
+    display_.drawVerticalLine(x, static_cast<std::int16_t>(y + 3), 8, color);
+    display_.drawHorizontalLine(x, static_cast<std::int16_t>(y + 6), 8, color);
+    display_.drawVerticalLine(
+        static_cast<std::int16_t>(x + 8), static_cast<std::int16_t>(y + 1), 12, color);
+    display_.drawHorizontalLine(
+        static_cast<std::int16_t>(x + 8), static_cast<std::int16_t>(y + 1), 10, color);
+    display_.drawHorizontalLine(
+        static_cast<std::int16_t>(x + 8), static_cast<std::int16_t>(y + 6), 10, color);
+    display_.drawHorizontalLine(
+        static_cast<std::int16_t>(x + 8), static_cast<std::int16_t>(y + 11), 10, color);
+    display_.fillRectangle(static_cast<std::int16_t>(x + 18), y, 3, 3, color);
+    display_.fillRectangle(
+        static_cast<std::int16_t>(x + 18), static_cast<std::int16_t>(y + 5), 3, 3, color);
+    display_.fillRectangle(
+        static_cast<std::int16_t>(x + 18), static_cast<std::int16_t>(y + 10), 3, 3, color);
 }
 
 void ChannelNavigationRenderer::drawDividerModeIcon(
@@ -233,13 +275,15 @@ void ChannelNavigationRenderer::drawDividerModeIcon(
     for (std::int16_t tick = 0; tick <= 24; tick += 6) {
         display_.drawVerticalLine(static_cast<std::int16_t>(x + tick), y, 3, color);
     }
-    display_.drawHorizontalLine(x, y + 6, 24, color);
+    display_.drawHorizontalLine(x, static_cast<std::int16_t>(y + 6), 24, color);
     for (std::int16_t tick = 0; tick <= 24; tick += 12) {
-        display_.drawVerticalLine(static_cast<std::int16_t>(x + tick), y + 6, 3, color);
+        display_.drawVerticalLine(
+            static_cast<std::int16_t>(x + tick), static_cast<std::int16_t>(y + 6), 3, color);
     }
-    display_.drawHorizontalLine(x, y + 12, 24, color);
-    display_.drawVerticalLine(x, y + 12, 3, color);
-    display_.drawVerticalLine(x + 24, y + 12, 3, color);
+    display_.drawHorizontalLine(x, static_cast<std::int16_t>(y + 12), 24, color);
+    display_.drawVerticalLine(x, static_cast<std::int16_t>(y + 12), 3, color);
+    display_.drawVerticalLine(
+        static_cast<std::int16_t>(x + 24), static_cast<std::int16_t>(y + 12), 3, color);
 }
 
 void ChannelNavigationRenderer::drawModeFunctionIcon(
@@ -249,23 +293,29 @@ void ChannelNavigationRenderer::drawModeFunctionIcon(
     const hal::PixelColor color) {
     switch (modeFunction) {
         case ModeFunction::Off:
-            drawOffModeIcon(x + 14, y + 5, color);
+            drawOffModeIcon(
+                static_cast<std::int16_t>(x + 14), static_cast<std::int16_t>(y + 5), color);
             break;
         case ModeFunction::Clock:
-            drawClockModeIcon(x + 9, y + 5, color);
+            drawClockModeIcon(
+                static_cast<std::int16_t>(x + 9), static_cast<std::int16_t>(y + 5), color);
             break;
         case ModeFunction::Euclid:
-            drawEuclidModeIcon(x + 20, y + 11, color);
+            drawEuclidModeIcon(
+                static_cast<std::int16_t>(x + 20), static_cast<std::int16_t>(y + 11), color);
             break;
         case ModeFunction::Sequencer:
-            drawSequencerModeIcon(x + 5, y + 8, color);
+            drawSequencerModeIcon(
+                static_cast<std::int16_t>(x + 5), static_cast<std::int16_t>(y + 8), color);
             break;
         case ModeFunction::UnifiedClock:
-            drawUnifiedModeIcon(x + 9, y + 4, color);
+            drawUnifiedModeIcon(
+                static_cast<std::int16_t>(x + 9), static_cast<std::int16_t>(y + 4), color);
             break;
         case ModeFunction::DividerBank:
         default:
-            drawDividerModeIcon(x + 8, y + 4, color);
+            drawDividerModeIcon(
+                static_cast<std::int16_t>(x + 8), static_cast<std::int16_t>(y + 4), color);
             break;
     }
 }

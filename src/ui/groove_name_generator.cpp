@@ -9,6 +9,7 @@
 
 #include <cstdio>
 
+#include "text_format.h"
 #include "ui_text.h"
 
 namespace clockfw::ui::groovename {
@@ -43,7 +44,7 @@ void generateDefaultName(
         text::kGrooveNameQualifiers[first % text::kGrooveNameQualifiers.size()];
     const char* const rhythm =
         text::kGrooveNameRhythmWords[second % text::kGrooveNameRhythmWords.size()];
-    std::snprintf(destination, destinationSize, "%s %s", qualifier, rhythm);
+    text::formatInto(destination, destinationSize, "%s %s", qualifier, rhythm);
 }
 
 }  // namespace clockfw::ui::groovename

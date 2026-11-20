@@ -1,12 +1,1 @@
-{
- "(no file)": 15,
- "lib/clock_core": 19,
- "src": 29,
- "src/app": 34,
- "src/domain": 120,
- "src/engine": 188,
- "src/game": 268,
- "src/hal": 247,
- "src/services": 408,
- "src/ui": 365
-}
+{}

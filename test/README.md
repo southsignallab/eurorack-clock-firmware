@@ -20,11 +20,11 @@ This is the developer-facing Native entry point. The suite deliberately makes ti
 | `test_humanize` | 14 | deterministic One Clock timing displacement, bounds, repeatability and isolation |
 | `test_tap_tempo` | 29 | tap estimator acquisition, rolling average, clamps, invalid intervals, jitter and timestamp wrap |
 | `test_controls` | 62 | TIM4 encoder quadrature, detent-phase recovery after missed/coalesced transitions and encoder-push phase shifts, first-detent and immediate direction-reversal behavior, NORMAL/REVERSED direction mapping, fast-turn backlog/drain and saturation, debounce, bounce, hold and simultaneous button behavior |
-| `test_settings` | 90 | settings boundaries, configurable inputs, grouped channel settings, Groove Editor/Recorder menus, Custom Groove slot management, Info overflow/popover, device preferences and invalid-input invariants |
+| `test_settings` | 93 | settings boundaries, configurable inputs, grouped channel settings, Groove Editor/Recorder menus, Custom Groove slot management, Info overflow/popover, device preferences and invalid-input invariants |
 | `test_screensavers` | 19 | all screensaver renderers, deterministic/rewind behavior and long frame sweeps |
 | `test_easter_eggs` | 41 | intro launch gating, reset state, output safety and game-specific controls |
 | `test_host_firmware` | 97 | complete firmware/UI/HAL/persistence behavior, Groove Editor/Record workflows, schema migrations and framebuffer/navigation contracts using deterministic host fakes |
-| **Total** | **682** | public Native inventory |
+| **Total** | **685** | public Native inventory |
 
 Each suite reports its assertion count when `scripts/run_host_tests.py` runs it; the counts change with every test and are not repeated here. `scripts/check_test_inventory.py` enforces the visible-suite inventory contract so a broad test-count increase cannot hide a regression in one focused suite.
 

@@ -6,6 +6,7 @@
  * @license PolyForm-Noncommercial-1.0.0
  */
 
+#include "text_format.h"
 #include "ui/performance_renderer.h"
 #include "ui_text.h"
 
@@ -42,7 +43,7 @@ void PerformanceRenderer::drawPreCountOverlay(
         kPopoverX, kPopoverY, kPopoverSize, kPopoverSize, hal::PixelColor::White);
 
     char countText[4]{};
-    std::snprintf(
+    text::formatInto(
         countText,
         sizeof(countText),
         "%u",

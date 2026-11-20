@@ -18,10 +18,18 @@ inline constexpr char kAlphabet[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
 /** @brief Number of selectable characters, excluding the terminating null byte. */
 inline constexpr std::size_t kAlphabetLength = sizeof(kAlphabet) - 1U;
 
-/** @brief Returns the alphabet position of a stored character, falling back to space. */
+/**
+ * @brief Returns the alphabet position of a stored character, falling back to space.
+ * @param character Stored character.
+ * @return Position in kAlphabet; 0 (space) for characters outside the alphabet.
+ */
 std::size_t characterIndex(char character);
 
-/** @brief Returns one alphabet character using wrap-around indexing. */
+/**
+ * @brief Returns one alphabet character using wrap-around indexing.
+ * @param index Any signed position; wrapped into [0, kAlphabetLength).
+ * @return Character of kAlphabet at the wrapped position.
+ */
 char characterAtWrapped(int index);
 
 }  // namespace clockfw::ui::presetname

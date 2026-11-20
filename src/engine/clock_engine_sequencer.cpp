@@ -17,6 +17,15 @@
 namespace clockfw::engine {
 namespace {
 
+/**
+ * @brief Divides and rounds up.
+ * @param numerator Dividend.
+ * @param denominator Divisor; 0 gives 1.
+ * @return Quotient rounded up.
+ *
+ * @isr TIM3 scheduler interrupt: constant time (one 64-bit division), non-blocking, no
+ *      allocation, opens no interrupt lock.
+ */
 std::uint64_t ceilDivide(const std::uint64_t numerator, const std::uint64_t denominator) {
     if (denominator == 0U) {
         return 1U;

@@ -8,4 +8,5 @@
 
 #pragma once
 
+/** Firmware version string (semantic version). */
 #define CLOCK_FIRMWARE_VERSION "1.2.0"

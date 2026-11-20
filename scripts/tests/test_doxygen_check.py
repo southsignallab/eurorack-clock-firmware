@@ -48,9 +48,12 @@ class DoxygenBaselineTests(unittest.TestCase):
         self.assertEqual(len(below), 1)
         self.assertEqual(CHECK["compare"](Counter({"src/ui": 2}), {"src/ui": 2}), ([], []))
 
-    def test_repository_baseline_has_no_license_warnings(self) -> None:
+    def test_repository_baseline_is_zero_and_warnings_are_errors(self) -> None:
+        # W-284: the tree has no Doxygen warning, so any new warning fails (Doxyfile and baseline).
         baseline = json.loads((ROOT / "scripts" / "doxygen_warning_baseline.json").read_text(encoding="utf-8"))
-        self.assertGreater(sum(baseline.values()), 0)
+        self.assertEqual(sum(baseline.values()), 0)
+        doxyfile = (ROOT / "Doxyfile").read_text(encoding="utf-8")
+        self.assertRegex(doxyfile, r"(?m)^WARN_AS_ERROR\s*=\s*FAIL_ON_WARNINGS\s*$")
 
     @unittest.skipIf(DOXYGEN is None, "doxygen not installed")
     def test_undocumented_public_field_adds_a_warning(self) -> None:

@@ -10,6 +10,7 @@
 
 #include <cstdio>
 
+#include "text_format.h"
 #include "ui/sequencer_editor_primitives.h"
 #include "ui/text_formatter.h"
 #include "ui_text.h"
@@ -63,7 +64,7 @@ void ChannelNavigationRenderer::renderChannelQuickSelect(
         }
 
         char channelLabel[3]{};
-        std::snprintf(channelLabel, sizeof(channelLabel), "%u", channelIndex + 1U);
+        text::formatInto(channelLabel, sizeof(channelLabel), "%u", channelIndex + 1U);
         display_.drawText(
             static_cast<std::int16_t>(cellX + 5),
             static_cast<std::int16_t>(cellY + 7),
@@ -130,7 +131,7 @@ void ChannelNavigationRenderer::renderSequencerEditor(
         static_cast<std::uint16_t>(pageBaseStep) + navigation.sequencerCursor,
         static_cast<std::uint16_t>(pattern.length - 1U)));
     char header[24]{};
-    std::snprintf(
+    text::formatInto(
         header,
         sizeof(header),
         text::get(text::TextId::SequencerEditorHeaderFormat),
@@ -194,7 +195,7 @@ void ChannelNavigationRenderer::renderSequencerEditor(
     }
 
     char footer[20]{};
-    std::snprintf(
+    text::formatInto(
         footer,
         sizeof(footer),
         text::get(text::TextId::SequencerEditorFooterFormat),
@@ -227,7 +228,7 @@ void ChannelNavigationRenderer::renderSequencerStepEditor(
     const std::uint8_t absoluteStep =
         static_cast<std::uint8_t>(navigation.sequencerPage * 8U + navigation.sequencerCursor);
     char header[24]{};
-    std::snprintf(
+    text::formatInto(
         header,
         sizeof(header),
         text::get(text::TextId::SequencerStepEditorTitleFormat),
@@ -245,7 +246,7 @@ void ChannelNavigationRenderer::renderSequencerStepEditor(
         text::get(text::TextId::Tie),
     };
     char values[5][12]{};
-    std::snprintf(
+    text::formatInto(
         values[0],
         sizeof(values[0]),
         "%s",
@@ -253,36 +254,36 @@ void ChannelNavigationRenderer::renderSequencerStepEditor(
             sequencerPatternGate(activePattern, absoluteStep) ? text::TextId::On
                                                               : text::TextId::Off));
     if (metadata.probabilityPercent == 0U) {
-        std::snprintf(values[1], sizeof(values[1]), "%s", text::get(text::TextId::DefaultValue));
+        text::formatInto(values[1], sizeof(values[1]), "%s", text::get(text::TextId::DefaultValue));
     } else {
-        std::snprintf(
+        text::formatInto(
             values[1],
             sizeof(values[1]),
             text::get(text::TextId::PercentFormat),
             metadata.probabilityPercent);
     }
     if (metadata.gateProfile == SequencerGateProfile::Default) {
-        std::snprintf(values[2], sizeof(values[2]), "%s", text::get(text::TextId::DefaultValue));
+        text::formatInto(values[2], sizeof(values[2]), "%s", text::get(text::TextId::DefaultValue));
     } else {
         const std::uint8_t duty = sequencerGateProfileDutyPercent(metadata.gateProfile);
         if (duty != 0U) {
-            std::snprintf(
+            text::formatInto(
                 values[2], sizeof(values[2]), text::get(text::TextId::PercentFormat), duty);
         } else {
             const std::uint16_t milliseconds =
                 sequencerGateProfileMilliseconds(metadata.gateProfile, 0U);
-            std::snprintf(
+            text::formatInto(
                 values[2],
                 sizeof(values[2]),
                 text::get(text::TextId::MillisecondsFormat),
                 milliseconds);
         }
     }
-    std::snprintf(values[3], sizeof(values[3]), "%u", metadata.ratchetCount);
+    text::formatInto(values[3], sizeof(values[3]), "%u", metadata.ratchetCount);
     if (activePattern.direction == SequencerPlayDirection::Random) {
-        std::snprintf(values[4], sizeof(values[4]), "%s", text::get(text::TextId::NotAvailable));
+        text::formatInto(values[4], sizeof(values[4]), "%s", text::get(text::TextId::NotAvailable));
     } else {
-        std::snprintf(
+        text::formatInto(
             values[4],
             sizeof(values[4]),
             "%s",
@@ -300,8 +301,8 @@ void ChannelNavigationRenderer::renderSequencerStepEditor(
         const std::int16_t valueX = static_cast<std::int16_t>(127 - bounds.width);
         if (selected && navigation.editing && row != 0U) {
             display_.fillRectangle(
-                valueX - 1,
-                y - 1,
+                static_cast<std::int16_t>(valueX - 1),
+                static_cast<std::int16_t>(y - 1),
                 static_cast<std::int16_t>(bounds.width + 2U),
                 9,
                 hal::PixelColor::White);
@@ -323,36 +324,48 @@ void ChannelNavigationRenderer::drawOverviewModeIcon(
     const std::int16_t y,
     const hal::PixelColor color) {
     if (state.operatingMode == OperatingMode::UnifiedClock) {
-        display_.drawVerticalLine(x, y + 1, 7, color);
-        display_.drawHorizontalLine(x, y + 4, 7, color);
-        display_.drawVerticalLine(x + 7, y, 9, color);
+        display_.drawVerticalLine(x, static_cast<std::int16_t>(y + 1), 7, color);
+        display_.drawHorizontalLine(x, static_cast<std::int16_t>(y + 4), 7, color);
+        display_.drawVerticalLine(static_cast<std::int16_t>(x + 7), y, 9, color);
         return;
     }
     if (state.operatingMode == OperatingMode::DividerBank) {
-        display_.drawHorizontalLine(x, y + 1, 8, color);
-        display_.drawHorizontalLine(x, y + 4, 6, color);
-        display_.drawHorizontalLine(x, y + 7, 4, color);
+        display_.drawHorizontalLine(x, static_cast<std::int16_t>(y + 1), 8, color);
+        display_.drawHorizontalLine(x, static_cast<std::int16_t>(y + 4), 6, color);
+        display_.drawHorizontalLine(x, static_cast<std::int16_t>(y + 7), 4, color);
         return;
     }
 
     const ChannelMode mode = state.channels[channelIndex].common.mode;
     if (mode == ChannelMode::Off) {
         display_.drawRectangle(x, y, 8, 8, color);
-        display_.drawLine(x + 1, y + 6, x + 6, y + 1, color);
+        display_.drawLine(
+            static_cast<std::int16_t>(x + 1),
+            static_cast<std::int16_t>(y + 6),
+            static_cast<std::int16_t>(x + 6),
+            static_cast<std::int16_t>(y + 1),
+            color);
     } else if (mode == ChannelMode::Clock) {
-        display_.drawLine(x, y + 6, x, y + 2, color);
-        display_.drawHorizontalLine(x, y + 2, 4, color);
-        display_.drawVerticalLine(x + 4, y + 2, 5, color);
-        display_.drawHorizontalLine(x + 4, y + 6, 4, color);
+        display_.drawLine(
+            x, static_cast<std::int16_t>(y + 6), x, static_cast<std::int16_t>(y + 2), color);
+        display_.drawHorizontalLine(x, static_cast<std::int16_t>(y + 2), 4, color);
+        display_.drawVerticalLine(
+            static_cast<std::int16_t>(x + 4), static_cast<std::int16_t>(y + 2), 5, color);
+        display_.drawHorizontalLine(
+            static_cast<std::int16_t>(x + 4), static_cast<std::int16_t>(y + 6), 4, color);
     } else if (mode == ChannelMode::Euclid) {
-        display_.fillRectangle(x + 3, y, 2, 2, color);
-        display_.fillRectangle(x + 6, y + 3, 2, 2, color);
-        display_.fillRectangle(x + 3, y + 6, 2, 2, color);
-        display_.fillRectangle(x, y + 3, 2, 2, color);
+        display_.fillRectangle(static_cast<std::int16_t>(x + 3), y, 2, 2, color);
+        display_.fillRectangle(
+            static_cast<std::int16_t>(x + 6), static_cast<std::int16_t>(y + 3), 2, 2, color);
+        display_.fillRectangle(
+            static_cast<std::int16_t>(x + 3), static_cast<std::int16_t>(y + 6), 2, 2, color);
+        display_.fillRectangle(x, static_cast<std::int16_t>(y + 3), 2, 2, color);
     } else {
-        display_.fillRectangle(x, y + 1, 2, 6, color);
-        display_.drawRectangle(x + 3, y + 3, 2, 4, color);
-        display_.fillRectangle(x + 6, y + 1, 2, 6, color);
+        display_.fillRectangle(x, static_cast<std::int16_t>(y + 1), 2, 6, color);
+        display_.drawRectangle(
+            static_cast<std::int16_t>(x + 3), static_cast<std::int16_t>(y + 3), 2, 4, color);
+        display_.fillRectangle(
+            static_cast<std::int16_t>(x + 6), static_cast<std::int16_t>(y + 1), 2, 6, color);
     }
 }
 

@@ -24,6 +24,14 @@
 namespace clockfw::engine {
 namespace {
 
+/**
+ * @brief Returns the bit of one channel in an 8-bit channel mask.
+ * @param channelIndex Zero-based channel index, below kChannelCount.
+ * @return Mask with bit @p channelIndex set.
+ *
+ * @isr TIM3 scheduler interrupt: constant time, non-blocking, no allocation, opens no
+ *      interrupt lock.
+ */
 constexpr std::uint8_t channelBit(const std::size_t channelIndex) {
     return static_cast<std::uint8_t>(1U << channelIndex);
 }

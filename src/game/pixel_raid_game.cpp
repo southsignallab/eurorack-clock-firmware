@@ -10,6 +10,7 @@
 #include "game/boot_game_controls.h"
 
 #include "hal/system_clock.h"
+#include "text_format.h"
 #include "ui_text.h"
 #include <algorithm>
 #include <cstdio>
@@ -265,7 +266,7 @@ void PixelRaidGame::render() {
     display_.setTextColor(hal::PixelColor::White);
 
     char header[32]{};
-    std::snprintf(
+    text::formatInto(
         header,
         sizeof(header),
         text::get(text::TextId::GameHeaderFormat),
@@ -408,10 +409,11 @@ std::int16_t PixelRaidGame::chooseEnemyShotX() {
 
 void PixelRaidGame::drawAlien(const std::int16_t x, const std::int16_t y) const {
     // Original five-by-three glyph: broad shoulders, two eyes, and a center foot.
-    display_.drawHorizontalLine(x, y + 1, 5);
-    display_.drawHorizontalLine(x + 1, y, 1);
-    display_.drawHorizontalLine(x + 3, y, 1);
-    display_.drawHorizontalLine(x + 2, y + 2, 1);
+    display_.drawHorizontalLine(x, static_cast<std::int16_t>(y + 1), 5);
+    display_.drawHorizontalLine(static_cast<std::int16_t>(x + 1), y, 1);
+    display_.drawHorizontalLine(static_cast<std::int16_t>(x + 3), y, 1);
+    display_.drawHorizontalLine(
+        static_cast<std::int16_t>(x + 2), static_cast<std::int16_t>(y + 2), 1);
 }
 
 }  // namespace clockfw::game

@@ -18,6 +18,14 @@ constexpr std::uint16_t kReservedMask = 0x8000U;
 constexpr unsigned kGateProfileShift = 7U;
 constexpr unsigned kRatchetShift = 11U;
 
+/**
+ * @brief Returns whether @p profile is a known gate profile.
+ * @param profile Value to check.
+ * @return True for DEFAULT..GATE 100 MS.
+ *
+ * @isr TIM3 scheduler interrupt: constant time, non-blocking, no allocation, opens no
+ *      interrupt lock.
+ */
 bool validGateProfile(const SequencerGateProfile profile) {
     return profile >= SequencerGateProfile::Default && profile <= SequencerGateProfile::Gate100Ms;
 }

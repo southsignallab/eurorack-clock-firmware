@@ -75,7 +75,7 @@ The simulator follows the intended **10 HP / 3U** physical hierarchy:
 - PLAY, TAP, STOP in one row above the inputs, with PAUSE / SHIFT / BACK as grey secondary labels;
 - OLED above the buttons, left aligned;
 - encoder beside the OLED;
-- one activity LED above and to the right of each output jack (hardware Rev C).
+- one activity LED above and to the right of each output jack (hardware Rev C, board revision C of hardware generation Rev 1).
 
 The committed layout uses the KiCad front-panel project as its panel image: `background_image = panel_background.png` is the F.SilkS engraving and Edge.Cuts cut-outs rendered by `scripts/import_kicad_front_panel.py`, and `draw_builtin_labels = false` suppresses the simulator's own debug lettering. Controls, LEDs and the OLED are drawn on top at the coordinates the same importer writes into `sim/panel_layout.ini`. The VCV shell and the manual illustration use the identical artwork and coordinates; visual styling does not alter firmware behavior. Custom layouts without an image can still enable the built-in labels.
 

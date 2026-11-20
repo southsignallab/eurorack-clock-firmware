@@ -30,7 +30,8 @@ class SettingsEditor final {
      * @brief Constructs the editor around mutable application state and the real-time engine.
      * @param state Mutable musical/application state.
      * @param engine Real-time engine receiving committed changes.
-     * @param customGrooveStore Custom Groove library; without it, Groove PRESET never offers CUSTOM.
+     * @param customGrooveStore Custom Groove library; without it, Groove PRESET never offers
+     *        CUSTOM.
      */
     SettingsEditor(
         ClockState& state,
@@ -72,43 +73,102 @@ class SettingsEditor final {
     bool executeSequencerCommand(std::uint8_t channelIndex, std::uint8_t rowIndex);
 
   private:
-    /** @brief Adjusts one external-input role assignment. */
+    /**
+     * @brief Adjusts one external-input role assignment.
+     * @param rowIndex Selected row on the page.
+     * @param delta Signed encoder detent count.
+     */
     void adjustInputAssignments(std::uint8_t rowIndex, std::int8_t delta);
 
-    /** @brief Adjusts one device-local hardware preference row. */
+    /**
+     * @brief Adjusts one device-local hardware preference row.
+     * @param rowIndex Selected row on the page.
+     * @param delta Signed encoder detent count.
+     */
     void adjustHardware(std::uint8_t rowIndex, std::int8_t delta);
 
-    /** @brief Adjusts one master-settings row. */
+    /**
+     * @brief Adjusts one master-settings row.
+     * @param rowIndex Selected row on the page.
+     * @param delta Signed encoder detent count.
+     */
     void adjustMaster(std::uint8_t rowIndex, std::int8_t delta);
 
-    /** @brief Adjusts one external-sync settings row. */
+    /**
+     * @brief Adjusts one external-sync settings row.
+     * @param rowIndex Selected row on the page.
+     * @param delta Signed encoder detent count.
+     */
     void adjustSync(std::uint8_t rowIndex, std::int8_t delta);
 
-    /** @brief Adjusts STOP-mode screensaver and OLED timeout preferences. */
+    /**
+     * @brief Adjusts STOP-mode screensaver and OLED timeout preferences.
+     * @param rowIndex Selected row on the page.
+     * @param delta Signed encoder detent count.
+     */
     void adjustScreensaver(std::uint8_t rowIndex, std::int8_t delta);
 
-    /** @brief Adjusts one common channel-settings row. */
+    /**
+     * @brief Adjusts one common channel-settings row.
+     * @param channelIndex Selected channel.
+     * @param rowIndex Selected row on the page.
+     * @param delta Signed encoder detent count.
+     */
     void adjustCommonChannel(std::uint8_t channelIndex, std::uint8_t rowIndex, std::int8_t delta);
 
-    /** @brief Adjusts one rate-settings row. */
+    /**
+     * @brief Adjusts one rate-settings row.
+     * @param channelIndex Selected channel.
+     * @param rowIndex Selected row on the page.
+     * @param delta Signed encoder detent count.
+     */
     void adjustRate(std::uint8_t channelIndex, std::uint8_t rowIndex, std::int8_t delta);
 
-    /** @brief Adjusts one CLOCK-specific settings row. */
+    /**
+     * @brief Adjusts one CLOCK-specific settings row.
+     * @param channelIndex Selected channel.
+     * @param rowIndex Selected row on the page.
+     * @param delta Signed encoder detent count.
+     */
     void adjustClock(std::uint8_t channelIndex, std::uint8_t rowIndex, std::int8_t delta);
 
-    /** @brief Adjusts one EUCLID-specific settings row. */
+    /**
+     * @brief Adjusts one EUCLID-specific settings row.
+     * @param channelIndex Selected channel.
+     * @param rowIndex Selected row on the page.
+     * @param delta Signed encoder detent count.
+     */
     void adjustEuclid(std::uint8_t channelIndex, std::uint8_t rowIndex, std::int8_t delta);
 
-    /** @brief Adjusts one SEQ-specific settings row. */
+    /**
+     * @brief Adjusts one SEQ-specific settings row.
+     * @param channelIndex Selected channel.
+     * @param rowIndex Selected row on the page.
+     * @param delta Signed encoder detent count.
+     */
     void adjustSequencer(std::uint8_t channelIndex, std::uint8_t rowIndex, std::int8_t delta);
 
-    /** @brief Adjusts one shared eight-output Timing setting. */
+    /**
+     * @brief Adjusts one shared eight-output Timing setting.
+     * @param rowIndex Selected row on the page.
+     * @param delta Signed encoder detent count.
+     */
     void adjustUnifiedTiming(std::uint8_t rowIndex, std::int8_t delta);
 
-    /** @brief Adjusts one shared eight-output Output setting. */
+    /**
+     * @brief Adjusts one shared eight-output Output setting.
+     * @param rowIndex Selected row on the page.
+     * @param delta Signed encoder detent count.
+     */
     void adjustUnifiedOutput(std::uint8_t rowIndex, std::int8_t delta);
 
-    /** @brief Adjusts the active global/per-channel Stage-1 Groove assignment. */
+    /**
+     * @brief Adjusts the active global/per-channel Stage-1 Groove assignment.
+     * @param channelIndex Selected channel; ignored in the One Clock operating mode, which
+     *        edits the shared Groove.
+     * @param rowIndex Selected row on the page.
+     * @param delta Signed encoder detent count.
+     */
     void adjustGroove(std::uint8_t channelIndex, std::uint8_t rowIndex, std::int8_t delta);
 
     /**
@@ -118,16 +178,31 @@ class SettingsEditor final {
      */
     bool firstStoredCustomGroove(std::uint8_t& slotIndex) const;
 
-    /** @brief Adjusts one fixed divider-bank setting. */
+    /**
+     * @brief Adjusts one fixed divider-bank setting.
+     * @param rowIndex Selected row on the page.
+     * @param delta Signed encoder detent count.
+     */
     void adjustDividerBank(std::uint8_t rowIndex, std::int8_t delta);
 
-    /** @brief Clamps a signed integer to an inclusive range. */
+    /**
+     * @brief Clamps a signed integer to an inclusive range.
+     * @param value Value to clamp.
+     * @param minimum Inclusive lower bound.
+     * @param maximum Inclusive upper bound.
+     * @return @p value limited to [minimum, maximum].
+     */
     static int clampInt(int value, int minimum, int maximum);
 
+    /** Application state edited by the settings pages; owned by the caller. */
     ClockState& state_;
+    /** Real-time engine that receives committed changes. */
     engine::ClockEngine& engine_;
+    /** Custom Groove library; nullptr means CUSTOM is never offered. */
     const services::CustomGrooveStore* customGrooveStore_ = nullptr;
+    /** Gate bits copied by the legacy Sequencer COPY command. */
     std::uint64_t sequencerClipboard_ = 0U;
+    /** sequencerClipboard_ holds a copied pattern. */
     bool sequencerClipboardValid_ = false;
 };
 

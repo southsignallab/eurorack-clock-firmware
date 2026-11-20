@@ -17,93 +17,27 @@
 namespace clockfw::ui {
 namespace {
 
-/** Q12 fixed-point unit used by the fractal renderer. */
-constexpr std::int32_t kFixedOne = 4096;
-
-/** Number of animation frames in one complete fern-growth cycle. */
-constexpr std::uint32_t kFernCycleFrames = 48U;
-
-/** Iterations hidden before plotting so the attractor has settled. */
-constexpr std::uint32_t kFernBurnInIterations = 24U;
-
-/** First visible frame already contains enough structure to be recognizable. */
-constexpr std::uint32_t kFernInitialPoints = 96U;
-
-/** Additional Barnsley iterations revealed on every 400-ms screensaver frame. */
-constexpr std::uint32_t kFernPointsPerFrame = 28U;
-
-/** One deliberately composed crop of the Barnsley attractor. */
-struct FernViewport final {
-    std::int32_t minX;
-    std::int32_t maxX;
-    std::int32_t minY;
-    std::int32_t maxY;
-};
-
 /** Small signed OLED-space point without converting std::pair constructors. */
 struct Point16 final {
     std::int16_t x;
     std::int16_t y;
 };
 
-/**
- * Curated views of the fern. Randomising arbitrary coordinates can yield empty
- * or visually weak OLED frames, so variety is selected only from crops that
- * retain a useful amount of recognisable leaflet structure.
- */
-constexpr std::array<FernViewport, 6U> kFernViewports{{
-    {-10'240, 11'469, 8'192, 41'370},   // broad crown
-    {-7'782, 7'782, 21'299, 41'574},    // upper crown
-    {-11'264, 2'867, 15'974, 38'912},   // left leaflets
-    {-2'662, 11'674, 15'565, 38'912},   // right leaflets
-    {-9'421, 9'421, 11'878, 35'226},    // middle crown
-    {-10'650, 10'650, 4'096, 25'805},   // lower branching
-}};
-
 /** Compact signed sine table spanning one full turn in 32 samples. */
-constexpr std::array<std::int8_t, 32U> kSineTable{{
-    0, 25, 49, 71, 90, 106, 117, 125,
-    127, 125, 117, 106, 90, 71, 49, 25,
-    0, -25, -49, -71, -90, -106, -117, -125,
-    -127, -125, -117, -106, -90, -71, -49, -25}};
+constexpr std::array<std::int8_t, 32U> kSineTable{
+    {0, 25,  49,  71,  90,  106,  117,  125,  127,  125,  117,  106,  90,  71,  49,  25,
+     0, -25, -49, -71, -90, -106, -117, -125, -127, -125, -117, -106, -90, -71, -49, -25}};
 
 /** Returns a signed table sample with wrap-around. */
 std::int8_t sineSample(const std::uint32_t phase) {
     return kSineTable[phase % kSineTable.size()];
 }
 
-/** Deterministic small PRNG used only to select Barnsley affine transforms. */
-std::uint32_t nextFernRandom(std::uint32_t& state) {
-    state = state * 1'664'525U + 1'013'904'223U;
-    return state;
-}
-
-/** Maps one Q12 fern point into the deliberately cropped OLED viewport.
- * Coordinates outside the crop deliberately map outside the framebuffer; the
- * OLED primitive clips them, keeping the crop path branch-free.
- */
-void mapFernPoint(
-    const std::int32_t x,
-    const std::int32_t y,
-    const FernViewport& viewport,
-    std::int16_t& screenX,
-    std::int16_t& screenY) {
-    const std::int32_t width = viewport.maxX - viewport.minX;
-    const std::int32_t height = viewport.maxY - viewport.minY;
-    screenX = static_cast<std::int16_t>(
-        (static_cast<std::int64_t>(x - viewport.minX) * (hal::OledDisplay::kWidth - 1)) / width);
-    screenY = static_cast<std::int16_t>(
-        (hal::OledDisplay::kHeight - 1) -
-        (static_cast<std::int64_t>(y - viewport.minY) * (hal::OledDisplay::kHeight - 1)) / height);
-}
-
 }  // namespace
 
 ScreensaverRenderer::ScreensaverRenderer(hal::OledDisplay& display) : display_(display) {}
 
-void ScreensaverRenderer::render(
-    const ScreensaverMode mode,
-    const std::uint32_t frameIndex) {
+void ScreensaverRenderer::render(const ScreensaverMode mode, const std::uint32_t frameIndex) {
     switch (mode) {
         case ScreensaverMode::Fractal:
             renderFractal(frameIndex);
@@ -156,83 +90,6 @@ void ScreensaverRenderer::render(
     }
 }
 
-void ScreensaverRenderer::renderFractal(const std::uint32_t frameIndex) {
-    display_.clear();
-
-    // Keep the mathematically deterministic fern, but choose among curated
-    // decorative crops at each growth-cycle boundary. Renderer state survives
-    // STOP-mode wake/sleep cycles, so a later activation does not always start
-    // with the same composition.
-    const std::uint32_t cycleFrame = frameIndex % kFernCycleFrames;
-    const bool firstFractalFrame = lastFractalFrameIndex_ == kInvalidFrameIndex;
-    const bool restarted = !firstFractalFrame && frameIndex < lastFractalFrameIndex_;
-    const bool newGrowthCycle =
-        cycleFrame == 0U && frameIndex != lastFractalFrameIndex_;
-    if (firstFractalFrame || restarted || newGrowthCycle) {
-        selectNextFernViewport();
-    }
-    lastFractalFrameIndex_ = frameIndex;
-    const FernViewport& viewport = kFernViewports[fernViewportIndex_];
-    const std::uint32_t visiblePoints =
-        kFernInitialPoints + cycleFrame * kFernPointsPerFrame;
-    const std::uint32_t totalIterations = kFernBurnInIterations + visiblePoints;
-
-    std::int32_t x = 0;
-    std::int32_t y = 0;
-    std::uint32_t randomState = 0x6D2B79F5U;
-
-    for (std::uint32_t iteration = 0U; iteration < totalIterations; ++iteration) {
-        const std::uint32_t selector = nextFernRandom(randomState) % 100U;
-        const std::int32_t previousX = x;
-        const std::int32_t previousY = y;
-
-        if (selector < 1U) {
-            // Stem: x' = 0, y' = 0.16y.
-            x = 0;
-            y = static_cast<std::int32_t>((655LL * previousY) / kFixedOne);
-        } else if (selector < 86U) {
-            // Dominant leaflet transform.
-            x = static_cast<std::int32_t>(
-                (3'482LL * previousX + 164LL * previousY) / kFixedOne);
-            y = static_cast<std::int32_t>(
-                (-164LL * previousX + 3'482LL * previousY) / kFixedOne) + 6'554;
-        } else if (selector < 93U) {
-            // Left leaflet transform.
-            x = static_cast<std::int32_t>(
-                (819LL * previousX - 1'065LL * previousY) / kFixedOne);
-            y = static_cast<std::int32_t>(
-                (942LL * previousX + 901LL * previousY) / kFixedOne) + 6'554;
-        } else {
-            // Right leaflet transform.
-            x = static_cast<std::int32_t>(
-                (-614LL * previousX + 1'147LL * previousY) / kFixedOne);
-            y = static_cast<std::int32_t>(
-                (1'065LL * previousX + 983LL * previousY) / kFixedOne) + 1'802;
-        }
-
-        if (iteration >= kFernBurnInIterations) {
-            std::int16_t screenX = 0;
-            std::int16_t screenY = 0;
-            mapFernPoint(x, y, viewport, screenX, screenY);
-            display_.setPixel(screenX, screenY);
-        }
-    }
-
-    display_.present();
-}
-
-void ScreensaverRenderer::selectNextFernViewport() {
-    const std::uint8_t previousIndex = fernViewportIndex_;
-    fernViewportRandomState_ = nextFernRandom(fernViewportRandomState_);
-    std::uint8_t candidate = static_cast<std::uint8_t>(
-        fernViewportRandomState_ % static_cast<std::uint32_t>(kFernViewports.size()));
-    if (candidate == previousIndex) {
-        candidate = static_cast<std::uint8_t>(
-            (static_cast<std::size_t>(candidate) + 1U) % kFernViewports.size());
-    }
-    fernViewportIndex_ = candidate;
-}
-
 void ScreensaverRenderer::renderOrbit(const std::uint32_t frameIndex) {
     display_.clear();
 
@@ -246,16 +103,17 @@ void ScreensaverRenderer::renderOrbit(const std::uint32_t frameIndex) {
         const std::int16_t x = static_cast<std::int16_t>(
             centerX + static_cast<std::int16_t>(sineSample(phase)) * (22 + point * 4) / 127);
         const std::int16_t y = static_cast<std::int16_t>(
-            centerY + static_cast<std::int16_t>(sineSample(phase * 3U + 8U)) * (10 + point * 2) / 127);
+            centerY +
+            static_cast<std::int16_t>(sineSample(phase * 3U + 8U)) * (10 + point * 2) / 127);
         display_.drawLine(previousX, previousY, x, y);
-        display_.fillRectangle(x - 1, y - 1, 3, 3);
+        display_.fillRectangle(
+            static_cast<std::int16_t>(x - 1), static_cast<std::int16_t>(y - 1), 3, 3);
         previousX = x;
         previousY = y;
     }
 
     display_.present();
 }
-
 
 void ScreensaverRenderer::renderPlug(const std::uint32_t frameIndex) {
     display_.clear();
@@ -271,16 +129,16 @@ void ScreensaverRenderer::renderPlug(const std::uint32_t frameIndex) {
 
     std::int16_t previousX = kLeft;
     std::int16_t previousY = kCenterY;
-    for (std::int16_t x = static_cast<std::int16_t>(kLeft + 2); x <= kRight; x = static_cast<std::int16_t>(x + 2)) {
+    for (std::int16_t x = static_cast<std::int16_t>(kLeft + 2); x <= kRight;
+         x = static_cast<std::int16_t>(x + 2)) {
         const std::int32_t spatialNumerator = x <= kPluckX
             ? static_cast<std::int32_t>(x - kLeft) * 127
             : static_cast<std::int32_t>(kRight - x) * 127;
         const std::int32_t spatialDenominator = x <= kPluckX
             ? static_cast<std::int32_t>(kPluckX - kLeft)
             : static_cast<std::int32_t>(kRight - kPluckX);
-        const std::int32_t spatial = spatialDenominator > 0
-            ? spatialNumerator / spatialDenominator
-            : 0;
+        const std::int32_t spatial =
+            spatialDenominator > 0 ? spatialNumerator / spatialDenominator : 0;
         const std::int32_t harmonic = static_cast<std::int32_t>(
             sineSample(static_cast<std::uint32_t>(x + static_cast<std::int16_t>(frameIndex * 2U))));
         const std::int32_t displacement =
@@ -305,7 +163,8 @@ void ScreensaverRenderer::renderClock(const std::uint32_t frameIndex) {
         const std::int16_t baseY = static_cast<std::int16_t>(5 + static_cast<int>(channel) * 7);
         std::int16_t previousY = baseY;
         for (std::int16_t x = 0; x < static_cast<std::int16_t>(hal::OledDisplay::kWidth); ++x) {
-            const std::uint32_t phase = frameIndex * 2U + static_cast<std::uint32_t>(x) + kPhase[channel];
+            const std::uint32_t phase =
+                frameIndex * 2U + static_cast<std::uint32_t>(x) + kPhase[channel];
             const bool high = (phase % kPeriods[channel]) < kDuty[channel];
             const std::int16_t y = static_cast<std::int16_t>(baseY - (high ? 4 : 0));
             if (x > 0) {
@@ -322,11 +181,22 @@ void ScreensaverRenderer::renderClock(const std::uint32_t frameIndex) {
 
 void ScreensaverRenderer::renderHeartbeat(const std::uint32_t frameIndex) {
     display_.clear();
-    constexpr std::array<std::int16_t, 12U> kPulseScale{{16, 18, 23, 20, 17, 16, 16, 17, 20, 18, 16, 16}};
+    constexpr std::array<std::int16_t, 12U> kPulseScale{
+        {16, 18, 23, 20, 17, 16, 16, 17, 20, 18, 16, 16}};
     const std::int16_t scale = kPulseScale[frameIndex % kPulseScale.size()];
-    constexpr std::array<Point16, 12U> kHeart{{
-        {-8, -3}, {-6, -7}, {-2, -8}, {0, -5}, {2, -8}, {6, -7},
-        {8, -3}, {7, 1}, {4, 5}, {0, 9}, {-4, 5}, {-7, 1}}};
+    constexpr std::array<Point16, 12U> kHeart{
+        {{-8, -3},
+         {-6, -7},
+         {-2, -8},
+         {0, -5},
+         {2, -8},
+         {6, -7},
+         {8, -3},
+         {7, 1},
+         {4, 5},
+         {0, 9},
+         {-4, 5},
+         {-7, 1}}};
     constexpr std::int16_t centerX = 64;
     constexpr std::int16_t centerY = 31;
 
@@ -376,19 +246,29 @@ void ScreensaverRenderer::renderAcid(const std::uint32_t frameIndex) {
         acidAngularVelocityQ8_ = acidAngularVelocityQ8_ * 253 / 256;
 
         if (acidXQ8_ < kMinX) {
-            acidXQ8_ = kMinX; acidVelocityXQ8_ = std::abs(acidVelocityXQ8_);
-            acidAngularVelocityQ8_ = std::clamp<std::int32_t>(acidAngularVelocityQ8_ - acidVelocityYQ8_ / 5, -520, 520);
+            acidXQ8_ = kMinX;
+            acidVelocityXQ8_ = std::abs(acidVelocityXQ8_);
+            acidAngularVelocityQ8_ =
+                std::clamp<std::int32_t>(acidAngularVelocityQ8_ - acidVelocityYQ8_ / 5, -520, 520);
         } else if (acidXQ8_ > kMaxX) {
-            acidXQ8_ = kMaxX; acidVelocityXQ8_ = -std::abs(acidVelocityXQ8_);
-            acidAngularVelocityQ8_ = std::clamp<std::int32_t>(acidAngularVelocityQ8_ + acidVelocityYQ8_ / 5, -520, 520);
+            acidXQ8_ = kMaxX;
+            acidVelocityXQ8_ = -std::abs(acidVelocityXQ8_);
+            acidAngularVelocityQ8_ =
+                std::clamp<std::int32_t>(acidAngularVelocityQ8_ + acidVelocityYQ8_ / 5, -520, 520);
         }
         if (acidYQ8_ < kMinY) {
-            acidYQ8_ = kMinY; acidVelocityYQ8_ = std::abs(acidVelocityYQ8_);
-            acidAngularVelocityQ8_ = std::clamp<std::int32_t>(acidAngularVelocityQ8_ + acidVelocityXQ8_ / 5, -520, 520);
+            acidYQ8_ = kMinY;
+            acidVelocityYQ8_ = std::abs(acidVelocityYQ8_);
+            acidAngularVelocityQ8_ =
+                std::clamp<std::int32_t>(acidAngularVelocityQ8_ + acidVelocityXQ8_ / 5, -520, 520);
         } else if (acidYQ8_ > kMaxY) {
-            acidYQ8_ = kMaxY; acidVelocityYQ8_ = -std::abs(acidVelocityYQ8_) * 235 / 256;
-            if (std::abs(acidVelocityYQ8_) < 300) acidVelocityYQ8_ = -390;
-            acidAngularVelocityQ8_ = std::clamp<std::int32_t>(acidAngularVelocityQ8_ - acidVelocityXQ8_ / 4, -520, 520);
+            acidYQ8_ = kMaxY;
+            acidVelocityYQ8_ = -std::abs(acidVelocityYQ8_) * 235 / 256;
+            if (std::abs(acidVelocityYQ8_) < 300) {
+                acidVelocityYQ8_ = -390;
+            }
+            acidAngularVelocityQ8_ =
+                std::clamp<std::int32_t>(acidAngularVelocityQ8_ - acidVelocityXQ8_ / 4, -520, 520);
         }
     }
     lastAcidFrameIndex_ = frameIndex;
@@ -402,31 +282,41 @@ void ScreensaverRenderer::renderAcid(const std::uint32_t frameIndex) {
         const std::int32_t c = sineSample(angle + 8U);
         const std::int32_t s = sineSample(angle);
         return Point16{
-            static_cast<std::int16_t>((static_cast<std::int32_t>(x) * c - static_cast<std::int32_t>(y) * s) / 127),
-            static_cast<std::int16_t>((static_cast<std::int32_t>(x) * s + static_cast<std::int32_t>(y) * c) / 127)};
+            static_cast<std::int16_t>(
+                (static_cast<std::int32_t>(x) * c - static_cast<std::int32_t>(y) * s) / 127),
+            static_cast<std::int16_t>(
+                (static_cast<std::int32_t>(x) * s + static_cast<std::int32_t>(y) * c) / 127)};
     };
 
     Point16 previous{};
     for (std::uint32_t point = 0U; point <= 16U; ++point) {
         const std::uint32_t phase = (point * 32U / 16U) % 32U;
-        const std::int16_t x = static_cast<std::int16_t>(static_cast<std::int32_t>(sineSample(phase + 8U)) * kRadius / 127);
-        const std::int16_t y = static_cast<std::int16_t>(static_cast<std::int32_t>(sineSample(phase)) * kRadius / 127);
+        const std::int16_t x = static_cast<std::int16_t>(
+            static_cast<std::int32_t>(sineSample(phase + 8U)) * kRadius / 127);
+        const std::int16_t y =
+            static_cast<std::int16_t>(static_cast<std::int32_t>(sineSample(phase)) * kRadius / 127);
         const auto r = rotate(x, y);
-        const Point16 current{static_cast<std::int16_t>(cx + r.x), static_cast<std::int16_t>(cy + r.y)};
-        if (point > 0U) display_.drawLine(previous.x, previous.y, current.x, current.y);
+        const Point16 current{
+            static_cast<std::int16_t>(cx + r.x), static_cast<std::int16_t>(cy + r.y)};
+        if (point > 0U) {
+            display_.drawLine(previous.x, previous.y, current.x, current.y);
+        }
         previous = current;
     }
     for (const auto& eye : std::array<Point16, 2U>{{{-4, -3}, {4, -3}}}) {
         const auto r = rotate(eye.x, eye.y);
-        display_.fillRectangle(static_cast<std::int16_t>(cx + r.x - 1), static_cast<std::int16_t>(cy + r.y - 1), 2, 2);
+        display_.fillRectangle(
+            static_cast<std::int16_t>(cx + r.x - 1), static_cast<std::int16_t>(cy + r.y - 1), 2, 2);
     }
     constexpr std::array<Point16, 5U> kSmile{{{-5, 2}, {-3, 5}, {0, 6}, {3, 5}, {5, 2}}};
     auto previousMouth = rotate(kSmile[0].x, kSmile[0].y);
     for (std::size_t index = 1U; index < kSmile.size(); ++index) {
         const auto currentMouth = rotate(kSmile[index].x, kSmile[index].y);
         display_.drawLine(
-            static_cast<std::int16_t>(cx + previousMouth.x), static_cast<std::int16_t>(cy + previousMouth.y),
-            static_cast<std::int16_t>(cx + currentMouth.x), static_cast<std::int16_t>(cy + currentMouth.y));
+            static_cast<std::int16_t>(cx + previousMouth.x),
+            static_cast<std::int16_t>(cy + previousMouth.y),
+            static_cast<std::int16_t>(cx + currentMouth.x),
+            static_cast<std::int16_t>(cy + currentMouth.y));
         previousMouth = currentMouth;
     }
     display_.present();

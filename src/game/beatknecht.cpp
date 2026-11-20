@@ -13,6 +13,7 @@
 #include <cstdio>
 
 #include "hal/system_clock.h"
+#include "text_format.h"
 #include "ui_text.h"
 
 namespace clockfw::game {
@@ -402,7 +403,7 @@ void Beatknecht::render() {
     const DrumStyle& style = kStyles[styleIndex_];
     display_.drawText(1, 0, text::get(style.name));
     char tempoText[10]{};
-    std::snprintf(tempoText, sizeof(tempoText), "%u", static_cast<unsigned>(bpm_));
+    text::formatInto(tempoText, sizeof(tempoText), "%u", static_cast<unsigned>(bpm_));
     const hal::TextBounds bounds = display_.measureText(tempoText, 0, 0);
     display_.drawText(static_cast<std::int16_t>(127 - bounds.width), 0, tempoText);
     if (transport_ == TransportState::Playing) {

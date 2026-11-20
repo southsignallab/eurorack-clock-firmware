@@ -55,6 +55,54 @@ void UiController::handleShortEncoderPress(const std::uint32_t nowMs) {
     // self-contained and makes intentionally unsupported screens explicit.
     switch (navigation_.screen) {
         case Screen::Performance:
+        case Screen::ChannelQuickSelect:
+        case Screen::ModeSelect:
+        case Screen::ModeChangeConfirm:
+            pressOnChannelScreen(nowMs);
+            return;
+
+        case Screen::Templates:
+        case Screen::TemplateApplyConfirm:
+        case Screen::PresetSlots:
+            pressOnPresetScreen(nowMs);
+            return;
+
+        case Screen::OverwriteConfirm:
+        case Screen::HighScoreClearConfirm:
+        case Screen::FactoryResetConfirm:
+        case Screen::NameEntry:
+            pressOnPresetDialog(nowMs);
+            return;
+
+        case Screen::GrooveSlots:
+            pressOnGrooveSlots(nowMs);
+            return;
+
+        case Screen::GrooveOverwriteConfirm:
+        case Screen::GrooveDeleteConfirm:
+        case Screen::GrooveDiscardConfirm:
+        case Screen::GrooveNameEntry:
+            pressOnGrooveDialog(nowMs);
+            return;
+
+        case Screen::InformationPopover:
+        case Screen::Settings:
+        case Screen::SequencerEditor:
+        case Screen::SequencerStepEditor:
+            pressOnEditorScreen(nowMs);
+            return;
+
+        case Screen::GrooveEditor:
+        case Screen::GrooveRecorder:
+            // Short press has no direct workspace action. Long press opens the
+            // context menu; TAP/PLAY own musical interaction in each workspace.
+            return;
+    }
+}
+
+void UiController::pressOnChannelScreen(const std::uint32_t nowMs) {
+    switch (navigation_.screen) {
+        case Screen::Performance:
             navigation_.screen = Screen::ChannelQuickSelect;
             navigation_.cursor = navigation_.selectedChannel;
             navigation_.editing = false;
@@ -86,6 +134,13 @@ void UiController::handleShortEncoderPress(const std::uint32_t nowMs) {
             }
             return;
 
+        default:
+            return;
+    }
+}
+
+void UiController::pressOnPresetScreen(const std::uint32_t nowMs) {
+    switch (navigation_.screen) {
         case Screen::Templates:
             // A template replaces the configuration: ask first, NO preselected (D-09).
             navigation_.pendingTemplate = navigation_.cursor;
@@ -117,6 +172,13 @@ void UiController::handleShortEncoderPress(const std::uint32_t nowMs) {
             }
             return;
 
+        default:
+            return;
+    }
+}
+
+void UiController::pressOnPresetDialog(const std::uint32_t nowMs) {
+    switch (navigation_.screen) {
         case Screen::OverwriteConfirm:
             if (navigation_.cursor == 0U) {
                 navigation_.screen = Screen::PresetSlots;
@@ -147,6 +209,13 @@ void UiController::handleShortEncoderPress(const std::uint32_t nowMs) {
             }
             return;
 
+        default:
+            return;
+    }
+}
+
+void UiController::pressOnGrooveSlots(const std::uint32_t nowMs) {
+    switch (navigation_.screen) {
         case Screen::GrooveSlots:
             navigation_.selectedGrooveSlot = navigation_.cursor;
             if (navigation_.grooveSlotAction == GrooveSlotAction::LoadEditor) {
@@ -177,6 +246,13 @@ void UiController::handleShortEncoderPress(const std::uint32_t nowMs) {
             }
             return;
 
+        default:
+            return;
+    }
+}
+
+void UiController::pressOnGrooveDialog(const std::uint32_t nowMs) {
+    switch (navigation_.screen) {
         case Screen::GrooveOverwriteConfirm:
             if (navigation_.cursor == 0U) {
                 navigation_.screen = Screen::GrooveSlots;
@@ -222,6 +298,13 @@ void UiController::handleShortEncoderPress(const std::uint32_t nowMs) {
             }
             return;
 
+        default:
+            return;
+    }
+}
+
+void UiController::pressOnEditorScreen(const std::uint32_t nowMs) {
+    switch (navigation_.screen) {
         case Screen::InformationPopover:
             navigation_.screen = Screen::Settings;
             invalidate();
@@ -262,10 +345,7 @@ void UiController::handleShortEncoderPress(const std::uint32_t nowMs) {
             }
             return;
 
-        case Screen::GrooveEditor:
-        case Screen::GrooveRecorder:
-            // Short press has no direct workspace action. Long press opens the
-            // context menu; TAP/PLAY own musical interaction in each workspace.
+        default:
             return;
     }
 }

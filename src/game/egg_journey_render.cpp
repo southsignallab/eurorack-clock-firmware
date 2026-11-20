@@ -10,6 +10,7 @@
 #include <array>
 #include <cstdio>
 
+#include "text_format.h"
 #include "ui_text.h"
 
 namespace clockfw::game {
@@ -184,19 +185,23 @@ void EggJourneyGame::render() {
 
     char scoreText[12]{};
     char highText[12]{};
-    std::snprintf(
+    static_assert(sizeof(scoreText) >= sizeof("S99999"), "score field (modulo 100000)");
+    static_assert(sizeof(highText) >= sizeof("H99999"), "high-score field (modulo 100000)");
+    text::formatInto(
         scoreText, sizeof(scoreText), "S%05lu", static_cast<unsigned long>(score_ % 100000U));
-    std::snprintf(
+    text::formatInto(
         highText,
         sizeof(highText),
         "H%05lu",
         static_cast<unsigned long>(highScore_.score % 100000U));
     display_.drawText(1, 0, scoreText);
     char livesText[5]{};
-    std::snprintf(livesText, sizeof(livesText), "L%u", static_cast<unsigned>(lives_));
+    static_assert(sizeof(livesText) >= sizeof("L255"), "lives field (std::uint8_t)");
+    text::formatInto(livesText, sizeof(livesText), "L%u", static_cast<unsigned>(lives_));
     display_.drawText(58, 0, livesText);
     char stageText[7]{};
-    std::snprintf(
+    static_assert(sizeof(stageText) >= sizeof("ST255"), "stage field (std::uint8_t)");
+    text::formatInto(
         stageText, sizeof(stageText), "ST%u", static_cast<unsigned>(journeyStage(cameraWorldX_)));
     display_.drawText(72, 0, stageText);
     display_.drawText(94, 0, highText);

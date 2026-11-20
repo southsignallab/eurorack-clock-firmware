@@ -37,7 +37,7 @@ flowchart LR
 
 ## Product boundary
 
-CLOCK is deliberately a **digital timing, gate, and trigger instrument**. Hardware revision 1 does not add analog CV/modulation outputs or a general-purpose CV modulation matrix, and it does not add general parameter-CV inputs.
+CLOCK is deliberately a **digital timing, gate, and trigger instrument**. Hardware Rev 1 (the first hardware generation; its current board revision is Rev C) does not add analog CV/modulation outputs or a general-purpose CV modulation matrix, and it does not add general parameter-CV inputs.
 
 This is a deliberate DIY-quality decision, not a missing 1.0 requirement. A quality eight-channel analog modulation-output path would move the design into a different cost and assembly class: the project would require an eight-channel 16-bit DAC-class solution plus two quad output op-amp stages. A 12-bit MCP-class compromise is not considered adequate for this product direction. The present project estimate is roughly **EUR 30-40 additional BOM cost** before the wider consequences for fine-pitch SMD assembly, PCB complexity, calibration, testing, and documentation.
 

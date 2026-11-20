@@ -81,17 +81,31 @@ inline constexpr std::array<std::uint32_t, kChannelCount> kGateChannelPins{
 /** Encoded port identifier of GPIOB (see hal/gpio_pin.h: bits 15..8 of a pin hold the port). */
 inline constexpr std::uint32_t kGpioPortB = 0xBU;
 
-/** @brief Returns the encoded port identifier of one framework-independent pin. */
+/**
+ * @brief Returns the encoded port identifier of one framework-independent pin.
+ * @param pin Encoded pin (hal/gpio_pin.h).
+ * @return Bits 15..8 of @p pin, e.g. kGpioPortB.
+ */
 constexpr std::uint32_t pinPort(const std::uint32_t pin) {
     return static_cast<std::uint32_t>((pin >> 8U) & 0xFFU);
 }
 
-/** @brief Returns the single-bit GPIO line mask of one pin within its port. */
+/**
+ * @brief Returns the single-bit GPIO line mask of one pin within its port.
+ * @param pin Encoded pin (hal/gpio_pin.h).
+ * @return 1 << (bits 3..0 of @p pin).
+ */
 constexpr std::uint16_t pinLineMask(const std::uint32_t pin) {
     return static_cast<std::uint16_t>(1U << (pin & 0x0FU));
 }
 
-/** @brief Returns true when every gate pin is on GPIOB and no two gate pins share a GPIO line. */
+/**
+ * @brief Returns true when every gate pin is on GPIOB and no two gate pins share a GPIO
+ * line.
+ * @param pins Gate pins in channel order.
+ * @return False when a pin is unassigned, not on GPIOB, has bits 7..4 set, or repeats a
+ * line.
+ */
 constexpr bool gatePinsShareOnePortWithoutDuplicates(
     const std::array<std::uint32_t, kChannelCount>& pins) {
     std::uint32_t usedLines = 0U;
@@ -134,21 +148,27 @@ inline constexpr bool kGateBufferEnabledLevel = false;
 #ifndef CLOCK_DISPLAY_I2C_SDA_PIN
 #define CLOCK_DISPLAY_I2C_SDA_PIN clockfw::mcu::kUnassigned
 #endif
+/** Build-flag override of the OLED I2C SCL pin; unassigned by default. */
 #ifndef CLOCK_DISPLAY_I2C_SCL_PIN
 #define CLOCK_DISPLAY_I2C_SCL_PIN clockfw::mcu::kUnassigned
 #endif
+/** Build-flag override of the OLED SPI SCK pin; PA5 by default. */
 #ifndef CLOCK_DISPLAY_SPI_SCK_PIN
 #define CLOCK_DISPLAY_SPI_SCK_PIN clockfw::mcu::PA5
 #endif
+/** Build-flag override of the OLED SPI MOSI/DIN pin; PA7 by default. */
 #ifndef CLOCK_DISPLAY_SPI_MOSI_PIN
 #define CLOCK_DISPLAY_SPI_MOSI_PIN clockfw::mcu::PA7
 #endif
+/** Build-flag override of the OLED SPI chip-select pin; PA4 by default. */
 #ifndef CLOCK_DISPLAY_SPI_CS_PIN
 #define CLOCK_DISPLAY_SPI_CS_PIN clockfw::mcu::PA4
 #endif
+/** Build-flag override of the OLED SPI data/command pin; PB9 by default. */
 #ifndef CLOCK_DISPLAY_SPI_DC_PIN
 #define CLOCK_DISPLAY_SPI_DC_PIN clockfw::mcu::PB9
 #endif
+/** Build-flag override of the OLED reset pin; PB15 by default. */
 #ifndef CLOCK_DISPLAY_RESET_PIN
 #define CLOCK_DISPLAY_RESET_PIN clockfw::mcu::PB15
 #endif
@@ -184,15 +204,19 @@ static_assert(
     kDisplaySpiDataCommandPin != kDisplayResetPin,
     "OLED D/C and RESET must use different GPIOs");
 
+/** Build-flag override of the SYNC comparator input pin; PA8 by default. */
 #ifndef CLOCK_EXTERNAL_SYNC_PIN
 #define CLOCK_EXTERNAL_SYNC_PIN clockfw::mcu::PA8
 #endif
+/** Build-flag override of the SYNC jack-detect pin; unassigned (0xFFFFFFFF) by default. */
 #ifndef CLOCK_EXTERNAL_SYNC_JACK_DETECT_PIN
 #define CLOCK_EXTERNAL_SYNC_JACK_DETECT_PIN 0xFFFFFFFFUL
 #endif
+/** Build-flag override of the RST comparator input pin; PA9 by default. */
 #ifndef CLOCK_EXTERNAL_RESET_PIN
 #define CLOCK_EXTERNAL_RESET_PIN clockfw::mcu::PA9
 #endif
+/** Build-flag override of the RST jack-detect pin; unassigned (0xFFFFFFFF) by default. */
 #ifndef CLOCK_EXTERNAL_RESET_JACK_DETECT_PIN
 #define CLOCK_EXTERNAL_RESET_JACK_DETECT_PIN 0xFFFFFFFFUL
 #endif
@@ -222,6 +246,11 @@ static_assert(
         kExternalSyncSignalPin != kExternalResetSignalPin,
     "External SYNC and RST comparator outputs must not share a GPIO");
 
+/**
+ * @brief Returns true when no assigned pin appears twice.
+ * @param pins Pins to check; kUnassignedDigitalPin entries are skipped.
+ * @return False when two entries name the same assigned pin.
+ */
 constexpr bool distinctAssignedPins(const std::array<std::uint32_t, 21U>& pins) {
     for (std::size_t i = 0U; i < pins.size(); ++i) {
         if (pins[i] == kUnassignedDigitalPin) {
@@ -236,6 +265,7 @@ constexpr bool distinctAssignedPins(const std::array<std::uint32_t, 21U>& pins) 
     return true;
 }
 
+/** Every digital signal of the final hardware pin map, checked for duplicates below. */
 inline constexpr std::array<std::uint32_t, 21U> kFinalHardwareDigitalPins{
     {kPlayPauseButtonPin,       kResetBackButtonPin,    kTapTempoButtonPin,
      kDisplaySpiChipSelectPin,  kDisplaySpiClockPin,    kDisplaySpiDataPin,
@@ -245,6 +275,7 @@ inline constexpr std::array<std::uint32_t, 21U> kFinalHardwareDigitalPins{
      kChannel7GateLedPin,       kChannel8GateLedPin,    kEncoderPushButtonPin,
      kDisplayResetPin,          kExternalSyncSignalPin, kExternalResetSignalPin}};
 
+/** Build flag: 1 (default) asserts the final hardware pin map at compile time, 0 skips it. */
 #ifndef CLOCK_ENFORCE_FINAL_PIN_MAP
 #define CLOCK_ENFORCE_FINAL_PIN_MAP 1
 #endif

@@ -19,6 +19,7 @@
 #include "ui/menu_model.h"
 #include "ui/menu_model_channel.h"
 #include "ui/menu_model_sync.h"
+#include "text_format.h"
 #include "ui_text.h"
 
 using namespace clockfw;
@@ -441,6 +442,53 @@ void testNonEditablePageDoesNotChangeTempo(){ Harness h; const auto before=h.sta
 
 }  // namespace
 
+void testFormatIntoReportsCompleteText(){
+    text::resetTruncationCountForTest();
+    char buffer[8]{};
+    TEST_ASSERT_TRUE(text::formatInto(buffer, sizeof(buffer), "%u", 1234U));
+    TEST_ASSERT_TRUE(std::strcmp("1234", buffer) == 0);
+    TEST_ASSERT_TRUE(text::formatInto(buffer, sizeof(buffer), "%s", "ABCDEFG"));  // exactly fits with NUL
+    TEST_ASSERT_EQUAL_UINT32(0U, text::truncationCountForTest());
+}
+void testFormatIntoTruncatesToTerminatedPrefixAndReportsIt(){
+    text::resetTruncationCountForTest();
+    char buffer[4]{};
+    TEST_ASSERT_FALSE(text::formatInto(buffer, sizeof(buffer), "%s", "ABCDEF"));
+    TEST_ASSERT_TRUE(std::strcmp("ABC", buffer) == 0);
+    TEST_ASSERT_EQUAL_UINT32(1U, text::truncationCountForTest());
+    TEST_ASSERT_FALSE(text::formatInto(buffer, 0U, "%s", "A"));
+    TEST_ASSERT_FALSE(text::formatInto(nullptr, 0U, "%s", "A"));
+    TEST_ASSERT_EQUAL_UINT32(3U, text::truncationCountForTest());
+    text::resetTruncationCountForTest();
+    TEST_ASSERT_EQUAL_UINT32(0U, text::truncationCountForTest());
+}
+void testEverySettingsRowFitsItsBuffers(){
+    // W-366: every label and value of every settings page, channel mode and channel fits.
+    Harness h;
+    constexpr ui::SettingsPage pages[] = {
+        ui::SettingsPage::Root, ui::SettingsPage::General, ui::SettingsPage::InputAssignments, ui::SettingsPage::Hardware, ui::SettingsPage::Diagnostics,
+        ui::SettingsPage::Master, ui::SettingsPage::Sync, ui::SettingsPage::Preferences, ui::SettingsPage::Screensaver,
+        ui::SettingsPage::Info, ui::SettingsPage::Support, ui::SettingsPage::Licenses, ui::SettingsPage::Updates,
+        ui::SettingsPage::Channel, ui::SettingsPage::ChannelTiming, ui::SettingsPage::ChannelOutput,
+        ui::SettingsPage::Clock, ui::SettingsPage::Euclid, ui::SettingsPage::Sequencer,
+        ui::SettingsPage::SequencerPattern, ui::SettingsPage::UnifiedClock,
+        ui::SettingsPage::UnifiedTiming, ui::SettingsPage::UnifiedOutput,
+        ui::SettingsPage::Groove, ui::SettingsPage::GrooveEditorMenu, ui::SettingsPage::GrooveRecordMenu, ui::SettingsPage::DividerBank};
+    constexpr ChannelMode modes[] = {ChannelMode::Clock, ChannelMode::Euclid, ChannelMode::Sequencer, ChannelMode::Off};
+    text::resetTruncationCountForTest();
+    for (const auto mode : modes) {
+        for (std::uint8_t channel = 0U; channel < kChannelCount; ++channel) {
+            h.state.channels[channel].common.mode = mode;
+            for (const auto page : pages) {
+                const std::uint8_t count = ui::settingsPageItemCount(page, mode, true);
+                for (std::uint8_t row = 0U; row < count; ++row) {
+                    (void)ui::buildMenuRow(page, row, channel, h.state, true);
+                }
+            }
+        }
+    }
+    TEST_ASSERT_EQUAL_UINT32(0U, text::truncationCountForTest());
+}
 int main(){
     UNITY_BEGIN();
     RUN_TEST(testHardwareEncoderDirectionCanBeReversed); RUN_TEST(testHardwareEncoderDirectionCanReturnToNormal); RUN_TEST(testHardwareDisplayOrientationCanRotate180); RUN_TEST(testHardwareDisplayOrientationCanReturnToZero); RUN_TEST(testInputAssignmentsDefaultToSyncAndReset); RUN_TEST(testInputAssignmentsSkipFunctionAlreadyUsedByOtherInput); RUN_TEST(testInputAssignmentsAllowOffOnBothInputs); RUN_TEST(testFillIsReservedAndNotSelectableYet);
@@ -461,5 +509,6 @@ int main(){
     RUN_TEST(testAllSettingsPageTitlesAndCountsAreReachable); RUN_TEST(testAllChannelRootRowsAreReachable); RUN_TEST(testGrooveMenuRowsAndNoOpBranchesAreReachable); RUN_TEST(testChannelHierarchyFallbacksAndActionLookupAreReachable); RUN_TEST(testSequencerV2MenuRowsCoverDirectionsLoopAndBounds); RUN_TEST(testMenuModelConditionalRowsCoverBothStates); RUN_TEST(testGrooveOffRotationFormattingCoversZeroLength); RUN_TEST(testEditorDefensiveAndSearchBranchesAreReachable);
     RUN_TEST(testScreensaverEditorCoversInvalidStoredModeAndOffDelayRow); RUN_TEST(testUnifiedHumanizeEditorNormalizesUnknownStoredValue);
     RUN_TEST(testUnifiedClockSwingClampsAtFifty); RUN_TEST(testUnifiedClockHumanizeUsesCuratedOptions); RUN_TEST(testDividerBankClampsAtPrimes); RUN_TEST(testDividerBankGateLengthUsesCuratedOptions); RUN_TEST(testNonEditablePageDoesNotChangeTempo);
+    RUN_TEST(testFormatIntoReportsCompleteText); RUN_TEST(testFormatIntoTruncatesToTerminatedPrefixAndReportsIt); RUN_TEST(testEverySettingsRowFitsItsBuffers);
     return UNITY_END();
 }

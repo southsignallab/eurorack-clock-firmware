@@ -17,7 +17,9 @@ namespace clockfw {
 
 /** @brief One selectable integer divide/multiply option. */
 struct RateOption {
+    /** Whether factor multiplies or divides. */
     ClockRatioMode mode;
+    /** Integer rate factor. */
     std::uint8_t factor;
 };
 

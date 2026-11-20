@@ -137,6 +137,32 @@ class ReferenceTableTests(unittest.TestCase):
             self.replace_in(root, tables.EXTI_PRIORITY_SOURCE, 'kExtiPreemptPriority = 4U;', 'kExtiPreemptPriority = 5U;')
             self.assertEqual(['docs/TIMING.md: interrupt-priorities'], tables.run(check=True, root=root))
 
+    def test_timing_table_lists_the_internal_budgets(self) -> None:
+        # F-088: the internal timing budgets are constants in src/config.h, not only prose.
+        body = tables.timing_constant_table(ROOT)
+        self.assertIn('| Scheduler interrupt, worst case (internal budget) | 20 µs | `kSchedulerIsrBudgetUs` |', body)
+        self.assertIn('| Foreground interrupt lock (internal budget) | 10 µs | `kInterruptLockBudgetUs` |', body)
+        self.assertIn('| Firmware share of the input timestamp jitter, at most | 30 µs | '
+                      '`kInputTimestampJitterBudgetUs` |', body)
+
+    def test_runtime_instrumentation_records_the_budgets_from_config(self) -> None:
+        # F-088: the debug counters carry the budgets in cycles next to the measured maxima.
+        header = (ROOT / 'src' / 'hal' / 'runtime_instrumentation.h').read_text(encoding='utf-8')
+        source = (ROOT / 'src' / 'hal' / 'runtime_instrumentation.cpp').read_text(encoding='utf-8')
+        self.assertIn('std::uint32_t schedulerIsrBudgetCycles;', header)
+        self.assertIn('std::uint32_t interruptLockBudgetCycles;', header)
+        self.assertIn('config::kSchedulerIsrBudgetUs * cyclesPerUs', source)
+        self.assertIn('config::kInterruptLockBudgetUs * cyclesPerUs', source)
+
+    def test_budget_change_makes_the_timing_check_fail(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = copy_tree(Path(tmp))
+            self.replace_in(root, 'src/config.h', 'kSchedulerIsrBudgetUs = 20UL;', 'kSchedulerIsrBudgetUs = 25UL;')
+            self.assertEqual(['docs/TIMING.md: timing-constants'], tables.run(check=True, root=root))
+            tables.run(check=False, root=root)
+            timing = (root / 'docs' / 'TIMING.md').read_text(encoding='utf-8')
+            self.assertIn('| Firmware share of the input timestamp jitter, at most | 35 µs |', timing)
+
     def test_constant_evaluator_rejects_unknown_names_and_calls(self) -> None:
         self.assertEqual(50, tables.evaluate('1000000UL / kRate', {'kRate': 20000}))
         self.assertEqual(4, tables.evaluate('static_cast<std::size_t>(kCount)', {'kCount': 4}))

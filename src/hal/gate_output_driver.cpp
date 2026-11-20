@@ -18,6 +18,14 @@
 namespace clockfw::hal {
 namespace {
 
+/**
+ * @brief Returns the bit of @p channelIndex in a channel mask.
+ * @param channelIndex Zero-based channel index in the range 0..7.
+ * @return 1 << @p channelIndex.
+ *
+ * @isr Runs in the TIM3 scheduler interrupt: bounded, non-blocking, no allocation, no output,
+ * opens no interrupt lock.
+ */
 constexpr std::uint8_t channelBit(const std::size_t channelIndex) {
     return static_cast<std::uint8_t>(1U << channelIndex);
 }
@@ -42,7 +50,14 @@ constexpr std::array<std::uint16_t, 16U> makeGateLineNibbleTable(const std::size
 constexpr std::array<std::uint16_t, 16U> kGateLinesLow = makeGateLineNibbleTable(0U);
 constexpr std::array<std::uint16_t, 16U> kGateLinesHigh = makeGateLineNibbleTable(4U);
 
-/** @brief Maps eight channel bits to their GPIOB line mask with two table lookups. */
+/**
+ * @brief Maps eight channel bits to their GPIOB line mask with two table lookups.
+ * @param channels Bit n selects channel n.
+ * @return GPIOB line mask of the selected gate pins.
+ *
+ * @isr Runs in the TIM3 scheduler interrupt: bounded, non-blocking, no allocation, no output,
+ * opens no interrupt lock.
+ */
 std::uint16_t gateLinesFor(const std::uint8_t channels) {
     return static_cast<std::uint16_t>(
         kGateLinesLow[channels & 0x0FU] | kGateLinesHigh[channels >> 4U]);

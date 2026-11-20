@@ -11,7 +11,11 @@
 
 namespace clockfw::services {
 
-/** @brief Returns true when every persisted field is inside the supported semantic range. */
+/**
+ * @brief Checks every persisted field against its supported semantic range.
+ * @param state Configuration to check.
+ * @return True when every persisted field is inside the supported semantic range.
+ */
 bool isPersistentStateValid(const ClockState& state);
 
 }  // namespace clockfw::services

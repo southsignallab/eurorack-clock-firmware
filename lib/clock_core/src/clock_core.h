@@ -19,7 +19,12 @@ inline constexpr std::uint64_t kQ32One = 1ULL << 32U;
 
 /**
  * @brief Calculates the greatest common divisor of two unsigned integers.
+ * @param first First value.
+ * @param second Second value.
  * @return The greatest common divisor, or 1 when both inputs are zero.
+ *
+ * @isr TIM3 scheduler interrupt: bounded Euclidean loop (logarithmic in the inputs),
+ *      non-blocking, no allocation, opens no interrupt lock.
  */
 std::uint32_t greatestCommonDivisor(std::uint32_t first, std::uint32_t second);
 
@@ -28,6 +33,9 @@ std::uint32_t greatestCommonDivisor(std::uint32_t first, std::uint32_t second);
  * @param settings Shared channel settings containing divide/multiply and ratio values.
  * @param numerator Receives the reduced rate numerator.
  * @param denominator Receives the reduced rate denominator.
+ *
+ * @isr TIM3 scheduler interrupt: bounded (one GCD reduction), non-blocking, no allocation,
+ *      opens no interrupt lock.
  */
 void calculateEffectiveRate(
     const CommonChannelSettings& settings,
@@ -41,6 +49,9 @@ void calculateEffectiveRate(
  * @param masterBeatUnit Master beat unit.
  * @param numerator Receives the reduced rate numerator.
  * @param denominator Receives the reduced rate denominator.
+ *
+ * @isr TIM3 scheduler interrupt: bounded (two GCD reductions), non-blocking, no allocation,
+ *      opens no interrupt lock.
  */
 void calculateEffectiveClockRate(
     const CommonChannelSettings& settings,
@@ -59,6 +70,9 @@ void calculateEffectiveClockRate(
  * At x1 a pattern step is one sixteenth note. Therefore a 16-step pattern
  * spans one 4/4 bar at the master tempo. DIV/MULT and rational ratios are
  * applied on top of that musical grid.
+ *
+ * @isr TIM3 scheduler interrupt: bounded (two GCD reductions), non-blocking, no allocation,
+ *      opens no interrupt lock.
  */
 void calculateEffectivePatternRate(
     const CommonChannelSettings& settings,
@@ -72,6 +86,9 @@ void calculateEffectivePatternRate(
  * @param denominator Rate denominator; zero is treated as one.
  * @param remainder Persistent integer remainder carried into the next interval.
  * @return Next interval in Q32 beats, never zero.
+ *
+ * @isr TIM3 scheduler interrupt: constant time (one 64-bit division), non-blocking, no
+ *      allocation, opens no interrupt lock.
  */
 std::uint64_t calculateNextIntervalQ32(
     std::uint32_t numerator,
@@ -129,6 +146,10 @@ struct MasterAdvanceQ32 {
  * Bit-identical to @p ticks calls of calculateMasterIncrementMilliBpmQ32() but with one
  * 64-bit division regardless of @p ticks: every further tick only adds the quotient
  * and carries the remainder (F-012).
+ *
+ * @isr TIM3 scheduler interrupt: one 64-bit division and @p ticks loop rounds (the caller
+ *      bounds ticks by config::kMaximumSchedulerCatchUpTicks), non-blocking, no allocation,
+ *      opens no interrupt lock.
  */
 MasterAdvanceQ32 advanceMasterPositionMilliBpmQ32(
     std::uint32_t bpmMilli,
@@ -154,10 +175,20 @@ std::uint64_t applySwing(
  * @param intervalQ32 Local ideal interval.
  * @param phasePercent Phase percentage, clamped to 99.
  * @return Q32 phase offset.
+ *
+ * @isr TIM3 scheduler interrupt: constant time, non-blocking, no allocation, opens no
+ *      interrupt lock.
  */
 std::uint64_t calculatePhaseOffsetQ32(std::uint64_t intervalQ32, std::uint8_t phasePercent);
 
-/** @brief Advances a xorshift32 pseudo-random state by one deterministic sample. */
+/**
+ * @brief Advances a xorshift32 pseudo-random state by one deterministic sample.
+ * @param value Current state; 0 stays 0.
+ * @return Next state.
+ *
+ * @isr TIM3 scheduler interrupt: constant time, non-blocking, no allocation, opens no
+ *      interrupt lock.
+ */
 std::uint32_t nextXorshift32(std::uint32_t value);
 
 /**
@@ -165,6 +196,9 @@ std::uint32_t nextXorshift32(std::uint32_t value);
  * @param probabilityPercent Probability in percent.
  * @param randomState Mutable deterministic random state.
  * @return True when the trigger passes the probability gate.
+ *
+ * @isr TIM3 scheduler interrupt: constant time, non-blocking, no allocation, opens no
+ *      interrupt lock.
  */
 bool passesProbability(std::uint8_t probabilityPercent, std::uint32_t& randomState);
 
@@ -175,6 +209,9 @@ bool passesProbability(std::uint8_t probabilityPercent, std::uint32_t& randomSta
  * @param baseIntervalUs Ideal local interval in microseconds.
  * @param swingPercent Swing amount used to derive the shortest possible interval.
  * @return Safe gate duration in scheduler ticks, always at least one tick.
+ *
+ * @isr TIM3 scheduler interrupt: constant time (64-bit divisions), non-blocking, no
+ *      allocation, opens no interrupt lock.
  */
 std::uint32_t calculateGatePulseTicks(
     std::uint16_t gateLengthMs,
@@ -182,28 +219,81 @@ std::uint32_t calculateGatePulseTicks(
     std::uint64_t baseIntervalUs,
     std::uint8_t swingPercent);
 
-/** @brief Returns the next wrapped step index for a pattern of the specified length. */
+/**
+ * @brief Returns the next wrapped step index for a pattern of the specified length.
+ * @param currentStep Zero-based current step.
+ * @param patternLength Pattern length in steps; 0 is treated as 1.
+ * @return (currentStep + 1) modulo the pattern length.
+ *
+ * @isr TIM3 scheduler interrupt: constant time, non-blocking, no allocation, opens no
+ *      interrupt lock.
+ */
 std::uint8_t advanceStep(std::uint8_t currentStep, std::uint8_t patternLength);
 
-/** @brief Returns a bit mask containing exactly the requested number of low-order pattern bits. */
+/**
+ * @brief Returns a bit mask containing exactly the requested number of low-order pattern
+ *        bits.
+ * @param patternLength Number of bits; 64 or more gives all bits set.
+ * @return Mask with the low @p patternLength bits set; 0 for length 0.
+ */
 std::uint64_t patternMask(std::uint8_t patternLength);
 
-/** @brief Clears pattern bits outside the active pattern length. */
+/**
+ * @brief Clears pattern bits outside the active pattern length.
+ * @param pattern Gate bits, bit n = step n.
+ * @param patternLength Active length in steps.
+ * @return @p pattern without the bits at and above @p patternLength.
+ */
 std::uint64_t clampPattern(std::uint64_t pattern, std::uint8_t patternLength);
 
-/** @brief Inverts only the active portion of a binary gate pattern. */
+/**
+ * @brief Inverts only the active portion of a binary gate pattern.
+ * @param pattern Gate bits, bit n = step n.
+ * @param patternLength Active length in steps.
+ * @return Inverted active bits; bits outside the length are cleared.
+ */
 std::uint64_t invertPattern(std::uint64_t pattern, std::uint8_t patternLength);
 
-/** @brief Builds a 1010... or 0101... alternating pattern with the requested length. */
+/**
+ * @brief Builds a 1010... or 0101... alternating pattern with the requested length.
+ * @param patternLength Active length in steps.
+ * @param firstStepOn True sets step 0 and every second step after it; false sets step 1 and
+ *        every second step after it.
+ * @return Gate bits, bit n = step n, limited to the length.
+ */
 std::uint64_t alternatingPattern(std::uint8_t patternLength, bool firstStepOn = true);
 
-/** @brief Returns whether the requested Euclidean step contains a hit. */
+/**
+ * @brief Returns whether the requested Euclidean step contains a hit.
+ * @param step Zero-based step before rotation.
+ * @param settings Steps, hits (capped at steps) and rotation.
+ * @return True for a hit; false when steps or hits is 0.
+ *
+ * @isr TIM3 scheduler interrupt: constant time, non-blocking, no allocation, opens no
+ *      interrupt lock.
+ */
 bool isEuclideanHit(std::uint8_t step, const EuclidSettings& settings);
 
-/** @brief Returns whether the requested sequencer step contains an active gate. */
+/**
+ * @brief Returns whether the requested sequencer step contains an active gate.
+ * @param step Zero-based step before rotation.
+ * @param settings Length, rotation and gate bits of the binary sequencer.
+ * @return True when the rotated step's bit is set; false for length 0.
+ *
+ * @isr TIM3 scheduler interrupt: constant time, non-blocking, no allocation, opens no
+ *      interrupt lock.
+ */
 bool isSequencerHit(std::uint8_t step, const SequencerSettings& settings);
 
-/** @brief Returns whether a channel should be reset for the requested global-reset operation. */
+/**
+ * @brief Returns whether a channel should be reset for the requested global-reset operation.
+ * @param resetMode GLOBAL or FREE policy of the channel.
+ * @param includeFreeRunningChannels True to reset FREE channels as well.
+ * @return True for GLOBAL channels, and for every channel when FREE ones are included.
+ *
+ * @isr TIM3 scheduler interrupt: constant time, non-blocking, no allocation, opens no
+ *      interrupt lock.
+ */
 bool shouldResetChannel(ResetMode resetMode, bool includeFreeRunningChannels);
 
 }  // namespace clockfw::core

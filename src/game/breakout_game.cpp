@@ -13,6 +13,7 @@
 #include <cstdlib>
 
 #include "hal/system_clock.h"
+#include "text_format.h"
 #include "ui_text.h"
 
 namespace clockfw::game {
@@ -393,7 +394,7 @@ void BreakoutGame::render() {
         display_.drawText(44, 43, text::get(text::TextId::BreakoutTapStart));
     }
     char header[32]{};
-    std::snprintf(
+    text::formatInto(
         header,
         sizeof(header),
         text::get(text::TextId::GameHeaderFormat),

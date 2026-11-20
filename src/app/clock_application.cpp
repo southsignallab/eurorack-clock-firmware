@@ -25,17 +25,21 @@ game::ArcadeLeaderboardStore* selectedLeaderboardFor(
     game::ArcadeLeaderboardStore& breakout,
     game::ArcadeLeaderboardStore& eggJourney) {
     switch (selected) {
-        case config::EasterEgg::PixelRaid: return &pixelRaid;
-        case config::EasterEgg::Formula1: return &formula1;
-        case config::EasterEgg::Breakout: return &breakout;
-        case config::EasterEgg::EggJourney: return &eggJourney;
+        case config::EasterEgg::PixelRaid:
+            return &pixelRaid;
+        case config::EasterEgg::Formula1:
+            return &formula1;
+        case config::EasterEgg::Breakout:
+            return &breakout;
+        case config::EasterEgg::EggJourney:
+            return &eggJourney;
         case config::EasterEgg::Beatknecht:
-        default: return nullptr;
+        default:
+            return nullptr;
     }
 }
 
 }  // namespace
-
 
 ClockApplication* ClockApplication::activeInstance_ = nullptr;
 
@@ -54,21 +58,35 @@ ClockApplication::ClockApplication()
       formula1Game_(display_, controlPanel_, gateOutputs_, formula1Leaderboard_),
       breakoutGame_(display_, controlPanel_, gateOutputs_, breakoutLeaderboard_),
       eggJourneyGame_(display_, controlPanel_, gateOutputs_, eggJourneyLeaderboard_),
-      beatknecht_(display_, controlPanel_, gateOutputs_),
-      persistentState_(persistentStorage_),
-      customGrooveStore_(persistentStorage_, true),
-      sequencerPatternStore_(persistentStorage_),
-      sequencerStepStore_(persistentStorage_),
-      engine_(gateOutputs_),
-      externalSyncController_(externalInputs_, engine_),
-      persistenceCoordinator_(
-          persistentStorage_, persistentState_, customGrooveStore_, sequencerPatternStore_, sequencerStepStore_),
-      renderer_(display_, persistentState_, customGrooveStore_, sequencerPatternStore_, sequencerStepStore_),
-      uiController_(state_, engine_, renderer_, persistentState_, customGrooveStore_, sequencerPatternStore_, sequencerStepStore_, selectedLeaderboard_, &externalInputs_, &gateOutputs_) {
+      beatknecht_(display_, controlPanel_, gateOutputs_), persistentState_(persistentStorage_),
+      customGrooveStore_(persistentStorage_, true), sequencerPatternStore_(persistentStorage_),
+      sequencerStepStore_(persistentStorage_), engine_(gateOutputs_),
+      externalSyncController_(externalInputs_, engine_), persistenceCoordinator_(
+                                                             persistentStorage_,
+                                                             persistentState_,
+                                                             customGrooveStore_,
+                                                             sequencerPatternStore_,
+                                                             sequencerStepStore_),
+      renderer_(
+          display_,
+          persistentState_,
+          customGrooveStore_,
+          sequencerPatternStore_,
+          sequencerStepStore_),
+      uiController_(
+          state_,
+          engine_,
+          renderer_,
+          persistentState_,
+          customGrooveStore_,
+          sequencerPatternStore_,
+          sequencerStepStore_,
+          selectedLeaderboard_,
+          &externalInputs_,
+          &gateOutputs_) {
     // Every physical commit, from any store or game, passes the scheduler interlock (D-04).
     persistentStorage_.setCommitGate(&externalSyncController_);
 }
-
 
 void ClockApplication::loadCustomGrooveLibrary() {
     for (std::uint8_t slotIndex = 0U; slotIndex < kCustomGrooveSlotCount; ++slotIndex) {
@@ -79,14 +97,11 @@ void ClockApplication::loadCustomGrooveLibrary() {
     }
 }
 
-
 void ClockApplication::loadSequencerPatternBank() {
     for (std::uint8_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
         const std::uint8_t slot = sequencerPatternStore_.activeSlot(channelIndex);
         engine_.updateSequencerPattern(
-            channelIndex,
-            sequencerPatternStore_.pattern(channelIndex, slot),
-            false);
+            channelIndex, sequencerPatternStore_.pattern(channelIndex, slot), false);
         std::array<SequencerStepMetadataWord, kSequencerMaximumSteps> metadata{};
         sequencerStepStore_.loadPatternWords(channelIndex, slot, metadata);
         engine_.updateSequencerStepMetadata(channelIndex, metadata);
@@ -113,7 +128,8 @@ void ClockApplication::begin(const ClockState& initialState) {
     (void)sequencerPatternStore_.begin();
     (void)sequencerStepStore_.begin();
     if (!sequencerPatternStore_.hasDurableBank()) {
-        (void)sequencerPatternStore_.seedLegacyPatternOnes(state_, hal::SystemClock::milliseconds());
+        (void)sequencerPatternStore_.seedLegacyPatternOnes(
+            state_, hal::SystemClock::milliseconds());
     }
     loadCustomGrooveLibrary();
     state_.transport = TransportState::Stopped;
@@ -207,118 +223,6 @@ void ClockApplication::runOnce() {
     servicePersistence(nowMs);
 }
 
-#ifdef CLOCK_SIMULATOR
-const ClockState& ClockApplication::stateForSimulator() const {
-    return state_;
-}
-
-const hal::OledDisplay& ClockApplication::displayForSimulator() const {
-    return display_;
-}
-
-engine::EngineSnapshot ClockApplication::engineSnapshotForSimulator() const {
-    return engine_.snapshot();
-}
-
-void ClockApplication::injectExternalSyncLevelForSimulator(const bool high) {
-    externalInputs_.injectSyncEdgeForTest(hal::SystemClock::microseconds(), high);
-}
-
-void ClockApplication::clearExternalSyncForSimulator() {
-    externalSyncController_.clearExternalLock();
-}
-
-void ClockApplication::injectExternalResetLevelForSimulator(const bool high) {
-    externalInputs_.injectResetEdgeForTest(hal::SystemClock::microseconds(), high);
-}
-
-bool ClockApplication::runningForSimulator() const {
-    return simulatorLifecycle_ == SimulatorLifecycle::Running;
-}
-
-bool ClockApplication::easterEggActiveForSimulator() const {
-    return simulatorLifecycle_ == SimulatorLifecycle::EasterEgg;
-}
-
-bool ClockApplication::gateOutputEnabledForSimulator() const {
-    return gateOutputs_.outputStageEnabled();
-}
-
-void ClockApplication::powerOffForSimulator() {
-    schedulerTimer_.stop();
-    gateOutputs_.setAllChannelsLow();
-    gateOutputs_.disableOutputStage();
-    display_.clear();
-    display_.present();
-    simulatorLifecycle_ = SimulatorLifecycle::PoweredOff;
-    activeInstance_ = nullptr;
-}
-
-
-bool ClockApplication::openGeneralSettingsForSimulator() {
-    if (simulatorLifecycle_ != SimulatorLifecycle::Running) {
-        return false;
-    }
-    uiController_.openGeneralSettingsForHost();
-    return true;
-}
-
-const ui::NavigationState& ClockApplication::navigationForSimulator() const {
-    return uiController_.navigation();
-}
-#endif
-
-#ifdef CLOCK_SIMULATOR
-void ClockApplication::serviceSimulatorStartup(const std::uint32_t nowMs) {
-    if (simulatorLifecycle_ == SimulatorLifecycle::PoweredOff) {
-        return;
-    }
-    if (simulatorLifecycle_ == SimulatorLifecycle::EasterEgg) {
-        if (!serviceSelectedEasterEggForSimulator(nowMs)) {
-            finishSimulatorStartup();
-        }
-        return;
-    }
-
-    std::uint32_t elapsedMs = nowMs - simulatorBootStartedAtMs_;
-    if (elapsedMs > config::kBootDurationMs) {
-        elapsedMs = config::kBootDurationMs;
-    }
-    simulatorEncoderHeldForEntireBoot_ = simulatorEncoderHeldForEntireBoot_ &&
-        controlPanel_.sample(nowMs).encoderButton.pressed;
-
-    if (simulatorLastBootRenderAtMs_ == UINT32_MAX ||
-        elapsedMs - simulatorLastBootRenderAtMs_ >= config::kBootRefreshIntervalMs ||
-        elapsedMs == config::kBootDurationMs) {
-        renderer_.renderBootScreen(elapsedMs);
-        simulatorLastBootRenderAtMs_ = elapsedMs;
-    }
-    if (elapsedMs < config::kBootDurationMs) {
-        return;
-    }
-
-    if (simulatorEncoderHeldForEntireBoot_) {
-        if (selectedLeaderboard_ != nullptr) {
-            (void)selectedLeaderboard_->markStarted();  // a failed marker only hides HI-SCORES
-        }
-        simulatorLifecycle_ = SimulatorLifecycle::EasterEgg;
-        beginSelectedEasterEggForSimulator();
-        return;
-    }
-    finishSimulatorStartup();
-}
-
-void ClockApplication::finishSimulatorStartup() {
-    engine_.begin(state_);
-    loadSequencerPatternBank();
-    externalSyncController_.begin(state_);
-    schedulerTimer_.start(config::kSchedulerFrequencyHz, schedulerInterruptThunk);
-    engine_.enableOutputStage();
-    uiController_.invalidate();
-    simulatorLifecycle_ = SimulatorLifecycle::Running;
-}
-#endif
-
 void ClockApplication::runSelectedEasterEgg() {
     switch (config::kEasterEgg) {
         case config::EasterEgg::Formula1:
@@ -341,49 +245,6 @@ void ClockApplication::runSelectedEasterEgg() {
             break;
     }
 }
-
-#ifdef CLOCK_SIMULATOR
-void ClockApplication::beginSelectedEasterEggForSimulator() {
-    switch (config::kEasterEgg) {
-        case config::EasterEgg::Formula1:
-            formula1Game_.beginForSimulator();
-            break;
-        case config::EasterEgg::Breakout:
-            breakoutGame_.beginForSimulator();
-            break;
-        case config::EasterEgg::EggJourney:
-            eggJourneyGame_.beginForSimulator();
-            break;
-        case config::EasterEgg::Beatknecht:
-            beatknecht_.beginForSimulator();
-            break;
-        case config::EasterEgg::PixelRaid:
-            pixelRaidGame_.beginForSimulator();
-            break;
-        default:
-            beatknecht_.beginForSimulator();
-            break;
-    }
-}
-
-bool ClockApplication::serviceSelectedEasterEggForSimulator(const std::uint32_t nowMs) {
-    switch (config::kEasterEgg) {
-        case config::EasterEgg::Formula1:
-            return formula1Game_.serviceForSimulator(nowMs);
-        case config::EasterEgg::Breakout:
-            return breakoutGame_.serviceForSimulator(nowMs);
-        case config::EasterEgg::EggJourney:
-            return eggJourneyGame_.serviceForSimulator(nowMs);
-        case config::EasterEgg::Beatknecht:
-            return beatknecht_.serviceForSimulator(nowMs);
-        case config::EasterEgg::PixelRaid:
-            return pixelRaidGame_.serviceForSimulator(nowMs);
-        default:
-            return beatknecht_.serviceForSimulator(nowMs);
-    }
-}
-#endif
-
 
 void ClockApplication::schedulerInterruptThunk() {
     // The callback is registered only after begin() assigns activeInstance_, and
@@ -420,8 +281,8 @@ bool ClockApplication::runBootSequence() {
             lastRenderedElapsedMs = elapsedMs;
         }
 
-        encoderHeldForEntireBoot = encoderHeldForEntireBoot &&
-            controlPanel_.sample(nowMs).encoderButton.pressed;
+        encoderHeldForEntireBoot =
+            encoderHeldForEntireBoot && controlPanel_.sample(nowMs).encoderButton.pressed;
         (void)display_.service();  // only reports pending I2C work; polled every pass
 
         if (elapsedMs >= config::kBootDurationMs) {

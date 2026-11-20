@@ -21,6 +21,10 @@ namespace clockfw::hal {
  * every stored record, so existing Flash images stay valid. The 256-entry table
  * is a compile-time constant in Flash; it replaces eight shift/XOR steps per
  * byte with one lookup (F-009).
+ *
+ * @param data First byte of the input; read only, not retained.
+ * @param size Number of bytes to read from @p data.
+ * @return CRC-32 of the @p size bytes.
  */
 std::uint32_t crc32(const std::uint8_t* data, std::size_t size);
 

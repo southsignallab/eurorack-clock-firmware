@@ -29,7 +29,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BASELINE = ROOT / "scripts" / "doxygen_warning_baseline.json"
-WARNING_RE = re.compile(r"^(?P<path>.+?):(?P<line>\d+): warning: ")
+# With WARN_AS_ERROR = FAIL_ON_WARNINGS, Doxygen prints its warnings as "error:".
+WARNING_RE = re.compile(r"^(?P<path>.+?):(?P<line>\d+): (?:warning|error): ")
 NO_FILE = "(no file)"
 
 
@@ -53,7 +54,7 @@ def count_warnings(log: str, root: Path = ROOT) -> Counter:
     """Count Doxygen warnings per baseline group."""
     counts: Counter = Counter()
     for line in log.splitlines():
-        if "warning:" not in line:
+        if "warning:" not in line and "error:" not in line:
             continue
         match = WARNING_RE.match(line)
         counts[warning_directory(match.group("path"), root) if match else NO_FILE] += 1
@@ -77,9 +78,11 @@ def run_doxygen(doxygen: str, doxyfile: Path = ROOT / "Doxyfile", cwd: Path = RO
         overrides = f"\nOUTPUT_DIRECTORY = {tmp}\nWARN_LOGFILE = {log}\n"
         config = doxyfile.read_text(encoding="utf-8") + overrides
         result = subprocess.run([doxygen, "-"], input=config, cwd=cwd, capture_output=True, text=True)
-        if result.returncode != 0:
+        warnings = log.read_text(encoding="utf-8", errors="replace") if log.exists() else ""
+        # WARN_AS_ERROR = FAIL_ON_WARNINGS: a non-zero exit with warnings is a counted result.
+        if result.returncode != 0 and "warning:" not in warnings and "error:" not in warnings:
             raise RuntimeError(f"doxygen failed: {result.stderr.strip()}")
-        return log.read_text(encoding="utf-8", errors="replace")
+        return warnings
 
 
 def main(argv: list[str] | None = None) -> int:

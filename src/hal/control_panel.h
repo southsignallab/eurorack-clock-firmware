@@ -24,7 +24,9 @@ enum class ButtonEdge : std::uint8_t { None, Pressed, Released };
  * separately (F-073).
  */
 struct ButtonSample {
+    /** Edge accepted in this sample; None when the debounced state did not change. */
     ButtonEdge edge = ButtonEdge::None;
+    /** Debounced pressed state after this sample. */
     bool pressed = false;
     /** First raw edge of the transition that this validated edge accepts. */
     std::uint32_t edgeTimestampUs = 0U;
@@ -38,10 +40,18 @@ struct ButtonSample {
 
 /** @brief Complete control-panel sample produced once per application loop. */
 struct ControlSample {
+    /**
+     * Completed encoder detents since the previous sample, limited to -127..127; the sign
+     * follows setEncoderDirectionReversed(). Detents beyond the limit stay pending.
+     */
     std::int8_t encoderDelta = 0;
+    /** Encoder push switch. */
     ButtonSample encoderButton{};
+    /** Play/pause button. */
     ButtonSample transportButton{};
+    /** Tap-tempo button. */
     ButtonSample tapButton{};
+    /** Reset/back button. */
     ButtonSample resetButton{};
 };
 
@@ -61,7 +71,11 @@ class ControlPanel final {
      */
     ControlSample sample(std::uint32_t nowMs);
 
-    /** @brief Reverses the semantic sign of completed encoder detents without touching quadrature decoding. */
+    /**
+     * @brief Reverses the semantic sign of completed encoder detents without touching
+     * quadrature decoding.
+     * @param reversed True negates ControlSample::encoderDelta from the next sample on.
+     */
     void setEncoderDirectionReversed(bool reversed);
 
 #if defined(CLOCK_HOST_TEST)
@@ -82,10 +96,19 @@ class ControlPanel final {
     /** @brief Small state machine used for one active-low button input. */
     class DebouncedButton final {
       public:
-        /** @brief Associates the helper with a physical GPIO pin. */
+        /**
+         * @brief Associates the helper with a physical GPIO pin.
+         * @param pin Board pin number from pin_map.h; the GPIO is configured in begin().
+         */
         explicit DebouncedButton(std::uint32_t pin);
 
-        /** @brief Initializes the active-low input with the MCU pull-up enabled. */
+        /**
+         * @brief Initializes the active-low input with the MCU pull-up enabled.
+         * @param nowMs Current monotonic time in milliseconds; starts the debounce interval.
+         *
+         * Takes the current level as the stable state without reporting an edge; a press
+         * already held here has no known press timestamp.
+         */
         void begin(std::uint32_t nowMs);
 
         /**
@@ -96,8 +119,11 @@ class ControlPanel final {
         ButtonSample sample(std::uint32_t nowMs);
 
       private:
+        /** Board pin number of the active-low input. */
         std::uint32_t pin_;
+        /** Last raw level, true when the input reads LOW (pressed). */
         bool rawPressed_ = false;
+        /** Debounced pressed state. */
         bool stablePressed_ = false;
         /** Last raw change (ms); the debounce interval runs from here. */
         std::uint32_t rawChangedAtMs_ = 0U;
@@ -114,6 +140,8 @@ class ControlPanel final {
     /**
      * @brief Converts the wrapping quadrature transition counter into complete detents.
      * @param nowMs Current monotonic time in milliseconds; marks quadrature activity.
+     * @return Detents to report in this sample, limited to -127..127, before the direction
+     * reversal; the rest stays pending.
      */
     std::int8_t sampleEncoder(std::uint32_t nowMs);
 
@@ -139,17 +167,25 @@ class ControlPanel final {
     /** @brief Counts one discarded partial transition count (W-070 diagnostics). */
     void countDiscardedEncoderRemainder();
 
+    /** Encoder push switch. */
     DebouncedButton encoderButton_;
+    /** Play/pause button. */
     DebouncedButton transportButton_;
+    /** Tap-tempo button. */
     DebouncedButton tapButton_;
+    /** Reset/back button. */
     DebouncedButton resetButton_;
+    /** Wrapping quadrature transition count consumed by the last sampleEncoder() call. */
     std::uint32_t encoderLastTransitionCount_ = 0U;
     /** Sample time (ms) of the last observed quadrature transition. */
     std::uint32_t encoderLastActivityMs_ = 0U;
     /** True from an encoder-button release until the anchor is taken. */
     bool encoderAnchorPending_ = false;
+    /** Quadrature transitions not yet forming a complete detent (four per detent). */
     std::int8_t encoderTransitionRemainder_ = 0;
+    /** Completed detents not yet reported, saturated at -32767..32767. */
     std::int16_t pendingEncoderDetents_ = 0;
+    /** Negates the reported encoder delta when true. */
     bool encoderDirectionReversed_ = false;
 #if defined(CLOCK_HOST_TEST)
     EncoderDiagnosticsForTest encoderDiagnostics_{};

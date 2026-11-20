@@ -40,6 +40,14 @@ constexpr GrooveDefinition kDefinitions[kPresetCount] = {
 
 static_assert(text::kGroovePresetLabels.size() == kPresetCount, "one label per factory groove");
 
+/**
+ * @brief Returns the row of @p preset in kDefinitions.
+ * @param preset Groove selection.
+ * @return Row index; 0 (OFF) for an out-of-range value.
+ *
+ * @isr TIM3 scheduler interrupt: constant time, non-blocking, no allocation, opens no
+ *      interrupt lock.
+ */
 std::size_t presetIndex(const GroovePreset preset) {
     const std::size_t index = static_cast<std::size_t>(preset);
     return index < kPresetCount ? index : 0U;

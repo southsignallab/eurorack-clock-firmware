@@ -9,6 +9,7 @@
 
 #include <cstdio>
 
+#include "text_format.h"
 #include "ui/menu_model.h"
 #include "ui/menu_model_channel.h"
 
@@ -186,12 +187,12 @@ void UiController::openSelectedInformationPopover() {
         !renderer_.informationValueOverflows(row.label, row.value)) {
         return;
     }
-    std::snprintf(
+    text::formatInto(
         navigation_.informationPopoverTitle.data(),
         navigation_.informationPopoverTitle.size(),
         "%s",
         row.label);
-    std::snprintf(
+    text::formatInto(
         navigation_.informationPopoverValue.data(),
         navigation_.informationPopoverValue.size(),
         "%s",

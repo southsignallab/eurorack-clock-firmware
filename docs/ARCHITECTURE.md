@@ -20,7 +20,7 @@ flowchart LR
 
 ## Product-level I/O boundary
 
-CLOCK Hardware Rev 1 is architected as a digital event instrument, not as a mixed-signal modulation generator. The eight output channels are gate/trigger outputs; the only analog-conditioned inputs in scope are the two LM393 comparator paths physically/net-named SYNC and RST. The firmware (since 1.1.0) interprets them as configurable INPUT 1 / INPUT 2 digital roles with factory SYNC/RESET assignment. General parameter-CV inputs, analog modulation outputs, and an analog modulation matrix are intentionally outside the hardware contract.
+CLOCK Hardware Rev 1 (the first hardware generation; its current board revision is Rev C) is architected as a digital event instrument, not as a mixed-signal modulation generator. The eight output channels are gate/trigger outputs; the only analog-conditioned inputs in scope are the two LM393 comparator paths physically/net-named SYNC and RST. The firmware (since 1.1.0) interprets them as configurable INPUT 1 / INPUT 2 digital roles with factory SYNC/RESET assignment. General parameter-CV inputs, analog modulation outputs, and an analog modulation matrix are intentionally outside the hardware contract.
 
 This matters architecturally: the timing core should not acquire dependencies on a future DAC/ADC subsystem simply to mirror feature sets from modulation-centric clock products. Internal cross-channel behavior can evolve post-1.0 as deterministic event processing while the HAL boundary remains digital. The product rationale and cost/buildability trade-off are recorded in [`ROADMAP.md`](ROADMAP.md).
 

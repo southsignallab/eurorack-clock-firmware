@@ -269,9 +269,6 @@ class VcvWorkflowTests(unittest.TestCase):
         self.assertIn("Trial First", readme)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 def load_vcv_coverage_module():
     """Load scripts/check_vcv_runtime_coverage.py without running it."""
@@ -329,3 +326,60 @@ class VcvCoverageToolchainTests(unittest.TestCase):
             self.assertEqual(module.main([]), 2)
         finally:
             module.cmake_toolchain_arguments = original
+
+
+def load_vcv_panel_module():
+    """Load scripts/generate_vcv_panel.py without running it."""
+    import importlib.util
+
+    path = ROOT / "scripts/generate_vcv_panel.py"
+    spec = importlib.util.spec_from_file_location("generate_vcv_panel", path)
+    if spec is None or spec.loader is None:
+        raise AssertionError("Unable to load generate_vcv_panel.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module  # dataclasses resolve their module while the class is built
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        del sys.modules[spec.name]
+    return module
+
+
+class VcvPanelLineEndingTests(unittest.TestCase):
+    """F-089: generated VCV panel files are written and checked with LF line endings."""
+
+    def run_generator(self, module, target: Path, arguments: list[str]) -> None:
+        originals = (module.read_layout, module.outputs, module.LEGACY_ENCODER_ASSETS, sys.argv, module.ROOT)
+        module.ROOT = target.parent
+        module.read_layout = lambda _path: None
+        module.outputs = lambda _parser: {target: "<svg>\n  <g/>\n</svg>\n"}
+        module.LEGACY_ENCODER_ASSETS = ()
+        sys.argv = ["generate_vcv_panel.py", *arguments]
+        try:
+            module.main()
+        finally:
+            module.read_layout, module.outputs, module.LEGACY_ENCODER_ASSETS, sys.argv, module.ROOT = originals
+
+    def test_generator_writes_lf_on_every_platform(self) -> None:
+        import tempfile
+
+        module = load_vcv_panel_module()
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "panel.svg"
+            self.run_generator(module, target, [])
+            self.assertEqual(target.read_bytes(), b"<svg>\n  <g/>\n</svg>\n")
+
+    def test_check_mode_rejects_crlf_files(self) -> None:
+        import tempfile
+
+        module = load_vcv_panel_module()
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "panel.svg"
+            target.write_bytes(b"<svg>\r\n  <g/>\r\n</svg>\r\n")
+            with self.assertRaises(SystemExit) as raised:
+                self.run_generator(module, target, ["--check"])
+            self.assertIn("stale generated VCV panel files", str(raised.exception))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -11,6 +11,7 @@
 #include <cstdio>
 
 #include "domain/clock_labels.h"
+#include "text_format.h"
 #include "ui/menu_model.h"
 #include "ui/text_formatter.h"
 #include "ui_text.h"
@@ -19,7 +20,7 @@ namespace clockfw::ui {
 namespace {
 
 void copyText(char* const destination, const std::size_t size, const text::TextId id) {
-    std::snprintf(destination, size, "%s", text::get(id));
+    text::formatInto(destination, size, "%s", text::get(id));
 }
 
 }  // namespace
@@ -76,7 +77,7 @@ MenuRow buildChannelMenuRow(const std::uint8_t rowIndex, const ChannelConfig& ch
     switch (action) {
         case ChannelMenuAction::Mode:
             copyText(row.label, sizeof(row.label), text::TextId::Mode);
-            std::snprintf(
+            text::formatInto(
                 row.value, sizeof(row.value), "%s", channelModeLongLabel(channel.common.mode));
             break;
         case ChannelMenuAction::Timing:
@@ -115,11 +116,11 @@ MenuRow buildChannelTimingMenuRow(const std::uint8_t rowIndex, const ChannelConf
     if (rowIndex == 0U) {
         formatRate(channel.common, row.value, sizeof(row.value));
     } else if (rowIndex == 1U) {
-        std::snprintf(row.value, sizeof(row.value), "%u", channel.common.rate.numerator);
+        text::formatInto(row.value, sizeof(row.value), "%u", channel.common.rate.numerator);
     } else if (rowIndex == 2U) {
-        std::snprintf(row.value, sizeof(row.value), "%u", channel.common.rate.denominator);
+        text::formatInto(row.value, sizeof(row.value), "%u", channel.common.rate.denominator);
     } else if (rowIndex == 3U) {
-        std::snprintf(
+        text::formatInto(
             row.value,
             sizeof(row.value),
             text::get(text::TextId::PercentFormat),
@@ -140,19 +141,19 @@ MenuRow buildChannelOutputMenuRow(const std::uint8_t rowIndex, const ChannelConf
         text::TextId::Mute};
     copyText(row.label, sizeof(row.label), kLabels[rowIndex]);
     if (rowIndex == 0U) {
-        std::snprintf(
+        text::formatInto(
             row.value,
             sizeof(row.value),
             text::get(text::TextId::PercentFormat),
             channel.common.probabilityPercent);
     } else if (rowIndex == 1U) {
-        std::snprintf(
+        text::formatInto(
             row.value,
             sizeof(row.value),
             text::get(text::TextId::MillisecondsFormat),
             channel.common.gateLengthMs);
     } else if (rowIndex == 2U) {
-        std::snprintf(
+        text::formatInto(
             row.value,
             sizeof(row.value),
             text::get(text::TextId::PercentFormat),
@@ -201,11 +202,11 @@ MenuRow buildUnifiedTimingMenuRow(
         temporary.rate = settings.rate;
         formatRate(temporary, row.value, sizeof(row.value));
     } else if (rowIndex == 1U) {
-        std::snprintf(row.value, sizeof(row.value), "%u", settings.rate.numerator);
+        text::formatInto(row.value, sizeof(row.value), "%u", settings.rate.numerator);
     } else if (rowIndex == 2U) {
-        std::snprintf(row.value, sizeof(row.value), "%u", settings.rate.denominator);
+        text::formatInto(row.value, sizeof(row.value), "%u", settings.rate.denominator);
     } else if (rowIndex == 3U) {
-        std::snprintf(
+        text::formatInto(
             row.value,
             sizeof(row.value),
             text::get(text::TextId::PercentFormat),
@@ -215,7 +216,7 @@ MenuRow buildUnifiedTimingMenuRow(
     } else if (settings.humanizeUs == 0U) {
         copyText(row.value, sizeof(row.value), text::TextId::Off);
     } else {
-        std::snprintf(
+        text::formatInto(
             row.value,
             sizeof(row.value),
             text::get(text::TextId::MicrosecondsFormat),
@@ -231,13 +232,13 @@ MenuRow buildUnifiedOutputMenuRow(
     copyText(
         row.label, sizeof(row.label), rowIndex == 0U ? text::TextId::Gate : text::TextId::Phase);
     if (rowIndex == 0U) {
-        std::snprintf(
+        text::formatInto(
             row.value,
             sizeof(row.value),
             text::get(text::TextId::MillisecondsFormat),
             settings.gateLengthMs);
     } else {
-        std::snprintf(
+        text::formatInto(
             row.value,
             sizeof(row.value),
             text::get(text::TextId::PercentFormat),

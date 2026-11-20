@@ -34,7 +34,8 @@ void initializeFactoryDefaults(ClockState& state) {
         defaults::kUnifiedClockSwingPercent,
         defaults::kUnifiedClockGroove,
         defaults::kUnifiedClockGateLengthMs,
-        defaults::kUnifiedClockPhasePercent};
+        defaults::kUnifiedClockPhasePercent,
+        defaults::kUnifiedClockHumanizeUs};
     state.dividerBank = {defaults::kDividerBank, defaults::kDividerGateLengthMs};
     state.display = {
         defaults::kScreensaverMode,

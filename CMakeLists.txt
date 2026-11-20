@@ -99,6 +99,8 @@ add_library(clock-storybook-model STATIC
     sim/tutorial/story_model.cpp
     sim/tutorial/story_yaml.cpp
     sim/tutorial/story_parser.cpp
+    sim/tutorial/story_decoder.cpp
+    sim/tutorial/story_decoder_action.cpp
     sim/tutorial/story_focus_regions.cpp
     sim/tutorial/story_validator.cpp
     sim/tutorial/interaction_profile_loader.cpp
@@ -124,6 +126,7 @@ target_compile_options(clock-storybook-simulator-port PRIVATE ${CLOCK_WARNING_FL
 
 add_library(clock-storybook-runner STATIC
     sim/tutorial/story_runner.cpp
+    sim/tutorial/story_run_context.cpp
     sim/tutorial/story_runner_support.cpp
     sim/tutorial/story_narration_beat.cpp
 )
@@ -144,10 +147,12 @@ add_library(clock-storybook-presentation STATIC
 add_library(clock-storybook-renderer STATIC
     sim/tutorial/tutorial_surface.cpp
     sim/tutorial/story_text_renderer.cpp
+    sim/tutorial/story_text_system_font.cpp
     sim/tutorial/story_background_image.cpp
     sim/tutorial/tutorial_scene_renderer.cpp
     sim/tutorial/tutorial_focus_renderer.cpp
     sim/tutorial/tutorial_renderer.cpp
+    sim/tutorial/tutorial_panel_renderer.cpp
 )
 target_link_libraries(clock-storybook-renderer PUBLIC
     clock-storybook-presentation
@@ -164,6 +169,7 @@ add_library(clock-storybook-frame-pipeline STATIC
     sim/tutorial/png_writer.cpp
     sim/tutorial/subtitle_writer.cpp
     sim/tutorial/frame_pipeline.cpp
+    sim/tutorial/frame_pipeline_manifest.cpp
 )
 target_link_libraries(clock-storybook-frame-pipeline PUBLIC
     clock-storybook-renderer
@@ -177,6 +183,7 @@ add_library(clock-storybook-publication STATIC
     sim/tutorial/external_process.cpp
     sim/tutorial/publication_narration.cpp
     sim/tutorial/publication_pipeline.cpp
+    sim/tutorial/publication_commands.cpp
 )
 target_link_libraries(clock-storybook-publication PUBLIC
     clock-storybook-frame-pipeline
@@ -220,6 +227,7 @@ target_compile_options(clock-storybook-simulator-port-tests PRIVATE ${CLOCK_WARN
 
 add_executable(clock-storybook-parser-tests
     sim/storybook_parser_tests.cpp
+    sim/storybook_parser_action_tests.cpp
 )
 target_link_libraries(clock-storybook-parser-tests PRIVATE clock-storybook-model)
 target_compile_definitions(clock-storybook-parser-tests PRIVATE

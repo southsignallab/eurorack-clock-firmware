@@ -44,12 +44,14 @@ enum class EasterEgg : std::uint8_t {
 /** Active UI language. English (US) is the only shipped catalog in this prerelease. */
 inline constexpr UiLanguage kUiLanguage = UiLanguage::EnglishUs;
 
+/** Build-flag selection of the boot-only hidden game: an EasterEgg value 1..5; default 5. */
 #ifndef CLOCK_EASTER_EGG
 #define CLOCK_EASTER_EGG 5
 #endif
 static_assert(
     CLOCK_EASTER_EGG >= 1 && CLOCK_EASTER_EGG <= 5,
     "CLOCK_EASTER_EGG must be 1, 2, 3, 4, or 5");
+/** Boot-only hidden game selected by CLOCK_EASTER_EGG. */
 inline constexpr EasterEgg kEasterEgg = static_cast<EasterEgg>(CLOCK_EASTER_EGG);
 
 /**
@@ -76,6 +78,7 @@ inline constexpr DisplayTransport kDisplayTransport =
 static_assert(
     CLOCK_DISPLAY_CONTROLLER == 1306 || CLOCK_DISPLAY_CONTROLLER == 1315,
     "CLOCK_DISPLAY_CONTROLLER must be 1306 or 1315");
+/** OLED controller family selected by CLOCK_DISPLAY_CONTROLLER (1315 or 1306). */
 inline constexpr DisplayController kDisplayController =
     CLOCK_DISPLAY_CONTROLLER == 1315 ? DisplayController::Ssd1315 : DisplayController::Ssd1306;
 
@@ -89,6 +92,7 @@ inline constexpr std::uint16_t kDisplayHeight = 64U;
 #ifndef CLOCK_DISPLAY_I2C_ADDRESS
 #define CLOCK_DISPLAY_I2C_ADDRESS 0
 #endif
+/** 7-bit I2C address of the display; 0 probes 0x3C, then 0x3D. */
 inline constexpr std::uint8_t kDisplayI2cAddress =
     static_cast<std::uint8_t>(CLOCK_DISPLAY_I2C_ADDRESS);
 
@@ -96,24 +100,28 @@ inline constexpr std::uint8_t kDisplayI2cAddress =
 #ifndef CLOCK_DISPLAY_I2C_FREQUENCY_HZ
 #define CLOCK_DISPLAY_I2C_FREQUENCY_HZ 400000UL
 #endif
+/** I2C bus frequency for display transfers in Hz (CLOCK_DISPLAY_I2C_FREQUENCY_HZ). */
 inline constexpr std::uint32_t kDisplayI2cFrequencyHz = CLOCK_DISPLAY_I2C_FREQUENCY_HZ;
 
 /** SPI bus frequency for display transfers when SPI transport is selected. */
 #ifndef CLOCK_DISPLAY_SPI_FREQUENCY_HZ
 #define CLOCK_DISPLAY_SPI_FREQUENCY_HZ 1000000UL
 #endif
+/** Requested SPI bus frequency for display transfers in Hz (CLOCK_DISPLAY_SPI_FREQUENCY_HZ). */
 inline constexpr std::uint32_t kDisplaySpiFrequencyHz = CLOCK_DISPLAY_SPI_FREQUENCY_HZ;
 
 /** Normal display contrast. May be overridden for a particular panel. */
 #ifndef CLOCK_DISPLAY_CONTRAST
 #define CLOCK_DISPLAY_CONTRAST 0x8F
 #endif
+/** Normal controller contrast value 0..255 (CLOCK_DISPLAY_CONTRAST). */
 inline constexpr std::uint8_t kDisplayContrast = static_cast<std::uint8_t>(CLOCK_DISPLAY_CONTRAST);
 
 /** Reduced display contrast used after prolonged STOP inactivity. */
 #ifndef CLOCK_DISPLAY_DIMMED_CONTRAST
 #define CLOCK_DISPLAY_DIMMED_CONTRAST 0x10
 #endif
+/** Dimmed controller contrast value 0..255 (CLOCK_DISPLAY_DIMMED_CONTRAST). */
 inline constexpr std::uint8_t kDisplayDimmedContrast =
     static_cast<std::uint8_t>(CLOCK_DISPLAY_DIMMED_CONTRAST);
 
@@ -148,6 +156,27 @@ inline constexpr std::uint32_t kSchedulerTickUs = 1000000UL / kSchedulerFrequenc
  * plays, D-04) drop the excess ticks instead of bursting them.
  */
 inline constexpr std::uint32_t kMaximumSchedulerCatchUpTicks = 8UL;
+
+/**
+ * Internal worst-case budget of one TIM3 scheduler interrupt body, in microseconds. Not a
+ * public limit (that is one scheduler quantum); the debug build records the measured
+ * maximum next to it (gClockRuntimeCounters, HIL measurement).
+ */
+inline constexpr std::uint32_t kSchedulerIsrBudgetUs = 20UL;
+
+/** Internal budget of one foreground InterruptLock section, in microseconds. */
+inline constexpr std::uint32_t kInterruptLockBudgetUs = 10UL;
+
+/**
+ * Firmware share of the input timestamp jitter, in microseconds: an EXTI timestamp can wait
+ * for one scheduler interrupt and one foreground interrupt lock.
+ */
+inline constexpr std::uint32_t kInputTimestampJitterBudgetUs =
+    kSchedulerIsrBudgetUs + kInterruptLockBudgetUs;
+
+static_assert(
+    kInputTimestampJitterBudgetUs < kSchedulerTickUs,
+    "the firmware input jitter must stay below one scheduler quantum");
 
 /** Minimum interval between ordinary OLED frame transfers. */
 inline constexpr std::uint32_t kDisplayRefreshMinimumMs = 30UL;

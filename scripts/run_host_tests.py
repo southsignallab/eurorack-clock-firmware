@@ -170,6 +170,7 @@ def realtime_sources() -> list[Path]:
         "src/hal/gate_output_driver.cpp",
         "src/hal/interrupt_lock.cpp",
         "src/hal/platform_io.cpp",
+        "src/hal/platform_io_host.cpp",
         "src/hal/system_clock.cpp",
         "src/services/external_sync_controller.cpp",
         "src/services/external_sync_controller_inputs.cpp",
@@ -333,7 +334,7 @@ def tap_tempo_sources() -> list[Path]:
 
 
 def control_sources() -> list[Path]:
-    return [ROOT / "src/hal/control_panel.cpp", ROOT / "src/hal/interrupt_lock.cpp", ROOT / "src/hal/platform_io.cpp"]
+    return [ROOT / "src/hal/control_panel.cpp", ROOT / "src/hal/interrupt_lock.cpp", ROOT / "src/hal/platform_io.cpp", ROOT / "src/hal/platform_io_host.cpp"]
 
 
 def settings_sources() -> list[Path]:
@@ -350,12 +351,15 @@ def settings_sources() -> list[Path]:
         ROOT / "src/ui/settings_editor_sync.cpp",
         ROOT / "src/ui/settings_editor_groove.cpp",
         ROOT / "src/ui/menu_model.cpp",
+        ROOT / "src/ui/menu_model_rows.cpp",
+        ROOT / "src/ui/menu_model_general.cpp",
         ROOT / "src/ui/menu_model_channel.cpp",
         ROOT / "src/ui/menu_model_sync.cpp",
         ROOT / "src/ui/menu_model_groove.cpp",
         ROOT / "src/ui/menu_model_sequencer.cpp",
         ROOT / "src/ui/text_formatter.cpp",
         ROOT / "src/ui_text.cpp",
+        ROOT / "src/text_format.cpp",
     ]
 
 
@@ -365,8 +369,11 @@ def screensaver_sources() -> list[Path]:
         ROOT / "src/hal/display_font.cpp",
         ROOT / "src/hal/oled_display.cpp",
         ROOT / "src/hal/oled_display_transport.cpp",
+        ROOT / "src/hal/oled_display_refresh.cpp",
         ROOT / "src/hal/platform_io.cpp",
+        ROOT / "src/hal/platform_io_host.cpp",
         ROOT / "src/ui/screensaver_renderer.cpp",
+        ROOT / "src/ui/screensaver_fern.cpp",
         ROOT / "src/ui/screensaver_spectrum.cpp",
         ROOT / "src/ui/screensaver_field.cpp",
         ROOT / "src/ui/screensaver_blox.cpp",
@@ -389,7 +396,9 @@ def easter_egg_sources() -> list[Path]:
         ROOT / "src/hal/display_font.cpp",
         ROOT / "src/hal/oled_display.cpp",
         ROOT / "src/hal/oled_display_transport.cpp",
+        ROOT / "src/hal/oled_display_refresh.cpp",
         ROOT / "src/hal/platform_io.cpp",
+        ROOT / "src/hal/platform_io_host.cpp",
         ROOT / "src/hal/crc32.cpp",
         ROOT / "src/hal/persistent_storage.cpp",
         ROOT / "src/hal/persistent_storage_slots.cpp",
@@ -398,11 +407,14 @@ def easter_egg_sources() -> list[Path]:
         ROOT / "src/game/arcade_shell.cpp",
         ROOT / "src/game/pixel_raid_game.cpp",
         ROOT / "src/game/formula1_game.cpp",
+        ROOT / "src/game/formula1_render.cpp",
+        ROOT / "src/game/formula1_track.cpp",
         ROOT / "src/game/breakout_game.cpp",
         ROOT / "src/game/egg_journey_game.cpp",
         ROOT / "src/game/egg_journey_render.cpp",
         ROOT / "src/game/beatknecht.cpp",
         ROOT / "src/ui_text.cpp",
+        ROOT / "src/text_format.cpp",
     ]
 
 

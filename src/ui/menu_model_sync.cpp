@@ -11,13 +11,14 @@
 #include <cstdio>
 
 #include "domain/clock_labels.h"
+#include "text_format.h"
 #include "ui_text.h"
 
 namespace clockfw::ui {
 namespace {
 
 void copySyncText(char* const destination, const std::size_t size, const text::TextId id) {
-    std::snprintf(destination, size, "%s", text::get(id));
+    text::formatInto(destination, size, "%s", text::get(id));
 }
 
 }  // namespace
@@ -39,9 +40,10 @@ MenuRow buildSyncMenuRow(const std::uint8_t rowIndex, const ClockState& state) {
     }
     copySyncText(row.label, sizeof(row.label), kLabels[rowIndex]);
     if (rowIndex == 0U) {
-        std::snprintf(row.value, sizeof(row.value), "%s", clockSourceLabel(state.source));
+        text::formatInto(row.value, sizeof(row.value), "%s", clockSourceLabel(state.source));
     } else if (rowIndex == 1U) {
-        std::snprintf(row.value, sizeof(row.value), "%u", state.externalSync.pulsesPerQuarterNote);
+        text::formatInto(
+            row.value, sizeof(row.value), "%u", state.externalSync.pulsesPerQuarterNote);
     } else if (rowIndex == 2U) {
         copySyncText(
             row.value,
@@ -62,7 +64,7 @@ MenuRow buildSyncMenuRow(const std::uint8_t rowIndex, const ClockState& state) {
             state.externalSync.resetMode == ExternalResetMode::Trigger ? text::TextId::Trigger
                                                                        : text::TextId::GateInput);
     } else if (rowIndex == 5U) {
-        std::snprintf(
+        text::formatInto(
             row.value,
             sizeof(row.value),
             text::get(text::TextId::MicrosecondsFormat),
@@ -77,7 +79,7 @@ MenuRow buildSyncMenuRow(const std::uint8_t rowIndex, const ClockState& state) {
                           : text::TextId::SyncFull));
         copySyncText(row.value, sizeof(row.value), smoothingText);
     } else if (rowIndex == 7U) {
-        std::snprintf(
+        text::formatInto(
             row.value,
             sizeof(row.value),
             text::get(text::TextId::MillisecondsFormat),

@@ -22,6 +22,7 @@ inline constexpr std::uint8_t kCustomGrooveSlotCount = 10U;
 
 /** Signed offset unit: one value step equals 1/256 of the nominal event interval. */
 inline constexpr std::int8_t kCustomGrooveMinimumOffset256 = -120;
+/** Largest offset, in the same 1/256-interval unit as kCustomGrooveMinimumOffset256. */
 inline constexpr std::int8_t kCustomGrooveMaximumOffset256 = 120;
 
 /**
@@ -32,14 +33,34 @@ inline constexpr std::int8_t kCustomGrooveMaximumOffset256 = 120;
  * adjacent maximally opposed markers before Swing composition is applied.
  */
 struct CustomGroovePattern final {
+    /** Number of used steps, 1..kCustomGrooveMaximumSteps. */
     std::uint8_t length = 16U;
+    /** Signed offset of each step in 1/256 of the nominal event interval. */
     std::array<std::int8_t, kCustomGrooveMaximumSteps> offsets256{};
 };
 
-/** @brief Returns true when one pattern obeys the durable/runtime bounds. */
+/**
+ * @brief Returns true when one pattern obeys the durable/runtime bounds.
+ * @param pattern Pattern to check.
+ * @return True for a length of 1..kCustomGrooveMaximumSteps and used offsets within
+ *         kCustomGrooveMinimumOffset256..kCustomGrooveMaximumOffset256.
+ *
+ * @isr TIM3 scheduler interrupt: at most kCustomGrooveMaximumSteps loop rounds,
+ *      non-blocking, no allocation, opens no interrupt lock.
+ */
 bool isCustomGroovePatternValid(const CustomGroovePattern& pattern);
 
-/** @brief Returns one clamped signed offset for the selected serial/rotation. */
+/**
+ * @brief Returns one clamped signed offset for the selected serial/rotation.
+ * @param pattern Pattern; an invalid pattern gives 0.
+ * @param eventSerial Event serial on the channel grid.
+ * @param amountPercent Groove Amount in percent; larger values than 100 are clamped.
+ * @param rotation Pattern rotation in steps, applied modulo the length.
+ * @return Offset in 1/256 of the nominal interval, scaled by the amount.
+ *
+ * @isr TIM3 scheduler interrupt: at most kCustomGrooveMaximumSteps loop rounds (pattern
+ *      check), non-blocking, no allocation, opens no interrupt lock.
+ */
 std::int16_t customGrooveOffset256(
     const CustomGroovePattern& pattern,
     std::uint64_t eventSerial,

@@ -19,6 +19,10 @@ extern "C" void loop() {
     application.runOnce();
 }
 #else
+/**
+ * @brief Target entry point: initializes the MCU, then runs the application loop forever.
+ * @return Never returns.
+ */
 int main() {
     // STM32duino initialized HAL/board hardware from its premain constructor
     // before sketch-level C++ objects were constructed. Preserve that ordering

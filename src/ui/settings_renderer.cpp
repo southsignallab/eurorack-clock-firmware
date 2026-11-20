@@ -15,6 +15,7 @@
 #include <cstring>
 
 #include "services/template_service.h"
+#include "text_format.h"
 #include "ui/menu_model.h"
 #include "ui/menu_model_channel.h"
 #include "ui/preset_name_alphabet.h"
@@ -44,7 +45,7 @@ void fitInformationalValue(
     if (source == nullptr || maximumWidth <= 0) {
         return;
     }
-    std::snprintf(destination, destinationSize, "%s", source);
+    text::formatInto(destination, destinationSize, "%s", source);
     if (static_cast<std::int16_t>(display.measureText(destination, 0, 0).width) <= maximumWidth) {
         return;
     }
@@ -63,7 +64,7 @@ void fitInformationalValue(
         }
         --prefixLength;
     }
-    std::snprintf(destination, destinationSize, "%s", kEllipsis);
+    text::formatInto(destination, destinationSize, "%s", kEllipsis);
 }
 
 /** Modules per side of the version-3 update QR symbol. */
@@ -171,6 +172,51 @@ void renderDiagnosticHeader(hal::OledDisplay& display, const char* const title) 
     display.drawHorizontalLine(0, 9, hal::OledDisplay::kWidth);
 }
 
+/** Shows the live editor values (zoom, length, mode, count-in) on the two Groove menus. */
+void applyGrooveMenuValues(
+    MenuRow& row,
+    const NavigationState& navigation,
+    const std::uint8_t rowIndex) {
+    if (navigation.settingsPage == SettingsPage::GrooveEditorMenu) {
+        if (rowIndex == 2U) {
+            if (navigation.grooveZoomSteps == 0U) {
+                text::formatInto(row.value, sizeof(row.value), "%s", text::get(text::TextId::Fit));
+            } else {
+                text::formatInto(row.value, sizeof(row.value), "%u", navigation.grooveZoomSteps);
+            }
+        } else if (rowIndex == 3U) {
+            text::formatInto(row.value, sizeof(row.value), "%u", navigation.grooveDraft.length);
+        }
+    }
+    if (navigation.settingsPage == SettingsPage::GrooveRecordMenu) {
+        if (rowIndex == 0U) {
+            text::formatInto(
+                row.value,
+                sizeof(row.value),
+                "%s",
+                text::get(
+                    navigation.grooveRecordMode == GrooveRecordMode::OneShot
+                        ? text::TextId::OneShot
+                        : text::TextId::Endless));
+        } else if (rowIndex == 1U) {
+            if (navigation.grooveRecordCountInBeats == 0U) {
+                text::formatInto(row.value, sizeof(row.value), "%s", text::get(text::TextId::Off));
+            } else {
+                text::formatInto(
+                    row.value, sizeof(row.value), "%u", navigation.grooveRecordCountInBeats);
+            }
+        } else if (rowIndex == 2U) {
+            text::formatInto(row.value, sizeof(row.value), "%u", navigation.grooveDraft.length);
+        } else if (rowIndex == 3U) {
+            if (navigation.grooveZoomSteps == 0U) {
+                text::formatInto(row.value, sizeof(row.value), "%s", text::get(text::TextId::Fit));
+            } else {
+                text::formatInto(row.value, sizeof(row.value), "%u", navigation.grooveZoomSteps);
+            }
+        }
+    }
+}
+
 }  // namespace
 
 void SettingsRenderer::renderSettings(
@@ -179,51 +225,12 @@ void SettingsRenderer::renderSettings(
     const DiagnosticSnapshot& diagnostics) {
     display_.clear();
     if (navigation.settingsPage == SettingsPage::DiagnosticsInputs) {
-        renderDiagnosticHeader(display_, text::get(text::TextId::Inputs));
-        constexpr std::int16_t kWidth = 44;
-        constexpr std::int16_t kHeight = 22;
-        constexpr std::int16_t kGap = 8;
-        constexpr std::int16_t kStartX = (128 - (kWidth * 2 + kGap)) / 2;
-        drawDiagnosticBox(
-            display_,
-            kStartX,
-            25,
-            kWidth,
-            kHeight,
-            text::get(text::TextId::Input1),
-            diagnostics.syncHigh);
-        drawDiagnosticBox(
-            display_,
-            kStartX + kWidth + kGap,
-            25,
-            kWidth,
-            kHeight,
-            text::get(text::TextId::Input2),
-            diagnostics.resetHigh);
+        renderDiagnosticInputs(diagnostics);
         display_.present();
         return;
     }
     if (navigation.settingsPage == SettingsPage::DiagnosticsOutputs) {
-        renderDiagnosticHeader(display_, text::get(text::TextId::Outputs));
-        constexpr std::int16_t kWidth = 25;
-        constexpr std::int16_t kHeight = 18;
-        constexpr std::int16_t kGapX = 6;
-        constexpr std::int16_t kGapY = 5;
-        constexpr std::int16_t kStartX = (128 - (kWidth * 4 + kGapX * 3)) / 2;
-        constexpr std::int16_t kStartY = 15;
-        for (std::uint8_t index = 0U; index < 8U; ++index) {
-            char label[2]{static_cast<char>('1' + index), '\0'};
-            const std::int16_t column = static_cast<std::int16_t>(index % 4U);
-            const std::int16_t row = static_cast<std::int16_t>(index / 4U);
-            drawDiagnosticBox(
-                display_,
-                static_cast<std::int16_t>(kStartX + column * (kWidth + kGapX)),
-                static_cast<std::int16_t>(kStartY + row * (kHeight + kGapY)),
-                kWidth,
-                kHeight,
-                label,
-                diagnostics.outputs[index]);
-        }
+        renderDiagnosticOutputs(diagnostics);
         display_.present();
         return;
     }
@@ -238,7 +245,7 @@ void SettingsRenderer::renderSettings(
 
     if (isChannelSettingsPage(navigation.settingsPage)) {
         char channelText[6]{};
-        std::snprintf(
+        text::formatInto(
             channelText,
             sizeof(channelText),
             text::get(text::TextId::ChannelFormat),
@@ -261,115 +268,146 @@ void SettingsRenderer::renderSettings(
         if (rowIndex >= itemCount) {
             break;
         }
-        MenuRow row{};
-        if (navigation.settingsPage == SettingsPage::Sequencer &&
-            sequencerPatternStore_ != nullptr) {
-            const std::uint8_t activeSlot =
-                sequencerPatternStore_->activeSlot(navigation.selectedChannel);
-            row = buildSequencerV2MenuRow(
-                rowIndex,
-                activeSlot,
-                sequencerPatternStore_->pattern(navigation.selectedChannel, activeSlot));
-        } else {
-            row = buildMenuRow(
-                navigation.settingsPage,
-                rowIndex,
-                navigation.selectedChannel,
-                state,
-                navigation.highScoreResetAvailable);
-        }
-        if (navigation.settingsPage == SettingsPage::GrooveEditorMenu) {
-            if (rowIndex == 2U) {
-                if (navigation.grooveZoomSteps == 0U) {
-                    std::snprintf(row.value, sizeof(row.value), "%s", text::get(text::TextId::Fit));
-                } else {
-                    std::snprintf(row.value, sizeof(row.value), "%u", navigation.grooveZoomSteps);
-                }
-            } else if (rowIndex == 3U) {
-                std::snprintf(row.value, sizeof(row.value), "%u", navigation.grooveDraft.length);
-            }
-        }
-        if (navigation.settingsPage == SettingsPage::GrooveRecordMenu) {
-            if (rowIndex == 0U) {
-                std::snprintf(
-                    row.value,
-                    sizeof(row.value),
-                    "%s",
-                    text::get(
-                        navigation.grooveRecordMode == GrooveRecordMode::OneShot
-                            ? text::TextId::OneShot
-                            : text::TextId::Endless));
-            } else if (rowIndex == 1U) {
-                if (navigation.grooveRecordCountInBeats == 0U) {
-                    std::snprintf(row.value, sizeof(row.value), "%s", text::get(text::TextId::Off));
-                } else {
-                    std::snprintf(
-                        row.value, sizeof(row.value), "%u", navigation.grooveRecordCountInBeats);
-                }
-            } else if (rowIndex == 2U) {
-                std::snprintf(row.value, sizeof(row.value), "%u", navigation.grooveDraft.length);
-            } else if (rowIndex == 3U) {
-                if (navigation.grooveZoomSteps == 0U) {
-                    std::snprintf(row.value, sizeof(row.value), "%s", text::get(text::TextId::Fit));
-                } else {
-                    std::snprintf(row.value, sizeof(row.value), "%u", navigation.grooveZoomSteps);
-                }
-            }
-        }
-        const bool selected = rowIndex == navigation.cursor;
-        if (selected) {
-            display_.fillRectangle(0, y - 1, 124, 9, hal::PixelColor::White);
-            display_.setTextColor(hal::PixelColor::Black);
-        }
-        display_.drawText(2, y, row.label);
-
-        if (row.value[0] != '\0') {
-            char renderedValue[sizeof(row.value)]{};
-            const char* valueText = row.value;
-            if (row.expandableInformation) {
-                const hal::TextBounds labelBounds = display_.measureText(row.label, 0, y);
-                const std::int16_t labelRight = static_cast<std::int16_t>(2 + labelBounds.width);
-                const std::int16_t maximumValueWidth =
-                    static_cast<std::int16_t>(121 - labelRight - kSettingsValueGap);
-                fitInformationalValue(
-                    display_, row.value, maximumValueWidth, renderedValue, sizeof(renderedValue));
-                valueText = renderedValue;
-            }
-            const hal::TextBounds valueBounds = display_.measureText(valueText, 0, y);
-            const std::int16_t valueX = 121 - static_cast<std::int16_t>(valueBounds.width);
-            if (selected && navigation.editing) {
-                // The selected row is inverted. Re-invert only the active value
-                // so edit mode remains visually distinct without a left cursor.
-                display_.fillRectangle(
-                    valueX - 1,
-                    y - 1,
-                    static_cast<std::int16_t>(valueBounds.width + 2U),
-                    9,
-                    hal::PixelColor::Black);
-                display_.setTextColor(hal::PixelColor::White);
-                display_.drawText(valueX, y, valueText);
-            } else {
-                display_.drawText(valueX, y, valueText);
-            }
-        }
-        display_.setTextColor(hal::PixelColor::White);
+        const MenuRow row = settingsRow(state, navigation, rowIndex);
+        drawSettingsRow(row, y, rowIndex == navigation.cursor, navigation.editing);
         y = static_cast<std::int16_t>(y + 10);
     }
     if (itemCount > visibleRows) {
-        constexpr std::int16_t kScrollY = 11;
-        constexpr std::int16_t kScrollHeight = 50;
-        display_.drawVerticalLine(127, kScrollY, kScrollHeight);
-
-        const std::uint8_t thumbHeight =
-            static_cast<std::uint8_t>((kScrollHeight * visibleRows) / itemCount);
-        const std::uint8_t thumbY = static_cast<std::uint8_t>(
-            static_cast<unsigned>(kScrollY) +
-            ((static_cast<unsigned>(kScrollHeight) - thumbHeight) * navigation.cursor) /
-                (itemCount - 1U));
-        display_.fillRectangle(125, thumbY, 3, thumbHeight);
+        drawSettingsScrollbar(itemCount, visibleRows, navigation.cursor);
     }
 
     display_.present();
+}
+
+void SettingsRenderer::renderDiagnosticInputs(const DiagnosticSnapshot& diagnostics) {
+    renderDiagnosticHeader(display_, text::get(text::TextId::Inputs));
+    constexpr std::int16_t kWidth = 44;
+    constexpr std::int16_t kHeight = 22;
+    constexpr std::int16_t kGap = 8;
+    constexpr std::int16_t kStartX = (128 - (kWidth * 2 + kGap)) / 2;
+    drawDiagnosticBox(
+        display_,
+        kStartX,
+        25,
+        kWidth,
+        kHeight,
+        text::get(text::TextId::Input1),
+        diagnostics.syncHigh);
+    drawDiagnosticBox(
+        display_,
+        kStartX + kWidth + kGap,
+        25,
+        kWidth,
+        kHeight,
+        text::get(text::TextId::Input2),
+        diagnostics.resetHigh);
+}
+
+void SettingsRenderer::renderDiagnosticOutputs(const DiagnosticSnapshot& diagnostics) {
+    renderDiagnosticHeader(display_, text::get(text::TextId::Outputs));
+    constexpr std::int16_t kWidth = 25;
+    constexpr std::int16_t kHeight = 18;
+    constexpr std::int16_t kGapX = 6;
+    constexpr std::int16_t kGapY = 5;
+    constexpr std::int16_t kStartX = (128 - (kWidth * 4 + kGapX * 3)) / 2;
+    constexpr std::int16_t kStartY = 15;
+    for (std::uint8_t index = 0U; index < 8U; ++index) {
+        char label[2]{static_cast<char>('1' + index), '\0'};
+        const std::int16_t column = static_cast<std::int16_t>(index % 4U);
+        const std::int16_t row = static_cast<std::int16_t>(index / 4U);
+        drawDiagnosticBox(
+            display_,
+            static_cast<std::int16_t>(kStartX + column * (kWidth + kGapX)),
+            static_cast<std::int16_t>(kStartY + row * (kHeight + kGapY)),
+            kWidth,
+            kHeight,
+            label,
+            diagnostics.outputs[index]);
+    }
+}
+
+MenuRow SettingsRenderer::settingsRow(
+    const ClockState& state,
+    const NavigationState& navigation,
+    const std::uint8_t rowIndex) const {
+    MenuRow row{};
+    if (navigation.settingsPage == SettingsPage::Sequencer && sequencerPatternStore_ != nullptr) {
+        const std::uint8_t activeSlot =
+            sequencerPatternStore_->activeSlot(navigation.selectedChannel);
+        row = buildSequencerV2MenuRow(
+            rowIndex,
+            activeSlot,
+            sequencerPatternStore_->pattern(navigation.selectedChannel, activeSlot));
+    } else {
+        row = buildMenuRow(
+            navigation.settingsPage,
+            rowIndex,
+            navigation.selectedChannel,
+            state,
+            navigation.highScoreResetAvailable);
+    }
+    applyGrooveMenuValues(row, navigation, rowIndex);
+    return row;
+}
+
+void SettingsRenderer::drawSettingsRow(
+    const MenuRow& row,
+    const std::int16_t y,
+    const bool selected,
+    const bool editing) {
+    if (selected) {
+        display_.fillRectangle(0, static_cast<std::int16_t>(y - 1), 124, 9, hal::PixelColor::White);
+        display_.setTextColor(hal::PixelColor::Black);
+    }
+    display_.drawText(2, y, row.label);
+
+    if (row.value[0] != '\0') {
+        char renderedValue[sizeof(row.value)]{};
+        const char* valueText = row.value;
+        if (row.expandableInformation) {
+            const hal::TextBounds labelBounds = display_.measureText(row.label, 0, y);
+            const std::int16_t labelRight = static_cast<std::int16_t>(2 + labelBounds.width);
+            const std::int16_t maximumValueWidth =
+                static_cast<std::int16_t>(121 - labelRight - kSettingsValueGap);
+            fitInformationalValue(
+                display_, row.value, maximumValueWidth, renderedValue, sizeof(renderedValue));
+            valueText = renderedValue;
+        }
+        const hal::TextBounds valueBounds = display_.measureText(valueText, 0, y);
+        const std::int16_t valueX =
+            static_cast<std::int16_t>(121 - static_cast<std::int16_t>(valueBounds.width));
+        if (selected && editing) {
+            // The selected row is inverted. Re-invert only the active value
+            // so edit mode remains visually distinct without a left cursor.
+            display_.fillRectangle(
+                static_cast<std::int16_t>(valueX - 1),
+                static_cast<std::int16_t>(y - 1),
+                static_cast<std::int16_t>(valueBounds.width + 2U),
+                9,
+                hal::PixelColor::Black);
+            display_.setTextColor(hal::PixelColor::White);
+            display_.drawText(valueX, y, valueText);
+        } else {
+            display_.drawText(valueX, y, valueText);
+        }
+    }
+    display_.setTextColor(hal::PixelColor::White);
+}
+
+void SettingsRenderer::drawSettingsScrollbar(
+    const std::uint8_t itemCount,
+    const std::uint8_t visibleRows,
+    const std::uint8_t cursor) {
+    constexpr std::int16_t kScrollY = 11;
+    constexpr std::int16_t kScrollHeight = 50;
+    display_.drawVerticalLine(127, kScrollY, kScrollHeight);
+
+    const std::uint8_t thumbHeight =
+        static_cast<std::uint8_t>((kScrollHeight * visibleRows) / itemCount);
+    const std::uint8_t thumbY = static_cast<std::uint8_t>(
+        static_cast<unsigned>(kScrollY) +
+        ((static_cast<unsigned>(kScrollHeight) - thumbHeight) * cursor) / (itemCount - 1U));
+    display_.fillRectangle(125, thumbY, 3, thumbHeight);
 }
 
 }  // namespace clockfw::ui

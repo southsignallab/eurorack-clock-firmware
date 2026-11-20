@@ -30,11 +30,13 @@ inline constexpr std::size_t kSequencerPatternBankBytes = 2048U;
 /** Sparse per-step expression records follow the fixed pattern bank. */
 inline constexpr std::size_t kSequencerStepMetadataOffset =
     kSequencer2RegionOffset + kSequencerPatternBankBytes;
+/** Size of the per-step expression record region in bytes. */
 inline constexpr std::size_t kSequencerStepMetadataBytes = 1536U;
 
 /** Final 512 bytes of the 12-KiB image remain reserved for Song Mode. */
 inline constexpr std::size_t kSequencerSongRegionOffset =
     kSequencerStepMetadataOffset + kSequencerStepMetadataBytes;
+/** Size of the reserved Song Mode region in bytes. */
 inline constexpr std::size_t kSequencerSongRegionBytes = 512U;
 
 /** Clock CURRENT + named-preset records start at byte zero. */

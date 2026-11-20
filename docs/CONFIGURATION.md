@@ -83,7 +83,7 @@ The current hardware target is **0 V LOW / nominal +5 V HIGH** at OUT 1–8. The
 
 ## Analog/CV product boundary
 
-Hardware Rev 1 deliberately stops at digital timing I/O: eight 0/+5 V gate/trigger outputs plus two LM393-conditioned digital comparator inputs. Their current PCB/net names remain SYNC and RST, but the firmware (since 1.1.0) exposes them globally as configurable INPUT 1 / INPUT 2 roles. They are **not** general parameter-CV inputs; analog CV/modulation outputs and a general modulation matrix remain outside the hardware contract.
+Hardware Rev 1 (the first hardware generation; its current board revision is Rev C) deliberately stops at digital timing I/O: eight 0/+5 V gate/trigger outputs plus two LM393-conditioned digital comparator inputs. Their current PCB/net names remain SYNC and RST, but the firmware (since 1.1.0) exposes them globally as configurable INPUT 1 / INPUT 2 roles. They are **not** general parameter-CV inputs; analog CV/modulation outputs and a general modulation matrix remain outside the hardware contract.
 
 For analog modulation outputs, the project quality target would require an eight-channel 16-bit DAC-class path and two quad output-op-amp stages. A 12-bit MCP-class DAC is not accepted as a quality shortcut for this use. The current project estimate is roughly EUR 30-40 extra BOM cost before the additional fine-pitch SMD assembly, PCB routing, calibration, and validation effort. General CV inputs would add separate analog input-conditioning/routing and panel-I/O costs.
 

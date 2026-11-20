@@ -10,7 +10,13 @@
 #include "ui/menu_model.h"
 #include <cstdint>
 namespace clockfw::ui {
-/** @brief Formats one row of the active global/per-channel Groove assignment. */
+/**
+ * @brief Formats one row of the active global/per-channel Groove assignment.
+ * @param rowIndex Zero-based row index.
+ * @param selectedChannel Zero-based selected channel; ignored in the One Clock operating mode.
+ * @param state Complete clock state.
+ * @return Formatted row.
+ */
 MenuRow buildGrooveMenuRow(
     std::uint8_t rowIndex,
     std::uint8_t selectedChannel,

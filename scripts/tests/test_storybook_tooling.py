@@ -328,7 +328,8 @@ class StorybookToolingTests(unittest.TestCase):
 
     def test_windows_system_font_widths_use_checked_win32_conversion(self) -> None:
         """GDI LONG dimensions must not leak into int renderer arithmetic under MinGW -Werror."""
-        source = (ROOT / "sim/tutorial/story_text_renderer.cpp").read_text(encoding="utf-8")
+        # The GDI backend lives in story_text_system_font.cpp since the renderer was split.
+        source = (ROOT / "sim/tutorial/story_text_system_font.cpp").read_text(encoding="utf-8")
         self.assertIn("int winLongToInt(const LONG value", source)
         self.assertIn("paddedPositiveDimension(extent.cx, 4", source)
         self.assertNotIn("std::max(1, extent.cx + 4)", source)
@@ -337,7 +338,10 @@ class StorybookToolingTests(unittest.TestCase):
 
     def test_sb7_publication_is_external_media_only(self) -> None:
         """Final video composition may invoke ffmpeg/ffprobe but must not feed media state back into CLOCK."""
-        publication = (ROOT / "sim/tutorial/publication_pipeline.cpp").read_text(encoding="utf-8")
+        # The ffmpeg command lines live in publication_commands.cpp since the pipeline was split.
+        publication = "".join(
+            (ROOT / "sim/tutorial" / name).read_text(encoding="utf-8")
+            for name in ("publication_pipeline.cpp", "publication_commands.cpp"))
         header = (ROOT / "sim/tutorial/publication_pipeline.h").read_text(encoding="utf-8")
         architecture = (ROOT / "docs/tutorials/STORYBOOK_ARCHITECTURE.md").read_text(encoding="utf-8")
         self.assertIn("ffprobe", publication)

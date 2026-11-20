@@ -69,7 +69,7 @@ This is an independent South Signal Lab development. It is not a firmware port f
 
 ### Why no general CV modulation?
 
-CLOCK deliberately stays in the **digital timing, gate, and trigger** domain. Hardware Rev 1 has two LM393-conditioned digital comparator inputs, physically/net-named SYNC and RST on the current PCB, but no general parameter-CV inputs, analog modulation outputs, or CV modulation matrix. Since firmware 1.1.0 their roles are configurable globally; the factory assignment remains `INPUT 1 = SYNC`, `INPUT 2 = RESET`. This is a product boundary, not a general CV subsystem.
+CLOCK deliberately stays in the **digital timing, gate, and trigger** domain. Hardware Rev 1 (the first hardware generation; its current board revision is Rev C) has two LM393-conditioned digital comparator inputs, physically/net-named SYNC and RST on the current PCB, but no general parameter-CV inputs, analog modulation outputs, or CV modulation matrix. Since firmware 1.1.0 their roles are configurable globally; the factory assignment remains `INPUT 1 = SYNC`, `INPUT 2 = RESET`. This is a product boundary, not a general CV subsystem.
 
 A quality eight-channel analog modulation-output stage would move the module into a different cost and assembly class. Our quality target would require an eight-channel **16-bit DAC-class solution** plus two quad output-op-amp stages; a 12-bit MCP-class compromise is not considered good enough for this direction. The current project estimate is roughly **EUR 30-40 additional BOM cost**, before the wider impact of fine-pitch SMD assembly, PCB complexity, calibration, testing, and documentation. General CV parameter inputs would add their own analog front ends, routing, jacks, and validation scope.
 
@@ -291,7 +291,7 @@ The public PlatformIO command exposes the complete native suite rather than a sm
 pio test -e native
 ```
 
-Current inventory: **682 explicitly named Native test cases**. PlatformIO exposes twelve behavioral suites rather than leaving the mathematical core as the dominant visible result:
+Current inventory: **685 explicitly named Native test cases**. PlatformIO exposes twelve behavioral suites rather than leaving the mathematical core as the dominant visible result:
 
 | Native suite | Cases | Primary purpose |
 | --- | ---: | --- |
@@ -303,7 +303,7 @@ Current inventory: **682 explicitly named Native test cases**. PlatformIO expose
 | `test_humanize` | 14 | One Clock humanize bounds, deterministic repeatability, channel spread, swing interaction and mode isolation |
 | `test_tap_tempo` | 29 | tap acquisition, averaging, clamps, invalid intervals, reset behavior, jitter and timestamp wrap |
 | `test_controls` | 62 | TIM4 quadrature counting, detent recovery, fast-turn behavior, NORMAL/REVERSED direction and button debounce |
-| `test_settings` | 90 | settings boundaries, input-role exclusivity, INPUTS/HARDWARE navigation, device preferences, grouped channel settings and invalid-input behavior |
+| `test_settings` | 93 | settings boundaries, input-role exclusivity, INPUTS/HARDWARE navigation, device preferences, grouped channel settings and invalid-input behavior |
 | `test_screensavers` | 19 | all screensaver renderers, deterministic frames, rewind behavior and long frame sweeps |
 | `test_easter_eggs` | 41 | launch gating, reset state, host-safe output behavior and game-specific control/state contracts |
 | `test_host_firmware` | 97 | complete firmware/UI/HAL/persistence scenarios, Groove Editor/Record workflows, schema migration and framebuffer/navigation contracts against deterministic framework fakes |
@@ -342,7 +342,7 @@ The curated manual screenshots are generated from the **real production framebuf
 
 ## Hardware target
 
-The current reference design is hardware **Rev C**. Its KiCad project is the source of truth for every hardware statement in this repository; the list below follows it:
+The current reference design is hardware **Rev C** (board revision C of hardware generation Rev 1). Its KiCad project is the source of truth for every hardware statement in this repository; the list below follows it:
 
 - WeAct BlackPill V2.0 with STM32F401CCU6, plugged into socket strips;
 - 0.96-inch 128×64 OLED module on SPI — the reference board carries a Waveshare SSD1315 module; the firmware supports SSD1306 and SSD1315;

@@ -29,7 +29,7 @@ struct ExternalInputEdge {
  * with STM32 timer input capture without changing the real-time synchronization service.
  */
 class ExternalInputCapture final {
-public:
+  public:
     /** @brief Configures assigned comparator GPIOs and attaches edge interrupts. */
     void begin();
 
@@ -59,10 +59,12 @@ public:
     void injectResetEdgeForTest(std::uint32_t timestampUs, bool high);
 
     /** @brief Opposite edges queued for merged interrupts, both inputs (host tests). */
-    std::uint32_t synthesizedEdgesForTest() const { return synthesizedEdgesForTest_; }
+    std::uint32_t synthesizedEdgesForTest() const {
+        return synthesizedEdgesForTest_;
+    }
 #endif
 
-private:
+  private:
     static constexpr std::uint8_t kQueueCapacity = 16U;
 
     /**
@@ -88,7 +90,9 @@ private:
         volatile bool overflowLevelHigh = false;
         volatile std::uint32_t overflowCount = 0U;
     };
-    static_assert(std::atomic<std::uint8_t>::is_always_lock_free, "queue indices must not need a lock");
+    static_assert(
+        std::atomic<std::uint8_t>::is_always_lock_free,
+        "queue indices must not need a lock");
     static_assert(std::atomic<bool>::is_always_lock_free, "overflow flag must not need a lock");
 
     /** @brief Shared EXTI thunk for the SYNC comparator GPIO. */

@@ -43,34 +43,50 @@ MenuRow buildSyncMenuRow(const std::uint8_t rowIndex, const ClockState& state) {
     } else if (rowIndex == 1U) {
         std::snprintf(row.value, sizeof(row.value), "%u", state.externalSync.pulsesPerQuarterNote);
     } else if (rowIndex == 2U) {
-        copySyncText(row.value, sizeof(row.value), state.externalSync.edge == SyncEdge::Rising
-            ? text::TextId::SyncRise : text::TextId::SyncFall);
+        copySyncText(
+            row.value,
+            sizeof(row.value),
+            state.externalSync.edge == SyncEdge::Rising ? text::TextId::SyncRise
+                                                        : text::TextId::SyncFall);
     } else if (rowIndex == 3U) {
         const text::TextId lossText = state.externalSync.lossMode == SyncLossMode::Stop
             ? text::TextId::TransportStop
             : (state.externalSync.lossMode == SyncLossMode::Freewheel
-                ? text::TextId::SyncFree : text::TextId::SourceInternal);
+                   ? text::TextId::SyncFree
+                   : text::TextId::SourceInternal);
         copySyncText(row.value, sizeof(row.value), lossText);
     } else if (rowIndex == 4U) {
-        copySyncText(row.value, sizeof(row.value), state.externalSync.resetMode == ExternalResetMode::Trigger
-            ? text::TextId::Trigger : text::TextId::GateInput);
+        copySyncText(
+            row.value,
+            sizeof(row.value),
+            state.externalSync.resetMode == ExternalResetMode::Trigger ? text::TextId::Trigger
+                                                                       : text::TextId::GateInput);
     } else if (rowIndex == 5U) {
-        std::snprintf(row.value, sizeof(row.value), text::get(text::TextId::MicrosecondsFormat),
+        std::snprintf(
+            row.value,
+            sizeof(row.value),
+            text::get(text::TextId::MicrosecondsFormat),
             state.externalSync.glitchFilterUs);
     } else if (rowIndex == 6U) {
         const text::TextId smoothingText = state.externalSync.smoothing == SyncSmoothing::Off
             ? text::TextId::Off
             : (state.externalSync.smoothing == SyncSmoothing::Low
-                ? text::TextId::SyncLow
-                : (state.externalSync.smoothing == SyncSmoothing::Medium
-                    ? text::TextId::SyncMedium : text::TextId::SyncFull));
+                   ? text::TextId::SyncLow
+                   : (state.externalSync.smoothing == SyncSmoothing::Medium
+                          ? text::TextId::SyncMedium
+                          : text::TextId::SyncFull));
         copySyncText(row.value, sizeof(row.value), smoothingText);
     } else if (rowIndex == 7U) {
-        std::snprintf(row.value, sizeof(row.value), text::get(text::TextId::MillisecondsFormat),
+        std::snprintf(
+            row.value,
+            sizeof(row.value),
+            text::get(text::TextId::MillisecondsFormat),
             state.externalSync.timeoutMs);
     } else {
-        copySyncText(row.value, sizeof(row.value), state.externalSync.autostartOnLock
-            ? text::TextId::On : text::TextId::Off);
+        copySyncText(
+            row.value,
+            sizeof(row.value),
+            state.externalSync.autostartOnLock ? text::TextId::On : text::TextId::Off);
     }
     return row;
 }

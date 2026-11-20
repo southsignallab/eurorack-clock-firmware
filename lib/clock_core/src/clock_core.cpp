@@ -160,8 +160,7 @@ MasterAdvanceQ32 advanceMasterPositionMilliBpmQ32(
         schedulerFrequencyHz = 1U;
     }
 
-    const std::uint64_t scaledNumerator =
-        static_cast<std::uint64_t>(bpmMilli) * beatUnit * kQ32One;
+    const std::uint64_t scaledNumerator = static_cast<std::uint64_t>(bpmMilli) * beatUnit * kQ32One;
     const std::uint64_t denominator = 60ULL * 4ULL * schedulerFrequencyHz * 1000ULL;
     const std::uint64_t quotient = scaledNumerator / denominator;
     const std::uint64_t tickRemainder = scaledNumerator % denominator;
@@ -198,9 +197,7 @@ std::uint64_t applySwing(
     return longInterval ? baseIntervalQ32 + swingDelta : baseIntervalQ32 - swingDelta;
 }
 
-std::uint64_t calculatePhaseOffsetQ32(
-    const std::uint64_t intervalQ32,
-    std::uint8_t phasePercent) {
+std::uint64_t calculatePhaseOffsetQ32(const std::uint64_t intervalQ32, std::uint8_t phasePercent) {
     if (phasePercent > 99U) {
         phasePercent = 99U;
     }
@@ -214,9 +211,7 @@ std::uint32_t nextXorshift32(std::uint32_t value) {
     return value;
 }
 
-bool passesProbability(
-    const std::uint8_t probabilityPercent,
-    std::uint32_t& randomState) {
+bool passesProbability(const std::uint8_t probabilityPercent, std::uint32_t& randomState) {
     if (probabilityPercent == 0U) {
         return false;
     }
@@ -254,23 +249,20 @@ std::uint32_t calculateGatePulseTicks(
     const std::uint32_t requestedTicks = static_cast<std::uint32_t>(requestedTicks64);
 
     // A gate may consume at most half of the shortest swing-adjusted interval.
-    const std::uint64_t shortestIntervalUs =
-        (baseIntervalUs * (100ULL - swingPercent)) / 100ULL;
+    const std::uint64_t shortestIntervalUs = (baseIntervalUs * (100ULL - swingPercent)) / 100ULL;
     std::uint64_t maximumTicks64 = (shortestIntervalUs / 2ULL) / schedulerTickUs;
     if (maximumTicks64 == 0U) {
         maximumTicks64 = 1U;
     }
 
-    const std::uint32_t maximumTicks = maximumTicks64 > 0xFFFFFFFFULL
-        ? 0xFFFFFFFFU
-        : static_cast<std::uint32_t>(maximumTicks64);
+    const std::uint32_t maximumTicks =
+        maximumTicks64 > 0xFFFFFFFFULL ? 0xFFFFFFFFU : static_cast<std::uint32_t>(maximumTicks64);
     return requestedTicks > maximumTicks ? maximumTicks : requestedTicks;
 }
 
 std::uint8_t advanceStep(const std::uint8_t currentStep, const std::uint8_t patternLength) {
     const std::uint8_t safeLength = patternLength != 0U ? patternLength : 1U;
-    return static_cast<std::uint8_t>(
-        (static_cast<std::uint16_t>(currentStep) + 1U) % safeLength);
+    return static_cast<std::uint8_t>((static_cast<std::uint16_t>(currentStep) + 1U) % safeLength);
 }
 
 std::uint64_t patternMask(const std::uint8_t patternLength) {
@@ -292,8 +284,7 @@ std::uint64_t invertPattern(const std::uint64_t pattern, const std::uint8_t patt
 }
 
 std::uint64_t alternatingPattern(const std::uint8_t patternLength, const bool firstStepOn) {
-    const std::uint64_t basePattern =
-        firstStepOn ? 0x5555555555555555ULL : 0xAAAAAAAAAAAAAAAAULL;
+    const std::uint64_t basePattern = firstStepOn ? 0x5555555555555555ULL : 0xAAAAAAAAAAAAAAAAULL;
     return basePattern & patternMask(patternLength);
 }
 
@@ -302,11 +293,10 @@ bool isEuclideanHit(const std::uint8_t step, const EuclidSettings& settings) {
         return false;
     }
 
-    const std::uint8_t boundedHits = settings.hits > settings.steps
-        ? settings.steps
-        : settings.hits;
-    const std::uint8_t rotatedPosition = static_cast<std::uint8_t>(
-        (step + settings.rotation) % settings.steps);
+    const std::uint8_t boundedHits =
+        settings.hits > settings.steps ? settings.steps : settings.hits;
+    const std::uint8_t rotatedPosition =
+        static_cast<std::uint8_t>((step + settings.rotation) % settings.steps);
     return static_cast<std::uint16_t>(rotatedPosition) * boundedHits % settings.steps < boundedHits;
 }
 
@@ -315,8 +305,8 @@ bool isSequencerHit(const std::uint8_t step, const SequencerSettings& settings) 
         return false;
     }
 
-    const std::uint8_t rotatedPosition = static_cast<std::uint8_t>(
-        (step + settings.rotation) % settings.length);
+    const std::uint8_t rotatedPosition =
+        static_cast<std::uint8_t>((step + settings.rotation) % settings.length);
     return ((settings.pattern >> rotatedPosition) & 1ULL) != 0ULL;
 }
 

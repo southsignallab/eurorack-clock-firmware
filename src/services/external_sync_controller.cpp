@@ -22,28 +22,18 @@ constexpr std::uint64_t kMicrosPerMinute = 60000000ULL;
 /** Microseconds-per-minute scaled by 1000 for milli-BPM calculations. */
 constexpr std::uint64_t kMicrosPerMinuteMilliBpm = kMicrosPerMinute * 1000ULL;
 
-bool settingsEqual(
-    const ExternalSyncSettings& first,
-    const ExternalSyncSettings& second) {
-    return first.pulsesPerQuarterNote == second.pulsesPerQuarterNote &&
-        first.edge == second.edge &&
-        first.lossMode == second.lossMode &&
-        first.resetMode == second.resetMode &&
-        first.smoothing == second.smoothing &&
-        first.glitchFilterUs == second.glitchFilterUs &&
-        first.timeoutMs == second.timeoutMs &&
-        first.autostartOnLock == second.autostartOnLock;
+bool settingsEqual(const ExternalSyncSettings& first, const ExternalSyncSettings& second) {
+    return first.pulsesPerQuarterNote == second.pulsesPerQuarterNote && first.edge == second.edge &&
+        first.lossMode == second.lossMode && first.resetMode == second.resetMode &&
+        first.smoothing == second.smoothing && first.glitchFilterUs == second.glitchFilterUs &&
+        first.timeoutMs == second.timeoutMs && first.autostartOnLock == second.autostartOnLock;
 }
 
-bool inputsEqual(
-    const ExternalInputAssignments& first,
-    const ExternalInputAssignments& second) {
+bool inputsEqual(const ExternalInputAssignments& first, const ExternalInputAssignments& second) {
     return first.input1 == second.input1 && first.input2 == second.input2;
 }
 
-int assignmentIndex(
-    const ExternalInputAssignments& inputs,
-    const InputFunction function) {
+int assignmentIndex(const ExternalInputAssignments& inputs, const InputFunction function) {
     if (inputs.input1 == function) {
         return 0;
     }
@@ -64,9 +54,7 @@ void ExternalSyncController::begin(const ClockState& state) {
     foregroundSettings_ = state.externalSync;
     foregroundInputs_ = state.inputs;
     foregroundFallbackBpmMilli_ = static_cast<std::uint32_t>(state.bpm) * 1000U;
-    foregroundMinimumBpm_ = state.tempoRange.minimumBpm != 0U
-        ? state.tempoRange.minimumBpm
-        : 1U;
+    foregroundMinimumBpm_ = state.tempoRange.minimumBpm != 0U ? state.tempoRange.minimumBpm : 1U;
     foregroundSource_ = state.source;
 
     settings_ = foregroundSettings_;
@@ -98,17 +86,14 @@ void ExternalSyncController::begin(const ClockState& state) {
 }
 
 void ExternalSyncController::updateConfiguration(const ClockState& state) {
-    const std::uint32_t requestedFallbackBpmMilli =
-        static_cast<std::uint32_t>(state.bpm) * 1000U;
-    const std::uint16_t requestedMinimumBpm = state.tempoRange.minimumBpm != 0U
-        ? state.tempoRange.minimumBpm
-        : 1U;
+    const std::uint32_t requestedFallbackBpmMilli = static_cast<std::uint32_t>(state.bpm) * 1000U;
+    const std::uint16_t requestedMinimumBpm =
+        state.tempoRange.minimumBpm != 0U ? state.tempoRange.minimumBpm : 1U;
 
     if (settingsEqual(state.externalSync, foregroundSettings_) &&
         inputsEqual(state.inputs, foregroundInputs_) &&
         requestedFallbackBpmMilli == foregroundFallbackBpmMilli_ &&
-        requestedMinimumBpm == foregroundMinimumBpm_ &&
-        state.source == foregroundSource_) {
+        requestedMinimumBpm == foregroundMinimumBpm_ && state.source == foregroundSource_) {
         return;
     }
 
@@ -174,6 +159,8 @@ void ExternalSyncController::processSchedulerTick(const std::uint32_t nowUs) {
         return;
     }
     const std::uint32_t timeoutUs = effectiveTimeoutUs();
+    // The cast states the 32-bit wrapping difference of the microsecond clock.
+    // NOLINTNEXTLINE(readability-redundant-casting)
     if (static_cast<std::uint32_t>(nowUs - lastAcceptedPulseUs_) < timeoutUs) {
         return;
     }
@@ -251,16 +238,13 @@ void ExternalSyncController::processSyncEdges() {
         }
 
         const std::uint32_t periodUs = edge.timestampUs - lastAcceptedPulseUs_;
-        const std::uint32_t ppqn = settings_.pulsesPerQuarterNote != 0U
-            ? settings_.pulsesPerQuarterNote
-            : 1U;
+        const std::uint32_t ppqn =
+            settings_.pulsesPerQuarterNote != 0U ? settings_.pulsesPerQuarterNote : 1U;
         const std::uint32_t minimumSupportedPeriodUs = static_cast<std::uint32_t>(
-            kMicrosPerMinute /
-            (static_cast<std::uint64_t>(config::kSupportedMaximumBpm) * ppqn));
+            kMicrosPerMinute / (static_cast<std::uint64_t>(config::kSupportedMaximumBpm) * ppqn));
         const std::uint32_t effectiveGlitchFloorUs =
-            settings_.glitchFilterUs > minimumSupportedPeriodUs
-                ? settings_.glitchFilterUs
-                : minimumSupportedPeriodUs;
+            settings_.glitchFilterUs > minimumSupportedPeriodUs ? settings_.glitchFilterUs
+                                                                : minimumSupportedPeriodUs;
 
         // Rejected short edges do not move lastAcceptedPulseUs_. A comparator
         // glitch therefore cannot become the reference for the next valid period.
@@ -268,8 +252,8 @@ void ExternalSyncController::processSyncEdges() {
             continue;
         }
 
-        const std::uint64_t maximumSupportedPeriodUs = kMicrosPerMinute /
-            (static_cast<std::uint64_t>(config::kSupportedMinimumBpm) * ppqn);
+        const std::uint64_t maximumSupportedPeriodUs =
+            kMicrosPerMinute / (static_cast<std::uint64_t>(config::kSupportedMinimumBpm) * ppqn);
         if (static_cast<std::uint64_t>(periodUs) > maximumSupportedPeriodUs) {
             if (externalLocked_) {
                 loseExternalLockFromIsr();
@@ -304,14 +288,12 @@ void ExternalSyncController::processSyncEdges() {
             }
         }
 
-        const std::uint32_t filteredPeriodUs = static_cast<std::uint32_t>(
-            (filteredPeriodQ8_ + 128U) >> 8U);
+        const std::uint32_t filteredPeriodUs =
+            static_cast<std::uint32_t>((filteredPeriodQ8_ + 128U) >> 8U);
         filteredBpmMilli_ = calculateBpmMilli(filteredPeriodUs);
         const bool acquiredLock = !externalLocked_;
         externalLocked_ = true;
-        engine_.acceptExternalPulseFromIsr(
-            filteredBpmMilli_,
-            settings_.pulsesPerQuarterNote);
+        engine_.acceptExternalPulseFromIsr(filteredBpmMilli_, settings_.pulsesPerQuarterNote);
         if (acquiredLock) {
             startOnLockAcquisitionFromIsr();
         }
@@ -322,9 +304,7 @@ int ExternalSyncController::assignedInput(const InputFunction function) const {
     return assignmentIndex(inputs_, function);
 }
 
-bool ExternalSyncController::popInputEdge(
-    const int inputIndex,
-    hal::ExternalInputEdge& edge) {
+bool ExternalSyncController::popInputEdge(const int inputIndex, hal::ExternalInputEdge& edge) {
     if (inputIndex == 0) {
         return inputCapture_.popSyncEdge(edge);
     }
@@ -335,9 +315,8 @@ bool ExternalSyncController::popInputEdge(
 }
 
 bool ExternalSyncController::inputLevelHigh(const int inputIndex) const {
-    return inputIndex == 0
-        ? inputCapture_.syncLevelHigh()
-        : (inputIndex == 1 && inputCapture_.resetLevelHigh());
+    return inputIndex == 0 ? inputCapture_.syncLevelHigh()
+                           : (inputIndex == 1 && inputCapture_.resetLevelHigh());
 }
 
 void ExternalSyncController::drainInput(const int inputIndex) {
@@ -353,8 +332,7 @@ void ExternalSyncController::loseExternalLockFromIsr() {
     filteredPeriodQ8_ = 0U;
     engine_.setExternalLockFromIsr(false, filteredBpmMilli_);
 
-    if (!wasLocked ||
-        settings_.lossMode != SyncLossMode::Stop ||
+    if (!wasLocked || settings_.lossMode != SyncLossMode::Stop ||
         (source_ != ClockSource::External && source_ != ClockSource::Auto) ||
         !autoTransportArmed_) {
         return;
@@ -380,9 +358,8 @@ std::uint32_t ExternalSyncController::calculateBpmMilli(const std::uint32_t peri
     if (periodUs == 0U) {
         return 0U;
     }
-    const std::uint32_t ppqn = settings_.pulsesPerQuarterNote != 0U
-        ? settings_.pulsesPerQuarterNote
-        : 1U;
+    const std::uint32_t ppqn =
+        settings_.pulsesPerQuarterNote != 0U ? settings_.pulsesPerQuarterNote : 1U;
     const std::uint64_t denominator = static_cast<std::uint64_t>(periodUs) * ppqn;
     const std::uint64_t value = kMicrosPerMinuteMilliBpm / denominator;
     const std::uint64_t maximumSupportedMilliBpm =
@@ -393,25 +370,20 @@ std::uint32_t ExternalSyncController::calculateBpmMilli(const std::uint32_t peri
 
 std::uint32_t ExternalSyncController::effectiveTimeoutUs() const {
     constexpr std::uint64_t kMissedPulseTolerance = 2ULL;
-    const std::uint64_t configuredUs =
-        static_cast<std::uint64_t>(settings_.timeoutMs) * 1000ULL;
-    const std::uint32_t ppqn = settings_.pulsesPerQuarterNote != 0U
-        ? settings_.pulsesPerQuarterNote
-        : 1U;
+    const std::uint64_t configuredUs = static_cast<std::uint64_t>(settings_.timeoutMs) * 1000ULL;
+    const std::uint32_t ppqn =
+        settings_.pulsesPerQuarterNote != 0U ? settings_.pulsesPerQuarterNote : 1U;
 
     std::uint64_t referencePeriodUs = 0U;
     if (filteredPeriodQ8_ != 0U) {
         referencePeriodUs = (filteredPeriodQ8_ + 128U) >> 8U;
     } else {
         const std::uint32_t minimumBpm = minimumBpm_ != 0U ? minimumBpm_ : 1U;
-        referencePeriodUs = kMicrosPerMinute /
-            (static_cast<std::uint64_t>(minimumBpm) * ppqn);
+        referencePeriodUs = kMicrosPerMinute / (static_cast<std::uint64_t>(minimumBpm) * ppqn);
     }
     const std::uint64_t adaptiveUs = referencePeriodUs * kMissedPulseTolerance;
     const std::uint64_t timeoutUs = configuredUs > adaptiveUs ? configuredUs : adaptiveUs;
-    return timeoutUs > 0xFFFFFFFFULL
-        ? 0xFFFFFFFFU
-        : static_cast<std::uint32_t>(timeoutUs);
+    return timeoutUs > 0xFFFFFFFFULL ? 0xFFFFFFFFU : static_cast<std::uint32_t>(timeoutUs);
 }
 
 }  // namespace clockfw::services

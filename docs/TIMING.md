@@ -10,15 +10,36 @@ CLOCK currently uses TIM3 as a **20 kHz scheduler interrupt**. One scheduler qua
 
 The target interrupt hierarchy is deliberately asymmetric:
 
+<!-- generated:interrupt-priorities begin (scripts/generate_reference_tables.py) -->
 | Layer | Target priority | Responsibility |
 | --- | ---: | --- |
 | TIM3 scheduler | 0 | gate edges, pulse termination, phase, SYNC/RST consumption |
 | GPIO EXTI | 4 | conditioned SYNC/RST edge capture |
 | Foreground | n/a | UI, rendering, display service, persistence scheduling |
+<!-- generated:interrupt-priorities end -->
 
 STM32 NVIC priorities use lower numbers for higher preemption priority. The scheduler therefore remains able to preempt display and input-service activity.
 
 The current scheduler is service-tick based rather than final output-compare scheduling. Consequently the software timing quantization is 50 µs. A future compare-event scheduler may tighten that bound without changing the application timing contract.
+
+### Timing constants
+
+The priorities above and the constants below are generated from the code.
+
+<!-- generated:timing-constants begin (scripts/generate_reference_tables.py) -->
+| Quantity | Value | Constant in `src/config.h` |
+| --- | --- | --- |
+| Scheduler interrupt rate (TIM3) | 20 kHz | `kSchedulerFrequencyHz` |
+| Scheduler quantum | 50 µs | `kSchedulerTickUs` |
+| Ticks caught up in one interrupt, at most | 8 (400 µs) | `kMaximumSchedulerCatchUpTicks` |
+| Display refresh interval, at least | 30 ms | `kDisplayRefreshMinimumMs` |
+| Display SPI clock request (ceiling) | 1 MHz | `kDisplaySpiFrequencyHz` |
+| Encoder long press | 650 ms | `kEncoderLongPressMs` |
+| TAP interval accepted | 60–60000 ms | `kTapMinimumIntervalMs`, `kTapMaximumIntervalMs` |
+| Persistence quiet period after a change | 3000 ms | `kPersistenceCommitDelayMs` |
+| Persistence latency from the first unsaved change, at most | 30000 ms | `kPersistenceMaximumLatencyMs` |
+| Persistence retries after a failed commit | 6, first after 1000 ms, doubling | `kPersistenceRetryCount`, `kPersistenceRetryInitialMs` |
+<!-- generated:timing-constants end -->
 
 ### Gate output: one register write per tick
 
@@ -97,7 +118,7 @@ Host tests verify timestamp preservation, step assignment, One-Shot/Endless beha
 
 ## Display transports
 
-Final hardware uses SPI. The legacy I2C transport is retained only as a host regression path and is not a production Blackpill profile.
+Final hardware uses SPI. The legacy I2C transport is retained only as a host regression path and is not a production Blackpill profile; the target build compiles it, but the linker discards it.
 
 ### SPI — reference transport
 

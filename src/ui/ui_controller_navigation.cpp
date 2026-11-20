@@ -18,18 +18,17 @@
 
 namespace clockfw::ui {
 
-void UiController::openSettingsPage(
-    const SettingsPage page,
-    const std::uint8_t initialCursor) {
+void UiController::openSettingsPage(const SettingsPage page, const std::uint8_t initialCursor) {
     navigation_.settingsPage = page;
     const ChannelMode mode = state_.channels[navigation_.selectedChannel].common.mode;
     if (page == SettingsPage::Root) {
-        navigation_.highScoreResetAvailable = leaderboard_ != nullptr && leaderboard_->hasPersistentRecord();
+        navigation_.highScoreResetAvailable =
+            leaderboard_ != nullptr && leaderboard_->hasPersistentRecord();
     }
-    const std::uint8_t itemCount = settingsPageItemCount(
-        page, mode, navigation_.highScoreResetAvailable);
-    navigation_.cursor = static_cast<std::uint8_t>(std::min<std::uint8_t>(
-        initialCursor, static_cast<std::uint8_t>(itemCount - 1U)));
+    const std::uint8_t itemCount =
+        settingsPageItemCount(page, mode, navigation_.highScoreResetAvailable);
+    navigation_.cursor = static_cast<std::uint8_t>(
+        std::min<std::uint8_t>(initialCursor, static_cast<std::uint8_t>(itemCount - 1U)));
     navigation_.scrollOffset = 0U;
     navigation_.editing = false;
     navigation_.screen = Screen::Settings;
@@ -67,17 +66,13 @@ void UiController::commitSelectedMode(const std::uint32_t nowMs) {
 }
 
 bool UiController::selectedModeIsCurrent(const ModeFunction modeFunction) const {
-    const std::uint8_t currentIndex = modeFunctionIndexForState(
-        state_, navigation_.selectedChannel);
-    return currentIndex < kModeFunctions.size() &&
-        kModeFunctions[currentIndex] == modeFunction;
+    const std::uint8_t currentIndex =
+        modeFunctionIndexForState(state_, navigation_.selectedChannel);
+    return currentIndex < kModeFunctions.size() && kModeFunctions[currentIndex] == modeFunction;
 }
 
 void UiController::applyConfirmedMode(const std::uint32_t nowMs) {
-    applyModeFunction(
-        state_,
-        navigation_.selectedChannel,
-        navigation_.pendingModeFunction);
+    applyModeFunction(state_, navigation_.selectedChannel, navigation_.pendingModeFunction);
     engine_.updateConfiguration(state_, true);
     persistCurrentState(nowMs);
     navigateAfterModeSelection(navigation_.pendingModeFunction);
@@ -182,8 +177,10 @@ void UiController::backFromSettings() {
         navigation_.settingsPage = SettingsPage::Root;
     }
 
-    if ((previousPage == SettingsPage::GrooveEditorMenu && navigation_.screen == Screen::GrooveEditor) ||
-        (previousPage == SettingsPage::GrooveRecordMenu && navigation_.screen == Screen::GrooveRecorder)) {
+    if ((previousPage == SettingsPage::GrooveEditorMenu &&
+         navigation_.screen == Screen::GrooveEditor) ||
+        (previousPage == SettingsPage::GrooveRecordMenu &&
+         navigation_.screen == Screen::GrooveRecorder)) {
         navigation_.cursor = 0U;
         navigation_.scrollOffset = 0U;
         navigation_.editing = false;
@@ -245,7 +242,8 @@ void UiController::backFromSettings() {
 
 void UiController::confirmHighScoreClear(const std::uint32_t nowMs) {
     if (navigation_.cursor == 0U || leaderboard_ == nullptr) {
-        openSettingsPage(SettingsPage::Root, navigation_.highScoreResetAvailable ? kRootHighScoresRow : 0U);
+        openSettingsPage(
+            SettingsPage::Root, navigation_.highScoreResetAvailable ? kRootHighScoresRow : 0U);
         return;
     }
 
@@ -256,21 +254,21 @@ void UiController::confirmHighScoreClear(const std::uint32_t nowMs) {
     // The outcome is read back: HI-SCORES stays available only while the record exists.
     (void)leaderboard_->clear();
     navigation_.highScoreResetAvailable = leaderboard_->hasPersistentRecord();
-    openSettingsPage(SettingsPage::Root, navigation_.highScoreResetAvailable ? kRootHighScoresRow : 0U);
+    openSettingsPage(
+        SettingsPage::Root, navigation_.highScoreResetAvailable ? kRootHighScoresRow : 0U);
 }
-
 
 void UiController::normalizeScrollOffset() {
     const ChannelMode mode = state_.channels[navigation_.selectedChannel].common.mode;
-    const std::uint8_t itemCount = settingsPageItemCount(
-        navigation_.settingsPage, mode, navigation_.highScoreResetAvailable);
+    const std::uint8_t itemCount =
+        settingsPageItemCount(navigation_.settingsPage, mode, navigation_.highScoreResetAvailable);
 
     if (navigation_.cursor < navigation_.scrollOffset) {
         navigation_.scrollOffset = navigation_.cursor;
     }
     if (navigation_.cursor >= navigation_.scrollOffset + kVisibleSettingsRows) {
-        navigation_.scrollOffset = static_cast<std::uint8_t>(
-            navigation_.cursor - (kVisibleSettingsRows - 1U));
+        navigation_.scrollOffset =
+            static_cast<std::uint8_t>(navigation_.cursor - (kVisibleSettingsRows - 1U));
     }
     if (itemCount <= kVisibleSettingsRows) {
         navigation_.scrollOffset = 0U;
@@ -291,6 +289,5 @@ void UiController::applySelectedTemplate(const std::uint32_t nowMs) {
     navigation_.screen = Screen::Performance;
     invalidate();
 }
-
 
 }  // namespace clockfw::ui

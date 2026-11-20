@@ -36,7 +36,9 @@ void UiController::serviceExternalTempoNotice(const std::uint32_t nowMs) {
     }
 }
 
-void UiController::showPersistenceNotice(const PersistenceNotice notice, const std::uint32_t nowMs) {
+void UiController::showPersistenceNotice(
+    const PersistenceNotice notice,
+    const std::uint32_t nowMs) {
     navigation_.persistenceNotice = notice;
     persistenceNoticeShownAtMs_ = nowMs;
     invalidate();
@@ -68,8 +70,7 @@ void UiController::registerTapTempo(const std::uint32_t nowMs, const std::uint32
     // One time base for every tap (F-013): microseconds, unsigned differences.
     const std::uint32_t sequenceIntervalUs =
         services::TapTempo::maximumSequenceIntervalUs(state_.tempoRange.minimumBpm);
-    const bool sequenceContinues =
-        tapVisualSequenceActive_ && sequenceIntervalUs > 0U &&
+    const bool sequenceContinues = tapVisualSequenceActive_ && sequenceIntervalUs > 0U &&
         tapUs - lastTapAtUs_ <= sequenceIntervalUs;
 
     lastTapAtUs_ = tapUs;
@@ -82,8 +83,8 @@ void UiController::registerTapTempo(const std::uint32_t nowMs, const std::uint32
         navigation_.tapIndicatorFrame = 0U;
     }
 
-    const std::uint16_t estimatedBpm = tapTempo_.registerTap(
-        tapUs, state_.tempoRange.minimumBpm, state_.tempoRange.maximumBpm);
+    const std::uint16_t estimatedBpm =
+        tapTempo_.registerTap(tapUs, state_.tempoRange.minimumBpm, state_.tempoRange.maximumBpm);
     if (estimatedBpm == 0U) {
         return;
     }

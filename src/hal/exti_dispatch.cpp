@@ -31,7 +31,8 @@ bool readSettledLevel(
     const PendingReader isPending,
     const PendingClearer clearPending) {
     bool high = readLevel(pin);
-    for (std::uint32_t reread = 0U; reread < kMaximumLevelRereads && isPending(lineMask); ++reread) {
+    for (std::uint32_t reread = 0U; reread < kMaximumLevelRereads && isPending(lineMask);
+         ++reread) {
         clearPending(lineMask);
         high = readLevel(pin);
     }

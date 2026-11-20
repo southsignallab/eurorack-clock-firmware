@@ -88,7 +88,8 @@ void ClockEngine::setGateState(const std::size_t channelIndex, const bool high) 
     const std::uint8_t bit = channelBit(channelIndex);
     if (!high) {
         runtime.gateOffScheduled = false;
-        deferredRiseMask_ = static_cast<std::uint8_t>(deferredRiseMask_ & ~bit);
+        deferredRiseMask_ =
+            static_cast<std::uint8_t>(deferredRiseMask_ & ~static_cast<std::uint32_t>(bit));
     }
     if (runtime.gateHigh == high) {
         return;
@@ -107,7 +108,8 @@ void ClockEngine::setGateState(const std::size_t channelIndex, const bool high) 
         return;
     }
     runtime.gateHigh = high;
-    gateHighMask_ = static_cast<std::uint8_t>(high ? (gateHighMask_ | bit) : (gateHighMask_ & ~bit));
+    gateHighMask_ = static_cast<std::uint8_t>(
+        high ? (gateHighMask_ | bit) : (gateHighMask_ & ~static_cast<std::uint32_t>(bit)));
     if (!schedulerQuantumOpen_) {
         // Foreground (always under InterruptLock) only ever lowers gates.
         gateOutputs_.setChannelState(channelIndex, high);
@@ -168,7 +170,8 @@ void ClockEngine::serviceDeferredGateRises() {
 
 void ClockEngine::endGatesBeforeNextRise(const std::uint64_t masterIncrementQ32) {
     // Only HIGH gates that did not rise in this quantum need the look-ahead.
-    const std::uint8_t candidates = static_cast<std::uint8_t>(gateHighMask_ & ~gatesRaisedThisQuantum_);
+    const std::uint8_t candidates = static_cast<std::uint8_t>(
+        gateHighMask_ & ~static_cast<std::uint32_t>(gatesRaisedThisQuantum_));
     if (candidates == 0U) {
         return;
     }

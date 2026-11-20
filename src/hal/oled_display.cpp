@@ -17,8 +17,9 @@
 namespace clockfw::hal {
 
 bool OledDisplay::begin() {
-    static_assert(config::kDisplayWidth == 128U && config::kDisplayHeight == 64U,
-                  "The built-in SSD1306/SSD1315 profiles target a 128x64 panel.");
+    static_assert(
+        config::kDisplayWidth == 128U && config::kDisplayHeight == 64U,
+        "The built-in SSD1306/SSD1315 profiles target a 128x64 panel.");
 
     bool transportReady = false;
     if (config::kDisplayTransport == config::DisplayTransport::Spi) {
@@ -48,21 +49,30 @@ bool OledDisplay::begin() {
             break;
     }
     sendCommand(0xAEU);  // Display off.
-    sendCommand(0xD5U); sendCommand(0x80U);  // Clock divide / oscillator.
-    sendCommand(0xA8U); sendCommand(0x3FU);  // Multiplex ratio 1/64.
-    sendCommand(0xD3U); sendCommand(0x00U);  // Display offset.
-    sendCommand(0x40U);                      // Start line 0.
-    sendCommand(0x8DU); sendCommand(0x14U);  // Internal charge pump.
-    sendCommand(0x20U); sendCommand(0x00U);  // Horizontal addressing mode.
-    sendCommand(0xA1U);                      // Segment remap.
-    sendCommand(0xC8U);                      // COM scan decrement.
-    sendCommand(0xDAU); sendCommand(0x12U);  // COM pin configuration.
-    sendCommand(0x81U); sendCommand(config::kDisplayContrast);
-    sendCommand(0xD9U); sendCommand(0xF1U);  // Precharge period.
-    sendCommand(0xDBU); sendCommand(0x40U);  // VCOMH deselect level.
-    sendCommand(0xA4U);                      // Resume RAM display.
-    sendCommand(0xA6U);                      // Normal, non-inverted pixels.
-    sendCommand(0xAFU);                      // Display on.
+    sendCommand(0xD5U);
+    sendCommand(0x80U);  // Clock divide / oscillator.
+    sendCommand(0xA8U);
+    sendCommand(0x3FU);  // Multiplex ratio 1/64.
+    sendCommand(0xD3U);
+    sendCommand(0x00U);  // Display offset.
+    sendCommand(0x40U);  // Start line 0.
+    sendCommand(0x8DU);
+    sendCommand(0x14U);  // Internal charge pump.
+    sendCommand(0x20U);
+    sendCommand(0x00U);  // Horizontal addressing mode.
+    sendCommand(0xA1U);  // Segment remap.
+    sendCommand(0xC8U);  // COM scan decrement.
+    sendCommand(0xDAU);
+    sendCommand(0x12U);  // COM pin configuration.
+    sendCommand(0x81U);
+    sendCommand(config::kDisplayContrast);
+    sendCommand(0xD9U);
+    sendCommand(0xF1U);  // Precharge period.
+    sendCommand(0xDBU);
+    sendCommand(0x40U);  // VCOMH deselect level.
+    sendCommand(0xA4U);  // Resume RAM display.
+    sendCommand(0xA6U);  // Normal, non-inverted pixels.
+    sendCommand(0xAFU);  // Display on.
 
     clear();
     present();
@@ -118,15 +128,13 @@ void OledDisplay::prepareTransportFramebuffer(
     }
 
     const auto reverseBits = [](std::uint8_t value) {
-        value = static_cast<std::uint8_t>((value >> 4U) | (value << 4U));
         value = static_cast<std::uint8_t>(
-            ((value & 0xCCU) >> 2U) | ((value & 0x33U) << 2U));
-        value = static_cast<std::uint8_t>(
-            ((value & 0xAAU) >> 1U) | ((value & 0x55U) << 1U));
+            (static_cast<std::uint32_t>(value) >> 4U) | (static_cast<std::uint32_t>(value) << 4U));
+        value = static_cast<std::uint8_t>(((value & 0xCCU) >> 2U) | ((value & 0x33U) << 2U));
+        value = static_cast<std::uint8_t>(((value & 0xAAU) >> 1U) | ((value & 0x55U) << 1U));
         return value;
     };
 
-    constexpr std::size_t kPageWidth = static_cast<std::size_t>(config::kDisplayWidth);
     constexpr std::size_t kPageCount = config::kDisplayHeight / 8U;
     for (std::size_t page = 0U; page < kPageCount; ++page) {
         const std::size_t destinationPage = kPageCount - 1U - page;
@@ -139,19 +147,17 @@ void OledDisplay::prepareTransportFramebuffer(
     }
 }
 
-
-
 #if defined(CLOCK_HOST_TEST) || defined(CLOCK_SIMULATOR)
-const std::array<std::uint8_t, OledDisplay::kFramebufferSize>& OledDisplay::framebufferForTest() const {
+const std::array<std::uint8_t, OledDisplay::kFramebufferSize>& OledDisplay::framebufferForTest()
+    const {
     return framebuffer_;
 }
 
-const std::array<std::uint8_t, OledDisplay::kFramebufferSize>& OledDisplay::presentedFramebufferForTest() const {
+const std::array<std::uint8_t, OledDisplay::kFramebufferSize>& OledDisplay::
+    presentedFramebufferForTest() const {
     return presentedFramebuffer_;
 }
 #endif
-
-
 
 void OledDisplay::setFont(const DisplayFont font) {
     font_ = font;
@@ -181,17 +187,12 @@ TextBounds OledDisplay::measureText(
     }
 
     const std::size_t length = text != nullptr ? std::strlen(text) : 0U;
-    bounds.width = length == 0U
-        ? 0U
-        : static_cast<std::uint16_t>(length * 6U - 1U);
+    bounds.width = length == 0U ? 0U : static_cast<std::uint16_t>(length * 6U - 1U);
     bounds.height = 7U;
     return bounds;
 }
 
-void OledDisplay::drawText(
-    const std::int16_t x,
-    const std::int16_t y,
-    const char* const text) {
+void OledDisplay::drawText(const std::int16_t x, const std::int16_t y, const char* const text) {
     if (text == nullptr) {
         return;
     }
@@ -201,8 +202,7 @@ void OledDisplay::drawText(
         for (const char* character = text; *character != '\0'; ++character) {
             const font::TempoGlyph glyph = font::tempoGlyphFor(*character);
             drawTempoGlyph(cursorX, y, *character);
-            cursorX = static_cast<std::int16_t>(
-                cursorX + glyph.width + font::kTempoGlyphSpacing);
+            cursorX = static_cast<std::int16_t>(cursorX + glyph.width + font::kTempoGlyphSpacing);
         }
         return;
     }
@@ -210,8 +210,8 @@ void OledDisplay::drawText(
         for (const char* character = text; *character != '\0'; ++character) {
             const font::LargeTempoGlyph glyph = font::largeTempoGlyphFor(*character);
             drawLargeTempoGlyph(cursorX, y, *character);
-            cursorX = static_cast<std::int16_t>(
-                cursorX + glyph.width + font::kLargeTempoGlyphSpacing);
+            cursorX =
+                static_cast<std::int16_t>(cursorX + glyph.width + font::kLargeTempoGlyphSpacing);
         }
         return;
     }
@@ -222,10 +222,7 @@ void OledDisplay::drawText(
     }
 }
 
-void OledDisplay::drawCharacter(
-    const std::int16_t x,
-    const std::int16_t y,
-    const char character) {
+void OledDisplay::drawCharacter(const std::int16_t x, const std::int16_t y, const char character) {
     if (font_ == DisplayFont::Tempo) {
         drawTempoGlyph(x, y, character);
     } else if (font_ == DisplayFont::TempoLarge) {
@@ -310,23 +307,18 @@ void OledDisplay::fillRectangle(
     }
 }
 
-void OledDisplay::setPixel(
-    const std::int16_t x,
-    const std::int16_t y,
-    const PixelColor color) {
+void OledDisplay::setPixel(const std::int16_t x, const std::int16_t y, const PixelColor color) {
     drawPixel(x, y, color);
 }
 
-void OledDisplay::drawPixel(
-    const std::int16_t x,
-    const std::int16_t y,
-    const PixelColor color) {
+void OledDisplay::drawPixel(const std::int16_t x, const std::int16_t y, const PixelColor color) {
     if (x < 0 || y < 0 || x >= kWidth || y >= kHeight) {
         return;
     }
     const std::size_t byteIndex =
         static_cast<std::size_t>(x) + static_cast<std::size_t>(y / 8) * config::kDisplayWidth;
-    const std::uint8_t bitMask = static_cast<std::uint8_t>(1U << (y & 7));
+    const std::uint8_t bitMask =
+        static_cast<std::uint8_t>(1U << (static_cast<std::uint32_t>(y) & 7U));
     if (color == PixelColor::White) {
         framebuffer_[byteIndex] |= bitMask;
     } else {
@@ -334,10 +326,7 @@ void OledDisplay::drawPixel(
     }
 }
 
-void OledDisplay::drawSmallGlyph(
-    const std::int16_t x,
-    const std::int16_t y,
-    const char character) {
+void OledDisplay::drawSmallGlyph(const std::int16_t x, const std::int16_t y, const char character) {
     const font::Glyph glyph = font::glyphFor(character);
     for (std::uint8_t row = 0U; row < 7U; ++row) {
         for (std::uint8_t column = 0U; column < 5U; ++column) {
@@ -352,10 +341,7 @@ void OledDisplay::drawSmallGlyph(
     }
 }
 
-void OledDisplay::drawTempoGlyph(
-    const std::int16_t x,
-    const std::int16_t y,
-    const char character) {
+void OledDisplay::drawTempoGlyph(const std::int16_t x, const std::int16_t y, const char character) {
     const font::TempoGlyph glyph = font::tempoGlyphFor(character);
     for (std::uint8_t row = 0U; row < font::kTempoGlyphHeight; ++row) {
         for (std::uint8_t column = 0U; column < glyph.width; ++column) {
@@ -402,8 +388,7 @@ std::uint16_t OledDisplay::measureTempoTextWidth(const char* const text) const {
         ++glyphCount;
     }
     if (glyphCount > 1U) {
-        width = static_cast<std::uint16_t>(
-            width + (glyphCount - 1U) * font::kTempoGlyphSpacing);
+        width = static_cast<std::uint16_t>(width + (glyphCount - 1U) * font::kTempoGlyphSpacing);
     }
     return width;
 }
@@ -420,8 +405,8 @@ std::uint16_t OledDisplay::measureLargeTempoTextWidth(const char* const text) co
         ++glyphCount;
     }
     if (glyphCount > 1U) {
-        width = static_cast<std::uint16_t>(
-            width + (glyphCount - 1U) * font::kLargeTempoGlyphSpacing);
+        width =
+            static_cast<std::uint16_t>(width + (glyphCount - 1U) * font::kLargeTempoGlyphSpacing);
     }
     return width;
 }

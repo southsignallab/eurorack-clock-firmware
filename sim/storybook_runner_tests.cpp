@@ -24,16 +24,16 @@ using clockfw::ClockSource;
 using clockfw::TransportState;
 using clockfw::sim::SimulatorRuntime;
 using clockfw::sim::tutorial::InteractionProfile;
-using clockfw::sim::tutorial::Story;
-using clockfw::sim::tutorial::StoryParseResult;
-using clockfw::sim::tutorial::StoryRunResult;
-using clockfw::sim::tutorial::StoryRunner;
-using clockfw::sim::tutorial::StorySimulatorPort;
-using clockfw::sim::tutorial::StoryTraceEvent;
-using clockfw::sim::tutorial::StoryTraceKind;
 using clockfw::sim::tutorial::loadInteractionTiming;
 using clockfw::sim::tutorial::parseStoryFile;
 using clockfw::sim::tutorial::parseStoryText;
+using clockfw::sim::tutorial::Story;
+using clockfw::sim::tutorial::StoryParseResult;
+using clockfw::sim::tutorial::StoryRunner;
+using clockfw::sim::tutorial::StoryRunResult;
+using clockfw::sim::tutorial::StorySimulatorPort;
+using clockfw::sim::tutorial::StoryTraceEvent;
+using clockfw::sim::tutorial::StoryTraceKind;
 using clockfw::sim::tutorial::validateStory;
 
 bool require(const bool condition, const char* const message) {
@@ -54,13 +54,14 @@ bool containsReason(const StoryRunResult& result, const std::string& needle) {
 }
 
 bool sameTrace(const std::vector<StoryTraceEvent>& lhs, const std::vector<StoryTraceEvent>& rhs) {
-    if (lhs.size() != rhs.size()) return false;
+    if (lhs.size() != rhs.size())
+        return false;
     for (std::size_t index = 0U; index < lhs.size(); ++index) {
         const StoryTraceEvent& a = lhs[index];
         const StoryTraceEvent& b = rhs[index];
-        if (a.kind != b.kind || a.presentationUs != b.presentationUs || a.firmwareUs != b.firmwareUs ||
-            a.sceneIndex != b.sceneIndex || a.actionIndex != b.actionIndex ||
-            a.name != b.name || a.value != b.value) {
+        if (a.kind != b.kind || a.presentationUs != b.presentationUs ||
+            a.firmwareUs != b.firmwareUs || a.sceneIndex != b.sceneIndex ||
+            a.actionIndex != b.actionIndex || a.name != b.name || a.value != b.value) {
             return false;
         }
     }
@@ -76,7 +77,8 @@ const StoryTraceEvent* findEvent(
     for (const StoryTraceEvent& event : trace) {
         if (event.kind == kind && event.sceneIndex && *event.sceneIndex == sceneIndex) {
             found = &event;
-            if (!last) return found;
+            if (!last)
+                return found;
         }
     }
     return found;
@@ -121,50 +123,68 @@ int main() {
     const std::filesystem::path tutorialRoot = sourceRoot / "docs" / "tutorials";
     bool ok = true;
 
-    for (const InteractionProfile profile : {
-             InteractionProfile::HumanSlow,
-             InteractionProfile::HumanNormal,
-             InteractionProfile::HumanFast}) {
+    for (const InteractionProfile profile :
+         {InteractionProfile::HumanSlow,
+          InteractionProfile::HumanNormal,
+          InteractionProfile::HumanFast}) {
         const auto timing = loadInteractionTiming(tutorialRoot, profile);
-        ok &= require(static_cast<bool>(timing), "all three deterministic interaction profiles must resolve");
+        ok &= require(
+            static_cast<bool>(timing), "all three deterministic interaction profiles must resolve");
         if (timing) {
-            ok &= require(timing.timing->encoderDetentMs > 0U && timing.timing->buttonDownMs > 0U,
-                          "resolved interaction timings must be positive");
+            ok &= require(
+                timing.timing->encoderDetentMs > 0U && timing.timing->buttonDownMs > 0U,
+                "resolved interaction timings must be positive");
         }
     }
 
-    const StoryParseResult reference = parseStoryFile(tutorialRoot / "stories" / "external-sync.yaml");
+    const StoryParseResult reference =
+        parseStoryFile(tutorialRoot / "stories" / "external-sync.yaml");
     ok &= require(static_cast<bool>(reference), "External-SYNC reference story must parse");
-    if (!reference) return EXIT_FAILURE;
-    ok &= require(validateStory(*reference.story, tutorialRoot).empty(),
-                  "External-SYNC reference story must validate");
+    if (!reference)
+        return EXIT_FAILURE;
+    ok &= require(
+        validateStory(*reference.story, tutorialRoot).empty(),
+        "External-SYNC reference story must validate");
 
-    const ExecutedStory first = executeReference(
-        *reference.story, tutorialRoot, ".clock-storybook-runner-a.bin");
-    const ExecutedStory second = executeReference(
-        *reference.story, tutorialRoot, ".clock-storybook-runner-b.bin");
-    ok &= require(static_cast<bool>(first.result), "External-SYNC story must complete successfully");
-    ok &= require(static_cast<bool>(second.result), "repeated External-SYNC story must complete successfully");
-    ok &= require(sameTrace(first.result.trace, second.result.trace),
-                  "identical story runs must emit identical logical timelines");
-    ok &= require(first.result.presentationDurationUs == second.result.presentationDurationUs,
-                  "identical story runs must have identical presentation duration");
-    ok &= require(first.source == ClockSource::Auto,
-                  "reference story must leave production CLOCK SOURCE at AUTO");
-    ok &= require(first.transport == TransportState::Stopped,
-                  "reference story must end in explicit manual STOP");
-    ok &= require(first.syncConnected && first.syncRunning && first.syncLocked,
-                  "incoming SYNC must remain connected/running/locked after manual STOP");
+    const ExecutedStory first =
+        executeReference(*reference.story, tutorialRoot, ".clock-storybook-runner-a.bin");
+    const ExecutedStory second =
+        executeReference(*reference.story, tutorialRoot, ".clock-storybook-runner-b.bin");
+    ok &=
+        require(static_cast<bool>(first.result), "External-SYNC story must complete successfully");
+    ok &= require(
+        static_cast<bool>(second.result),
+        "repeated External-SYNC story must complete successfully");
+    ok &= require(
+        sameTrace(first.result.trace, second.result.trace),
+        "identical story runs must emit identical logical timelines");
+    ok &= require(
+        first.result.presentationDurationUs == second.result.presentationDurationUs,
+        "identical story runs must have identical presentation duration");
+    ok &= require(
+        first.source == ClockSource::Auto,
+        "reference story must leave production CLOCK SOURCE at AUTO");
+    ok &= require(
+        first.transport == TransportState::Stopped,
+        "reference story must end in explicit manual STOP");
+    ok &= require(
+        first.syncConnected && first.syncRunning && first.syncLocked,
+        "incoming SYNC must remain connected/running/locked after manual STOP");
 
-    const StoryTraceEvent* chapterBegin = findEvent(first.result.trace, StoryTraceKind::SceneBegin, 0U, false);
-    const StoryTraceEvent* chapterEnd = findEvent(first.result.trace, StoryTraceKind::SceneEnd, 0U, true);
-    ok &= require(chapterBegin != nullptr && chapterEnd != nullptr,
-                  "chapter trace boundaries must be emitted");
+    const StoryTraceEvent* chapterBegin =
+        findEvent(first.result.trace, StoryTraceKind::SceneBegin, 0U, false);
+    const StoryTraceEvent* chapterEnd =
+        findEvent(first.result.trace, StoryTraceKind::SceneEnd, 0U, true);
+    ok &= require(
+        chapterBegin != nullptr && chapterEnd != nullptr,
+        "chapter trace boundaries must be emitted");
     if (chapterBegin != nullptr && chapterEnd != nullptr) {
-        ok &= require(chapterEnd->presentationUs - chapterBegin->presentationUs == 3000000ULL,
-                      "chapter duration must advance presentation time exactly");
-        ok &= require(chapterEnd->firmwareUs == chapterBegin->firmwareUs,
-                      "pure chapter presentation must freeze firmware time in Phase 1");
+        ok &= require(
+            chapterEnd->presentationUs - chapterBegin->presentationUs == 3000000ULL,
+            "chapter duration must advance presentation time exactly");
+        ok &= require(
+            chapterEnd->firmwareUs == chapterBegin->firmwareUs,
+            "pure chapter presentation must freeze firmware time in Phase 1");
     }
 
     const StoryParseResult actionMatrix = parseStoryText(R"YAML(
@@ -233,9 +253,10 @@ scenes:
     if (actionMatrix) {
         const ExecutedStory matrix = executeReference(
             *actionMatrix.story, tutorialRoot, ".clock-storybook-runner-matrix.bin");
-        ok &= require(static_cast<bool>(matrix.result), "runner must execute all Phase-1 action classes used by the action matrix");
+        ok &= require(
+            static_cast<bool>(matrix.result),
+            "runner must execute all Phase-1 action classes used by the action matrix");
     }
-
 
     const StoryParseResult narrationBeatStory = parseStoryText(R"YAML(
 schema: 1
@@ -270,19 +291,27 @@ scenes:
         const StoryTraceEvent* firstControl = nullptr;
         const StoryTraceEvent* narrationEnd = nullptr;
         for (const StoryTraceEvent& event : beat.result.trace) {
-            if (event.kind == StoryTraceKind::NarrationBegin && event.name == "s01") narrationBegin = &event;
-            if (firstControl == nullptr && event.kind == StoryTraceKind::ControlState && event.name == "PLAY") firstControl = &event;
-            if (event.kind == StoryTraceKind::NarrationEnd && event.name == "s01") narrationEnd = &event;
+            if (event.kind == StoryTraceKind::NarrationBegin && event.name == "s01")
+                narrationBegin = &event;
+            if (firstControl == nullptr && event.kind == StoryTraceKind::ControlState &&
+                event.name == "PLAY")
+                firstControl = &event;
+            if (event.kind == StoryTraceKind::NarrationEnd && event.name == "s01")
+                narrationEnd = &event;
         }
-        ok &= require(narrationBegin != nullptr && firstControl != nullptr && narrationEnd != nullptr,
-                      "narration beat must emit narration and enclosed control events");
+        ok &= require(
+            narrationBegin != nullptr && firstControl != nullptr && narrationEnd != nullptr,
+            "narration beat must emit narration and enclosed control events");
         if (narrationBegin != nullptr && firstControl != nullptr && narrationEnd != nullptr) {
-            ok &= require(narrationBegin->presentationUs < firstControl->presentationUs,
-                          "narration must begin before the control action it explains");
-            ok &= require(narrationEnd->presentationUs - narrationBegin->presentationUs == 1000000ULL,
-                          "narration beat must own its complete resolved presentation budget");
-            ok &= require(narrationEnd->firmwareUs < narrationEnd->presentationUs,
-                          "remaining narration tail must freeze firmware time rather than replay actions");
+            ok &= require(
+                narrationBegin->presentationUs < firstControl->presentationUs,
+                "narration must begin before the control action it explains");
+            ok &= require(
+                narrationEnd->presentationUs - narrationBegin->presentationUs == 1000000ULL,
+                "narration beat must own its complete resolved presentation budget");
+            ok &= require(
+                narrationEnd->firmwareUs < narrationEnd->presentationUs,
+                "remaining narration tail must freeze firmware time rather than replay actions");
         }
     }
 
@@ -306,8 +335,12 @@ scenes:
     if (narrationOverrunStory) {
         const ExecutedStory overrun = executeReference(
             *narrationOverrunStory.story, tutorialRoot, ".clock-storybook-runner-overrun.bin");
-        ok &= require(!overrun.result && containsReason(overrun.result, "narration beat actions exceed resolved audio budget"),
-                      "narration beat must fail instead of silently desynchronising when actions exceed its budget");
+        ok &= require(
+            !overrun.result &&
+                containsReason(
+                    overrun.result, "narration beat actions exceed resolved audio budget"),
+            "narration beat must fail instead of silently desynchronising when actions exceed its "
+            "budget");
     }
 
     const StoryParseResult timeoutStory = parseStoryText(R"YAML(
@@ -328,11 +361,13 @@ scenes:
     if (timeoutStory) {
         const ExecutedStory timeout = executeReference(
             *timeoutStory.story, tutorialRoot, ".clock-storybook-runner-timeout.bin");
-        ok &= require(!timeout.result && containsReason(timeout.result, "wait_until timeout"),
-                      "wait_until timeout must fail explicitly");
-        ok &= require(!timeout.result.issues.empty() && timeout.result.issues.front().sceneIndex == 0U &&
-                      timeout.result.issues.front().actionIndex == 0U,
-                      "runner failure must preserve scene/action context");
+        ok &= require(
+            !timeout.result && containsReason(timeout.result, "wait_until timeout"),
+            "wait_until timeout must fail explicitly");
+        ok &= require(
+            !timeout.result.issues.empty() && timeout.result.issues.front().sceneIndex == 0U &&
+                timeout.result.issues.front().actionIndex == 0U,
+            "runner failure must preserve scene/action context");
     }
 
     const StoryParseResult assertionStory = parseStoryText(R"YAML(
@@ -352,11 +387,13 @@ scenes:
     if (assertionStory) {
         const ExecutedStory assertion = executeReference(
             *assertionStory.story, tutorialRoot, ".clock-storybook-runner-assert.bin");
-        ok &= require(!assertion.result && containsReason(assertion.result, "assertion failed"),
-                      "failed assertions must fail story execution explicitly");
+        ok &= require(
+            !assertion.result && containsReason(assertion.result, "assertion failed"),
+            "failed assertions must fail story execution explicitly");
     }
 
-    if (!ok) return EXIT_FAILURE;
+    if (!ok)
+        return EXIT_FAILURE;
     std::cout << "CLOCK Storybook deterministic runner: PASS\n";
     return EXIT_SUCCESS;
 }

@@ -46,8 +46,8 @@ static_assert(sizeof(SlotHeader) == kSlotHeaderBytes, "Unexpected slot-header pa
 
 /** @brief Classification of one physical slot. */
 enum class SlotKind : std::uint8_t {
-    Empty,    ///< Erased, torn, or corrupt; never preferred.
-    Valid,    ///< Committed slot in a format and size this firmware reads.
+    Empty,  ///< Erased, torn, or corrupt; never preferred.
+    Valid,  ///< Committed slot in a format and size this firmware reads.
     Foreign,  ///< Committed with intact header in a format or size this firmware does not know, see F-045.
 };
 
@@ -69,7 +69,10 @@ struct SlotScan final {
 std::uint32_t headerCrc32(const SlotHeader& header);
 
 /** @brief Builds a sealed header (CRCs and COMMIT set) for one payload. */
-SlotHeader sealedHeader(std::uint32_t generation, const std::uint8_t* payload, std::size_t payloadSize);
+SlotHeader sealedHeader(
+    std::uint32_t generation,
+    const std::uint8_t* payload,
+    std::size_t payloadSize);
 
 /** @brief Memory-mapped (target) or simulated (host) base address of one slot. */
 const std::uint8_t* slotBase(std::size_t slotIndex);

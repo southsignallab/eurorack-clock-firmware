@@ -10,13 +10,11 @@
 
 #include <cstdio>
 
-#include "ui/text_formatter.h"
 #include "ui/sequencer_editor_primitives.h"
+#include "ui/text_formatter.h"
 #include "ui_text.h"
 
 namespace clockfw::ui {
-
-
 
 ChannelNavigationRenderer::ChannelNavigationRenderer(hal::OledDisplay& display)
     : display_(display), patternStripRenderer_(display) {}
@@ -54,9 +52,8 @@ void ChannelNavigationRenderer::renderChannelQuickSelect(
         const std::int16_t cellX = static_cast<std::int16_t>(kGridLeft + column * kColumnPitch);
         const std::int16_t cellY = static_cast<std::int16_t>(kGridTop + row * kRowPitch);
         const bool selected = navigation.cursor == channelIndex;
-        const hal::PixelColor foreground = selected
-            ? hal::PixelColor::Black
-            : hal::PixelColor::White;
+        const hal::PixelColor foreground =
+            selected ? hal::PixelColor::Black : hal::PixelColor::White;
 
         if (selected) {
             display_.fillRectangle(cellX, cellY, kCellWidth, kCellHeight);
@@ -66,11 +63,7 @@ void ChannelNavigationRenderer::renderChannelQuickSelect(
         }
 
         char channelLabel[3]{};
-        std::snprintf(
-            channelLabel,
-            sizeof(channelLabel),
-            "%u",
-            static_cast<unsigned>(channelIndex + 1U));
+        std::snprintf(channelLabel, sizeof(channelLabel), "%u", channelIndex + 1U);
         display_.drawText(
             static_cast<std::int16_t>(cellX + 5),
             static_cast<std::int16_t>(cellY + 7),
@@ -90,8 +83,8 @@ void ChannelNavigationRenderer::renderChannelQuickSelect(
 void ChannelNavigationRenderer::renderGlobalModeOverview(const ClockState& state) {
     const bool unified = state.operatingMode == OperatingMode::UnifiedClock;
     const char* const heading = text::get(text::TextId::GlobalMode);
-    const char* const modeName = text::get(
-        unified ? text::TextId::ModeUnifiedLong : text::TextId::ModeDividerLong);
+    const char* const modeName =
+        text::get(unified ? text::TextId::ModeUnifiedLong : text::TextId::ModeDividerLong);
 
     const hal::TextBounds headingBounds = display_.measureText(heading, 0, 0);
     display_.drawText(
@@ -107,9 +100,7 @@ void ChannelNavigationRenderer::renderGlobalModeOverview(const ClockState& state
 
     const hal::TextBounds modeBounds = display_.measureText(modeName, 0, 0);
     display_.drawText(
-        static_cast<std::int16_t>((hal::OledDisplay::kWidth - modeBounds.width) / 2),
-        49,
-        modeName);
+        static_cast<std::int16_t>((hal::OledDisplay::kWidth - modeBounds.width) / 2), 49, modeName);
     display_.present();
 }
 
@@ -133,18 +124,20 @@ void ChannelNavigationRenderer::renderSequencerEditor(
 
     const std::uint8_t pageBaseStep = static_cast<std::uint8_t>(navigation.sequencerPage * 8U);
     const std::uint8_t pageLastStep = static_cast<std::uint8_t>(
-        std::min<std::uint16_t>(
-            static_cast<std::uint16_t>(pageBaseStep) + 8U,
-            pattern.length) - 1U);
-    const std::uint8_t selectedStep = static_cast<std::uint8_t>(
-        std::min<std::uint16_t>(
-            static_cast<std::uint16_t>(pageBaseStep) + navigation.sequencerCursor,
-            static_cast<std::uint16_t>(pattern.length - 1U)));
+        std::min<std::uint16_t>(static_cast<std::uint16_t>(pageBaseStep) + 8U, pattern.length) -
+        1U);
+    const std::uint8_t selectedStep = static_cast<std::uint8_t>(std::min<std::uint16_t>(
+        static_cast<std::uint16_t>(pageBaseStep) + navigation.sequencerCursor,
+        static_cast<std::uint16_t>(pattern.length - 1U)));
     char header[24]{};
     std::snprintf(
-        header, sizeof(header), text::get(text::TextId::SequencerEditorHeaderFormat),
-        navigation.selectedChannel + 1U, activeSlot + 1U,
-        pageBaseStep + 1U, pageLastStep + 1U);
+        header,
+        sizeof(header),
+        text::get(text::TextId::SequencerEditorHeaderFormat),
+        navigation.selectedChannel + 1U,
+        activeSlot + 1U,
+        pageBaseStep + 1U,
+        pageLastStep + 1U);
     display_.drawText(0, 0, header);
     display_.drawHorizontalLine(0, 9, hal::OledDisplay::kWidth);
     sequencer_editor::drawTimingGrid(display_, pageBaseStep);
@@ -152,7 +145,8 @@ void ChannelNavigationRenderer::renderSequencerEditor(
     for (std::uint8_t pageStep = 0U; pageStep < 8U; ++pageStep) {
         const std::uint8_t absoluteStep = static_cast<std::uint8_t>(pageBaseStep + pageStep);
         const std::int16_t columnX = static_cast<std::int16_t>(
-            sequencer_editor::kGridLeft + static_cast<int>(pageStep) * sequencer_editor::kStepPitch);
+            sequencer_editor::kGridLeft +
+            static_cast<int>(pageStep) * sequencer_editor::kStepPitch);
         const std::int16_t gateX = static_cast<std::int16_t>(columnX + 4);
         const std::int16_t centerX = static_cast<std::int16_t>(columnX + 8);
         const bool inPattern = absoluteStep < pattern.length;
@@ -191,16 +185,21 @@ void ChannelNavigationRenderer::renderSequencerEditor(
     if (engineSnapshot.playing && playbackStep >= pageBaseStep &&
         playbackStep < static_cast<std::uint16_t>(pageBaseStep) + 8U &&
         playbackStep < pattern.length) {
-        const std::uint8_t pagePlaybackStep = static_cast<std::uint8_t>(playbackStep - pageBaseStep);
+        const std::uint8_t pagePlaybackStep =
+            static_cast<std::uint8_t>(playbackStep - pageBaseStep);
         const std::int16_t playheadCenterX = static_cast<std::int16_t>(
-            sequencer_editor::kGridLeft + static_cast<int>(pagePlaybackStep) * sequencer_editor::kStepPitch + 8);
+            sequencer_editor::kGridLeft +
+            static_cast<int>(pagePlaybackStep) * sequencer_editor::kStepPitch + 8);
         sequencer_editor::drawPlayheadTriangle(display_, playheadCenterX);
     }
 
     char footer[20]{};
     std::snprintf(
-        footer, sizeof(footer), text::get(text::TextId::SequencerEditorFooterFormat),
-        selectedStep + 1U, pattern.length);
+        footer,
+        sizeof(footer),
+        text::get(text::TextId::SequencerEditorFooterFormat),
+        selectedStep + 1U,
+        pattern.length);
     display_.drawText(1, 55, footer);
 
     sequencer_editor::drawDirectionIcon(display_, pattern.direction, 60, 54);
@@ -209,8 +208,7 @@ void ChannelNavigationRenderer::renderSequencerEditor(
     formatRate(state.channels[navigation.selectedChannel].common, rate, sizeof(rate));
     const hal::TextBounds rateBounds = display_.measureText(rate, 0, 55);
     display_.drawText(
-        static_cast<std::int16_t>(hal::OledDisplay::kWidth - rateBounds.width - 1),
-        55, rate);
+        static_cast<std::int16_t>(hal::OledDisplay::kWidth - rateBounds.width - 1), 55, rate);
 
     patternStripRenderer_.drawSequencerEditorPageIndicator(pattern.length, pageBaseStep);
     display_.present();
@@ -226,12 +224,16 @@ void ChannelNavigationRenderer::renderSequencerStepEditor(
     display_.setFont(hal::DisplayFont::Small);
     display_.setTextColor(hal::PixelColor::White);
 
-    const std::uint8_t absoluteStep = static_cast<std::uint8_t>(
-        navigation.sequencerPage * 8U + navigation.sequencerCursor);
+    const std::uint8_t absoluteStep =
+        static_cast<std::uint8_t>(navigation.sequencerPage * 8U + navigation.sequencerCursor);
     char header[24]{};
     std::snprintf(
-        header, sizeof(header), text::get(text::TextId::SequencerStepEditorTitleFormat),
-        absoluteStep + 1U, navigation.selectedChannel + 1U, activeSlot + 1U);
+        header,
+        sizeof(header),
+        text::get(text::TextId::SequencerStepEditorTitleFormat),
+        absoluteStep + 1U,
+        navigation.selectedChannel + 1U,
+        activeSlot + 1U);
     display_.drawText(0, 0, header);
     display_.drawHorizontalLine(0, 9, hal::OledDisplay::kWidth);
 
@@ -244,18 +246,23 @@ void ChannelNavigationRenderer::renderSequencerStepEditor(
     };
     char values[5][12]{};
     std::snprintf(
-        values[0], sizeof(values[0]), "%s",
-        text::get(sequencerPatternGate(activePattern, absoluteStep)
-            ? text::TextId::On : text::TextId::Off));
+        values[0],
+        sizeof(values[0]),
+        "%s",
+        text::get(
+            sequencerPatternGate(activePattern, absoluteStep) ? text::TextId::On
+                                                              : text::TextId::Off));
     if (metadata.probabilityPercent == 0U) {
         std::snprintf(values[1], sizeof(values[1]), "%s", text::get(text::TextId::DefaultValue));
     } else {
         std::snprintf(
-            values[1], sizeof(values[1]), text::get(text::TextId::PercentFormat), metadata.probabilityPercent);
+            values[1],
+            sizeof(values[1]),
+            text::get(text::TextId::PercentFormat),
+            metadata.probabilityPercent);
     }
     if (metadata.gateProfile == SequencerGateProfile::Default) {
-        std::snprintf(
-            values[2], sizeof(values[2]), "%s", text::get(text::TextId::DefaultValue));
+        std::snprintf(values[2], sizeof(values[2]), "%s", text::get(text::TextId::DefaultValue));
     } else {
         const std::uint8_t duty = sequencerGateProfileDutyPercent(metadata.gateProfile);
         if (duty != 0U) {
@@ -265,7 +272,9 @@ void ChannelNavigationRenderer::renderSequencerStepEditor(
             const std::uint16_t milliseconds =
                 sequencerGateProfileMilliseconds(metadata.gateProfile, 0U);
             std::snprintf(
-                values[2], sizeof(values[2]), text::get(text::TextId::MillisecondsFormat),
+                values[2],
+                sizeof(values[2]),
+                text::get(text::TextId::MillisecondsFormat),
                 milliseconds);
         }
     }
@@ -274,7 +283,9 @@ void ChannelNavigationRenderer::renderSequencerStepEditor(
         std::snprintf(values[4], sizeof(values[4]), "%s", text::get(text::TextId::NotAvailable));
     } else {
         std::snprintf(
-            values[4], sizeof(values[4]), "%s",
+            values[4],
+            sizeof(values[4]),
+            "%s",
             text::get(metadata.tie ? text::TextId::On : text::TextId::Off));
     }
 
@@ -289,8 +300,10 @@ void ChannelNavigationRenderer::renderSequencerStepEditor(
         const std::int16_t valueX = static_cast<std::int16_t>(127 - bounds.width);
         if (selected && navigation.editing && row != 0U) {
             display_.fillRectangle(
-                valueX - 1, y - 1,
-                static_cast<std::int16_t>(bounds.width + 2U), 9,
+                valueX - 1,
+                y - 1,
+                static_cast<std::int16_t>(bounds.width + 2U),
+                9,
                 hal::PixelColor::White);
             display_.setTextColor(hal::PixelColor::Black);
             display_.drawText(valueX, y, values[row]);
@@ -342,6 +355,5 @@ void ChannelNavigationRenderer::drawOverviewModeIcon(
         display_.fillRectangle(x + 6, y + 1, 2, 6, color);
     }
 }
-
 
 }  // namespace clockfw::ui

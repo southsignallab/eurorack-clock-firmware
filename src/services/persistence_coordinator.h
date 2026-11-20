@@ -35,7 +35,7 @@ namespace clockfw::services {
  * without backoff.
  */
 class PersistenceCoordinator final {
-public:
+  public:
     /** @brief Persistence state visible to the user interface. */
     enum class Status : std::uint8_t {
         Ok,          ///< Nothing failed since the last successful commit.
@@ -64,19 +64,27 @@ public:
     bool hasPendingCommit() const;
 
     /** @brief Current user-visible persistence status. */
-    Status status() const { return status_; }
+    Status status() const {
+        return status_;
+    }
 
     /** @brief Increments with every event the UI should announce (failure, lock). */
-    std::uint32_t noticeRevision() const { return noticeRevision_; }
+    std::uint32_t noticeRevision() const {
+        return noticeRevision_;
+    }
 
     /** @brief Consecutive failed or locked attempts since the last success. */
-    std::uint8_t consecutiveFailures() const { return consecutiveFailures_; }
+    std::uint8_t consecutiveFailures() const {
+        return consecutiveFailures_;
+    }
 
     /**
      * @brief True after the first attempt and all config::kPersistenceRetryCount
      * retries failed; no attempt follows until the stored data changes again.
      */
-    bool retriesExhausted() const { return retriesExhausted_; }
+    bool retriesExhausted() const {
+        return retriesExhausted_;
+    }
 
     /** @brief Delay before the next attempt after @p failures consecutive failures. */
     static std::uint32_t retryDelayMs(std::uint8_t failures);
@@ -99,7 +107,7 @@ public:
     std::uint64_t snapshotRevisionForSimulator() const;
 #endif
 
-private:
+  private:
     /** @brief Sum of all store change revisions; any difference restarts the quiet timer. */
     std::uint32_t combinedRevision() const;
 

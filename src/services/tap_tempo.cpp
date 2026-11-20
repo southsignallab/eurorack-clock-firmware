@@ -55,8 +55,7 @@ std::uint16_t TapTempo::registerTap(
     if (minimumBpm == 0U || maximumBpm == 0U || minimumBpm > maximumBpm) {
         return 0U;
     }
-    const std::uint32_t maximumSequenceIntervalUs =
-        TapTempo::maximumSequenceIntervalUs(minimumBpm);
+    const std::uint32_t maximumSequenceIntervalUs = TapTempo::maximumSequenceIntervalUs(minimumBpm);
     // Unsigned 32-bit difference: correct across the timer wrap for any interval < 2^32 us.
     if (!havePreviousTap_ || nowUs - previousTapAtUs_ > maximumSequenceIntervalUs) {
         intervalCount_ = 0U;
@@ -91,10 +90,8 @@ std::uint16_t TapTempo::registerTap(
     if (intervalCount_ == 0U || sumUs == 0U) {
         return 0U;
     }
-    const std::uint64_t roundedBpm =
-        (kMicrosecondsPerMinute * intervalCount_ + sumUs / 2U) / sumUs;
-    const std::uint64_t clampedBpm = std::clamp<std::uint64_t>(
-        roundedBpm, minimumBpm, maximumBpm);
+    const std::uint64_t roundedBpm = (kMicrosecondsPerMinute * intervalCount_ + sumUs / 2U) / sumUs;
+    const std::uint64_t clampedBpm = std::clamp<std::uint64_t>(roundedBpm, minimumBpm, maximumBpm);
     return static_cast<std::uint16_t>(clampedBpm);
 }
 

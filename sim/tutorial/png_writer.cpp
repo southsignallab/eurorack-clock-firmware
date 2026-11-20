@@ -22,7 +22,7 @@ namespace clockfw::sim::tutorial {
 namespace {
 
 class BitWriter final {
-public:
+  public:
     void bits(std::uint32_t value, const unsigned count) {
         for (unsigned bit = 0U; bit < count; ++bit) {
             current_ |= static_cast<std::uint8_t>(((value >> bit) & 1U) << used_);
@@ -36,11 +36,12 @@ public:
     }
 
     std::vector<std::uint8_t> finish() {
-        if (used_ != 0U) bytes_.push_back(current_);
+        if (used_ != 0U)
+            bytes_.push_back(current_);
         return std::move(bytes_);
     }
 
-private:
+  private:
     std::vector<std::uint8_t> bytes_{};
     std::uint8_t current_ = 0U;
     unsigned used_ = 0U;
@@ -69,19 +70,22 @@ void fixedSymbol(BitWriter& writer, const unsigned symbol) {
 }
 
 void fixedLengthDistanceOne(BitWriter& writer, const unsigned length) {
-    static constexpr std::array<unsigned, 29U> bases{{
-        3U, 4U, 5U, 6U, 7U, 8U, 9U, 10U, 11U, 13U, 15U, 17U, 19U, 23U, 27U,
-        31U, 35U, 43U, 51U, 59U, 67U, 83U, 99U, 115U, 131U, 163U, 195U, 227U, 258U}};
-    static constexpr std::array<unsigned, 29U> extras{{
-        0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 1U, 1U, 1U, 1U, 2U, 2U, 2U,
-        2U, 3U, 3U, 3U, 3U, 4U, 4U, 4U, 4U, 5U, 5U, 5U, 5U, 0U}};
-    if (length < 3U || length > 258U) throw std::runtime_error("invalid DEFLATE match length");
+    static constexpr std::array<unsigned, 29U> bases{
+        {3U,  4U,  5U,  6U,  7U,  8U,  9U,  10U, 11U,  13U,  15U,  17U,  19U,  23U, 27U,
+         31U, 35U, 43U, 51U, 59U, 67U, 83U, 99U, 115U, 131U, 163U, 195U, 227U, 258U}};
+    static constexpr std::array<unsigned, 29U> extras{{0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 1U, 1U,
+                                                       1U, 1U, 2U, 2U, 2U, 2U, 3U, 3U, 3U, 3U,
+                                                       4U, 4U, 4U, 4U, 5U, 5U, 5U, 5U, 0U}};
+    if (length < 3U || length > 258U)
+        throw std::runtime_error("invalid DEFLATE match length");
     for (std::size_t index = 0U; index < bases.size(); ++index) {
         const unsigned maxValue = index + 1U < bases.size() ? bases[index + 1U] - 1U : 258U;
-        if (length < bases[index] || length > maxValue) continue;
+        if (length < bases[index] || length > maxValue)
+            continue;
         fixedSymbol(writer, 257U + static_cast<unsigned>(index));
         const unsigned extraCount = extras[index];
-        if (extraCount != 0U) writer.bits(length - bases[index], extraCount);
+        if (extraCount != 0U)
+            writer.bits(length - bases[index], extraCount);
         writer.bits(0U, 5U);  // Fixed distance code 0 = distance 1.
         return;
     }
@@ -130,7 +134,8 @@ void appendChunk(
     std::vector<std::uint8_t>& png,
     const std::array<std::uint8_t, 4U>& type,
     const std::vector<std::uint8_t>& data) {
-    if (data.size() > 0xFFFFFFFFULL) throw std::runtime_error("PNG chunk too large");
+    if (data.size() > 0xFFFFFFFFULL)
+        throw std::runtime_error("PNG chunk too large");
     appendBe32(png, static_cast<std::uint32_t>(data.size()));
     const std::size_t crcStart = png.size();
     png.insert(png.end(), type.begin(), type.end());
@@ -147,9 +152,8 @@ std::vector<std::uint8_t> filteredRgba(const TutorialSurface& surface) {
         filtered[row] = 1U;  // PNG Sub filter.
         for (std::size_t x = 0U; x < surface.width(); ++x) {
             const TutorialColor& pixel = pixels[y * surface.width() + x];
-            const TutorialColor left = x == 0U
-                ? TutorialColor{0U, 0U, 0U, 0U}
-                : pixels[y * surface.width() + x - 1U];
+            const TutorialColor left =
+                x == 0U ? TutorialColor{0U, 0U, 0U, 0U} : pixels[y * surface.width() + x - 1U];
             const std::size_t out = row + 1U + x * 4U;
             filtered[out] = static_cast<std::uint8_t>(pixel.red - left.red);
             filtered[out + 1U] = static_cast<std::uint8_t>(pixel.green - left.green);
@@ -186,12 +190,11 @@ std::vector<std::uint8_t> deflateFixed(const std::vector<std::uint8_t>& raw) {
 }
 
 std::vector<std::uint8_t> makePng(const TutorialSurface& surface) {
-    if (surface.width() == 0U || surface.height() == 0U ||
-        surface.width() > 0xFFFFFFFFULL || surface.height() > 0xFFFFFFFFULL) {
+    if (surface.width() == 0U || surface.height() == 0U || surface.width() > 0xFFFFFFFFULL ||
+        surface.height() > 0xFFFFFFFFULL) {
         throw std::runtime_error("invalid PNG dimensions");
     }
-    std::vector<std::uint8_t> png{
-        137U, 80U, 78U, 71U, 13U, 10U, 26U, 10U};
+    std::vector<std::uint8_t> png{137U, 80U, 78U, 71U, 13U, 10U, 26U, 10U};
 
     std::vector<std::uint8_t> ihdr;
     appendBe32(ihdr, static_cast<std::uint32_t>(surface.width()));
@@ -214,9 +217,12 @@ std::vector<std::uint8_t> makePng(const TutorialSurface& surface) {
 void writeTutorialPng(const std::filesystem::path& path, const TutorialSurface& surface) {
     const std::vector<std::uint8_t> png = makePng(surface);
     std::ofstream stream(path, std::ios::binary | std::ios::trunc);
-    if (!stream) throw std::runtime_error("cannot create PNG frame: " + path.string());
-    stream.write(reinterpret_cast<const char*>(png.data()), static_cast<std::streamsize>(png.size()));
-    if (!stream) throw std::runtime_error("cannot write PNG frame: " + path.string());
+    if (!stream)
+        throw std::runtime_error("cannot create PNG frame: " + path.string());
+    stream.write(
+        reinterpret_cast<const char*>(png.data()), static_cast<std::streamsize>(png.size()));
+    if (!stream)
+        throw std::runtime_error("cannot write PNG frame: " + path.string());
 }
 
 std::uint64_t tutorialRgbaFnv1a64(const TutorialSurface& surface) {
@@ -224,7 +230,8 @@ std::uint64_t tutorialRgbaFnv1a64(const TutorialSurface& surface) {
     constexpr std::uint64_t prime = 1099511628211ULL;
     std::uint64_t hash = offset;
     for (const TutorialColor pixel : surface.pixels()) {
-        const std::array<std::uint8_t, 4U> channels{{pixel.red, pixel.green, pixel.blue, pixel.alpha}};
+        const std::array<std::uint8_t, 4U> channels{
+            {pixel.red, pixel.green, pixel.blue, pixel.alpha}};
         for (const std::uint8_t channel : channels) {
             hash ^= channel;
             hash *= prime;

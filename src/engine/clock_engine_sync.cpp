@@ -75,14 +75,11 @@ void ClockEngine::acceptExternalPulseUnsafe(
         // domain used by internal timing. A quarter note therefore advances one
         // beat in 4/4, two beats in */8, four in */16 and half a beat in */2.
         // This preserves PPQN precision without hard-coding quarter-note count-in.
-        const std::uint32_t pulseNumerator =
-            static_cast<std::uint32_t>(4U) * pulsesPerQuarterNote;
+        const std::uint32_t pulseNumerator = static_cast<std::uint32_t>(4U) * pulsesPerQuarterNote;
         const std::uint32_t pulseDenominator =
             configuration_->beatUnit != 0U ? configuration_->beatUnit : 4U;
         const std::uint64_t pulseIntervalQ32 = core::calculateNextIntervalQ32(
-            pulseNumerator,
-            pulseDenominator,
-            preCountExternalPulseRemainder_);
+            pulseNumerator, pulseDenominator, preCountExternalPulseRemainder_);
         preCountPhaseQ32_ += pulseIntervalQ32;
         preCountRemainder_ = 0U;
 
@@ -110,14 +107,11 @@ void ClockEngine::acceptExternalPulseUnsafe(
         return;
     }
 
-    const std::uint32_t pulseNumerator =
-        static_cast<std::uint32_t>(4U) * pulsesPerQuarterNote;
+    const std::uint32_t pulseNumerator = static_cast<std::uint32_t>(4U) * pulsesPerQuarterNote;
     const std::uint32_t pulseDenominator =
         configuration_->beatUnit != 0U ? configuration_->beatUnit : 4U;
-    const std::uint64_t pulseIntervalQ32 = core::calculateNextIntervalQ32(
-        pulseNumerator,
-        pulseDenominator,
-        externalPulseRemainder_);
+    const std::uint64_t pulseIntervalQ32 =
+        core::calculateNextIntervalQ32(pulseNumerator, pulseDenominator, externalPulseRemainder_);
     const std::uint64_t expectedPulsePositionQ32 = externalReferenceQ32_ + pulseIntervalQ32;
     externalMusicalPositionQ32_ += pulseIntervalQ32;
 
@@ -154,9 +148,8 @@ void ClockEngine::alignGlobalSchedulesToExternalPulse(
     // non-GLOBAL schedule later by the same amount is the same relative
     // correction and never subtracts.
     const bool latePulse = observedPulsePositionQ32 > expectedPulsePositionQ32;
-    const std::uint64_t deltaQ32 = latePulse
-        ? observedPulsePositionQ32 - expectedPulsePositionQ32
-        : expectedPulsePositionQ32 - observedPulsePositionQ32;
+    const std::uint64_t deltaQ32 = latePulse ? observedPulsePositionQ32 - expectedPulsePositionQ32
+                                             : expectedPulsePositionQ32 - observedPulsePositionQ32;
     if (latePulse) {
         globalScheduleEpochQ32_ += deltaQ32;
     } else {

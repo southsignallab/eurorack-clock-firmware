@@ -9,6 +9,7 @@
 #include "domain/groove_catalog.h"
 
 #include "domain/custom_groove.h"
+#include "ui_text.h"
 
 #include <algorithm>
 
@@ -16,7 +17,6 @@ namespace clockfw::groove {
 namespace {
 
 struct GrooveDefinition {
-    const char* label;
     std::uint8_t length;
     std::uint16_t delayPermille[16];
 };
@@ -24,18 +24,21 @@ struct GrooveDefinition {
 // Delays are fractions of one nominal event interval. Keeping Stage-1 factory
 // values non-negative makes composition with the existing swing layer auditable:
 // the scheduler can cap the summed delay to the remaining monotonic interval.
+// Rows follow GroovePreset; the labels are text::kGroovePresetLabels.
 constexpr GrooveDefinition kDefinitions[kPresetCount] = {
-    {"OFF", 1U, {0U}},
-    {"SWING 54", 2U, {0U, 80U}},
-    {"SWING 58", 2U, {0U, 160U}},
-    {"SWING 62", 2U, {0U, 240U}},
-    {"SWING 66", 2U, {0U, 320U}},
-    {"POCKET A", 8U, {0U, 70U, 20U, 120U, 0U, 90U, 30U, 150U}},
-    {"POCKET B", 8U, {0U, 120U, 40U, 60U, 10U, 150U, 30U, 90U}},
-    {"POCKET C", 16U, {0U, 90U, 20U, 140U, 10U, 60U, 30U, 120U,
-                         0U, 130U, 40U, 80U, 20U, 160U, 30U, 100U}},
-    {"CUSTOM", 1U, {0U}},
+    {1U, {0U}},                                       // OFF
+    {2U, {0U, 80U}},                                  // SWING 54
+    {2U, {0U, 160U}},                                 // SWING 58
+    {2U, {0U, 240U}},                                 // SWING 62
+    {2U, {0U, 320U}},                                 // SWING 66
+    {8U, {0U, 70U, 20U, 120U, 0U, 90U, 30U, 150U}},   // POCKET A
+    {8U, {0U, 120U, 40U, 60U, 10U, 150U, 30U, 90U}},  // POCKET B
+    // POCKET C
+    {16U, {0U, 90U, 20U, 140U, 10U, 60U, 30U, 120U, 0U, 130U, 40U, 80U, 20U, 160U, 30U, 100U}},
+    {1U, {0U}},  // CUSTOM
 };
+
+static_assert(text::kGroovePresetLabels.size() == kPresetCount, "one label per factory groove");
 
 std::size_t presetIndex(const GroovePreset preset) {
     const std::size_t index = static_cast<std::size_t>(preset);
@@ -45,7 +48,7 @@ std::size_t presetIndex(const GroovePreset preset) {
 }  // namespace
 
 const char* presetLabel(const GroovePreset preset) {
-    return kDefinitions[presetIndex(preset)].label;
+    return text::kGroovePresetLabels[presetIndex(preset)];
 }
 
 std::uint8_t patternLength(const GroovePreset preset) {
@@ -63,15 +66,13 @@ std::uint16_t delayPermille(
     }
     const std::uint8_t boundedAmount = std::min<std::uint8_t>(amountPercent, 100U);
     const std::uint8_t rotated = static_cast<std::uint8_t>(rotation % definition.length);
-    const std::uint8_t step = static_cast<std::uint8_t>(
-        (eventSerial + rotated) % definition.length);
+    const std::uint8_t step =
+        static_cast<std::uint8_t>((eventSerial + rotated) % definition.length);
     return static_cast<std::uint16_t>(
         (static_cast<std::uint32_t>(definition.delayPermille[step]) * boundedAmount) / 100U);
 }
 
-std::uint16_t maximumDelayPermille(
-    const GroovePreset preset,
-    const std::uint8_t amountPercent) {
+std::uint16_t maximumDelayPermille(const GroovePreset preset, const std::uint8_t amountPercent) {
     const GrooveDefinition& definition = kDefinitions[presetIndex(preset)];
     std::uint16_t maximum = 0U;
     for (std::uint8_t index = 0U; index < definition.length; ++index) {

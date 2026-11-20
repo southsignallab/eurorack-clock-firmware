@@ -28,18 +28,33 @@ struct ResolvedTutorialFocus {
     bool explicitFocus = false;
 };
 
-ResolvedTutorialFocus resolveTutorialFocus(const PhysicalPresentationState& state, const StoryTheme& theme);
+ResolvedTutorialFocus resolveTutorialFocus(
+    const PhysicalPresentationState& state,
+    const StoryTheme& theme);
 std::optional<layout::Point> panelFocusPoint(const layout::PanelLayout& layout, FocusTarget target);
 TutorialRect panelFocusSourceRect(const layout::PanelLayout& layout, FocusTarget target);
 std::optional<TutorialRect> panelFocusDestinationRect(
-    const layout::PanelLayout& layout, FocusTarget target, TutorialRect source, TutorialRect destination);
+    const layout::PanelLayout& layout,
+    FocusTarget target,
+    TutorialRect source,
+    TutorialRect destination);
 std::string focusTargetLabel(FocusTarget target);
-void drawTutorialFocusRing(TutorialSurface& frame, int centerX, int centerY, int radius, const StoryTheme& theme);
+void drawTutorialFocusRing(
+    TutorialSurface& frame,
+    int centerX,
+    int centerY,
+    int radius,
+    const StoryTheme& theme);
 void drawTutorialFocusArrow(
-    TutorialSurface& frame, TutorialRect target, const std::string& label,
-    const StoryTheme& theme, FocusPlacement placement = FocusPlacement::Auto);
+    TutorialSurface& frame,
+    TutorialRect target,
+    const std::string& label,
+    const StoryTheme& theme,
+    FocusPlacement placement = FocusPlacement::Auto);
 void drawOledRegionFocus(
-    TutorialSurface& frame, TutorialRect oledRaster,
-    const ResolvedTutorialFocus& focus, const StoryTheme& theme);
+    TutorialSurface& frame,
+    TutorialRect oledRaster,
+    const ResolvedTutorialFocus& focus,
+    const StoryTheme& theme);
 
 }  // namespace clockfw::sim::tutorial

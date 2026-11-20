@@ -26,7 +26,7 @@ struct RgbaPixel {
 
 /** @brief Transparent RGBA8 raster containing only dynamic physical interaction/LED presentation. */
 class PanelDynamicLayer final {
-public:
+  public:
     /** @brief Creates one transparent deterministic raster. */
     PanelDynamicLayer(std::size_t width, std::size_t height);
 
@@ -42,7 +42,7 @@ public:
     /** @brief Replaces one pixel when coordinates lie inside the raster. */
     void setPixel(int x, int y, RgbaPixel pixel);
 
-private:
+  private:
     std::size_t width_ = 0U;
     std::size_t height_ = 0U;
     std::vector<RgbaPixel> pixels_{};

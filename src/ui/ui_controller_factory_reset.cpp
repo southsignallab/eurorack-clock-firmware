@@ -74,7 +74,8 @@ void UiController::reloadSequencerBanksIntoEngine() {
     }
     for (std::uint8_t channel = 0U; channel < kChannelCount; ++channel) {
         const std::uint8_t slot = sequencerPatternStore_->activeSlot(channel);
-        engine_.updateSequencerPattern(channel, sequencerPatternStore_->pattern(channel, slot), false);
+        engine_.updateSequencerPattern(
+            channel, sequencerPatternStore_->pattern(channel, slot), false);
         std::array<SequencerStepMetadataWord, kSequencerMaximumSteps> metadata{};
         if (sequencerStepStore_ != nullptr) {
             sequencerStepStore_->loadPatternWords(channel, slot, metadata);

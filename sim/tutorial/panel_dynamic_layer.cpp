@@ -44,27 +44,25 @@ void drawLine(
     const RgbaPixel color) {
     const float dx = to.x - from.x;
     const float dy = to.y - from.y;
-    const int steps = std::max(1, static_cast<int>(std::ceil(std::max(std::fabs(dx), std::fabs(dy)))));
+    const int steps =
+        std::max(1, static_cast<int>(std::ceil(std::max(std::fabs(dx), std::fabs(dy)))));
     for (int step = 0; step <= steps; ++step) {
         const float t = static_cast<float>(step) / static_cast<float>(steps);
         layer.setPixel(
             static_cast<int>(std::lround(from.x + dx * t)),
-            static_cast<int>(std::lround(from.y + dy * t)),
-            color);
+            static_cast<int>(std::lround(from.y + dy * t)), color);
     }
 }
 
-void drawPressedControl(
-    PanelDynamicLayer& layer,
-    const ButtonPresentation& button) {
-    if (!button.pressed) return;
+void drawPressedControl(PanelDynamicLayer& layer, const ButtonPresentation& button) {
+    if (!button.pressed)
+        return;
     drawFilledCircle(layer, button.center, button.radius * 0.78F, {0U, 0U, 0U, 108U});
 }
 
-void drawPatchPlug(
-    PanelDynamicLayer& layer,
-    const PatchPresentation& patch) {
-    if (patch.insertion <= 0.0F) return;
+void drawPatchPlug(PanelDynamicLayer& layer, const PatchPresentation& patch) {
+    if (patch.insertion <= 0.0F)
+        return;
     const float progress = std::clamp(patch.insertion, 0.0F, 1.0F);
     const float plugRadius = patch.jack.bushingRadius * (0.55F + 0.25F * progress);
     const float cableLength = patch.jack.nutRadius * 2.4F * progress;
@@ -99,7 +97,8 @@ const RgbaPixel& PanelDynamicLayer::pixel(const std::size_t x, const std::size_t
 }
 
 void PanelDynamicLayer::setPixel(const int x, const int y, const RgbaPixel pixelValue) {
-    if (x < 0 || y < 0 || static_cast<std::size_t>(x) >= width_ || static_cast<std::size_t>(y) >= height_) {
+    if (x < 0 || y < 0 || static_cast<std::size_t>(x) >= width_ ||
+        static_cast<std::size_t>(y) >= height_) {
         return;
     }
     pixels_[static_cast<std::size_t>(y) * width_ + static_cast<std::size_t>(x)] = pixelValue;
@@ -114,10 +113,7 @@ PanelDynamicLayer renderPanelDynamicLayer(
 
     for (const LedPresentation& led : snapshot.leds) {
         drawFilledCircle(
-            layer,
-            led.center,
-            led.radius,
-            {led.color.red, led.color.green, led.color.blue, 255U});
+            layer, led.center, led.radius, {led.color.red, led.color.green, led.color.blue, 255U});
     }
 
     constexpr float kEncoderStepRadians = kPi / 12.0F;
@@ -129,7 +125,8 @@ PanelDynamicLayer renderPanelDynamicLayer(
         snapshot.encoder.center.y + std::sin(encoderAngle) * indicatorRadius};
     drawLine(layer, snapshot.encoder.center, encoderEnd, {220U, 221U, 222U, 255U});
     if (snapshot.encoder.pressed) {
-        drawFilledCircle(layer, snapshot.encoder.center, snapshot.encoder.radius * 0.7F, {0U, 0U, 0U, 96U});
+        drawFilledCircle(
+            layer, snapshot.encoder.center, snapshot.encoder.radius * 0.7F, {0U, 0U, 0U, 96U});
     }
 
     drawPressedControl(layer, snapshot.play);

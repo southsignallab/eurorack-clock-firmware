@@ -17,7 +17,7 @@ namespace clockfw::sim {
 
 /** @brief Draws the virtual Eurorack panel using the firmware's actual OLED framebuffer and gate states. */
 class PanelRenderer final {
-public:
+  public:
     /**
      * @brief Creates a renderer using one resolved panel layout.
      *
@@ -51,7 +51,7 @@ public:
         bool developerViewEnabled,
         const scope::SessionView& scopeView) const;
 
-private:
+  private:
     /** @brief Draws the physical 10 HP / 3U front-panel representation. */
     void renderFrontPanel(
         SDL_Renderer* renderer,
@@ -69,7 +69,12 @@ private:
         const scope::SessionView& scopeView) const;
 
     /** @brief Draws one outlined or filled circle using simple SDL line primitives. */
-    static void drawCircle(SDL_Renderer* renderer, float centerX, float centerY, float radius, bool filled);
+    static void drawCircle(
+        SDL_Renderer* renderer,
+        float centerX,
+        float centerY,
+        float radius,
+        bool filled);
 
     /** @brief Writes compact ASCII debug text using SDL's built-in 8x8 debug font. */
     static void drawText(SDL_Renderer* renderer, float x, float y, const char* text);

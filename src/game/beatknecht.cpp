@@ -6,6 +6,7 @@
  * @license PolyForm-Noncommercial-1.0.0
  */
 #include "game/beatknecht.h"
+#include "game/boot_game_controls.h"
 
 #include <algorithm>
 #include <array>
@@ -18,7 +19,6 @@ namespace clockfw::game {
 namespace {
 constexpr std::uint32_t kFrameIntervalMs = 45U;
 constexpr std::uint32_t kGatePulseMs = 12U;
-constexpr std::uint32_t kExitLongPressMs = 900U;
 constexpr std::uint16_t kMinimumBpm = 40U;
 constexpr std::uint16_t kMaximumBpm = 240U;
 
@@ -30,40 +30,77 @@ struct DrumStyle final {
 
 // Curated one-bar 16th-note templates. They are intentionally generic genre
 // starting points rather than transcriptions of any protected recording.
-constexpr std::array<DrumStyle, 14U> kStyles{{
-    {text::TextId::DrummerEdm,      128U, {{0x1111,0x1010,0x1010,0x4444,0x4040,0x0000,0x2222,0x8000}}},
-    {text::TextId::DrummerHouse,    124U, {{0x1111,0x1010,0x1010,0x4444,0x4444,0x0000,0x2222,0x8888}}},
-    {text::TextId::DrummerTechno,   132U, {{0x1111,0x1010,0x0000,0x5555,0x2222,0x0800,0x8421,0x8080}}},
-    {text::TextId::DrummerHipHop,    92U, {{0x0489,0x1010,0x1000,0x5555,0x0400,0x0200,0x2202,0x8000}}},
-    {text::TextId::DrummerTrap,     142U, {{0x1289,0x1010,0x1000,0xFFFF,0x4080,0x0200,0x0A20,0x8000}}},
-    {text::TextId::DrummerPop,      112U, {{0x0911,0x1010,0x1010,0x5555,0x4040,0x0800,0x0202,0x8000}}},
-    {text::TextId::DrummerRock,     118U, {{0x0511,0x1010,0x0000,0x5555,0x4444,0x0800,0x0002,0x8000}}},
-    {text::TextId::DrummerBlues,     92U, {{0x0249,0x1040,0x0000,0x9249,0x0000,0x2080,0x0492,0x8000}}},
-    {text::TextId::DrummerFunk,     104U, {{0x2291,0x1010,0x0808,0xD555,0x2020,0x0804,0x8422,0x8000}}},
-    {text::TextId::DrummerReggae,    78U, {{0x0100,0x1010,0x0000,0x4444,0x0404,0x0000,0x2222,0x8000}}},
-    {text::TextId::DrummerSalsa,    104U, {{0x0909,0x2020,0x4104,0xAAAA,0x0000,0x2492,0x9249,0x8080}}},
-    {text::TextId::DrummerSamba,    108U, {{0x5151,0x1010,0x0440,0xAAAA,0x0000,0x2492,0xDB6D,0x8080}}},
-    {text::TextId::DrummerBossaNova,128U, {{0x1111,0x1010,0x4104,0xAAAA,0x0000,0x2492,0x8421,0x8000}}},
-    {text::TextId::DrummerDnb,      172U, {{0x0149,0x1010,0x0800,0xFFFF,0x4444,0x0080,0x2222,0x8000}}}
-}};
-constexpr std::array<char,8U> kRowLabels{{'K','S','C','H','O','T','P','X'}};
+constexpr std::array<DrumStyle, 14U> kStyles{
+    {{text::TextId::DrummerEdm,
+      128U,
+      {{0x1111, 0x1010, 0x1010, 0x4444, 0x4040, 0x0000, 0x2222, 0x8000}}},
+     {text::TextId::DrummerHouse,
+      124U,
+      {{0x1111, 0x1010, 0x1010, 0x4444, 0x4444, 0x0000, 0x2222, 0x8888}}},
+     {text::TextId::DrummerTechno,
+      132U,
+      {{0x1111, 0x1010, 0x0000, 0x5555, 0x2222, 0x0800, 0x8421, 0x8080}}},
+     {text::TextId::DrummerHipHop,
+      92U,
+      {{0x0489, 0x1010, 0x1000, 0x5555, 0x0400, 0x0200, 0x2202, 0x8000}}},
+     {text::TextId::DrummerTrap,
+      142U,
+      {{0x1289, 0x1010, 0x1000, 0xFFFF, 0x4080, 0x0200, 0x0A20, 0x8000}}},
+     {text::TextId::DrummerPop,
+      112U,
+      {{0x0911, 0x1010, 0x1010, 0x5555, 0x4040, 0x0800, 0x0202, 0x8000}}},
+     {text::TextId::DrummerRock,
+      118U,
+      {{0x0511, 0x1010, 0x0000, 0x5555, 0x4444, 0x0800, 0x0002, 0x8000}}},
+     {text::TextId::DrummerBlues,
+      92U,
+      {{0x0249, 0x1040, 0x0000, 0x9249, 0x0000, 0x2080, 0x0492, 0x8000}}},
+     {text::TextId::DrummerFunk,
+      104U,
+      {{0x2291, 0x1010, 0x0808, 0xD555, 0x2020, 0x0804, 0x8422, 0x8000}}},
+     {text::TextId::DrummerReggae,
+      78U,
+      {{0x0100, 0x1010, 0x0000, 0x4444, 0x0404, 0x0000, 0x2222, 0x8000}}},
+     {text::TextId::DrummerSalsa,
+      104U,
+      {{0x0909, 0x2020, 0x4104, 0xAAAA, 0x0000, 0x2492, 0x9249, 0x8080}}},
+     {text::TextId::DrummerSamba,
+      108U,
+      {{0x5151, 0x1010, 0x0440, 0xAAAA, 0x0000, 0x2492, 0xDB6D, 0x8080}}},
+     {text::TextId::DrummerBossaNova,
+      128U,
+      {{0x1111, 0x1010, 0x4104, 0xAAAA, 0x0000, 0x2492, 0x8421, 0x8000}}},
+     {text::TextId::DrummerDnb,
+      172U,
+      {{0x0149, 0x1010, 0x0800, 0xFFFF, 0x4444, 0x0080, 0x2222, 0x8000}}}}};
+constexpr std::array<char, 8U> kRowLabels{{'K', 'S', 'C', 'H', 'O', 'T', 'P', 'X'}};
 }  // namespace
 
-Beatknecht::Beatknecht(hal::OledDisplay& display, hal::ControlPanel& controls, hal::GateOutputDriver& gateOutputs)
-    : display_(display), controls_(controls), gateOutputs_(gateOutputs), shell_(display, ArcadeTitle::Beatknecht, nullptr) {}
+Beatknecht::Beatknecht(
+    hal::OledDisplay& display,
+    hal::ControlPanel& controls,
+    hal::GateOutputDriver& gateOutputs)
+    : display_(display), controls_(controls), gateOutputs_(gateOutputs),
+      shell_(display, ArcadeTitle::Beatknecht, nullptr) {}
 
 void Beatknecht::run() {
-    gateOutputs_.disableOutputStage(); gateOutputs_.setAllChannelsLow();
-    const std::uint32_t startedAtMs = hal::SystemClock::milliseconds(); shell_.begin(startedAtMs);
+    gateOutputs_.disableOutputStage();
+    gateOutputs_.setAllChannelsLow();
+    const std::uint32_t startedAtMs = hal::SystemClock::milliseconds();
+    shell_.begin(startedAtMs);
 #ifdef CLOCK_HOST_TEST
-    shell_.startImmediatelyForTest(); resetSession(startedAtMs); render(); return;
+    shell_.startImmediatelyForTest();
+    resetSession(startedAtMs);
+    render();
+    return;
 #else
     bool outputsEnabled = false;
     std::uint32_t lastFrameAtMs = startedAtMs;
     while (!exitRequested_) {
         const std::uint32_t nowMs = hal::SystemClock::milliseconds();
         const hal::ControlSample controls = controls_.sample(nowMs);
-        if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs, !exitConfirmationActive_)) {
+        if (exitHold_.update(
+                controls.encoderButton, nowMs, kExitLongPressMs, !exitConfirmationActive_)) {
             beginExitConfirmation(nowMs);
         }
         if (exitConfirmationActive_) {
@@ -74,14 +111,24 @@ void Beatknecht::run() {
             continue;
         }
         const ArcadeShell::Action action = shell_.update(controls, nowMs);
-        const bool startedThisFrame = action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun;
+        const bool startedThisFrame =
+            action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun;
         if (startedThisFrame) {
             resetSession(nowMs);
             startOrResume(nowMs);
             outputsEnabled = true;
         }
-        if (shell_.playing() && !startedThisFrame) update(controls, nowMs);
-        if (nowMs - lastFrameAtMs >= kFrameIntervalMs) { if (shell_.playing()) render(); else shell_.render(nowMs); lastFrameAtMs = nowMs; }
+        if (shell_.playing() && !startedThisFrame) {
+            update(controls, nowMs);
+        }
+        if (nowMs - lastFrameAtMs >= kFrameIntervalMs) {
+            if (shell_.playing()) {
+                render();
+            } else {
+                shell_.render(nowMs);
+            }
+            lastFrameAtMs = nowMs;
+        }
         (void)display_.service();  // only reports pending I2C work
         hal::SystemClock::delayMilliseconds(1U);
     }
@@ -94,44 +141,78 @@ void Beatknecht::run() {
 
 #ifdef CLOCK_SIMULATOR
 void Beatknecht::beginForSimulator() {
-    gateOutputs_.disableOutputStage(); gateOutputs_.setAllChannelsLow();
-    const std::uint32_t nowMs = hal::SystemClock::milliseconds(); shell_.begin(nowMs);
-    lastSimulatorFrameAtMs_ = nowMs; shell_.render(nowMs);
+    gateOutputs_.disableOutputStage();
+    gateOutputs_.setAllChannelsLow();
+    const std::uint32_t nowMs = hal::SystemClock::milliseconds();
+    shell_.begin(nowMs);
+    lastSimulatorFrameAtMs_ = nowMs;
+    shell_.render(nowMs);
 }
 
 bool Beatknecht::serviceForSimulator(const std::uint32_t nowMs) {
     const hal::ControlSample controls = controls_.sample(nowMs);
-    if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs, !exitConfirmationActive_)) {
+    if (exitHold_.update(
+            controls.encoderButton, nowMs, kExitLongPressMs, !exitConfirmationActive_)) {
         beginExitConfirmation(nowMs);
     }
     if (exitConfirmationActive_) {
         updateExitConfirmation(controls, nowMs);
         renderExitConfirmation();
         (void)display_.service();  // only reports pending I2C work
-        if (exitRequested_) { stopOutputs(); gateOutputs_.disableOutputStage(); }
+        if (exitRequested_) {
+            stopOutputs();
+            gateOutputs_.disableOutputStage();
+        }
         return !exitRequested_;
     }
     const ArcadeShell::Action action = shell_.update(controls, nowMs);
-    const bool startedThisFrame = action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun;
-    if (startedThisFrame) { resetSession(nowMs); startOrResume(nowMs); }
-    if (shell_.playing() && !startedThisFrame) update(controls, nowMs);
-    if (nowMs - lastSimulatorFrameAtMs_ >= kFrameIntervalMs) { if (shell_.playing()) render(); else shell_.render(nowMs); lastSimulatorFrameAtMs_ = nowMs; }
-    if (exitRequested_) { stopOutputs(); gateOutputs_.disableOutputStage(); }
+    const bool startedThisFrame =
+        action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun;
+    if (startedThisFrame) {
+        resetSession(nowMs);
+        startOrResume(nowMs);
+    }
+    if (shell_.playing() && !startedThisFrame) {
+        update(controls, nowMs);
+    }
+    if (nowMs - lastSimulatorFrameAtMs_ >= kFrameIntervalMs) {
+        if (shell_.playing()) {
+            render();
+        } else {
+            shell_.render(nowMs);
+        }
+        lastSimulatorFrameAtMs_ = nowMs;
+    }
+    if (exitRequested_) {
+        stopOutputs();
+        gateOutputs_.disableOutputStage();
+    }
     return !exitRequested_;
 }
 #endif
 
 void Beatknecht::resetSession(const std::uint32_t nowMs) {
-    styleIndex_ = 0U; bpm_ = kStyles[0].defaultBpm; nextStep_ = 0U; displayStep_ = 0U;
-    nextStepAtMs_ = nowMs; gatesOffAtMs_ = 0U; exitHold_.cancel(); pausedStepRemainingMs_ = 0U;
-    gatesHigh_ = false; exitRequested_ = false; transport_ = TransportState::Stopped;
+    styleIndex_ = 0U;
+    bpm_ = kStyles[0].defaultBpm;
+    nextStep_ = 0U;
+    displayStep_ = 0U;
+    nextStepAtMs_ = nowMs;
+    gatesOffAtMs_ = 0U;
+    exitHold_.cancel();
+    pausedStepRemainingMs_ = 0U;
+    gatesHigh_ = false;
+    exitRequested_ = false;
+    transport_ = TransportState::Stopped;
     transportBeforeExitConfirmation_ = TransportState::Stopped;
-    exitConfirmationActive_ = false; exitYesSelected_ = false; exitWaitForRelease_ = false;
+    exitConfirmationActive_ = false;
+    exitYesSelected_ = false;
+    exitWaitForRelease_ = false;
 }
 
-
 void Beatknecht::beginExitConfirmation(const std::uint32_t nowMs) {
-    if (exitConfirmationActive_) return;
+    if (exitConfirmationActive_) {
+        return;
+    }
     transportBeforeExitConfirmation_ = transport_;
     if (transport_ == TransportState::Playing) {
         pause(nowMs);
@@ -144,8 +225,12 @@ void Beatknecht::beginExitConfirmation(const std::uint32_t nowMs) {
     exitConfirmationActive_ = true;
 }
 
-void Beatknecht::updateExitConfirmation(const hal::ControlSample& controls, const std::uint32_t nowMs) {
-    if (!exitConfirmationActive_) return;
+void Beatknecht::updateExitConfirmation(
+    const hal::ControlSample& controls,
+    const std::uint32_t nowMs) {
+    if (!exitConfirmationActive_) {
+        return;
+    }
     if (exitWaitForRelease_) {
         if (!controls.encoderButton.pressed) {
             exitWaitForRelease_ = false;
@@ -155,7 +240,9 @@ void Beatknecht::updateExitConfirmation(const hal::ControlSample& controls, cons
     if (controls.encoderDelta != 0) {
         exitYesSelected_ = !exitYesSelected_;
     }
-    if (controls.encoderButton.edge != hal::ButtonEdge::Pressed) return;
+    if (controls.encoderButton.edge != hal::ButtonEdge::Pressed) {
+        return;
+    }
 
     const bool confirmExit = exitYesSelected_;
     exitConfirmationActive_ = false;
@@ -173,7 +260,9 @@ void Beatknecht::updateExitConfirmation(const hal::ControlSample& controls, cons
 }
 
 void Beatknecht::renderExitConfirmation() {
-    if (!exitConfirmationActive_) return;
+    if (!exitConfirmationActive_) {
+        return;
+    }
     display_.clear();
     display_.setFont(hal::DisplayFont::Small);
     display_.setTextColor(hal::PixelColor::White);
@@ -195,11 +284,12 @@ void Beatknecht::renderExitConfirmation() {
 }
 
 std::uint32_t Beatknecht::stepDurationMs() const {
-    return 15000U / static_cast<std::uint32_t>(bpm_); // quarter note / 4 = 16th note
+    return 15000U / static_cast<std::uint32_t>(bpm_);  // quarter note / 4 = 16th note
 }
 
 void Beatknecht::stopOutputs() {
-    gateOutputs_.setAllChannelsLow(); gatesHigh_ = false;
+    gateOutputs_.setAllChannelsLow();
+    gatesHigh_ = false;
 }
 
 void Beatknecht::startOrResume(const std::uint32_t nowMs) {
@@ -220,7 +310,9 @@ void Beatknecht::startOrResume(const std::uint32_t nowMs) {
 }
 
 void Beatknecht::pause(const std::uint32_t nowMs) {
-    if (transport_ != TransportState::Playing) return;
+    if (transport_ != TransportState::Playing) {
+        return;
+    }
     pausedStepRemainingMs_ =
         static_cast<std::int32_t>(nextStepAtMs_ - nowMs) > 0 ? nextStepAtMs_ - nowMs : 0U;
     stopOutputs();
@@ -251,7 +343,8 @@ void Beatknecht::triggerStep(const std::uint32_t nowMs, const std::uint32_t step
     }
     // All drum gates of one step rise in the same GPIOB write.
     gateOutputs_.setChannelStates(highMask);
-    gatesHigh_ = highMask != 0U; gatesOffAtMs_ = nowMs + kGatePulseMs;
+    gatesHigh_ = highMask != 0U;
+    gatesOffAtMs_ = nowMs + kGatePulseMs;
     nextStep_ = static_cast<std::uint8_t>((nextStep_ + 1U) & 0x0FU);
     // From the target time, not from now, and with the remainder of the division, so the
     // grid neither drifts with late updates nor with a fractional step length (F-041).
@@ -273,31 +366,43 @@ void Beatknecht::update(const hal::ControlSample& controls, const std::uint32_t 
     }
 
     if (controls.transportButton.edge == hal::ButtonEdge::Pressed) {
-        if (transport_ == TransportState::Playing) pause(nowMs);
-        else startOrResume(nowMs);
+        if (transport_ == TransportState::Playing) {
+            pause(nowMs);
+        } else {
+            startOrResume(nowMs);
+        }
     }
     if (controls.tapButton.edge == hal::ButtonEdge::Pressed) {
         styleIndex_ = static_cast<std::uint8_t>((styleIndex_ + 1U) % kStyles.size());
     }
     if (controls.encoderDelta != 0) {
-        bpm_ = static_cast<std::uint16_t>(std::clamp<int>(static_cast<int>(bpm_) + controls.encoderDelta, kMinimumBpm, kMaximumBpm));
+        bpm_ = static_cast<std::uint16_t>(std::clamp<int>(
+            static_cast<int>(bpm_) + controls.encoderDelta, kMinimumBpm, kMaximumBpm));
         stepRemainder_ = 0U;  // the remainder counts in units of the old tempo
     }
-    if (transport_ != TransportState::Playing) return;
+    if (transport_ != TransportState::Playing) {
+        return;
+    }
     // Wrap-safe: signed differences of the wrapping millisecond time.
-    if (gatesHigh_ && static_cast<std::int32_t>(nowMs - gatesOffAtMs_) >= 0) stopOutputs();
+    if (gatesHigh_ && static_cast<std::int32_t>(nowMs - gatesOffAtMs_) >= 0) {
+        stopOutputs();
+    }
     if (static_cast<std::int32_t>(nowMs - nextStepAtMs_) >= 0) {
         // More than a whole step late (blocked foreground): restart the grid instead of a burst.
-        const std::uint32_t stepAtMs = nowMs - nextStepAtMs_ >= stepDurationMs() ? nowMs : nextStepAtMs_;
+        const std::uint32_t stepAtMs =
+            nowMs - nextStepAtMs_ >= stepDurationMs() ? nowMs : nextStepAtMs_;
         triggerStep(nowMs, stepAtMs);
     }
 }
 
 void Beatknecht::render() {
-    display_.clear(); display_.setFont(hal::DisplayFont::Small); display_.setTextColor(hal::PixelColor::White);
+    display_.clear();
+    display_.setFont(hal::DisplayFont::Small);
+    display_.setTextColor(hal::PixelColor::White);
     const DrumStyle& style = kStyles[styleIndex_];
     display_.drawText(1, 0, text::get(style.name));
-    char tempoText[10]{}; std::snprintf(tempoText, sizeof(tempoText), "%u", static_cast<unsigned>(bpm_));
+    char tempoText[10]{};
+    std::snprintf(tempoText, sizeof(tempoText), "%u", static_cast<unsigned>(bpm_));
     const hal::TextBounds bounds = display_.measureText(tempoText, 0, 0);
     display_.drawText(static_cast<std::int16_t>(127 - bounds.width), 0, tempoText);
     if (transport_ == TransportState::Playing) {
@@ -316,9 +421,15 @@ void Beatknecht::render() {
         for (std::uint8_t step = 0U; step < 16U; ++step) {
             const std::int16_t x = static_cast<std::int16_t>(24 + step * 6U);
             const bool hit = (style.pattern[row] & static_cast<std::uint16_t>(1U << step)) != 0U;
-            if (hit) display_.fillRectangle(x, static_cast<std::int16_t>(y + 1), 4, 4);
-            else display_.setPixel(static_cast<std::int16_t>(x + 1), static_cast<std::int16_t>(y + 3));
-            if (step == displayStep_) display_.drawRectangle(static_cast<std::int16_t>(x - 1), y, 6, 6);
+            if (hit) {
+                display_.fillRectangle(x, static_cast<std::int16_t>(y + 1), 4, 4);
+            } else {
+                display_.setPixel(
+                    static_cast<std::int16_t>(x + 1), static_cast<std::int16_t>(y + 3));
+            }
+            if (step == displayStep_) {
+                display_.drawRectangle(static_cast<std::int16_t>(x - 1), y, 6, 6);
+            }
         }
     }
     display_.present();

@@ -40,11 +40,14 @@ void UiController::handleEncoderDelta(
 
     if (navigation_.screen == Screen::GrooveSlots) {
         navigation_.cursor = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(navigation_.cursor) + delta, 0,
+            static_cast<int>(navigation_.cursor) + delta,
+            0,
             static_cast<int>(kCustomGrooveSlotCount - 1U)));
-        if (navigation_.cursor < navigation_.scrollOffset) navigation_.scrollOffset = navigation_.cursor;
+        if (navigation_.cursor < navigation_.scrollOffset)
+            navigation_.scrollOffset = navigation_.cursor;
         if (navigation_.cursor >= navigation_.scrollOffset + kVisibleSlotRows) {
-            navigation_.scrollOffset = static_cast<std::uint8_t>(navigation_.cursor - (kVisibleSlotRows - 1U));
+            navigation_.scrollOffset =
+                static_cast<std::uint8_t>(navigation_.cursor - (kVisibleSlotRows - 1U));
         }
         invalidate();
         return;
@@ -59,8 +62,8 @@ void UiController::handleEncoderDelta(
     if (navigation_.screen == Screen::GrooveOverwriteConfirm ||
         navigation_.screen == Screen::GrooveDeleteConfirm ||
         navigation_.screen == Screen::GrooveDiscardConfirm) {
-        navigation_.cursor = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(navigation_.cursor) + delta, 0, 1));
+        navigation_.cursor =
+            static_cast<std::uint8_t>(clampInt(static_cast<int>(navigation_.cursor) + delta, 0, 1));
         invalidate();
         return;
     }
@@ -73,16 +76,16 @@ void UiController::handleEncoderDelta(
             openModeSelect(Screen::ChannelQuickSelect);
             modeTapTurnActive_ = true;
         }
-        navigation_.cursor = wrapIndex(
-            navigation_.cursor, delta, static_cast<std::uint8_t>(kModeFunctions.size()));
+        navigation_.cursor =
+            wrapIndex(navigation_.cursor, delta, static_cast<std::uint8_t>(kModeFunctions.size()));
         invalidate();
         return;
     }
 
     if (navigation_.screen == Screen::ChannelQuickSelect) {
         if (state_.operatingMode == OperatingMode::Independent) {
-            navigation_.cursor = wrapIndex(
-                navigation_.cursor, delta, static_cast<std::uint8_t>(kChannelCount));
+            navigation_.cursor =
+                wrapIndex(navigation_.cursor, delta, static_cast<std::uint8_t>(kChannelCount));
             invalidate();
         }
         return;
@@ -99,8 +102,8 @@ void UiController::handleEncoderDelta(
     }
 
     if (navigation_.screen == Screen::ModeSelect) {
-        navigation_.cursor = wrapIndex(
-            navigation_.cursor, delta, static_cast<std::uint8_t>(kModeFunctions.size()));
+        navigation_.cursor =
+            wrapIndex(navigation_.cursor, delta, static_cast<std::uint8_t>(kModeFunctions.size()));
         invalidate();
         return;
     }
@@ -114,7 +117,8 @@ void UiController::handleEncoderDelta(
             navigation_.scrollOffset = navigation_.cursor;
         }
         if (navigation_.cursor >= navigation_.scrollOffset + kVisibleTemplateRows) {
-            navigation_.scrollOffset = static_cast<std::uint8_t>(navigation_.cursor - (kVisibleTemplateRows - 1U));
+            navigation_.scrollOffset =
+                static_cast<std::uint8_t>(navigation_.cursor - (kVisibleTemplateRows - 1U));
         }
         invalidate();
         return;
@@ -129,7 +133,8 @@ void UiController::handleEncoderDelta(
             navigation_.scrollOffset = navigation_.cursor;
         }
         if (navigation_.cursor >= navigation_.scrollOffset + kVisibleSlotRows) {
-            navigation_.scrollOffset = static_cast<std::uint8_t>(navigation_.cursor - (kVisibleSlotRows - 1U));
+            navigation_.scrollOffset =
+                static_cast<std::uint8_t>(navigation_.cursor - (kVisibleSlotRows - 1U));
         }
         invalidate();
         return;
@@ -142,17 +147,18 @@ void UiController::handleEncoderDelta(
     }
 
     if (navigation_.screen == Screen::OverwriteConfirm) {
-        navigation_.cursor = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(navigation_.cursor) + delta, 0, 1));
+        navigation_.cursor =
+            static_cast<std::uint8_t>(clampInt(static_cast<int>(navigation_.cursor) + delta, 0, 1));
         invalidate();
         return;
     }
 
-    if (navigation_.screen == Screen::ModeChangeConfirm || navigation_.screen == Screen::HighScoreClearConfirm ||
+    if (navigation_.screen == Screen::ModeChangeConfirm ||
+        navigation_.screen == Screen::HighScoreClearConfirm ||
         navigation_.screen == Screen::FactoryResetConfirm ||
         navigation_.screen == Screen::TemplateApplyConfirm) {
-        navigation_.cursor = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(navigation_.cursor) + delta, 0, 1));
+        navigation_.cursor =
+            static_cast<std::uint8_t>(clampInt(static_cast<int>(navigation_.cursor) + delta, 0, 1));
         invalidate();
         return;
     }
@@ -163,19 +169,23 @@ void UiController::handleEncoderDelta(
                 adjustGrooveZoom(delta);
             } else if (navigation_.cursor == 3U) {
                 const int nextLength = clampInt(
-                    static_cast<int>(navigation_.grooveDraft.length) + delta, 1,
+                    static_cast<int>(navigation_.grooveDraft.length) + delta,
+                    1,
                     static_cast<int>(kCustomGrooveMaximumSteps));
                 navigation_.grooveDraft.length = static_cast<std::uint8_t>(nextLength);
                 if (navigation_.grooveCursor >= navigation_.grooveDraft.length) {
-                    navigation_.grooveCursor = static_cast<std::uint8_t>(navigation_.grooveDraft.length - 1U);
+                    navigation_.grooveCursor =
+                        static_cast<std::uint8_t>(navigation_.grooveDraft.length - 1U);
                 }
                 grooveEditorDirty_ = true;
                 updateGroovePreview();
                 invalidate();
             }
-        } else if (navigation_.editing && navigation_.settingsPage == SettingsPage::GrooveRecordMenu) {
+        } else if (navigation_.editing &&
+                   navigation_.settingsPage == SettingsPage::GrooveRecordMenu) {
             if (navigation_.cursor == 0U) {
-                navigation_.grooveRecordMode = navigation_.grooveRecordMode == GrooveRecordMode::OneShot
+                navigation_.grooveRecordMode =
+                    navigation_.grooveRecordMode == GrooveRecordMode::OneShot
                     ? GrooveRecordMode::Endless
                     : GrooveRecordMode::OneShot;
                 grooveRecorder_.setMode(
@@ -191,12 +201,14 @@ void UiController::handleEncoderDelta(
             } else if (navigation_.cursor == 2U) {
                 const std::uint8_t previousLength = navigation_.grooveDraft.length;
                 const int nextLength = clampInt(
-                    static_cast<int>(navigation_.grooveDraft.length) + delta, 1,
+                    static_cast<int>(navigation_.grooveDraft.length) + delta,
+                    1,
                     static_cast<int>(kCustomGrooveMaximumSteps));
                 navigation_.grooveDraft.length = static_cast<std::uint8_t>(nextLength);
                 if (navigation_.grooveDraft.length < previousLength) {
                     for (std::size_t step = navigation_.grooveDraft.length;
-                         step < navigation_.grooveDraft.offsets256.size(); ++step) {
+                         step < navigation_.grooveDraft.offsets256.size();
+                         ++step) {
                         navigation_.grooveDraft.offsets256[step] = 0;
                     }
                 }
@@ -223,10 +235,7 @@ void UiController::handleEncoderDelta(
             adjustSequencerV2(delta, nowMs);
         } else if (navigation_.editing) {
             settingsEditor_.adjust(
-                navigation_.settingsPage,
-                navigation_.cursor,
-                navigation_.selectedChannel,
-                delta);
+                navigation_.settingsPage, navigation_.cursor, navigation_.selectedChannel, delta);
             invalidate();
         } else {
             navigation_.cursor = static_cast<std::uint8_t>(clampInt(
@@ -235,7 +244,8 @@ void UiController::handleEncoderDelta(
                 static_cast<int>(settingsPageItemCount(
                     navigation_.settingsPage,
                     state_.channels[navigation_.selectedChannel].common.mode,
-                    navigation_.highScoreResetAvailable)) - 1));
+                    navigation_.highScoreResetAvailable)) -
+                    1));
             normalizeScrollOffset();
             invalidate();
         }
@@ -246,8 +256,8 @@ void UiController::handleEncoderDelta(
         if (navigation_.editing) {
             adjustSequencerStepMetadata(delta, nowMs);
         } else {
-            navigation_.cursor = static_cast<std::uint8_t>(clampInt(
-                static_cast<int>(navigation_.cursor) + delta, 0, 4));
+            navigation_.cursor = static_cast<std::uint8_t>(
+                clampInt(static_cast<int>(navigation_.cursor) + delta, 0, 4));
             invalidate();
         }
         return;
@@ -265,6 +275,5 @@ void UiController::handleEncoderDelta(
         invalidate();
     }
 }
-
 
 }  // namespace clockfw::ui

@@ -20,13 +20,17 @@
 namespace clockfw::ui {
 namespace {
 
+/** Centre columns of the NO and YES choices in the confirmation dialogs, in pixels. */
+constexpr std::int16_t kChoiceX[2] = {25, 79};
+
 void drawCenteredTextLine(
     hal::OledDisplay& display,
     const std::int16_t y,
     const char* const value) {
     const hal::TextBounds bounds = display.measureText(value, 0, 0);
     display.drawText(
-        static_cast<std::int16_t>((static_cast<int>(hal::OledDisplay::kWidth) - static_cast<int>(bounds.width)) / 2),
+        static_cast<std::int16_t>(
+            (static_cast<int>(hal::OledDisplay::kWidth) - static_cast<int>(bounds.width)) / 2),
         y,
         value);
 }
@@ -117,9 +121,8 @@ void SettingsRenderer::renderPresetSlots(
         0,
         0,
         text::get(
-            navigation.presetSlotAction == PresetSlotAction::Load
-                ? text::TextId::LoadPresetTitle
-                : text::TextId::SavePresetTitle));
+            navigation.presetSlotAction == PresetSlotAction::Load ? text::TextId::LoadPresetTitle
+                                                                  : text::TextId::SavePresetTitle));
     display_.drawHorizontalLine(0, 9, hal::OledDisplay::kWidth);
 
     for (std::uint8_t visibleRow = 0U; visibleRow < kVisibleSlotRows; ++visibleRow) {
@@ -130,14 +133,13 @@ void SettingsRenderer::renderPresetSlots(
 
         char name[services::PersistentStateService::kPresetNameLength + 1U]{};
         persistentState.presetName(slotIndex, name, sizeof(name));
-        const char* shownName = persistentState.presetExists(slotIndex)
-            ? name
-            : text::get(text::TextId::Empty);
+        const char* shownName =
+            persistentState.presetExists(slotIndex) ? name : text::get(text::TextId::Empty);
         const std::int16_t y = static_cast<std::int16_t>(12 + static_cast<int>(visibleRow) * 10);
         const bool selected = navigation.cursor == slotIndex;
 
         char slotNumber[3]{};
-        std::snprintf(slotNumber, sizeof(slotNumber), "%u", static_cast<unsigned>(slotIndex + 1U));
+        std::snprintf(slotNumber, sizeof(slotNumber), "%u", slotIndex + 1U);
         if (selected) {
             display_.fillRectangle(0, y - 1, 126, 9);
             display_.setTextColor(hal::PixelColor::Black);
@@ -152,7 +154,8 @@ void SettingsRenderer::renderPresetSlots(
     display_.drawVerticalLine(127, kScrollY, kScrollHeight);
     constexpr std::uint8_t kThumbHeight = 31U;
     const std::uint8_t thumbY = static_cast<std::uint8_t>(
-        kScrollY + ((kScrollHeight - kThumbHeight) * navigation.cursor) /
+        kScrollY +
+        ((kScrollHeight - kThumbHeight) * navigation.cursor) /
             (services::PersistentStateService::kUserPresetSlotCount - 1U));
     display_.fillRectangle(125, thumbY, 3, kThumbHeight);
     display_.present();
@@ -168,27 +171,19 @@ void SettingsRenderer::renderOverwriteConfirm(
     const char* const title = text::get(text::TextId::OverwritePreset);
     const hal::TextBounds titleBounds = display_.measureText(title, 0, 0);
     display_.drawText(
-        static_cast<std::int16_t>((hal::OledDisplay::kWidth - titleBounds.width) / 2),
-        3,
-        title);
+        static_cast<std::int16_t>((hal::OledDisplay::kWidth - titleBounds.width) / 2), 3, title);
 
     char name[services::PersistentStateService::kPresetNameLength + 1U]{};
     persistentState.presetName(navigation.selectedPresetSlot, name, sizeof(name));
     const hal::TextBounds nameBounds = display_.measureText(name, 0, 0);
     display_.drawText(
-        static_cast<std::int16_t>((hal::OledDisplay::kWidth - nameBounds.width) / 2),
-        20,
-        name);
+        static_cast<std::int16_t>((hal::OledDisplay::kWidth - nameBounds.width) / 2), 20, name);
 
-    const char* const choices[2] = {
-        text::get(text::TextId::No),
-        text::get(text::TextId::Yes)};
-    constexpr std::int16_t kChoiceX[2] = {25, 79};
+    const char* const choices[2] = {text::get(text::TextId::No), text::get(text::TextId::Yes)};
     for (std::uint8_t index = 0U; index < 2U; ++index) {
         const hal::TextBounds bounds = display_.measureText(choices[index], 0, 0);
         const std::int16_t boxWidth = static_cast<std::int16_t>(bounds.width + 8U);
-        const std::int16_t boxX = static_cast<std::int16_t>(
-            kChoiceX[index] - boxWidth / 2);
+        const std::int16_t boxX = static_cast<std::int16_t>(kChoiceX[index] - boxWidth / 2);
         if (navigation.cursor == index) {
             display_.fillRectangle(boxX, 39, boxWidth, 13);
             display_.setTextColor(hal::PixelColor::Black);
@@ -196,7 +191,8 @@ void SettingsRenderer::renderOverwriteConfirm(
             display_.drawRectangle(boxX, 39, boxWidth, 13);
         }
         display_.drawText(
-            static_cast<std::int16_t>(kChoiceX[index] - static_cast<std::int16_t>(bounds.width / 2)),
+            static_cast<std::int16_t>(
+                kChoiceX[index] - static_cast<std::int16_t>(bounds.width / 2)),
             42,
             choices[index]);
         display_.setTextColor(hal::PixelColor::White);
@@ -213,21 +209,14 @@ void SettingsRenderer::renderTemplateApplyConfirm(const NavigationState& navigat
     const char* const title = text::get(text::TextId::ApplyTemplate);
     const hal::TextBounds titleBounds = display_.measureText(title, 0, 0);
     display_.drawText(
-        static_cast<std::int16_t>((hal::OledDisplay::kWidth - titleBounds.width) / 2),
-        3,
-        title);
+        static_cast<std::int16_t>((hal::OledDisplay::kWidth - titleBounds.width) / 2), 3, title);
 
     const char* const name = services::TemplateService::name(navigation.pendingTemplate);
     const hal::TextBounds nameBounds = display_.measureText(name, 0, 0);
     display_.drawText(
-        static_cast<std::int16_t>((hal::OledDisplay::kWidth - nameBounds.width) / 2),
-        20,
-        name);
+        static_cast<std::int16_t>((hal::OledDisplay::kWidth - nameBounds.width) / 2), 20, name);
 
-    const char* const choices[2] = {
-        text::get(text::TextId::No),
-        text::get(text::TextId::Yes)};
-    constexpr std::int16_t kChoiceX[2] = {25, 79};
+    const char* const choices[2] = {text::get(text::TextId::No), text::get(text::TextId::Yes)};
     for (std::uint8_t index = 0U; index < 2U; ++index) {
         const hal::TextBounds bounds = display_.measureText(choices[index], 0, 0);
         const std::int16_t boxWidth = static_cast<std::int16_t>(bounds.width + 8U);
@@ -239,7 +228,8 @@ void SettingsRenderer::renderTemplateApplyConfirm(const NavigationState& navigat
             display_.drawRectangle(boxX, 39, boxWidth, 13);
         }
         display_.drawText(
-            static_cast<std::int16_t>(kChoiceX[index] - static_cast<std::int16_t>(bounds.width / 2)),
+            static_cast<std::int16_t>(
+                kChoiceX[index] - static_cast<std::int16_t>(bounds.width / 2)),
             42,
             choices[index]);
         display_.setTextColor(hal::PixelColor::White);
@@ -256,14 +246,9 @@ void SettingsRenderer::renderHighScoreClearConfirm(const NavigationState& naviga
     const char* const title = text::get(text::TextId::ClearHighScores);
     const hal::TextBounds titleBounds = display_.measureText(title, 0, 0);
     display_.drawText(
-        static_cast<std::int16_t>((hal::OledDisplay::kWidth - titleBounds.width) / 2),
-        13,
-        title);
+        static_cast<std::int16_t>((hal::OledDisplay::kWidth - titleBounds.width) / 2), 13, title);
 
-    const char* const choices[2] = {
-        text::get(text::TextId::No),
-        text::get(text::TextId::Yes)};
-    constexpr std::int16_t kChoiceX[2] = {25, 79};
+    const char* const choices[2] = {text::get(text::TextId::No), text::get(text::TextId::Yes)};
     for (std::uint8_t index = 0U; index < 2U; ++index) {
         const hal::TextBounds bounds = display_.measureText(choices[index], 0, 0);
         const std::int16_t boxWidth = static_cast<std::int16_t>(bounds.width + 8U);
@@ -275,7 +260,8 @@ void SettingsRenderer::renderHighScoreClearConfirm(const NavigationState& naviga
             display_.drawRectangle(boxX, 36, boxWidth, 13);
         }
         display_.drawText(
-            static_cast<std::int16_t>(kChoiceX[index] - static_cast<std::int16_t>(bounds.width / 2)),
+            static_cast<std::int16_t>(
+                kChoiceX[index] - static_cast<std::int16_t>(bounds.width / 2)),
             39,
             choices[index]);
         display_.setTextColor(hal::PixelColor::White);
@@ -283,7 +269,6 @@ void SettingsRenderer::renderHighScoreClearConfirm(const NavigationState& naviga
 
     display_.present();
 }
-
 
 void SettingsRenderer::renderNameEntry(const NavigationState& navigation) {
     display_.clear();
@@ -322,9 +307,7 @@ void SettingsRenderer::renderNameEntry(const NavigationState& navigation) {
     const hal::TextBounds saveBounds = display_.measureText(saveText, 0, 0);
     display_.drawText(0, 55, nextText);
     display_.drawText(
-        static_cast<std::int16_t>(hal::OledDisplay::kWidth - saveBounds.width),
-        55,
-        saveText);
+        static_cast<std::int16_t>(hal::OledDisplay::kWidth - saveBounds.width), 55, saveText);
     display_.present();
 }
 

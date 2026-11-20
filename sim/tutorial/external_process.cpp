@@ -45,14 +45,18 @@ bool executableCandidate(const std::filesystem::path& candidate) {
 std::vector<std::filesystem::path> pathDirectories() {
     std::vector<std::filesystem::path> directories;
     const char* raw = std::getenv("PATH");
-    if (raw == nullptr) return directories;
+    if (raw == nullptr)
+        return directories;
     std::string path(raw);
     std::size_t start = 0U;
     while (start <= path.size()) {
         const std::size_t end = path.find(kPathSeparator, start);
-        const std::string part = path.substr(start, end == std::string::npos ? std::string::npos : end - start);
-        if (!part.empty()) directories.emplace_back(part);
-        if (end == std::string::npos) break;
+        const std::string part =
+            path.substr(start, end == std::string::npos ? std::string::npos : end - start);
+        if (!part.empty())
+            directories.emplace_back(part);
+        if (end == std::string::npos)
+            break;
         start = end + 1U;
     }
     return directories;
@@ -61,15 +65,19 @@ std::vector<std::filesystem::path> pathDirectories() {
 }  // namespace
 
 std::optional<std::filesystem::path> findHostExecutable(const std::string& name) {
-    if (name.empty()) return std::nullopt;
+    if (name.empty())
+        return std::nullopt;
     const std::filesystem::path supplied(name);
-    if (supplied.has_parent_path() && executableCandidate(supplied)) return supplied;
+    if (supplied.has_parent_path() && executableCandidate(supplied))
+        return supplied;
     for (const auto& directory : pathDirectories()) {
         const auto candidate = directory / supplied;
-        if (executableCandidate(candidate)) return candidate;
+        if (executableCandidate(candidate))
+            return candidate;
 #ifdef _WIN32
         const auto executable = directory / (name + ".exe");
-        if (executableCandidate(executable)) return executable;
+        if (executableCandidate(executable))
+            return executable;
 #endif
     }
     return std::nullopt;
@@ -77,7 +85,8 @@ std::optional<std::filesystem::path> findHostExecutable(const std::string& name)
 
 #ifdef _WIN32
 std::wstring quoteWindowsArgument(const std::wstring_view argument) {
-    if (argument.empty()) return L"\"\"";
+    if (argument.empty())
+        return L"\"\"";
     if (argument.find_first_of(L" \t\n\v\"") == std::wstring_view::npos) {
         return std::wstring(argument);
     }
@@ -108,7 +117,8 @@ std::wstring quoteWindowsArgument(const std::wstring_view argument) {
 std::wstring windowsCommandLine(const std::vector<std::wstring>& arguments) {
     std::wstring commandLine;
     for (std::size_t index = 0U; index < arguments.size(); ++index) {
-        if (index != 0U) commandLine.push_back(L' ');
+        if (index != 0U)
+            commandLine.push_back(L' ');
         commandLine += quoteWindowsArgument(arguments[index]);
     }
     return commandLine;
@@ -122,7 +132,8 @@ int runHostProcess(const std::vector<std::string>& arguments) {
 #ifdef _WIN32
     std::vector<std::wstring> wide;
     wide.reserve(arguments.size());
-    for (const auto& argument : arguments) wide.push_back(std::filesystem::u8path(argument).wstring());
+    for (const auto& argument : arguments)
+        wide.push_back(std::filesystem::u8path(argument).wstring());
     std::wstring commandLine = windowsCommandLine(wide);
     std::vector<wchar_t> mutableCommandLine(commandLine.begin(), commandLine.end());
     mutableCommandLine.push_back(L'\0');
@@ -131,8 +142,8 @@ int runHostProcess(const std::vector<std::string>& arguments) {
     startup.cb = sizeof(startup);
     PROCESS_INFORMATION process{};
     const BOOL created = CreateProcessW(
-        wide.front().c_str(), mutableCommandLine.data(), nullptr, nullptr, FALSE, 0U, nullptr, nullptr,
-        &startup, &process);
+        wide.front().c_str(), mutableCommandLine.data(), nullptr, nullptr, FALSE, 0U, nullptr,
+        nullptr, &startup, &process);
     if (created == FALSE) {
         throw std::system_error(
             static_cast<int>(GetLastError()), std::system_category(),
@@ -161,18 +172,22 @@ int runHostProcess(const std::vector<std::string>& arguments) {
     return static_cast<int>(exitCode);
 #else
     const pid_t child = fork();
-    if (child < 0) throw std::runtime_error("failed to fork host publication process");
+    if (child < 0)
+        throw std::runtime_error("failed to fork host publication process");
     if (child == 0) {
         std::vector<char*> argv;
         argv.reserve(arguments.size() + 1U);
-        for (const auto& argument : arguments) argv.push_back(const_cast<char*>(argument.c_str()));
+        for (const auto& argument : arguments)
+            argv.push_back(const_cast<char*>(argument.c_str()));
         argv.push_back(nullptr);
         execv(arguments.front().c_str(), argv.data());
         _exit(127);
     }
     int status = 0;
-    if (waitpid(child, &status, 0) < 0) throw std::runtime_error("failed waiting for host publication process");
-    if (WIFEXITED(status)) return WEXITSTATUS(status);
+    if (waitpid(child, &status, 0) < 0)
+        throw std::runtime_error("failed waiting for host publication process");
+    if (WIFEXITED(status))
+        return WEXITSTATUS(status);
     return 128;
 #endif
 }

@@ -39,14 +39,16 @@ struct StoryPublicationResult {
     std::uint64_t introDurationUs = 0ULL;
     std::uint64_t outroDurationUs = 0ULL;
 
-    explicit operator bool() const { return issues.empty(); }
+    explicit operator bool() const {
+        return issues.empty();
+    }
 };
 
 /**
  * @brief Publication-only compositor. It never executes or mutates CLOCK and depends only on completed SB-6 output.
  */
 class StoryPublicationPipeline final {
-public:
+  public:
     StoryPublicationPipeline(std::filesystem::path ffmpeg, std::filesystem::path ffprobe);
 
     /** @brief Creates requested final media formats atomically from one successful frame-pipeline result. */
@@ -57,7 +59,7 @@ public:
         const std::filesystem::path& outputDirectory,
         const std::vector<PublicationFormat>& formats = {PublicationFormat::Mp4H264}) const;
 
-private:
+  private:
     std::filesystem::path ffmpeg_;
     std::filesystem::path ffprobe_;
 };

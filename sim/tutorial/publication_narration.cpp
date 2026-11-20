@@ -18,12 +18,24 @@ std::string jsonEscape(const std::string& text) {
     std::ostringstream out;
     for (const char raw : text) {
         switch (raw) {
-            case '"': out << "\\\""; break;
-            case '\\': out << "\\\\"; break;
-            case '\n': out << "\\n"; break;
-            case '\r': out << "\\r"; break;
-            case '\t': out << "\\t"; break;
-            default: out << raw; break;
+            case '"':
+                out << "\\\"";
+                break;
+            case '\\':
+                out << "\\\\";
+                break;
+            case '\n':
+                out << "\\n";
+                break;
+            case '\r':
+                out << "\\r";
+                break;
+            case '\t':
+                out << "\\t";
+                break;
+            default:
+                out << raw;
+                break;
         }
     }
     return out.str();
@@ -44,9 +56,11 @@ std::vector<PublicationNarrationCue> publicationNarrationCues(
         } else if (event.kind == StoryTraceKind::NarrationEnd) {
             const auto found = open.find(event.name);
             if (found == open.end()) {
-                throw std::runtime_error("publication narration cue ended without begin: " + event.name);
+                throw std::runtime_error(
+                    "publication narration cue ended without begin: " + event.name);
             }
-            cues.push_back({event.name, found->second + introOffsetUs, event.presentationUs + introOffsetUs});
+            cues.push_back(
+                {event.name, found->second + introOffsetUs, event.presentationUs + introOffsetUs});
             open.erase(found);
         }
     }
@@ -66,7 +80,8 @@ std::string publicationNarrationManifest(
         const auto& cue = cues[index];
         out << "    {\"id\": \"" << jsonEscape(cue.id) << "\", \"start_us\": " << cue.startUs
             << ", \"end_us\": " << cue.endUs << "}";
-        if (index + 1U < cues.size()) out << ',';
+        if (index + 1U < cues.size())
+            out << ',';
         out << '\n';
     }
     out << "  ]\n}\n";

@@ -47,7 +47,8 @@ void ClockApplication::servicePersistence(const std::uint32_t nowMs) {
         persistenceCoordinator_.status() == services::PersistenceCoordinator::Status::SaveError &&
         controlActivity != remindedControlActivity_;
     remindedControlActivity_ = controlActivity;
-    if (persistenceCoordinator_.noticeRevision() == announcedPersistenceNotice_ && !remindSaveError) {
+    if (persistenceCoordinator_.noticeRevision() == announcedPersistenceNotice_ &&
+        !remindSaveError) {
         return;
     }
     announcedPersistenceNotice_ = persistenceCoordinator_.noticeRevision();

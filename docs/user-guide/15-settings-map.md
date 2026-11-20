@@ -13,6 +13,7 @@ Hold **TAP TEMPO** and press the encoder from Performance to open the root Setti
 | **PRESETS** | CURRENT recovery, Load/Save Preset, and factory Templates. |
 | **SUPPORT CLOCK** | Ko-fi destination for supporting ongoing CLOCK development. |
 | **INFO** | Product/version information, licenses, update QR and guarded Factory Reset. |
+| **HI-SCORES** | `CLEAR` for the boot-game high scores; shown only while a score can be reset (chapter 20). |
 | **PHASE RESET** | Immediate non-destructive global musical phase reset. |
 
 ### GENERAL SETTINGS
@@ -76,7 +77,7 @@ The publication manual also carries the Ko-fi QR code. The canonical repository 
 - **NAME** — CLOCK product identity
 - **VERSION** — currently running firmware version
 - **AUTHOR** — project attribution; deliberately not treated as primary UI content
-- **LICENSES** — firmware/framework/core/HAL/CMSIS license identifiers
+- **LICENSES** — firmware/framework/core/HAL/CMSIS license identifiers and the display font with its license (`FONT`, `FONT LIC`)
 - **UPDATES** — full-screen QR code for the firmware update address `https://southsignallab.com/clock/firmware`, which leads to the firmware releases
 
 Long read-only values use a separate overflow rule from editable Settings values. If a value does not fit its row, CLOCK shortens only that informational value with `...`; pressing the row opens the complete value. Editable values keep their normal edit/confirm behavior. The license page is the canonical example: `CORE LIC` may display a truncated `BSD-3-Cl...` row while preserving the complete `BSD-3-Clause` identifier in the full-value view.

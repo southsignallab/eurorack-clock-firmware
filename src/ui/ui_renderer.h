@@ -13,15 +13,15 @@
 #include "domain/clock_types.h"
 #include "engine/clock_engine.h"
 #include "hal/oled_display.h"
-#include "services/persistent_state_service.h"
 #include "services/custom_groove_store.h"
+#include "services/persistent_state_service.h"
 #include "services/sequencer_pattern_store.h"
 #include "services/sequencer_step_store.h"
-#include "ui/groove_editor_renderer.h"
 #include "ui/channel_navigation_renderer.h"
+#include "ui/groove_editor_renderer.h"
 #include "ui/performance_renderer.h"
-#include "ui/settings_renderer.h"
 #include "ui/screensaver_renderer.h"
+#include "ui/settings_renderer.h"
 #include "ui/ui_types.h"
 
 namespace clockfw::ui {
@@ -33,7 +33,7 @@ namespace clockfw::ui {
  * musical state mutation from accumulating in one monolithic UI object.
  */
 class UiRenderer final {
-public:
+  public:
     /**
      * @brief Constructs all screen renderers around one OLED HAL instance.
      * @param display Display abstraction receiving the actual drawing commands.
@@ -91,7 +91,7 @@ public:
     /** @brief Reports whether one read-only settings value is abbreviated on screen. */
     bool informationValueOverflows(const char* label, const char* value);
 
-private:
+  private:
     hal::OledDisplay& display_;
     const services::PersistentStateService& persistentState_;
     const services::CustomGrooveStore* customGrooveStore_ = nullptr;

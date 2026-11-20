@@ -222,7 +222,6 @@ bool OledDisplay::service() {
 void OledDisplay::presentImmediate() {
     prepareTransportFramebuffer(framebuffer_, queuedI2cFramebuffer_);
 
-    constexpr std::size_t kPageWidth = static_cast<std::size_t>(config::kDisplayWidth);
     constexpr std::size_t kPageCount = config::kDisplayHeight / 8U;
 
     bool everyPageSent = true;
@@ -287,7 +286,6 @@ void OledDisplay::queueI2cPresent() {
 }
 
 bool OledDisplay::serviceI2cRefresh() {
-    constexpr std::size_t kPageWidth = static_cast<std::size_t>(config::kDisplayWidth);
     constexpr std::uint8_t kPageCount = static_cast<std::uint8_t>(config::kDisplayHeight / 8U);
     constexpr std::size_t kChunkSize = 24U;
 

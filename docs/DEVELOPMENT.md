@@ -42,18 +42,7 @@ Project-owned scripts, workflows, configuration files, and Markdown documentatio
 
 ### Doxygen
 
-Every method and function must have a useful Doxygen comment. Relevant constants, shared state, and non-obvious data structures must also be documented.
-
-Good comments explain:
-
-- why a method exists
-- ownership and side effects
-- timing/thread/ISR constraints
-- units and ranges
-- non-obvious safety behavior
-- meaning of parameters that is not obvious from the type/name
-
-Inline comments should explain **why**, not narrate obvious code. For example, documenting why output enable stays disabled through boot is useful; commenting `++channelIndex` as “increment channel” is not.
+The rules for Doxygen comments (what is documented, units, interrupt context, the warning baseline) are in [`CONTRIBUTING.md`](../CONTRIBUTING.md#code-documentation). For example, documenting why output enable stays disabled through boot is useful; commenting `++channelIndex` as “increment channel” is not.
 
 ### Readability and structure
 
@@ -180,21 +169,7 @@ python scripts/run_host_tests.py --sanitizers-only
 
 It compiles and executes the real project-owned firmware across the production SPI profile, legacy I2C regression variants, deterministic-core, and native-smoke variants using GCC coverage instrumentation.
 
-CI requires:
-
-- executable-line coverage >= **95%**
-- function coverage >= **95%**
-- non-throw decision-branch coverage >= **90%**
-
-The 1.1.0 release baseline after the Custom Groove tap recorder, readability sprint, Groove marker quiet-zone fix, horizontal Channel Mode carousel, named Custom Groove save/load/rename/delete UX, read-only information overflow handling, exhaustive Groove sweeps, and simulator scope phase-lock correction: **9260/9667 lines (95.79%)**, **805/819 functions (98.29%)**, and **5639/6246 decision branches (90.28%)**. Raw compiler branches are **5640/7322 (77.03%)** and remain informational.
-- AddressSanitizer = **clean**
-- UndefinedBehaviorSanitizer = **clean**
-
-The stable repository-wide baseline is maintained by `run_host_tests.py` and must remain above 95% executable lines, 95% functions and 90% source decision branches. The report lists every uncovered production function and decision branch explicitly so release thresholds do not hide newly introduced blind spots.
-
-Raw GCC compiler-branch coverage is reported separately because GCC also emits synthetic throw/exception edges. These are informational only; source decision branches are gated at 90%.
-
-Coverage artifacts are written to `coverage/full_coverage.txt` and `coverage/full_coverage.json`.
+The gates (lines, functions, decision branches, sanitizers), the release baselines and the report location are defined in [`TEST_COVERAGE.md`](TEST_COVERAGE.md#hard-ci-gates); raw GCC compiler branches are informational, as explained [there](TEST_COVERAGE.md#decision-branches-versus-compiler-branches).
 
 Each run mode builds in its own tree below `build/host_tests/` (`coverage`, `sanitizers`, `focus_<area>`), so a coverage run and a sanitizer run can run at the same time. A second run of the same mode stops with a message instead of deleting the tree in use. On Windows the sanitizer run needs WSL2; the Windows prerequisites of the full local check suite and the manual build are listed in [`DEVELOPER_README.md`](DEVELOPER_README.md#15b-windows-prerequisites-for-the-full-local-check-suite-and-the-manual-build).
 
@@ -243,43 +218,7 @@ The STM32 firmware build only runs after host coverage and both native-simulator
 
 ### Releases
 
-`.github/workflows/release.yml` runs for Git tags and can also be manually dispatched for release-candidate builds.
-
-A release tag must exactly match `src/version.h`:
-
-```text
-firmware: 1.2.0
-Git tag:   v1.2.0
-```
-
-A mismatch fails before publication.
-
-Before tagging, prepare the user-facing release summary and freeze the maintained user manual for the current firmware version:
-
-```bash
-python scripts/prepare_release_summary.py
-# edit docs/releases/<version>/RELEASE_SUMMARY.md until the review placeholders are gone
-python scripts/check_release_summary.py docs/releases/<version>/RELEASE_SUMMARY.md --version <version>
-python scripts/prepare_release_manual.py
-```
-
-The summary explains what CLOCK is and the important changes from a user perspective; the detailed engineering history remains in `CHANGELOG.md`. For a final stable release, manual preparation creates and commits `docs/manual/clock-user-manual.<version>.odt`; Alpha, Beta and RC manuals are generated transiently and are not archived there. The tag workflow requires the stable frozen ODT when publishing a final release and always requires the version-matched release summary.
-
-For a tag build the workflow:
-
-1. validates architecture policy
-2. validates version/tag consistency
-3. runs Python tooling tests
-4. runs native production-core tests
-5. enforces coverage thresholds
-6. builds the STM32 firmware
-7. regenerates the deterministic OLED screenshot catalog from the exact release source and refreshes every screenshot in the frozen ODT
-8. validates the refreshed versioned ODT manual
-9. converts that ODT to `clock-user-manual.<version>.pdf` with LibreOffice and validates the PDF/font contract
-10. extracts release notes from the matching `CHANGELOG.md` section
-11. publishes the GitHub Release with the versioned **ODT and PDF manual artifacts** attached
-
-GitHub supplies the source archive for the tagged commit. Firmware binaries are now eligible for release packaging because the embedded runtime uses STM32CubeF4/CMSIS without the former STM32duino LGPL dependency. See `docs/LICENSING.md`.
+`.github/workflows/release.yml` runs for Git tags and can also be manually dispatched for release-candidate builds. A release tag must exactly match `src/version.h` (`v1.2.0` for firmware `1.2.0`). The preparation steps, the tag-build sequence and the release payload are described in [`RELEASE_PROCESS.md`](RELEASE_PROCESS.md#preparing-a-release).
 
 ## Versioning
 

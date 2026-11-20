@@ -13,6 +13,8 @@ EXTRACT_ALL             = NO
 EXTRACT_PRIVATE         = YES
 EXTRACT_STATIC          = YES
 JAVADOC_AUTOBRIEF       = YES
+# File headers carry the license as @license; render it as a paragraph.
+ALIASES                 = "license=@par License:^^"
 OPTIMIZE_OUTPUT_FOR_C   = NO
 MARKDOWN_SUPPORT        = YES
 GENERATE_HTML           = YES

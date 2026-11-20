@@ -147,5 +147,4 @@ void ExternalSyncController::drainInactiveInputs() {
     }
 }
 
-
 }  // namespace clockfw::services

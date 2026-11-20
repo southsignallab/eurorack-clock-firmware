@@ -16,11 +16,15 @@ namespace {
 /** Maps a per-channel generator mode onto its selector action. */
 ModeFunction channelModeFunction(const ChannelMode mode) {
     switch (mode) {
-        case ChannelMode::Off: return ModeFunction::Off;
-        case ChannelMode::Euclid: return ModeFunction::Euclid;
-        case ChannelMode::Sequencer: return ModeFunction::Sequencer;
+        case ChannelMode::Off:
+            return ModeFunction::Off;
+        case ChannelMode::Euclid:
+            return ModeFunction::Euclid;
+        case ChannelMode::Sequencer:
+            return ModeFunction::Sequencer;
         case ChannelMode::Clock:
-        default: return ModeFunction::Clock;
+        default:
+            return ModeFunction::Clock;
     }
 }
 
@@ -69,13 +73,21 @@ void applyModeFunction(
 
     ChannelMode channelMode = ChannelMode::Clock;
     switch (modeFunction) {
-        case ModeFunction::Off: channelMode = ChannelMode::Off; break;
-        case ModeFunction::Euclid: channelMode = ChannelMode::Euclid; break;
-        case ModeFunction::Sequencer: channelMode = ChannelMode::Sequencer; break;
+        case ModeFunction::Off:
+            channelMode = ChannelMode::Off;
+            break;
+        case ModeFunction::Euclid:
+            channelMode = ChannelMode::Euclid;
+            break;
+        case ModeFunction::Sequencer:
+            channelMode = ChannelMode::Sequencer;
+            break;
         case ModeFunction::Clock:
         case ModeFunction::UnifiedClock:
         case ModeFunction::DividerBank:
-        default: channelMode = ChannelMode::Clock; break;
+        default:
+            channelMode = ChannelMode::Clock;
+            break;
     }
     state.channels[selectedChannel].common.mode = channelMode;
 }

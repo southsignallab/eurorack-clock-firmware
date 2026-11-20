@@ -26,7 +26,7 @@ namespace clockfw::hal {
 
 /** @brief Wrap-free microsecond time from a wrapping 32-bit counter. */
 class ExtendedTimebase final {
-public:
+  public:
     /** @brief Returns the current 32-bit counter value (TIM5 in production). */
     using CounterReader = std::uint32_t (*)();
 
@@ -50,7 +50,7 @@ public:
     /** @brief Milliseconds of @p microseconds, wrapping at 2^32 ms like HAL_GetTick(). */
     static std::uint32_t millisecondsFrom(std::uint64_t microseconds);
 
-private:
+  private:
     volatile std::uint64_t anchorExtendedUs_ = 0U;
     volatile std::uint32_t anchorCounterUs_ = 0U;
     volatile std::uint32_t sequence_ = 0U;

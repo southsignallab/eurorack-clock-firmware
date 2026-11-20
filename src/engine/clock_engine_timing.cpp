@@ -12,8 +12,8 @@
 
 #include "clock_core.h"
 #include "config.h"
-#include "domain/groove_catalog.h"
 #include "domain/custom_groove.h"
+#include "domain/groove_catalog.h"
 
 namespace clockfw::engine {
 
@@ -56,8 +56,12 @@ ClockEngine::ScheduleInputs ClockEngine::makeScheduleInputs(
 }
 
 ClockEngine::ScheduleInputs ClockEngine::liveScheduleInputs() const {
-    return makeScheduleInputs(*configuration_, customGrooveSpacingQ16_, *grooveSources_,
-                              externalLocked_, externalBpmMilli_);
+    return makeScheduleInputs(
+        *configuration_,
+        customGrooveSpacingQ16_,
+        *grooveSources_,
+        externalLocked_,
+        externalBpmMilli_);
 }
 
 std::uint64_t ClockEngine::minimumOutputIntervalQ32() const {
@@ -71,10 +75,8 @@ std::uint64_t ClockEngine::minimumOutputIntervalQ32(
         return 1U;
     }
     beatUnit = beatUnit != 0U ? beatUnit : 4U;
-    const std::uint64_t numerator =
-        static_cast<std::uint64_t>(bpmMilli) * beatUnit * core::kQ32One;
-    const std::uint64_t denominator =
-        60ULL * 4ULL * config::kSchedulerFrequencyHz * 1000ULL;
+    const std::uint64_t numerator = static_cast<std::uint64_t>(bpmMilli) * beatUnit * core::kQ32One;
+    const std::uint64_t denominator = 60ULL * 4ULL * config::kSchedulerFrequencyHz * 1000ULL;
     return (numerator + denominator - 1ULL) / denominator;
 }
 
@@ -97,10 +99,7 @@ void ClockEngine::resolveChannelRate(
     } else if (channel.common.mode == ChannelMode::Euclid ||
                channel.common.mode == ChannelMode::Sequencer) {
         core::calculateEffectivePatternRate(
-            channel.common,
-            configuration.beatUnit,
-            numerator,
-            denominator);
+            channel.common, configuration.beatUnit, numerator, denominator);
     }
 }
 
@@ -132,8 +131,7 @@ std::uint64_t ClockEngine::calculateBaseEventOffsetQ32(
         numerator = 1U;
     }
 
-    const std::uint64_t scaledInterval =
-        static_cast<std::uint64_t>(denominator) * core::kQ32One;
+    const std::uint64_t scaledInterval = static_cast<std::uint64_t>(denominator) * core::kQ32One;
     const std::uint64_t quotient = scaledInterval / numerator;
     const std::uint64_t remainder = scaledInterval % numerator;
     const std::uint64_t minimumInterval = inputs.minimumIntervalQ32;
@@ -187,8 +185,7 @@ std::uint64_t ClockEngine::calculateEventPositionQ32(
     std::uint64_t* const nominalSlotQ32) const {
     const std::uint64_t baseIntervalQ32 = calculateNominalBaseIntervalQ32(inputs, channelIndex);
     const std::uint64_t phaseOffsetQ32 = core::calculatePhaseOffsetQ32(
-        baseIntervalQ32,
-        inputs.configuration->channels[channelIndex].common.phasePercent);
+        baseIntervalQ32, inputs.configuration->channels[channelIndex].common.phasePercent);
     const std::uint64_t baseOffsetQ32 =
         calculateBaseEventOffsetQ32(inputs, channelIndex, eventSerial);
     if (nominalSlotQ32 != nullptr) {
@@ -213,6 +210,9 @@ std::uint64_t ClockEngine::calculateEventPositionQ32(
     }
     const std::uint64_t nominalPositionQ32 = phasePositionQ32 + baseOffsetQ32;
 
+    // Defensive initial value in the tick path: every branch below assigns it, and the
+    // compiler drops the store.
+    // NOLINTNEXTLINE(clang-analyzer-deadcode.DeadStores)
     std::uint64_t shapedPositionQ32 = nominalPositionQ32;
     const GrooveSources& grooves = *inputs.grooves;
     const bool previewActive = grooves.previewActive[channelIndex];
@@ -222,26 +222,23 @@ std::uint64_t ClockEngine::calculateEventPositionQ32(
         const CustomGroovePattern& customPattern = previewActive
             ? *grooves.previews[channelIndex]
             : *grooves.slots[grooveSettings.customSlot];
-        const std::uint8_t customAmount = previewActive
-            ? grooves.previewAmount[channelIndex]
-            : grooveSettings.amountPercent;
-        const std::uint8_t customRotation = previewActive
-            ? grooves.previewRotation[channelIndex]
-            : grooveSettings.rotation;
-        const std::int16_t offset256 = customGrooveOffset256(
-            customPattern,
-            eventSerial,
-            customAmount,
-            customRotation);
+        const std::uint8_t customAmount =
+            previewActive ? grooves.previewAmount[channelIndex] : grooveSettings.amountPercent;
+        const std::uint8_t customRotation =
+            previewActive ? grooves.previewRotation[channelIndex] : grooveSettings.rotation;
+        const std::int16_t offset256 =
+            customGrooveOffset256(customPattern, eventSerial, customAmount, customRotation);
         const std::int64_t requestedCustomQ32 =
-            static_cast<std::int64_t>((baseIntervalQ32 * static_cast<std::uint64_t>(
-                offset256 < 0 ? -offset256 : offset256)) / 256ULL) *
+            static_cast<std::int64_t>(
+                (baseIntervalQ32 *
+                 static_cast<std::uint64_t>(offset256 < 0 ? -offset256 : offset256)) /
+                256ULL) *
             (offset256 < 0 ? -1LL : 1LL);
         const std::uint64_t symmetricLimitQ32 = baseIntervalQ32 > minimumIntervalQ32
             ? (baseIntervalQ32 - minimumIntervalQ32) / 2ULL
             : 0U;
-        const std::int64_t combinedQ32 = static_cast<std::int64_t>(swingOffsetQ32) +
-            requestedCustomQ32;
+        const std::int64_t combinedQ32 =
+            static_cast<std::int64_t>(swingOffsetQ32) + requestedCustomQ32;
         const std::int64_t boundedCombinedQ32 = std::clamp<std::int64_t>(
             combinedQ32,
             -static_cast<std::int64_t>(symmetricLimitQ32),
@@ -263,11 +260,9 @@ std::uint64_t ClockEngine::calculateEventPositionQ32(
             eventSerial,
             grooveSettings.amountPercent,
             grooveSettings.rotation);
-        const std::uint64_t requestedGrooveQ32 =
-            (baseIntervalQ32 * groovePermille) / 1000ULL;
-        const std::uint64_t maximumCombinedDelayQ32 = baseIntervalQ32 > minimumIntervalQ32
-            ? baseIntervalQ32 - minimumIntervalQ32
-            : 0U;
+        const std::uint64_t requestedGrooveQ32 = (baseIntervalQ32 * groovePermille) / 1000ULL;
+        const std::uint64_t maximumCombinedDelayQ32 =
+            baseIntervalQ32 > minimumIntervalQ32 ? baseIntervalQ32 - minimumIntervalQ32 : 0U;
         const std::uint64_t grooveOffsetQ32 = swingOffsetQ32 >= maximumCombinedDelayQ32
             ? 0U
             : std::min(requestedGrooveQ32, maximumCombinedDelayQ32 - swingOffsetQ32);
@@ -281,16 +276,14 @@ std::uint64_t ClockEngine::calculateEventPositionQ32(
         calculateHumanizeOffsetQ32(inputs, channelIndex, eventSerial);
     if (humanizeOffsetQ32 >= 0) {
         const std::uint64_t delayQ32 = static_cast<std::uint64_t>(humanizeOffsetQ32);
-        return delayQ32 > UINT64_MAX - shapedPositionQ32
-            ? UINT64_MAX
-            : shapedPositionQ32 + delayQ32;
+        return delayQ32 > UINT64_MAX - shapedPositionQ32 ? UINT64_MAX
+                                                         : shapedPositionQ32 + delayQ32;
     }
 
     const std::uint64_t advanceQ32 = static_cast<std::uint64_t>(-humanizeOffsetQ32);
     const std::uint64_t earliestPositionQ32 = phasePositionQ32;
-    return advanceQ32 >= shapedPositionQ32 - earliestPositionQ32
-        ? earliestPositionQ32
-        : shapedPositionQ32 - advanceQ32;
+    return advanceQ32 >= shapedPositionQ32 - earliestPositionQ32 ? earliestPositionQ32
+                                                                 : shapedPositionQ32 - advanceQ32;
 }
 
 std::uint64_t ClockEngine::calculateBaseIntervalUs(
@@ -306,13 +299,11 @@ std::uint64_t ClockEngine::calculateBaseIntervalUs(
     }
     const std::uint8_t beatUnit =
         inputs.configuration->beatUnit != 0U ? inputs.configuration->beatUnit : 4U;
-    const std::uint64_t divisor =
-        static_cast<std::uint64_t>(bpmMilli) * beatUnit * numerator;
+    const std::uint64_t divisor = static_cast<std::uint64_t>(bpmMilli) * beatUnit * numerator;
     if (divisor == 0U) {
         return config::kSchedulerTickUs;
     }
-    const std::uint64_t intervalUs =
-        (60000000000ULL * 4ULL * denominator) / divisor;
+    const std::uint64_t intervalUs = (60000000000ULL * 4ULL * denominator) / divisor;
     return std::max<std::uint64_t>(intervalUs, config::kSchedulerTickUs);
 }
 
@@ -352,6 +343,9 @@ std::uint16_t ClockEngine::effectiveHumanizeUs(
 
     const ChannelConfig& channel = configuration.channels[channelIndex];
     const std::uint64_t baseIntervalUs = calculateBaseIntervalUs(inputs, channelIndex);
+    // Defensive initial value in the tick path: both branches below assign it, and the
+    // compiler drops the store.
+    // NOLINTNEXTLINE(clang-analyzer-deadcode.DeadStores)
     std::uint64_t shortestShapedIntervalUs = baseIntervalUs;
     const GrooveSettings& grooveSettings = channel.common.groove;
     if (inputs.grooves->previewActive[channelIndex] ||
@@ -361,21 +355,20 @@ std::uint16_t ClockEngine::effectiveHumanizeUs(
         // apply. The foreground-cached spacing is a Q16 fraction of the interval:
         // one multiply and one shift, no division in scheduler context.
         const std::uint64_t spacingQ16 = inputs.customGrooveSpacingQ16[channelIndex];
-        shortestShapedIntervalUs = baseIntervalUs <= UINT64_MAX / (2ULL * kCustomGrooveSpacingQ16One)
+        shortestShapedIntervalUs =
+            baseIntervalUs <= UINT64_MAX / (2ULL * kCustomGrooveSpacingQ16One)
             ? (baseIntervalUs * spacingQ16) >> 16U
             : (baseIntervalUs >> 16U) * spacingQ16;
     } else {
         const std::uint8_t swingPercent = std::min<std::uint8_t>(channel.common.swingPercent, 50U);
         const std::uint64_t swingDelayUs = (baseIntervalUs * swingPercent) / 100ULL;
-        const std::uint16_t groovePermille = groove::maximumDelayPermille(
-            grooveSettings.preset,
-            grooveSettings.amountPercent);
+        const std::uint16_t groovePermille =
+            groove::maximumDelayPermille(grooveSettings.preset, grooveSettings.amountPercent);
         const std::uint64_t grooveDelayUs = (baseIntervalUs * groovePermille) / 1000ULL;
         const std::uint64_t totalDelayUs = std::min<std::uint64_t>(
             swingDelayUs + grooveDelayUs,
-            baseIntervalUs > config::kSchedulerTickUs
-                ? baseIntervalUs - config::kSchedulerTickUs
-                : 0U);
+            baseIntervalUs > config::kSchedulerTickUs ? baseIntervalUs - config::kSchedulerTickUs
+                                                      : 0U);
         shortestShapedIntervalUs = baseIntervalUs - totalDelayUs;
     }
     if (shortestShapedIntervalUs <= config::kSchedulerTickUs) {
@@ -388,8 +381,8 @@ std::uint16_t ClockEngine::effectiveHumanizeUs(
         (shortestShapedIntervalUs - config::kSchedulerTickUs) / 2ULL;
     const std::uint64_t quantizedSafeUs =
         (maximumSafeUs / config::kSchedulerTickUs) * config::kSchedulerTickUs;
-    const std::uint64_t configuredUs = std::min<std::uint64_t>(
-        configuration.unifiedHumanizeUs, config::kMaximumHumanizeUs);
+    const std::uint64_t configuredUs =
+        std::min<std::uint64_t>(configuration.unifiedHumanizeUs, config::kMaximumHumanizeUs);
     return static_cast<std::uint16_t>(std::min(configuredUs, quantizedSafeUs));
 }
 
@@ -419,8 +412,8 @@ std::int64_t ClockEngine::calculateHumanizeOffsetQ32(
     hash ^= hash >> 16U;
 
     const std::uint32_t span = maximumTicks * 2U + 1U;
-    const std::int32_t signedTicks = static_cast<std::int32_t>(hash % span) -
-        static_cast<std::int32_t>(maximumTicks);
+    const std::int32_t signedTicks =
+        static_cast<std::int32_t>(hash % span) - static_cast<std::int32_t>(maximumTicks);
     const std::int64_t tickQ32 = static_cast<std::int64_t>(inputs.minimumIntervalQ32);
     return static_cast<std::int64_t>(signedTicks) * tickQ32;
 }

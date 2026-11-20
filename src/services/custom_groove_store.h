@@ -13,6 +13,7 @@
 #include <cstdint>
 
 #include "domain/custom_groove.h"
+#include "hal/persistent_layout.h"
 #include "hal/persistent_storage.h"
 
 namespace clockfw::services {
@@ -25,10 +26,10 @@ namespace clockfw::services {
  * historical 16-byte score records at 3072..3135 and the Top-100 region at 4096.
  */
 class CustomGrooveStore final {
-public:
+  public:
     static constexpr std::size_t kNameLength = 16U;
     static constexpr std::size_t kRecordBytes = 96U;
-    static constexpr std::size_t kStorageOffset = 3136U;
+    static constexpr std::size_t kStorageOffset = hal::persistent_layout::kCustomGrooveRegionOffset;
 
     /** @brief Constructs the fixed-record store around the shared persistent image. */
     explicit CustomGrooveStore(hal::PersistentStorage& storage, bool deferredWrites = false);
@@ -40,7 +41,9 @@ public:
     bool hasPendingCommit() const;
 
     /** @brief Increments with every accepted slot mutation (save or clear). */
-    std::uint32_t changeRevision() const { return changeRevision_; }
+    std::uint32_t changeRevision() const {
+        return changeRevision_;
+    }
 
     /** @brief Stages every queued slot into the storage update the caller opened (D-04). */
     [[nodiscard]] bool stage();
@@ -59,7 +62,10 @@ public:
         std::size_t nameSize = 0U) const;
 
     /** @brief Accepts a named validated pattern; production stores defer Flash until safe. */
-    [[nodiscard]] bool save(std::uint8_t slotIndex, const char* name, const CustomGroovePattern& pattern);
+    [[nodiscard]] bool save(
+        std::uint8_t slotIndex,
+        const char* name,
+        const CustomGroovePattern& pattern);
 
     /** @brief Accepts one slot deletion; deferred readers see it immediately. */
     [[nodiscard]] bool clear(std::uint8_t slotIndex);
@@ -75,7 +81,7 @@ public:
      */
     void name(std::uint8_t slotIndex, char* destination, std::size_t destinationSize) const;
 
-private:
+  private:
     /** @brief Calculates the record CRC over the supplied byte range. */
     static std::uint32_t calculateCrc32(const std::uint8_t* data, std::size_t size);
     /** @brief Returns the byte offset of one fixed Custom Groove slot. */
@@ -89,7 +95,9 @@ private:
     void cacheSlot(std::uint8_t slotIndex) const;
 
     /** @brief Writes a validated/erased record immediately or queues it for a safe commit. */
-    [[nodiscard]] bool writeRecord(std::uint8_t slotIndex, const std::array<std::uint8_t, kRecordBytes>& record);
+    [[nodiscard]] bool writeRecord(
+        std::uint8_t slotIndex,
+        const std::array<std::uint8_t, kRecordBytes>& record);
 
     hal::PersistentStorage& storage_;
     bool deferredWrites_ = false;

@@ -12,7 +12,7 @@
 #endif
 namespace clockfw::hal {
 class PeriodicTimer final {
-public:
+  public:
     using Callback = void (*)();
     /** @brief Constructs the TIM3 scheduler wrapper. */
     PeriodicTimer();
@@ -28,9 +28,10 @@ public:
      * the scheduler exactly on the update and return 0.
      */
     static std::uint32_t elapsedSinceUpdateUsFromIsr();
-private:
+
+  private:
 #if defined(CLOCK_HOST_TEST) || defined(CLOCK_SIMULATOR)
     HardwareTimer timer_;
 #endif
 };
-} // namespace clockfw::hal
+}  // namespace clockfw::hal

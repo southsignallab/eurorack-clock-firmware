@@ -61,6 +61,15 @@ jobs:
       - name: Build Doxygen API documentation
         run: doxygen Doxyfile
 
+      # Attached to a release only once Doxygen reports no warning (scripts/check_doxygen.py).
+      - name: Upload Doxygen API documentation
+        uses: actions/upload-artifact@v7
+        with:
+          name: doxygen-api-${{ github.sha }}
+          path: build/doxygen/
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Run release-tooling tests
         run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
 

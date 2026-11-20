@@ -19,7 +19,8 @@ constexpr std::uint8_t kNorth = 0x01U;
 constexpr std::uint8_t kEast = 0x02U;
 constexpr std::uint8_t kSouth = 0x04U;
 constexpr std::uint8_t kWest = 0x08U;
-constexpr std::uint8_t kAllWalls = kNorth | kEast | kSouth | kWest;
+constexpr std::uint8_t kAllWalls =
+    static_cast<std::uint8_t>(static_cast<std::uint32_t>(kNorth) | kEast | kSouth | kWest);
 constexpr std::size_t kColumns = 16U;
 constexpr std::size_t kRows = 8U;
 constexpr std::size_t kCells = kColumns * kRows;
@@ -40,9 +41,7 @@ struct Neighbor final {
     std::uint8_t wallFromNeighbor;
 };
 
-void generateMaze(
-    const std::uint32_t seed,
-    std::array<std::uint8_t, kCells>& walls) {
+void generateMaze(const std::uint32_t seed, std::array<std::uint8_t, kCells>& walls) {
     walls.fill(kAllWalls);
     std::array<bool, kCells> visited{};
     std::array<std::uint8_t, kCells> stack{};
@@ -59,31 +58,45 @@ void generateMaze(
         std::size_t candidateCount = 0U;
 
         if (row > 0U) {
-            const auto neighbor = static_cast<std::uint8_t>(current - static_cast<std::uint8_t>(kColumns));
-            if (!visited[neighbor]) candidates[candidateCount++] = {neighbor, kNorth, kSouth};
+            const auto neighbor =
+                static_cast<std::uint8_t>(current - static_cast<std::uint8_t>(kColumns));
+            if (!visited[neighbor]) {
+                candidates[candidateCount++] = {neighbor, kNorth, kSouth};
+            }
         }
         if (column + 1U < kColumns) {
             const auto neighbor = static_cast<std::uint8_t>(current + 1U);
-            if (!visited[neighbor]) candidates[candidateCount++] = {neighbor, kEast, kWest};
+            if (!visited[neighbor]) {
+                candidates[candidateCount++] = {neighbor, kEast, kWest};
+            }
         }
         if (row + 1U < kRows) {
-            const auto neighbor = static_cast<std::uint8_t>(current + static_cast<std::uint8_t>(kColumns));
-            if (!visited[neighbor]) candidates[candidateCount++] = {neighbor, kSouth, kNorth};
+            const auto neighbor =
+                static_cast<std::uint8_t>(current + static_cast<std::uint8_t>(kColumns));
+            if (!visited[neighbor]) {
+                candidates[candidateCount++] = {neighbor, kSouth, kNorth};
+            }
         }
         if (column > 0U) {
             const auto neighbor = static_cast<std::uint8_t>(current - 1U);
-            if (!visited[neighbor]) candidates[candidateCount++] = {neighbor, kWest, kEast};
+            if (!visited[neighbor]) {
+                candidates[candidateCount++] = {neighbor, kWest, kEast};
+            }
         }
 
         if (candidateCount == 0U) {
-            if (stackSize == 0U) break;
+            if (stackSize == 0U) {
+                break;
+            }
             current = stack[--stackSize];
             continue;
         }
 
         const Neighbor selected = candidates[mazeRandom(randomState) % candidateCount];
-        walls[current] = static_cast<std::uint8_t>(walls[current] & static_cast<std::uint8_t>(~selected.wallFromCurrent));
-        walls[selected.cell] = static_cast<std::uint8_t>(walls[selected.cell] & static_cast<std::uint8_t>(~selected.wallFromNeighbor));
+        walls[current] = static_cast<std::uint8_t>(
+            walls[current] & static_cast<std::uint8_t>(~selected.wallFromCurrent));
+        walls[selected.cell] = static_cast<std::uint8_t>(
+            walls[selected.cell] & static_cast<std::uint8_t>(~selected.wallFromNeighbor));
         stack[stackSize++] = current;
         current = selected.cell;
         visited[current] = true;
@@ -101,8 +114,12 @@ void drawCellWalls(
     const std::int16_t y = static_cast<std::int16_t>(row * static_cast<std::size_t>(kCellSize));
     const std::uint8_t wall = walls[cell];
 
-    if ((wall & kNorth) != 0U) display.drawHorizontalLine(x, y, kCellSize);
-    if ((wall & kWest) != 0U) display.drawVerticalLine(x, y, kCellSize);
+    if ((wall & kNorth) != 0U) {
+        display.drawHorizontalLine(x, y, kCellSize);
+    }
+    if ((wall & kWest) != 0U) {
+        display.drawVerticalLine(x, y, kCellSize);
+    }
     if (column + 1U == kColumns && (wall & kEast) != 0U) {
         display.drawVerticalLine(hal::OledDisplay::kWidth - 1, y, kCellSize);
     }
@@ -121,9 +138,12 @@ void ScreensaverRenderer::renderLabyrinth(const std::uint32_t frameIndex) {
     generateMaze(0x6C616279U ^ (cycle * 0x9E3779B9U), walls);
 
     const std::size_t visibleCells = cycleFrame < kRevealFrames
-        ? static_cast<std::size_t>(((cycleFrame + 1U) * static_cast<std::uint32_t>(kCells) + kRevealFrames - 1U) / kRevealFrames)
+        ? static_cast<std::size_t>(
+              ((cycleFrame + 1U) * static_cast<std::uint32_t>(kCells) + kRevealFrames - 1U) /
+              kRevealFrames)
         : kCells;
-    const std::size_t offset = static_cast<std::size_t>((cycle * 37U) % static_cast<std::uint32_t>(kCells));
+    const std::size_t offset =
+        static_cast<std::size_t>((cycle * 37U) % static_cast<std::uint32_t>(kCells));
     const std::size_t step = static_cast<std::size_t>(((cycle * 10U) + 29U) | 1U);
 
     for (std::size_t order = 0U; order < visibleCells; ++order) {

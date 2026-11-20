@@ -15,7 +15,10 @@
 
 namespace clockfw::sim::tutorial {
 
-void renderStorySubtitle(TutorialSurface& frame, const std::string& subtitle, const StoryTheme& theme);
+void renderStorySubtitle(
+    TutorialSurface& frame,
+    const std::string& subtitle,
+    const StoryTheme& theme);
 void renderStoryChapter(TutorialSurface& frame, const StoryScene& scene, const StoryTheme& theme);
 void renderStoryTextScene(TutorialSurface& frame, const StoryScene& scene, const StoryTheme& theme);
 void renderStoryCallout(TutorialSurface& frame, const StoryScene& scene, const StoryTheme& theme);

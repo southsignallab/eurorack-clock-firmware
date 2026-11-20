@@ -43,16 +43,25 @@ inline constexpr std::size_t kClockStateRegionOffset = 0U;
 /** Historical single-score compatibility records start here. */
 inline constexpr std::size_t kLegacyScoreRegionOffset = 3072U;
 
+/** Four historical 16-byte single-score records. */
+inline constexpr std::size_t kLegacyScoreRegionBytes = 4U * 16U;
+
+/** Ten fixed Custom Groove records follow the historical single-score records. */
+inline constexpr std::size_t kCustomGrooveRegionOffset =
+    kLegacyScoreRegionOffset + kLegacyScoreRegionBytes;
+
 /** Four independent Top-100 leaderboard records start here. */
 inline constexpr std::size_t kLeaderboardRegionOffset = 4096U;
 
 static_assert(kClockStateRegionOffset < kLegacyScoreRegionOffset);
-static_assert(kLegacyScoreRegionOffset < kLeaderboardRegionOffset);
+static_assert(kLegacyScoreRegionOffset < kCustomGrooveRegionOffset);
+static_assert(kCustomGrooveRegionOffset < kLeaderboardRegionOffset);
 static_assert(kLeaderboardRegionOffset < kV1ImageBytes);
 static_assert(kV1ImageBytes < kCurrentImageBytes);
 static_assert(kSequencer2RegionOffset == kV1ImageBytes);
 static_assert(kSequencerStepMetadataOffset == kSequencer2RegionOffset + kSequencerPatternBankBytes);
-static_assert(kSequencerSongRegionOffset == kSequencerStepMetadataOffset + kSequencerStepMetadataBytes);
+static_assert(
+    kSequencerSongRegionOffset == kSequencerStepMetadataOffset + kSequencerStepMetadataBytes);
 static_assert(kSequencerSongRegionOffset + kSequencerSongRegionBytes == kCurrentImageBytes);
 static_assert(kCurrentImageBytes <= kMaximumImageBytes);
 

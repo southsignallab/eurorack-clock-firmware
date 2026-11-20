@@ -100,9 +100,7 @@ GridAnchor phaseLockedGridAnchor(
     const MusicalGridSpec& grid);
 
 /** @brief Returns the first non-negative minor-reference serial visible at/after startUs. */
-std::uint64_t firstMinorReferenceSerialAtOrAfter(
-    std::int64_t startUs,
-    const MusicalGridSpec& grid);
+std::uint64_t firstMinorReferenceSerialAtOrAfter(std::int64_t startUs, const MusicalGridSpec& grid);
 
 /** @brief Returns the transport-relative timestamp for one exact reference serial. */
 double referenceTimeUs(std::uint64_t serial, const MusicalGridSpec& grid);

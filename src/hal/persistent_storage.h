@@ -24,13 +24,13 @@ namespace clockfw::hal {
  * runs and, once open, defer every scheduler-initiated start until close().
  */
 class FlashCommitGate {
-public:
+  public:
     /** @brief Atomically checks the engine and opens the commit window; false keeps Flash untouched. */
     [[nodiscard]] virtual bool tryOpenCommitWindow() = 0;
     /** @brief Closes the window and executes any start deferred while it was open. */
     virtual void closeCommitWindow() = 0;
 
-protected:
+  protected:
     /** @brief Non-virtual by design: gates are never deleted through this interface. */
     ~FlashCommitGate() = default;
 };
@@ -54,7 +54,7 @@ enum class CommitOutcome : std::uint8_t {
  * slot is therefore never erased until a newer complete image is durable.
  */
 class PersistentStorage final {
-public:
+  public:
     /** Current logical image size. Expanded to the 12-KiB policy ceiling for Sequencer 2.0. */
     static constexpr std::size_t kCapacityBytes = persistent_layout::kCurrentImageBytes;
 
@@ -76,7 +76,8 @@ public:
      * @param size Number of bytes to read.
      * @return True when the requested range was valid and readable.
      */
-    [[nodiscard]] bool readBytes(std::size_t offset, std::uint8_t* destination, std::size_t size) const;
+    [[nodiscard]] bool readBytes(std::size_t offset, std::uint8_t* destination, std::size_t size)
+        const;
     /**
      * @brief Updates one logical range and commits a complete new A/B generation.
      * @param offset Byte offset inside the logical image.
@@ -120,7 +121,9 @@ public:
     bool writeLocked() const;
 
     /** @brief Outcome of the most recent commit attempt through this instance. */
-    CommitOutcome lastCommitOutcome() const { return lastOutcome_; }
+    CommitOutcome lastCommitOutcome() const {
+        return lastOutcome_;
+    }
 
     /**
      * @brief Changes whenever Flash content may have changed (commit, test seed).
@@ -131,7 +134,9 @@ public:
     static std::uint32_t contentRevision();
 
     /** @brief Installs the scheduler interlock consulted before every physical commit. */
-    void setCommitGate(FlashCommitGate* gate) { commitGate_ = gate; }
+    void setCommitGate(FlashCommitGate* gate) {
+        commitGate_ = gate;
+    }
 
 #ifdef CLOCK_SIMULATOR
     /**
@@ -197,7 +202,7 @@ public:
     static std::uint32_t readCountForTest();
 #endif
 
-private:
+  private:
     /** @brief Returns whether one byte range fits completely inside the logical image. */
     static bool isRangeValid(std::size_t offset, std::size_t size);
 

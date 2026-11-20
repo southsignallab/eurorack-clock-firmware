@@ -60,8 +60,7 @@ void formatClockPerformanceRate(
     const CommonChannelSettings& settings,
     char* const output,
     const std::size_t outputSize) {
-    if (settings.rate.numerator == 1U &&
-        settings.rate.denominator == 1U &&
+    if (settings.rate.numerator == 1U && settings.rate.denominator == 1U &&
         settings.rate.factor == 1U) {
         output[0] = '\0';
         return;
@@ -69,11 +68,7 @@ void formatClockPerformanceRate(
 
     if (settings.rate.numerator != 1U || settings.rate.denominator != 1U) {
         std::snprintf(
-            output,
-            outputSize,
-            "%u:%u",
-            settings.rate.numerator,
-            settings.rate.denominator);
+            output, outputSize, "%u:%u", settings.rate.numerator, settings.rate.denominator);
         return;
     }
 
@@ -90,9 +85,7 @@ void formatClockPerformanceRate(
 PerformanceRenderer::PerformanceRenderer(
     hal::OledDisplay& display,
     const services::CustomGrooveStore* const customGrooveStore)
-    : display_(display),
-      customGrooveStore_(customGrooveStore),
-      patternStripRenderer_(display) {}
+    : display_(display), customGrooveStore_(customGrooveStore), patternStripRenderer_(display) {}
 
 void PerformanceRenderer::render(
     const ClockState& state,
@@ -106,10 +99,9 @@ void PerformanceRenderer::render(
     drawClockRoleStatus(state.source, engineSnapshot.externalLocked);
 
     const ChannelConfig& configuredChannel = state.channels[navigation.selectedChannel];
-    const ChannelConfig selectedChannel = engine::resolvePhysicalOutputConfiguration(
-        state, navigation.selectedChannel);
-    const bool lockedSlave =
-        engineSnapshot.externalLocked &&
+    const ChannelConfig selectedChannel =
+        engine::resolvePhysicalOutputConfiguration(state, navigation.selectedChannel);
+    const bool lockedSlave = engineSnapshot.externalLocked &&
         (state.source == ClockSource::External || state.source == ClockSource::Auto);
     drawChannelStatus(
         navigation.selectedChannel,
@@ -148,8 +140,7 @@ void PerformanceRenderer::render(
     const bool externalTempoOwnsDisplay =
         (state.source == ClockSource::External || state.source == ClockSource::Auto) &&
         engineSnapshot.externalBpmMilli != 0U &&
-        (engineSnapshot.externalLocked ||
-         state.externalSync.lossMode == SyncLossMode::Freewheel);
+        (engineSnapshot.externalLocked || state.externalSync.lossMode == SyncLossMode::Freewheel);
     if (externalTempoOwnsDisplay) {
         displayedBpm = (engineSnapshot.externalBpmMilli + 500U) / 1000U;
     }
@@ -162,9 +153,8 @@ void PerformanceRenderer::render(
     const hal::DisplayFont tempoFont = dividerView
         ? hal::DisplayFont::Tempo
         : (clockOnlyView ? hal::DisplayFont::TempoLarge : hal::DisplayFont::Tempo);
-    const std::int16_t tempoTopY = dividerView
-        ? kDividerTempoTopY
-        : (clockOnlyView ? kClockTempoTopY : kTempoTopY);
+    const std::int16_t tempoTopY =
+        dividerView ? kDividerTempoTopY : (clockOnlyView ? kClockTempoTopY : kTempoTopY);
     const std::int16_t contextY = clockOnlyView ? kClockTempoContextY : kTempoContextY;
 
     display_.setFont(tempoFont);
@@ -177,11 +167,10 @@ void PerformanceRenderer::render(
     if (navigation.tapIndicatorFrame > 0U) {
         // Keep the feedback slot anchored to the right display edge. The BPM stays
         // mathematically centered while all four shrinking frames share one stable box.
-        const std::int16_t tapX = static_cast<std::int16_t>(
-            hal::OledDisplay::kWidth - kTapIndicatorSize - 1);
+        const std::int16_t tapX =
+            static_cast<std::int16_t>(hal::OledDisplay::kWidth - kTapIndicatorSize - 1);
         const std::int16_t tapY = static_cast<std::int16_t>(
-            tempoTopY +
-            (static_cast<std::int16_t>(tempoBounds.height) - kTapIndicatorSize) / 2);
+            tempoTopY + (static_cast<std::int16_t>(tempoBounds.height) - kTapIndicatorSize) / 2);
         drawTapIndicator(tapX, tapY, navigation.tapIndicatorFrame);
     }
 
@@ -221,7 +210,8 @@ void PerformanceRenderer::render(
     // Detailed rotation remains available in the mode settings, while performance view
     // keeps the pattern strip visually dominant.
     char detailText[12]{};
-    if (configuredChannel.common.mode == ChannelMode::Sequencer && activeSequencerPattern != nullptr) {
+    if (configuredChannel.common.mode == ChannelMode::Sequencer &&
+        activeSequencerPattern != nullptr) {
         // Sequencer 2.0 owns the pattern length; the legacy field is not updated (F-035).
         std::snprintf(
             detailText,
@@ -244,9 +234,7 @@ void PerformanceRenderer::render(
     const std::uint8_t currentStep = engineSnapshot.channelStep[navigation.selectedChannel];
     if (configuredChannel.common.mode == ChannelMode::Euclid) {
         patternStripRenderer_.drawEuclidPattern(
-            configuredChannel.euclid,
-            currentStep,
-            kPatternTopY);
+            configuredChannel.euclid, currentStep, kPatternTopY);
     } else if (configuredChannel.common.mode == ChannelMode::Sequencer) {
         if (activeSequencerPattern != nullptr) {
             patternStripRenderer_.drawSequencerPlaybackBlock(
@@ -298,20 +286,21 @@ void PerformanceRenderer::drawDividerRateSlot(
 
     char factorText[4]{};
     std::snprintf(factorText, sizeof(factorText), "%u", static_cast<unsigned>(rate.factor));
-    display_.drawText(static_cast<std::int16_t>(x + 11), static_cast<std::int16_t>(y + 2), factorText);
+    display_.drawText(
+        static_cast<std::int16_t>(x + 11), static_cast<std::int16_t>(y + 2), factorText);
 }
 
 void PerformanceRenderer::drawTransport(const TransportState transport) {
     const char* label = transport == TransportState::Playing
         ? text::get(text::TextId::TransportPlay)
-        : (transport == TransportState::Paused
-            ? text::get(text::TextId::TransportPause)
-            : text::get(text::TextId::TransportStop));
+        : (transport == TransportState::Paused ? text::get(text::TextId::TransportPause)
+                                               : text::get(text::TextId::TransportStop));
     const hal::TextBounds bounds = display_.measureText(label, 0, 1);
 
     if (transport == TransportState::Playing || transport == TransportState::Paused) {
         const std::int16_t badgeWidth = static_cast<std::int16_t>(bounds.width + 4U);
-        const std::int16_t badgeX = static_cast<std::int16_t>(hal::OledDisplay::kWidth - badgeWidth);
+        const std::int16_t badgeX =
+            static_cast<std::int16_t>(hal::OledDisplay::kWidth - badgeWidth);
         if (transport == TransportState::Playing) {
             display_.fillRectangle(badgeX, 0, badgeWidth, 9);
             display_.setTextColor(hal::PixelColor::Black);
@@ -363,16 +352,14 @@ void PerformanceRenderer::drawChannelStatus(
         status,
         sizeof(status),
         text::get(text::TextId::ChannelStatusFormat),
-        static_cast<unsigned>(channelIndex + 1U),
+        channelIndex + 1U,
         statusModeCharacter(mode));
     display_.drawText(leftEdgeX, 1, status);
 }
 
-void PerformanceRenderer::drawClockRoleStatus(
-    const ClockSource source,
-    const bool externalLocked) {
-    const bool slave = source == ClockSource::External ||
-        (source == ClockSource::Auto && externalLocked);
+void PerformanceRenderer::drawClockRoleStatus(const ClockSource source, const bool externalLocked) {
+    const bool slave =
+        source == ClockSource::External || (source == ClockSource::Auto && externalLocked);
     constexpr std::int16_t kBadgeX = 0;
     constexpr std::int16_t kBadgeY = 0;
     constexpr std::int16_t kBadgeSize = 9;
@@ -396,20 +383,26 @@ void PerformanceRenderer::drawLockIcon(const std::int16_t x, const std::int16_t 
     display_.drawRectangle(x, static_cast<std::int16_t>(y + 3), 5, 4);
     display_.drawHorizontalLine(static_cast<std::int16_t>(x + 1), y, 3);
     display_.drawVerticalLine(x, static_cast<std::int16_t>(y + 1), 3);
-    display_.drawVerticalLine(static_cast<std::int16_t>(x + 4), static_cast<std::int16_t>(y + 1), 3);
+    display_.drawVerticalLine(
+        static_cast<std::int16_t>(x + 4), static_cast<std::int16_t>(y + 1), 3);
 }
 
 void PerformanceRenderer::drawHumanizeIcon(const std::int16_t x, const std::int16_t y) {
     // Compact stick figure made only from public OLED primitives.
     display_.drawRectangle(static_cast<std::int16_t>(x + 2), y, 3, 3);
-    display_.drawVerticalLine(static_cast<std::int16_t>(x + 3), static_cast<std::int16_t>(y + 3), 3);
+    display_.drawVerticalLine(
+        static_cast<std::int16_t>(x + 3), static_cast<std::int16_t>(y + 3), 3);
     display_.drawHorizontalLine(x, static_cast<std::int16_t>(y + 4), 7);
     display_.drawLine(
-        static_cast<std::int16_t>(x + 3), static_cast<std::int16_t>(y + 5),
-        static_cast<std::int16_t>(x + 1), static_cast<std::int16_t>(y + 7));
+        static_cast<std::int16_t>(x + 3),
+        static_cast<std::int16_t>(y + 5),
+        static_cast<std::int16_t>(x + 1),
+        static_cast<std::int16_t>(y + 7));
     display_.drawLine(
-        static_cast<std::int16_t>(x + 3), static_cast<std::int16_t>(y + 5),
-        static_cast<std::int16_t>(x + 5), static_cast<std::int16_t>(y + 7));
+        static_cast<std::int16_t>(x + 3),
+        static_cast<std::int16_t>(y + 5),
+        static_cast<std::int16_t>(x + 5),
+        static_cast<std::int16_t>(y + 7));
 }
 
 void PerformanceRenderer::drawTapIndicator(
@@ -426,7 +419,8 @@ void PerformanceRenderer::drawTapIndicator(
     const std::uint8_t* const mask = kTapIndicatorMasks[frame - 1U];
     for (std::int16_t row = 0; row < kTapIndicatorSize; ++row) {
         for (std::int16_t column = 0; column < kTapIndicatorSize; ++column) {
-            const std::uint8_t bit = static_cast<std::uint8_t>(0x80U >> column);
+            const std::uint8_t bit =
+                static_cast<std::uint8_t>(0x80U >> static_cast<std::uint32_t>(column));
             if ((mask[row] & bit) != 0U) {
                 display_.setPixel(
                     static_cast<std::int16_t>(x + column),
@@ -439,11 +433,15 @@ void PerformanceRenderer::drawTapIndicator(
 
 char PerformanceRenderer::statusModeCharacter(const ChannelMode mode) {
     switch (mode) {
-        case ChannelMode::Off: return 'O';
-        case ChannelMode::Euclid: return 'E';
-        case ChannelMode::Sequencer: return 'S';
+        case ChannelMode::Off:
+            return 'O';
+        case ChannelMode::Euclid:
+            return 'E';
+        case ChannelMode::Sequencer:
+            return 'S';
         case ChannelMode::Clock:
-        default: return 'C';
+        default:
+            return 'C';
     }
 }
 

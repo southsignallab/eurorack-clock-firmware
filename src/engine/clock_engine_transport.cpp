@@ -63,7 +63,7 @@ bool ClockEngine::applyTransportRequestWhen(
     void* const context) {
     if (transportRequestRestarts(request)) {
         // Not value-initialized: prepareRestart() writes every field (see PreparedRestart).
-        PreparedRestart restart;
+        PreparedRestart restart;  // NOLINT(cppcoreguidelines-pro-type-member-init)
         for (std::uint8_t attempt = 0U; attempt < kStagedSwapAttempts; ++attempt) {
             TempoSnapshot tempo{};
             {
@@ -156,8 +156,9 @@ void ClockEngine::resetGlobalPhaseFromIsr() {
 }
 
 void ClockEngine::resetRuntime() {
-    // Scheduler context or under the lock: prepare and install at once.
-    PreparedRestart restart;
+    // Scheduler context or under the lock: prepare and install at once. Not value-initialized:
+    // prepareRestart() writes every field.
+    PreparedRestart restart;  // NOLINT(cppcoreguidelines-pro-type-member-init)
     prepareRestart(liveScheduleInputs(), restart);
     installRestartUnsafe(restart);
 }

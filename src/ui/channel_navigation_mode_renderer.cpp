@@ -18,25 +18,39 @@ namespace {
 
 text::TextId modeFunctionTitleId(const ModeFunction modeFunction) {
     switch (modeFunction) {
-        case ModeFunction::Off: return text::TextId::ModeOffLong;
-        case ModeFunction::Clock: return text::TextId::ModeClockLong;
-        case ModeFunction::Euclid: return text::TextId::ModeEuclidLong;
-        case ModeFunction::Sequencer: return text::TextId::ModeSequencerLong;
-        case ModeFunction::UnifiedClock: return text::TextId::ModeUnifiedLong;
-        case ModeFunction::DividerBank: return text::TextId::ModeDividerLong;
-        default: return text::TextId::ModeClockLong;
+        case ModeFunction::Off:
+            return text::TextId::ModeOffLong;
+        case ModeFunction::Clock:
+            return text::TextId::ModeClockLong;
+        case ModeFunction::Euclid:
+            return text::TextId::ModeEuclidLong;
+        case ModeFunction::Sequencer:
+            return text::TextId::ModeSequencerLong;
+        case ModeFunction::UnifiedClock:
+            return text::TextId::ModeUnifiedLong;
+        case ModeFunction::DividerBank:
+            return text::TextId::ModeDividerLong;
+        default:
+            return text::TextId::ModeClockLong;
     }
 }
 
 text::TextId modeFunctionBandLabelId(const ModeFunction modeFunction) {
     switch (modeFunction) {
-        case ModeFunction::UnifiedClock: return text::TextId::ModeUnifiedShort;
-        case ModeFunction::DividerBank: return text::TextId::ModeDividerShort;
-        case ModeFunction::Clock: return text::TextId::ModeClockLong;
-        case ModeFunction::Euclid: return text::TextId::ModeEuclidLong;
-        case ModeFunction::Sequencer: return text::TextId::ModeSequencerBand;
-        case ModeFunction::Off: return text::TextId::ModeOffLong;
-        default: return text::TextId::ModeClockLong;
+        case ModeFunction::UnifiedClock:
+            return text::TextId::ModeUnifiedShort;
+        case ModeFunction::DividerBank:
+            return text::TextId::ModeDividerShort;
+        case ModeFunction::Clock:
+            return text::TextId::ModeClockLong;
+        case ModeFunction::Euclid:
+            return text::TextId::ModeEuclidLong;
+        case ModeFunction::Sequencer:
+            return text::TextId::ModeSequencerBand;
+        case ModeFunction::Off:
+            return text::TextId::ModeOffLong;
+        default:
+            return text::TextId::ModeClockLong;
     }
 }
 
@@ -56,7 +70,8 @@ void ChannelNavigationRenderer::renderModeSelect(const NavigationState& navigati
     const hal::TextBounds headingBounds = display_.measureText(heading, 0, 0);
     display_.drawText(
         static_cast<std::int16_t>(
-            (static_cast<int>(hal::OledDisplay::kWidth) - static_cast<int>(headingBounds.width)) / 2),
+            (static_cast<int>(hal::OledDisplay::kWidth) - static_cast<int>(headingBounds.width)) /
+            2),
         0,
         heading);
     display_.drawHorizontalLine(0, 9, hal::OledDisplay::kWidth);
@@ -74,28 +89,21 @@ void ChannelNavigationRenderer::renderModeSelect(const NavigationState& navigati
     constexpr std::int16_t kIconOriginY = 17;
     constexpr std::int16_t kLabelY = 45;
 
-    const int selectedIndex = navigation.cursor < kModeFunctions.size()
-        ? static_cast<int>(navigation.cursor)
-        : 0;
+    const int selectedIndex =
+        navigation.cursor < kModeFunctions.size() ? static_cast<int>(navigation.cursor) : 0;
 
     for (int relative = -1; relative <= 1; ++relative) {
         const std::size_t catalogIndex = wrappedModeIndex(selectedIndex + relative);
         const ModeFunction modeFunction = kModeFunctions[catalogIndex];
-        const std::int16_t centerX = static_cast<std::int16_t>(
-            kCenterX + relative * kSlotPitch);
+        const std::int16_t centerX = static_cast<std::int16_t>(kCenterX + relative * kSlotPitch);
         const std::int16_t slotX = static_cast<std::int16_t>(centerX - kSlotWidth / 2);
         const bool selected = relative == 0;
-        const hal::PixelColor foreground = selected
-            ? hal::PixelColor::Black
-            : hal::PixelColor::White;
+        const hal::PixelColor foreground =
+            selected ? hal::PixelColor::Black : hal::PixelColor::White;
 
         if (selected) {
             display_.fillRectangle(
-                kSelectedX,
-                kSelectedY,
-                kSelectedWidth,
-                kSelectedHeight,
-                hal::PixelColor::White);
+                kSelectedX, kSelectedY, kSelectedWidth, kSelectedHeight, hal::PixelColor::White);
         }
 
         drawModeFunctionIcon(modeFunction, slotX, kIconOriginY, foreground);
@@ -104,8 +112,7 @@ void ChannelNavigationRenderer::renderModeSelect(const NavigationState& navigati
         const hal::TextBounds labelBounds = display_.measureText(label, 0, 0);
         display_.setTextColor(foreground);
         display_.drawText(
-            static_cast<std::int16_t>(
-                centerX - static_cast<std::int16_t>(labelBounds.width / 2U)),
+            static_cast<std::int16_t>(centerX - static_cast<std::int16_t>(labelBounds.width / 2U)),
             kLabelY,
             label);
         display_.setTextColor(hal::PixelColor::White);
@@ -122,21 +129,14 @@ void ChannelNavigationRenderer::renderModeChangeConfirm(const NavigationState& n
     const char* const title = text::get(text::TextId::ChangeMode);
     const hal::TextBounds titleBounds = display_.measureText(title, 0, 0);
     display_.drawText(
-        static_cast<std::int16_t>((hal::OledDisplay::kWidth - titleBounds.width) / 2),
-        4,
-        title);
+        static_cast<std::int16_t>((hal::OledDisplay::kWidth - titleBounds.width) / 2), 4, title);
 
-    const char* const modeName = text::get(
-        modeFunctionTitleId(navigation.pendingModeFunction));
+    const char* const modeName = text::get(modeFunctionTitleId(navigation.pendingModeFunction));
     const hal::TextBounds modeBounds = display_.measureText(modeName, 0, 0);
     display_.drawText(
-        static_cast<std::int16_t>((hal::OledDisplay::kWidth - modeBounds.width) / 2),
-        21,
-        modeName);
+        static_cast<std::int16_t>((hal::OledDisplay::kWidth - modeBounds.width) / 2), 21, modeName);
 
-    const char* const choices[2] = {
-        text::get(text::TextId::No),
-        text::get(text::TextId::Yes)};
+    const char* const choices[2] = {text::get(text::TextId::No), text::get(text::TextId::Yes)};
     constexpr std::int16_t kChoiceCenterX[2] = {31, 96};
     for (std::uint8_t index = 0U; index < 2U; ++index) {
         const hal::TextBounds bounds = display_.measureText(choices[index], 0, 0);

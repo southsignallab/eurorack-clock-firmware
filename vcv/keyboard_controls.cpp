@@ -80,16 +80,21 @@ KeyboardEventResult applyKeyboardEvent(
 }
 
 bool releaseHeldControls(KeyboardHeldControls& held) noexcept {
-    const bool anyHeld = held.leftShift || held.rightShift || held.encoder || held.play ||
-        held.tap || held.stop;
+    const bool anyHeld =
+        held.leftShift || held.rightShift || held.encoder || held.play || held.tap || held.stop;
     held = KeyboardHeldControls{};
     return anyHeld;
 }
 
 bool reconcileHeldControls(KeyboardHeldControls& held, const PanelKeyDownQuery keyDown) noexcept {
     bool released = false;
-    for (const PanelKey key : {PanelKey::LeftShift, PanelKey::RightShift, PanelKey::EncoderPush,
-                               PanelKey::Play, PanelKey::Tap, PanelKey::Stop}) {
+    for (const PanelKey key :
+         {PanelKey::LeftShift,
+          PanelKey::RightShift,
+          PanelKey::EncoderPush,
+          PanelKey::Play,
+          PanelKey::Tap,
+          PanelKey::Stop}) {
         bool* const heldControl = heldControlFor(held, key);
         if (*heldControl && !keyDown(key)) {
             *heldControl = false;

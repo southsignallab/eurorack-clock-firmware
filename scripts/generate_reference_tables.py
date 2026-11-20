@@ -9,8 +9,11 @@ from the code. ``--check`` fails when a document differs from the code, so a cod
 alters a table cannot pass the documentation check without the matching document update.
 
 Tables:
-  pins            docs/CONFIGURATION.md   from src/pin_map.h
-  display-macros  docs/CONFIGURATION.md   from src/pin_map.h and src/config.h
+  pins                  docs/CONFIGURATION.md   from src/pin_map.h
+  display-macros        docs/CONFIGURATION.md   from src/pin_map.h and src/config.h
+  persistence-map       docs/ARCHITECTURE.md    from src/hal/persistent_layout.h and the stores
+  interrupt-priorities  docs/TIMING.md          from src/config.h and src/hal/platform_io.cpp
+  timing-constants      docs/TIMING.md          from src/config.h
 
 Usage (repository root):
   python scripts/generate_reference_tables.py           # rewrite the tables
@@ -19,6 +22,7 @@ Usage (repository root):
 from __future__ import annotations
 
 import argparse
+import ast
 import re
 import sys
 from dataclasses import dataclass
@@ -32,6 +36,23 @@ CONFIGURATION_DOC = ROOT / "docs" / "CONFIGURATION.md"
 PIN_RE = re.compile(r"\bmcu::(P[A-H](?:1[0-5]|[0-9]))\b")
 CONSTANT_RE = re.compile(r"^inline constexpr std::uint32_t (k\w+Pin) = ([^;]+);", re.MULTILINE)
 DEFAULT_DEFINE_RE = re.compile(r"^#ifndef (CLOCK_\w+)\n#define \1 ([^\n]+)\n#endif", re.MULTILINE)
+INTEGER_CONSTANT_RE = re.compile(r"\bconstexpr\s+(?:std::)?(?:u?int\w*|size_t)\s+(k\w+)\s*=\s*([^;{]+);")
+INTEGER_SUFFIX_RE = re.compile(r"\b(\d+)(?:ULL|UL|LL|U|L)\b", re.IGNORECASE)
+CAST_RE = re.compile(r"static_cast<[^<>]+>\(")
+QUALIFIER_RE = re.compile(r"\b(?:\w+::)+(?=k\w)")
+
+PERSISTENT_LAYOUT = "src/hal/persistent_layout.h"
+CUSTOM_GROOVE = "src/domain/custom_groove.h"
+CUSTOM_GROOVE_STORE = "src/services/custom_groove_store.h"
+PERSISTENT_STATE_SERVICE = "src/services/persistent_state_service.h"
+#: File that defines the EXTI preemption priority of the SYNC/RST capture interrupts.
+EXTI_PRIORITY_SOURCE = "src/hal/platform_io.cpp"
+
+#: Every file the generator reads, relative to the repository root.
+SOURCES = ("src/pin_map.h", "src/config.h", PERSISTENT_LAYOUT, CUSTOM_GROOVE, CUSTOM_GROOVE_STORE,
+           PERSISTENT_STATE_SERVICE, EXTI_PRIORITY_SOURCE)
+#: Every document that holds a generated table.
+DOCUMENTS = ("docs/CONFIGURATION.md", "docs/ARCHITECTURE.md", "docs/TIMING.md")
 
 #: Function text per pin constant. A constant in src/pin_map.h without an entry here stops the
 #: generator, so a new signal cannot slip past the documentation.
@@ -95,6 +116,55 @@ def defaults(*sources: str) -> dict[str, str]:
     return values
 
 
+def evaluate(expression: str, names: dict[str, int]) -> int:
+    """Evaluate a C++ integer constant expression of literals, names and ``+ - * / ( )``.
+
+    Integer suffixes, ``static_cast<...>`` and namespace or class qualifiers are dropped;
+    division is integer division as in C++ for the non-negative values used here.
+    """
+    text = INTEGER_SUFFIX_RE.sub(r"\1", CAST_RE.sub("(", QUALIFIER_RE.sub("", expression.strip())))
+    try:
+        tree = ast.parse(text, mode="eval")
+    except SyntaxError as exc:
+        raise ValueError(f"unsupported constant expression {expression!r}") from exc
+    operators = {ast.Add: lambda a, b: a + b, ast.Sub: lambda a, b: a - b,
+                 ast.Mult: lambda a, b: a * b, ast.Div: lambda a, b: a // b}
+
+    def walk(node: ast.AST) -> int:
+        if isinstance(node, ast.Constant) and type(node.value) is int:
+            return node.value
+        if isinstance(node, ast.Name):
+            if node.id not in names:
+                raise ValueError(f"unknown constant {node.id} in {expression!r}")
+            return names[node.id]
+        if isinstance(node, ast.BinOp) and type(node.op) in operators:
+            return operators[type(node.op)](walk(node.left), walk(node.right))
+        raise ValueError(f"unsupported constant expression {expression!r}")
+
+    return walk(tree.body)
+
+
+def integer_constants(source: str, inherited: dict[str, int] | None = None) -> dict[str, int]:
+    """Return the integer ``constexpr`` constants of one source file that can be evaluated.
+
+    Names resolve against the file itself first and then against ``inherited``; constants
+    whose expression is not an integer expression of known names are left out.
+    """
+    pending = dict(INTEGER_CONSTANT_RE.findall(source))
+    known: dict[str, int] = {}
+    progress = True
+    while pending and progress:
+        progress = False
+        for name, expression in list(pending.items()):
+            try:
+                known[name] = evaluate(expression, {**(inherited or {}), **known})
+            except ValueError:
+                continue
+            del pending[name]
+            progress = True
+    return known
+
+
 def resolve_pin(expression: str, macro_defaults: dict[str, str], constants: dict[str, str]) -> str | None:
     """Resolve a pin expression to ``PXn`` or None for an unassigned signal."""
     expression = expression.strip()
@@ -155,14 +225,139 @@ def display_macro_table(pin_map: str, config: str) -> str:
     return "\n".join(lines)
 
 
+def read(root: Path, relative: str) -> str:
+    """Return one source file of the repository at ``root``."""
+    return (root / relative).read_text(encoding="utf-8")
+
+
+def required(constants: dict[str, int], name: str, source: str) -> int:
+    """Return one evaluated constant or stop with the file that should define it."""
+    if name not in constants:
+        raise ValueError(f"{source}: integer constant {name} not found")
+    return constants[name]
+
+
+def persistence_map(root: Path = ROOT) -> str:
+    """Return the logical persistence-image map generated from the layout header and stores."""
+    layout = integer_constants(read(root, PERSISTENT_LAYOUT))
+    groove = integer_constants(read(root, CUSTOM_GROOVE))
+    store = integer_constants(read(root, CUSTOM_GROOVE_STORE), layout)
+    state = integer_constants(read(root, PERSISTENT_STATE_SERVICE), layout)
+
+    def at(name: str) -> int:
+        return required(layout, name, PERSISTENT_LAYOUT)
+
+    current = required(state, "kCurrentRecordBytes", PERSISTENT_STATE_SERVICE)
+    preset = required(state, "kPresetRecordBytes", PERSISTENT_STATE_SERVICE)
+    presets = required(state, "kUserPresetSlotCount", PERSISTENT_STATE_SERVICE)
+    groove_count = required(groove, "kCustomGrooveSlotCount", CUSTOM_GROOVE)
+    groove_offset = at("kCustomGrooveRegionOffset")
+    groove_record = required(store, "kRecordBytes", CUSTOM_GROOVE_STORE)
+    regions = [
+        (at("kClockStateRegionOffset"),
+         f"CURRENT and {presets} named presets ({current + presets * preset} B used: "
+         f"{current} + {presets} × {preset})", "`persistent_layout::kClockStateRegionOffset`"),
+        (at("kLegacyScoreRegionOffset"), "historical single-score records",
+         "`persistent_layout::kLegacyScoreRegionOffset`"),
+        (groove_offset, f"{groove_count} Custom Groove records of {groove_record} B",
+         "`persistent_layout::kCustomGrooveRegionOffset`"),
+        (at("kLeaderboardRegionOffset"), "four Top-100 leaderboard records",
+         "`persistent_layout::kLeaderboardRegionOffset`"),
+        (at("kSequencer2RegionOffset"), "Sequencer pattern bank", "`persistent_layout::kSequencer2RegionOffset`"),
+        (at("kSequencerStepMetadataOffset"), "sparse Sequencer step-expression records",
+         "`persistent_layout::kSequencerStepMetadataOffset`"),
+        (at("kSequencerSongRegionOffset"), "reserved for Song Mode", "`persistent_layout::kSequencerSongRegionOffset`"),
+    ]
+    if groove_offset + groove_count * groove_record > at("kLeaderboardRegionOffset"):
+        raise ValueError(f"{CUSTOM_GROOVE_STORE}: Custom Groove records overlap the leaderboard region")
+    ends = [start for start, _, _ in regions[1:]] + [at("kCurrentImageBytes")]
+    lines = ["| Bytes | Size (B) | Content | Defined by |", "| --- | ---: | --- | --- |"]
+    for (start, content, source), stop in zip(regions, ends):
+        if stop <= start:
+            raise ValueError(f"persistence regions out of order at {source}")
+        lines.append(f"| {start}–{stop - 1} | {stop - start} | {content} | {source} |")
+    return "\n".join(lines)
+
+
+def frequency(hz: int) -> str:
+    """Format a frequency in the largest unit that keeps it an integer."""
+    for unit, scale in (("MHz", 1_000_000), ("kHz", 1_000)):
+        if hz % scale == 0:
+            return f"{hz // scale} {unit}"
+    return f"{hz} Hz"
+
+
+def config_constants(root: Path) -> dict[str, int]:
+    """Return the integer constants of src/config.h with the macro defaults resolved."""
+    config = read(root, "src/config.h")
+    macros: dict[str, int] = {}
+    for name, value in defaults(config).items():
+        try:
+            macros[name] = evaluate(value, {})
+        except ValueError:
+            continue
+    return integer_constants(config, macros)
+
+
+def interrupt_priority_table(root: Path = ROOT) -> str:
+    """Return the interrupt layer table with the preemption priorities from the code."""
+    scheduler = required(config_constants(root), "kSchedulerInterruptPreemptPriority", "src/config.h")
+    capture = required(integer_constants(read(root, EXTI_PRIORITY_SOURCE)), "kExtiPreemptPriority",
+                       EXTI_PRIORITY_SOURCE)
+    return "\n".join([
+        "| Layer | Target priority | Responsibility |",
+        "| --- | ---: | --- |",
+        f"| TIM3 scheduler | {scheduler} | gate edges, pulse termination, phase, SYNC/RST consumption |",
+        f"| GPIO EXTI | {capture} | conditioned SYNC/RST edge capture |",
+        "| Foreground | n/a | UI, rendering, display service, persistence scheduling |",
+    ])
+
+
+def timing_constant_table(root: Path = ROOT) -> str:
+    """Return the table of firmware timing constants from src/config.h."""
+    constants = config_constants(root)
+
+    def get(name: str) -> int:
+        return required(constants, name, "src/config.h")
+
+    tick = get("kSchedulerTickUs")
+    catch_up = get("kMaximumSchedulerCatchUpTicks")
+    rows = [
+        ("Scheduler interrupt rate (TIM3)", frequency(get("kSchedulerFrequencyHz")), ["kSchedulerFrequencyHz"]),
+        ("Scheduler quantum", f"{tick} µs", ["kSchedulerTickUs"]),
+        ("Ticks caught up in one interrupt, at most", f"{catch_up} ({catch_up * tick} µs)",
+         ["kMaximumSchedulerCatchUpTicks"]),
+        ("Display refresh interval, at least", f"{get('kDisplayRefreshMinimumMs')} ms", ["kDisplayRefreshMinimumMs"]),
+        ("Display SPI clock request (ceiling)", frequency(get("kDisplaySpiFrequencyHz")), ["kDisplaySpiFrequencyHz"]),
+        ("Encoder long press", f"{get('kEncoderLongPressMs')} ms", ["kEncoderLongPressMs"]),
+        ("TAP interval accepted", f"{get('kTapMinimumIntervalMs')}–{get('kTapMaximumIntervalMs')} ms",
+         ["kTapMinimumIntervalMs", "kTapMaximumIntervalMs"]),
+        ("Persistence quiet period after a change", f"{get('kPersistenceCommitDelayMs')} ms",
+         ["kPersistenceCommitDelayMs"]),
+        ("Persistence latency from the first unsaved change, at most",
+         f"{get('kPersistenceMaximumLatencyMs')} ms", ["kPersistenceMaximumLatencyMs"]),
+        ("Persistence retries after a failed commit",
+         f"{get('kPersistenceRetryCount')}, first after {get('kPersistenceRetryInitialMs')} ms, doubling",
+         ["kPersistenceRetryCount", "kPersistenceRetryInitialMs"]),
+    ]
+    lines = ["| Quantity | Value | Constant in `src/config.h` |", "| --- | --- | --- |"]
+    lines += [f"| {quantity} | {value} | {', '.join(f'`{name}`' for name in names)} |"
+              for quantity, value, names in rows]
+    return "\n".join(lines)
+
+
 def tables(root: Path = ROOT) -> list[Table]:
     """Return every generated table."""
-    pin_map = (root / "src" / "pin_map.h").read_text(encoding="utf-8")
-    config = (root / "src" / "config.h").read_text(encoding="utf-8")
-    document = root / "docs" / "CONFIGURATION.md"
+    pin_map = read(root, "src/pin_map.h")
+    config = read(root, "src/config.h")
+    configuration = root / "docs" / "CONFIGURATION.md"
+    timing = root / "docs" / "TIMING.md"
     return [
-        Table("pins", document, pin_table(pin_map)),
-        Table("display-macros", document, display_macro_table(pin_map, config)),
+        Table("pins", configuration, pin_table(pin_map)),
+        Table("display-macros", configuration, display_macro_table(pin_map, config)),
+        Table("persistence-map", root / "docs" / "ARCHITECTURE.md", persistence_map(root)),
+        Table("interrupt-priorities", timing, interrupt_priority_table(root)),
+        Table("timing-constants", timing, timing_constant_table(root)),
     ]
 
 

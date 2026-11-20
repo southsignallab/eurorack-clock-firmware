@@ -125,9 +125,8 @@ SequencerTraversalResult resolveSequencerTraversal(
             step = static_cast<std::uint16_t>(length - 1U - (position % length));
             break;
         case SequencerPlayDirection::PingPong:
-            step = position < length
-                ? position
-                : static_cast<std::uint16_t>(cycleLength - position);
+            step =
+                position < length ? position : static_cast<std::uint16_t>(cycleLength - position);
             break;
         case SequencerPlayDirection::Random:
             step = static_cast<std::uint16_t>(mixRandomEvent(eventSerial, randomSeed) % length);
@@ -139,9 +138,7 @@ SequencerTraversalResult resolveSequencerTraversal(
     return result;
 }
 
-std::uint8_t rotateSequencerStep(
-    const std::uint8_t step,
-    const SequencerPatternV2& pattern) {
+std::uint8_t rotateSequencerStep(const std::uint8_t step, const SequencerPatternV2& pattern) {
     if (!isSequencerPatternValid(pattern)) {
         return 0U;
     }

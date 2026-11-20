@@ -21,7 +21,7 @@ Project-owned HAL wrappers isolate those facilities from the timing engine, UI, 
 
 `src/hal/platform_io.*` owns MCU initialization, VTOR/MSP setup, the 84 MHz system clock, GPIO, SYNC/RST EXTI, TIM4 hardware encoder mode, critical sections, the millisecond timebase and the free-running 1 MHz TIM5 microsecond counter.
 
-`PeriodicTimer` configures TIM3 directly through STM32Cube for the scheduler. The production `OledDisplay` profile uses STM32Cube SPI1 directly; the older I2C1 transport remains compiled only in host regression variants. The application therefore no longer depends on Arduino GPIO, `Wire`, `SPI`, or `HardwareTimer`.
+`PeriodicTimer` configures TIM3 directly through STM32Cube for the scheduler. The production `OledDisplay` profile uses STM32Cube SPI1 directly; the older I2C1 transport is still compiled for the target, but no environment selects it and the linker discards it, so no firmware image contains it; only host regression variants exercise it. The application therefore no longer depends on Arduino GPIO, `Wire`, `SPI`, or `HardwareTimer`.
 
 Host tests and the simulator retain small **project-owned compatibility shims** so production HAL behavior can be exercised deterministically on a desktop compiler. Those shims are test infrastructure and are not linked into STM32 firmware.
 

@@ -130,7 +130,7 @@ void ClockApplication::begin(const ClockState& initialState) {
     // mix in stable state so generated Custom Groove names vary naturally without
     // pretending to provide cryptographic randomness. Human save timing is mixed
     // again when each name is generated.
-    const std::uint32_t nameSeed = static_cast<std::uint32_t>(hal::SystemClock::microseconds()) ^
+    const std::uint32_t nameSeed = hal::SystemClock::microseconds() ^
         (static_cast<std::uint32_t>(state_.bpm) << 16U) ^ 0x53474E4DU;
     uiController_.seedGeneratedNames(nameSeed);
     synchronizeDevicePreferences(true);

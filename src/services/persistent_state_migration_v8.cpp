@@ -21,16 +21,14 @@ std::uint16_t readUint16LeV8(const std::uint8_t* const source) {
 }
 
 std::uint32_t readUint32LeV8(const std::uint8_t* const source) {
-    return static_cast<std::uint32_t>(source[0]) |
-        (static_cast<std::uint32_t>(source[1]) << 8U) |
+    return static_cast<std::uint32_t>(source[0]) | (static_cast<std::uint32_t>(source[1]) << 8U) |
         (static_cast<std::uint32_t>(source[2]) << 16U) |
         (static_cast<std::uint32_t>(source[3]) << 24U);
 }
 
 bool isAllowedV8PresetCharacter(const char character) {
     return character == ' ' || character == '-' || character == '_' ||
-        (character >= '0' && character <= '9') ||
-        (character >= 'A' && character <= 'Z');
+        (character >= '0' && character <= '9') || (character >= 'A' && character <= 'Z');
 }
 
 }  // namespace
@@ -50,10 +48,8 @@ bool PersistentStateService::deserializeV8CurrentRecord(
     const std::array<std::uint8_t, kV8CurrentRecordSize>& record,
     ClockState& state) {
     constexpr std::uint32_t kCurrentMagicValue = 0x38525543UL;  // "CUR8"
-    if (readUint32LeV8(record.data()) != kCurrentMagicValue ||
-        record[4] != kV8SchemaVersion ||
-        record[5] != 0U ||
-        readUint16LeV8(record.data() + 6U) != kV8StatePayloadSize ||
+    if (readUint32LeV8(record.data()) != kCurrentMagicValue || record[4] != kV8SchemaVersion ||
+        record[5] != 0U || readUint16LeV8(record.data() + 6U) != kV8StatePayloadSize ||
         readUint32LeV8(record.data() + kV8CurrentRecordSize - 4U) !=
             calculateCrc32(record.data(), kV8CurrentRecordSize - 4U)) {
         return false;
@@ -61,7 +57,10 @@ bool PersistentStateService::deserializeV8CurrentRecord(
 
     constexpr std::size_t kPayloadOffset = 8U;
     std::array<std::uint8_t, kV8StatePayloadSize> payload{};
-    std::copy_n(record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset), payload.size(), payload.begin());
+    std::copy_n(
+        record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset),
+        payload.size(),
+        payload.begin());
     return deserializeV8State(payload, state);
 }
 
@@ -72,10 +71,8 @@ bool PersistentStateService::deserializeV8PresetRecord(
     constexpr std::uint32_t kPresetMagicValue = 0x38455250UL;  // "PRE8"
     constexpr std::size_t kNameOffset = 8U;
     constexpr std::size_t kPayloadOffset = kNameOffset + kPresetNameLength;
-    if (readUint32LeV8(record.data()) != kPresetMagicValue ||
-        record[4] != kV8SchemaVersion ||
-        record[5] != 1U ||
-        readUint16LeV8(record.data() + 6U) != kV8StatePayloadSize ||
+    if (readUint32LeV8(record.data()) != kPresetMagicValue || record[4] != kV8SchemaVersion ||
+        record[5] != 1U || readUint16LeV8(record.data() + 6U) != kV8StatePayloadSize ||
         readUint32LeV8(record.data() + kV8PresetRecordSize - 4U) !=
             calculateCrc32(record.data(), kV8PresetRecordSize - 4U)) {
         return false;
@@ -90,9 +87,11 @@ bool PersistentStateService::deserializeV8PresetRecord(
     name[kPresetNameLength] = '\0';
 
     std::array<std::uint8_t, kV8StatePayloadSize> payload{};
-    std::copy_n(record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset), payload.size(), payload.begin());
+    std::copy_n(
+        record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset),
+        payload.size(),
+        payload.begin());
     return deserializeV8State(payload, state);
 }
-
 
 }  // namespace clockfw::services

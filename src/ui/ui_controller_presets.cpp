@@ -43,10 +43,11 @@ void UiController::preparePresetName() {
             defaultName,
             sizeof(defaultName),
             text::get(text::TextId::PresetDefaultFormat),
-            static_cast<unsigned>(navigation_.selectedPresetSlot + 1U));
+            navigation_.selectedPresetSlot + 1U);
         std::copy_n(
             defaultName,
-            std::min<std::size_t>(std::strlen(defaultName), services::PersistentStateService::kPresetNameLength),
+            std::min<std::size_t>(
+                std::strlen(defaultName), services::PersistentStateService::kPresetNameLength),
             navigation_.presetNameBuffer.begin());
     }
     navigation_.nameCharacterIndex = 0U;
@@ -54,17 +55,15 @@ void UiController::preparePresetName() {
 
 void UiController::adjustPresetNameCharacter(const std::int8_t delta) {
     const std::uint8_t characterPosition = navigation_.nameCharacterIndex;
-    const std::size_t currentIndex = presetname::characterIndex(
-        navigation_.presetNameBuffer[characterPosition]);
-    navigation_.presetNameBuffer[characterPosition] = presetname::characterAtWrapped(
-        static_cast<int>(currentIndex) + delta);
+    const std::size_t currentIndex =
+        presetname::characterIndex(navigation_.presetNameBuffer[characterPosition]);
+    navigation_.presetNameBuffer[characterPosition] =
+        presetname::characterAtWrapped(static_cast<int>(currentIndex) + delta);
 }
 
 void UiController::saveNamedPreset(const std::uint32_t nowMs) {
     if (persistentState_.savePreset(
-            navigation_.selectedPresetSlot,
-            navigation_.presetNameBuffer.data(),
-            state_)) {
+            navigation_.selectedPresetSlot, navigation_.presetNameBuffer.data(), state_)) {
         persistCurrentState(nowMs);
     }
     openPresetSlots(PresetSlotAction::Save);

@@ -64,25 +64,26 @@ SimulatorOptions parseOptions(const int argc, char* argv[]) {
         } else if (argument == "--panel-image") {
             options.panelImagePath = requireValue("--panel-image");
         } else if (argument == "--display-scale") {
-            options.displayPixelScale = static_cast<int>(
-                parseUnsigned(requireValue("--display-scale"), "--display-scale"));
+            options.displayPixelScale =
+                static_cast<int>(parseUnsigned(requireValue("--display-scale"), "--display-scale"));
         } else if (argument == "--screenshot") {
             options.screenshotPath = requireValue("--screenshot");
         } else if (argument == "--screenshot-after-ms") {
-            options.screenshotAfterMs = parseUnsigned(
-                requireValue("--screenshot-after-ms"), "--screenshot-after-ms");
+            options.screenshotAfterMs =
+                parseUnsigned(requireValue("--screenshot-after-ms"), "--screenshot-after-ms");
         } else if (argument == "--no-developer") {
             options.developerViewEnabled = false;
         } else if (argument == "--help" || argument == "-h") {
-            std::cout
-                << "clock-simulator [options]\n"
-                << "  --layout FILE              load configurable panel geometry from INI\n"
-                << "  --panel-image IMAGE        override the INI front-panel image\n"
-                << "  --display-scale N          integer OLED pixel scale (1..8)\n"
-                << "  --state FILE               use an isolated simulator persistence file\n"
-                << "  --screenshot FILE.bmp      render one full-panel screenshot without a window\n"
-                << "  --screenshot-after-ms N    advance virtual time before the screenshot\n"
-                << "  --no-developer             omit the developer timing panel from screenshots/UI\n";
+            std::cout << "clock-simulator [options]\n"
+                      << "  --layout FILE              load configurable panel geometry from INI\n"
+                      << "  --panel-image IMAGE        override the INI front-panel image\n"
+                      << "  --display-scale N          integer OLED pixel scale (1..8)\n"
+                      << "  --state FILE               use an isolated simulator persistence file\n"
+                      << "  --screenshot FILE.bmp      render one full-panel screenshot without a "
+                         "window\n"
+                      << "  --screenshot-after-ms N    advance virtual time before the screenshot\n"
+                      << "  --no-developer             omit the developer timing panel from "
+                         "screenshots/UI\n";
             std::exit(0);
         } else {
             throw std::runtime_error("unknown simulator option: " + argument);
@@ -108,7 +109,8 @@ clockfw::sim::layout::PanelLayout resolvePanelLayout(const SimulatorOptions& opt
 void saveRendererScreenshot(SDL_Renderer* const renderer, const std::filesystem::path& path) {
     SDL_Surface* const screenshot = SDL_RenderReadPixels(renderer, nullptr);
     if (screenshot == nullptr) {
-        throw std::runtime_error(std::string("cannot read simulator screenshot: ") + SDL_GetError());
+        throw std::runtime_error(
+            std::string("cannot read simulator screenshot: ") + SDL_GetError());
     }
     const std::string screenshotPath = path.string();
     const bool saved = SDL_SaveBMP(screenshot, screenshotPath.c_str());
@@ -123,11 +125,10 @@ int renderHeadlessScreenshot(
     const SimulatorOptions& options,
     const clockfw::sim::layout::PanelLayout& panelLayout) {
     SDL_Surface* const surface = SDL_CreateSurface(
-        panelLayout.windowWidth,
-        panelLayout.windowHeight,
-        SDL_PIXELFORMAT_RGBA32);
+        panelLayout.windowWidth, panelLayout.windowHeight, SDL_PIXELFORMAT_RGBA32);
     if (surface == nullptr) {
-        throw std::runtime_error(std::string("cannot create screenshot surface: ") + SDL_GetError());
+        throw std::runtime_error(
+            std::string("cannot create screenshot surface: ") + SDL_GetError());
     }
     SDL_Renderer* const renderer = SDL_CreateSoftwareRenderer(surface);
     if (renderer == nullptr) {
@@ -145,13 +146,9 @@ int renderHeadlessScreenshot(
         }
         clockfw::sim::PanelRenderer panelRenderer(renderer, panelLayout);
         clockfw::sim::scope::SessionView scopeView{};
-        scopeView.windowUs = clockfw::sim::scope::kWindowOptionsUs[clockfw::sim::scope::kDefaultWindowIndex];
-        panelRenderer.draw(
-            renderer,
-            runtime,
-            1.0,
-            options.developerViewEnabled,
-            scopeView);
+        scopeView.windowUs =
+            clockfw::sim::scope::kWindowOptionsUs[clockfw::sim::scope::kDefaultWindowIndex];
+        panelRenderer.draw(renderer, runtime, 1.0, options.developerViewEnabled, scopeView);
         (void)SDL_FlushRenderer(renderer);
 
         saved = SDL_SaveBMP(surface, screenshotPath.c_str());
@@ -239,7 +236,8 @@ int main(int argc, char* argv[]) {
                 previousTime = currentTime;
                 const auto cappedDelta = std::min<std::int64_t>(realDelta.count(), 100000LL);
                 const auto virtualDelta = static_cast<std::uint64_t>(
-                    static_cast<double>(std::max<std::int64_t>(cappedDelta, 0LL)) * input.speedMultiplier());
+                    static_cast<double>(std::max<std::int64_t>(cappedDelta, 0LL)) *
+                    input.speedMultiplier());
                 runtime.advanceMicroseconds(virtualDelta);
                 input.updateScope(runtime);
 

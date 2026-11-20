@@ -16,10 +16,8 @@ namespace clockfw::ui {
 namespace {
 
 constexpr std::int16_t kPopoverSize = 54;
-constexpr std::int16_t kPopoverX =
-    (hal::OledDisplay::kWidth - kPopoverSize) / 2;
-constexpr std::int16_t kPopoverY =
-    (hal::OledDisplay::kHeight - kPopoverSize) / 2;
+constexpr std::int16_t kPopoverX = (hal::OledDisplay::kWidth - kPopoverSize) / 2;
+constexpr std::int16_t kPopoverY = (hal::OledDisplay::kHeight - kPopoverSize) / 2;
 constexpr std::int16_t kIndicatorInsetX = 3;
 constexpr std::int16_t kIndicatorY = kPopoverY + kPopoverSize - 7;
 constexpr std::int16_t kIndicatorHeight = 4;
@@ -39,17 +37,9 @@ void PerformanceRenderer::drawPreCountOverlay(
     // with one fixed black square and a one-pixel white border. Beat changes update
     // the number and meter row, but there is no phase-driven size animation.
     display_.fillRectangle(
-        kPopoverX,
-        kPopoverY,
-        kPopoverSize,
-        kPopoverSize,
-        hal::PixelColor::Black);
+        kPopoverX, kPopoverY, kPopoverSize, kPopoverSize, hal::PixelColor::Black);
     display_.drawRectangle(
-        kPopoverX,
-        kPopoverY,
-        kPopoverSize,
-        kPopoverSize,
-        hal::PixelColor::White);
+        kPopoverX, kPopoverY, kPopoverSize, kPopoverSize, hal::PixelColor::White);
 
     char countText[4]{};
     std::snprintf(
@@ -90,12 +80,12 @@ void PerformanceRenderer::drawPreCountOverlay(
         kMaximumIndicatorWidth);
     const std::int16_t rowWidth = static_cast<std::int16_t>(
         cellWidth * beatCount + gap * static_cast<std::int16_t>(beatCount - 1U));
-    const std::int16_t rowX = static_cast<std::int16_t>(
-        (static_cast<int>(hal::OledDisplay::kWidth) - rowWidth) / 2);
+    const std::int16_t rowX =
+        static_cast<std::int16_t>((static_cast<int>(hal::OledDisplay::kWidth) - rowWidth) / 2);
 
     for (std::uint8_t beat = 0U; beat < beatCount; ++beat) {
-        const std::int16_t x = static_cast<std::int16_t>(
-            rowX + static_cast<std::int16_t>(beat) * (cellWidth + gap));
+        const std::int16_t x =
+            static_cast<std::int16_t>(rowX + static_cast<std::int16_t>(beat) * (cellWidth + gap));
         if (beat == currentBeat) {
             display_.fillRectangle(x, kIndicatorY, cellWidth, kIndicatorHeight);
         } else {

@@ -27,7 +27,7 @@ A jack assigned to **SYNC** does not by itself force external timing ownership. 
 | `RESTART` | A positive edge performs deterministic STOP→PLAY from phase zero. |
 | `TAP` | A positive edge is passed to the normal Tap-Tempo estimator with its captured input timestamp. |
 
-`FILL` is reserved and is not selectable in 1.1.0. Active non-`OFF` roles are exclusive across the two inputs. Changing a role drains queued edges from the old meaning before the new role becomes active, so one electrical transition cannot later be reinterpreted as a different command.
+`FILL` is reserved and is not selectable yet. Active non-`OFF` roles are exclusive across the two inputs. Changing a role drains queued edges from the old meaning before the new role becomes active, so one electrical transition cannot later be reinterpreted as a different command.
 
 Short triggers count. A trigger that is already over when the input interrupt runs still fires START, STOP, RESTART, TAP and RESET (`TRIGGER`) exactly once; RUN and RESET (`GATE`) follow only the input level. Several triggers within one interrupt latency count as one; that can only happen while the processor is blocked, for example while a preset is written to Flash with the clock stopped. A START trigger during such a write arrives late, by up to the rest of the write, but is not lost.
 

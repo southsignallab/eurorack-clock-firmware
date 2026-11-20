@@ -42,8 +42,10 @@ MenuRow buildSequencerV2MenuRow(
         copyText(row.value, sizeof(row.value), text::TextId::Arrow);
     } else if (rowIndex == 1U) {
         std::snprintf(
-            row.value, sizeof(row.value),
-            text::get(text::TextId::PatternSlotFormat), activeSlot + 1U);
+            row.value,
+            sizeof(row.value),
+            text::get(text::TextId::PatternSlotFormat),
+            activeSlot + 1U);
     } else if (rowIndex == 2U) {
         std::snprintf(row.value, sizeof(row.value), "%u", pattern.length);
     } else if (rowIndex == 3U) {
@@ -51,15 +53,24 @@ MenuRow buildSequencerV2MenuRow(
     } else if (rowIndex == 4U) {
         text::TextId id = text::TextId::Forward;
         switch (pattern.direction) {
-            case SequencerPlayDirection::Forward: id = text::TextId::Forward; break;
-            case SequencerPlayDirection::Reverse: id = text::TextId::Reverse; break;
-            case SequencerPlayDirection::PingPong: id = text::TextId::PingPong; break;
-            case SequencerPlayDirection::Random: id = text::TextId::Random; break;
+            case SequencerPlayDirection::Forward:
+                id = text::TextId::Forward;
+                break;
+            case SequencerPlayDirection::Reverse:
+                id = text::TextId::Reverse;
+                break;
+            case SequencerPlayDirection::PingPong:
+                id = text::TextId::PingPong;
+                break;
+            case SequencerPlayDirection::Random:
+                id = text::TextId::Random;
+                break;
         }
         copyText(row.value, sizeof(row.value), id);
     } else {
         copyText(
-            row.value, sizeof(row.value),
+            row.value,
+            sizeof(row.value),
             pattern.loopMode == SequencerLoopMode::Once ? text::TextId::Once : text::TextId::Loop);
     }
     return row;

@@ -14,7 +14,7 @@ namespace clockfw::hal {
 
 /** @brief Provides monotonic timing services without exposing MCU/framework calls to higher layers. */
 class SystemClock final {
-public:
+  public:
     /** @brief Returns milliseconds elapsed since MCU startup. */
     static std::uint32_t milliseconds();
 

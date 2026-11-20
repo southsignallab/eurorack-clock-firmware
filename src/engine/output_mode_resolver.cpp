@@ -14,21 +14,16 @@ namespace clockfw::engine {
 namespace {
 
 /** Fixed divisors exposed by the powers-of-two divider family. */
-constexpr std::uint8_t kPowerOfTwoDivisors[kChannelCount] = {
-    1U, 2U, 4U, 8U, 16U, 32U, 64U, 128U};
+constexpr std::uint8_t kPowerOfTwoDivisors[kChannelCount] = {1U, 2U, 4U, 8U, 16U, 32U, 64U, 128U};
 
 /** Fixed divisors exposed by the consecutive-integer divider family. */
-constexpr std::uint8_t kIntegerDivisors[kChannelCount] = {
-    1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
+constexpr std::uint8_t kIntegerDivisors[kChannelCount] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
 
 /** Fixed divisors exposed by the prime-number divider family. */
-constexpr std::uint8_t kPrimeDivisors[kChannelCount] = {
-    1U, 2U, 3U, 5U, 7U, 11U, 13U, 17U};
+constexpr std::uint8_t kPrimeDivisors[kChannelCount] = {1U, 2U, 3U, 5U, 7U, 11U, 13U, 17U};
 
 /** Returns the fixed divisor assigned to one physical output. */
-std::uint8_t dividerForOutput(
-    const DividerBank bank,
-    const std::size_t channelIndex) {
+std::uint8_t dividerForOutput(const DividerBank bank, const std::size_t channelIndex) {
     const std::uint8_t* divisors = kPowerOfTwoDivisors;
     if (bank == DividerBank::Integers) {
         divisors = kIntegerDivisors;
@@ -55,15 +50,11 @@ ChannelConfig makeUnifiedClockChannel(const ClockState& state) {
 }
 
 /** Builds one deterministic divider-bank output. */
-ChannelConfig makeDividerChannel(
-    const ClockState& state,
-    const std::size_t channelIndex) {
+ChannelConfig makeDividerChannel(const ClockState& state, const std::size_t channelIndex) {
     ChannelConfig channel{};
     channel.common.mode = ChannelMode::Clock;
     const std::uint8_t divisor = dividerForOutput(state.dividerBank.bank, channelIndex);
-    channel.common.rate.mode = divisor == 1U
-        ? ClockRatioMode::Multiply
-        : ClockRatioMode::Divide;
+    channel.common.rate.mode = divisor == 1U ? ClockRatioMode::Multiply : ClockRatioMode::Divide;
     channel.common.rate.factor = divisor;
     channel.common.rate.numerator = 1U;
     channel.common.rate.denominator = 1U;

@@ -7,12 +7,13 @@
  */
 #include "services/persistent_state_service.h"
 
+#include "config.h"
 #include <algorithm>
 #include <cstring>
-#include "config.h"
 namespace clockfw::services {
 
-PersistentStateService::PersistentStateService(hal::PersistentStorage& storage) : storage_(storage) {}
+PersistentStateService::PersistentStateService(hal::PersistentStorage& storage)
+    : storage_(storage) {}
 
 bool PersistentStateService::restoreCurrentState(ClockState& state) const {
     if (!hasStoredCurrentState_) {
@@ -65,9 +66,10 @@ void PersistentStateService::requestTransportState(
 }
 
 bool PersistentStateService::presetWritePending() const {
-    return std::any_of(pendingPresetWrites_.begin(), pendingPresetWrites_.end(), [](const bool pending) {
-        return pending;
-    });
+    return std::any_of(
+        pendingPresetWrites_.begin(), pendingPresetWrites_.end(), [](const bool pending) {
+            return pending;
+        });
 }
 
 bool PersistentStateService::hasUrgentCommit() const {
@@ -86,14 +88,17 @@ bool PersistentStateService::stagePendingRecords(const bool includeCurrent) {
     if (staged && currentStaged_) {
         const std::array<std::uint8_t, kCurrentRecordSize> currentRecord =
             serializeCurrentRecord(pendingCurrentState_);
-        staged = storage_.stageBytes(kCurrentRecordOffset, currentRecord.data(), currentRecord.size());
+        staged =
+            storage_.stageBytes(kCurrentRecordOffset, currentRecord.data(), currentRecord.size());
     }
     // Pending flags are cleared only by commitSucceeded(); a failed stage or
     // commit leaves every slot retryable.
     for (std::uint8_t slot = 0U; staged && slot < kUserPresetSlotCount; ++slot) {
         if (pendingPresetWrites_[slot]) {
             staged = storage_.stageBytes(
-                presetOffset(slot), pendingPresetRecords_[slot].data(), pendingPresetRecords_[slot].size());
+                presetOffset(slot),
+                pendingPresetRecords_[slot].data(),
+                pendingPresetRecords_[slot].size());
         }
     }
     return staged;
@@ -123,15 +128,14 @@ void PersistentStateService::commitSucceeded() {
         presetValid_[slot] = pendingPresetWillExist_[slot];
         presetNames_[slot].fill('\0');
         if (pendingPresetWillExist_[slot]) {
-            std::copy_n(pendingPresetNames_[slot].begin(), kPresetNameLength, presetNames_[slot].begin());
+            std::copy_n(
+                pendingPresetNames_[slot].begin(), kPresetNameLength, presetNames_[slot].begin());
         }
         pendingPresetWrites_[slot] = false;
     }
 }
 
-void PersistentStateService::service(
-    const std::uint32_t nowMs,
-    const bool allowFlashCommit) {
+void PersistentStateService::service(const std::uint32_t nowMs, const bool allowFlashCommit) {
     if (!allowFlashCommit) {
         return;
     }
@@ -149,7 +153,8 @@ void PersistentStateService::service(
     if (!migrate && !currentRecordReady && !hasPendingPresets) {
         return;
     }
-    if (!storage_.beginUpdate() || !stagePendingRecords(currentRecordReady) || !storage_.commitUpdate()) {
+    if (!storage_.beginUpdate() || !stagePendingRecords(currentRecordReady) ||
+        !storage_.commitUpdate()) {
         storage_.cancelUpdate();
         commitFailed(nowMs);
         return;
@@ -189,9 +194,7 @@ bool PersistentStateService::savePreset(
     return true;
 }
 
-bool PersistentStateService::loadPreset(
-    const std::uint8_t slotIndex,
-    ClockState& state) const {
+bool PersistentStateService::loadPreset(const std::uint8_t slotIndex, ClockState& state) const {
     if (slotIndex >= kUserPresetSlotCount || !presetExists(slotIndex)) {
         return false;
     }
@@ -220,9 +223,7 @@ bool PersistentStateService::loadPreset(
     return true;
 }
 
-bool PersistentStateService::renamePreset(
-    const std::uint8_t slotIndex,
-    const char* const name) {
+bool PersistentStateService::renamePreset(const std::uint8_t slotIndex, const char* const name) {
     if (slotIndex >= kUserPresetSlotCount || !presetExists(slotIndex) || name == nullptr) {
         return false;
     }

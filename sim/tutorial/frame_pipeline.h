@@ -52,7 +52,7 @@ struct StoryFramePipelineResult {
  * @brief Executes one story once and samples the live deterministic runtime into lossless tutorial artifacts.
  */
 class StoryFramePipeline final {
-public:
+  public:
     StoryFramePipeline(
         std::filesystem::path tutorialRoot,
         layout::PanelLayout panelLayout,
@@ -65,7 +65,7 @@ public:
         const std::filesystem::path& outputDirectory,
         FrameStorageMode storageMode = FrameStorageMode::Materialized);
 
-private:
+  private:
     std::filesystem::path tutorialRoot_;
     layout::PanelLayout panelLayout_;
     std::string simulatorSourceRevision_;

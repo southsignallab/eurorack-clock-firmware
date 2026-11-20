@@ -31,7 +31,7 @@ namespace clockfw::services {
  * in STOP and never auto-starts from a stored PLAY value.
  */
 class PersistentStateService final {
-public:
+  public:
     /** Number of explicit user preset slots. */
     static constexpr std::uint8_t kUserPresetSlotCount = 8U;
 
@@ -117,7 +117,9 @@ public:
     bool hasUrgentCommit() const;
 
     /** @brief Increments with every accepted change of pending durable content. */
-    std::uint32_t changeRevision() const { return changeRevision_; }
+    std::uint32_t changeRevision() const {
+        return changeRevision_;
+    }
 
     /**
      * @brief Stages every pending record into the storage update the caller opened.
@@ -150,7 +152,10 @@ public:
      * @param state Configuration snapshot to persist.
      * @return True when the record was validated and staged for durable storage.
      */
-    [[nodiscard]] bool savePreset(std::uint8_t slotIndex, const char* name, const ClockState& state);
+    [[nodiscard]] bool savePreset(
+        std::uint8_t slotIndex,
+        const char* name,
+        const ClockState& state);
 
     /**
      * @brief Loads a complete user preset while preserving live transport state.
@@ -181,10 +186,7 @@ public:
      * @param destination Output text buffer.
      * @param destinationSize Output buffer size including terminator.
      */
-    void presetName(
-        std::uint8_t slotIndex,
-        char* destination,
-        std::size_t destinationSize) const;
+    void presetName(std::uint8_t slotIndex, char* destination, std::size_t destinationSize) const;
 
     /**
      * @brief Atomically replaces the complete persistent image with factory state.
@@ -196,7 +198,7 @@ public:
      */
     [[nodiscard]] bool factoryReset(const ClockState& factoryState);
 
-private:
+  private:
     /** Serialized field count for one complete ClockState payload. */
     static constexpr std::size_t kStatePayloadSize = kCurrentStatePayloadBytes;
 
@@ -286,50 +288,42 @@ private:
 
     /** @brief Returns the byte offset used by one v12 preset slot. */
     static constexpr std::size_t v12PresetOffset(const std::uint8_t slotIndex) {
-        return kV12CurrentRecordSize +
-            static_cast<std::size_t>(slotIndex) * kV12PresetRecordSize;
+        return kV12CurrentRecordSize + static_cast<std::size_t>(slotIndex) * kV12PresetRecordSize;
     }
 
     /** @brief Returns the byte offset used by one v11 preset slot. */
     static constexpr std::size_t v11PresetOffset(const std::uint8_t slotIndex) {
-        return kV11CurrentRecordSize +
-            static_cast<std::size_t>(slotIndex) * kV11PresetRecordSize;
+        return kV11CurrentRecordSize + static_cast<std::size_t>(slotIndex) * kV11PresetRecordSize;
     }
 
     /** @brief Returns the byte offset used by one v10 preset slot. */
     static constexpr std::size_t v10PresetOffset(const std::uint8_t slotIndex) {
-        return kV10CurrentRecordSize +
-            static_cast<std::size_t>(slotIndex) * kV10PresetRecordSize;
+        return kV10CurrentRecordSize + static_cast<std::size_t>(slotIndex) * kV10PresetRecordSize;
     }
 
     /** @brief Returns the byte offset used by one v9 preset slot. */
     static constexpr std::size_t v9PresetOffset(const std::uint8_t slotIndex) {
-        return kV9CurrentRecordSize +
-            static_cast<std::size_t>(slotIndex) * kV9PresetRecordSize;
+        return kV9CurrentRecordSize + static_cast<std::size_t>(slotIndex) * kV9PresetRecordSize;
     }
 
     /** @brief Returns the byte offset used by one v8 preset slot. */
     static constexpr std::size_t v8PresetOffset(const std::uint8_t slotIndex) {
-        return kV8CurrentRecordSize +
-            static_cast<std::size_t>(slotIndex) * kV8PresetRecordSize;
+        return kV8CurrentRecordSize + static_cast<std::size_t>(slotIndex) * kV8PresetRecordSize;
     }
 
     /** @brief Returns the byte offset used by one v7 preset slot. */
     static constexpr std::size_t v7PresetOffset(const std::uint8_t slotIndex) {
-        return kV7CurrentRecordSize +
-            static_cast<std::size_t>(slotIndex) * kV7PresetRecordSize;
+        return kV7CurrentRecordSize + static_cast<std::size_t>(slotIndex) * kV7PresetRecordSize;
     }
 
     /** @brief Returns the byte offset used by one v6 preset slot. */
     static constexpr std::size_t v6PresetOffset(const std::uint8_t slotIndex) {
-        return kV6CurrentRecordSize +
-            static_cast<std::size_t>(slotIndex) * kV6PresetRecordSize;
+        return kV6CurrentRecordSize + static_cast<std::size_t>(slotIndex) * kV6PresetRecordSize;
     }
 
     /** @brief Returns the byte offset used by one v5 preset slot. */
     static constexpr std::size_t v5PresetOffset(const std::uint8_t slotIndex) {
-        return kV5CurrentRecordSize +
-            static_cast<std::size_t>(slotIndex) * kV5PresetRecordSize;
+        return kV5CurrentRecordSize + static_cast<std::size_t>(slotIndex) * kV5PresetRecordSize;
     }
 
     /** @brief Returns the byte offset used by one v4 preset slot. */
@@ -553,7 +547,10 @@ private:
      * @return True when a valid record was found.
      */
     [[nodiscard]] bool loadPresetAnySchema(
-        std::uint8_t slotIndex, char* name, ClockState& state, bool& priorSchema) const;
+        std::uint8_t slotIndex,
+        char* name,
+        ClockState& state,
+        bool& priorSchema) const;
 
     /**
      * @brief Stages the canonical current-schema records area from the stored (possibly older) layout.

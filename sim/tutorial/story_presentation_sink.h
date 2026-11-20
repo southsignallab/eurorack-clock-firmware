@@ -22,7 +22,7 @@ namespace clockfw::sim::tutorial {
  * interface deliberately exposes no SimulatorRuntime or ClockState mutation path.
  */
 class StoryPresentationSink {
-public:
+  public:
     virtual ~StoryPresentationSink() = default;
 
     /** @brief Reports one accepted physical encoder detent. */

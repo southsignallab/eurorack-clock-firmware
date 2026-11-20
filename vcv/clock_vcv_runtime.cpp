@@ -235,13 +235,13 @@ float ClockVcvRuntime::gateVoltage(const std::size_t channelIndex) const {
     return runtime_.telemetry()[channelIndex].logicHigh ? kGateHighVoltage : 0.0F;
 }
 
-const std::array<std::uint8_t, hal::OledDisplay::kFramebufferSize>&
-ClockVcvRuntime::framebuffer() const {
+const std::array<std::uint8_t, hal::OledDisplay::kFramebufferSize>& ClockVcvRuntime::framebuffer()
+    const {
     return runtime_.framebuffer();
 }
 
-std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>
-ClockVcvRuntime::persistenceImage() const {
+std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes> ClockVcvRuntime::persistenceImage()
+    const {
     const std::lock_guard<std::mutex> lock(publishedMutex_);
     return publishedImage_;
 }

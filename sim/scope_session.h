@@ -24,7 +24,7 @@ struct SessionView {
 
 /** @brief Maintains the developer scope's transport-relative timebase and freeze policy. */
 class Session final {
-public:
+  public:
     /** @brief Updates scope epoch/reference state from the real firmware transport state. */
     void update(SimulatorRuntime& runtime);
 
@@ -43,7 +43,7 @@ public:
     /** @brief Returns current immutable renderer view. */
     SessionView view() const;
 
-private:
+  private:
     std::uint64_t windowUs_ = 4000000ULL;
     std::uint64_t referenceUs_ = 0ULL;
     std::uint64_t epochSimulatorUs_ = 0ULL;

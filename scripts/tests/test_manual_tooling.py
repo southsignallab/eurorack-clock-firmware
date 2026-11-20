@@ -934,7 +934,7 @@ class FirmwareUpdateQrTests(unittest.TestCase):
 
         source = self.source()
         self.assertIn(f"QR payload for exactly: {self.URL}\n", source)
-        match = re.search(r"kUpdateQrRows\{\{(.*?)\}\};", source, re.S)
+        match = re.search(r"kUpdateQrRows\{\s*\{(.*?)\}\s*\};", source, re.S)
         self.assertIsNotNone(match)
         rows = [int(value, 16) for value in re.findall(r"0x([0-9A-Fa-f]+)UL", match.group(1))]
         matrix = QR.encode(self.URL)

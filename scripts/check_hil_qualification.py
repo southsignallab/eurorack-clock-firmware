@@ -22,7 +22,10 @@ SEMVER_RE = re.compile(
     r"^(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)"
     r"(?:-(?P<prerelease>[0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$"
 )
-ALLOWED_STATUSES = {"PENDING", "BLOCKED", "PASS", "FAIL"}
+#: NOT_APPLICABLE marks a test that cannot apply to any firmware environment; it needs a
+#: non-empty ``reason``, carries no evidence and satisfies the all-PASS gate.
+ALLOWED_STATUSES = {"PENDING", "BLOCKED", "PASS", "FAIL", "NOT_APPLICABLE"}
+SUMMARY_ORDER = ("PASS", "PENDING", "BLOCKED", "FAIL", "NOT_APPLICABLE")
 DEFAULT_ENFORCE_FROM = "1.5.0"
 
 
@@ -73,7 +76,11 @@ def plan_ids() -> list[str]:
 
 
 def validate(require_pass: bool) -> list[str]:
-    """Return ledger validation errors; PASS entries require concrete evidence paths."""
+    """Return ledger validation errors.
+
+    PASS entries require concrete evidence paths. NOT_APPLICABLE entries require a non-empty
+    ``reason``, carry no evidence and count as satisfied for the all-PASS gate.
+    """
     errors: list[str] = []
     data = json.loads(LEDGER.read_text(encoding="utf-8"))
     if data.get("schema") != 1:
@@ -100,6 +107,14 @@ def validate(require_pass: bool) -> list[str]:
         actual_ids.append(str(test_id))
         if status not in ALLOWED_STATUSES:
             errors.append(f"{test_id}: invalid status {status!r}")
+        if status == "NOT_APPLICABLE":
+            reason = entry.get("reason")
+            if not isinstance(reason, str) or not reason.strip():
+                errors.append(f"{test_id}: NOT_APPLICABLE requires a non-empty reason")
+            if evidence is None:
+                evidence = []
+            elif evidence != []:
+                errors.append(f"{test_id}: NOT_APPLICABLE must not carry evidence")
         if not isinstance(evidence, list):
             errors.append(f"{test_id}: evidence must be a list")
             evidence = []
@@ -116,7 +131,7 @@ def validate(require_pass: bool) -> list[str]:
                     resolved = ROOT / evidence_path
                     if not resolved.is_file():
                         errors.append(f"{test_id}: PASS evidence does not exist: {evidence_path}")
-        if require_pass and status != "PASS":
+        if require_pass and status not in ("PASS", "NOT_APPLICABLE"):
             errors.append(f"{test_id}: enforced HIL gate requires PASS, found {status}")
 
     if actual_ids != expected_ids:
@@ -130,7 +145,11 @@ def validate(require_pass: bool) -> list[str]:
 def main() -> int:
     """Validate ledger structure and conditionally enforce the all-PASS gate."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--require-pass", action="store_true", help="require every HIL test to be PASS")
+    parser.add_argument(
+        "--require-pass",
+        action="store_true",
+        help="require every HIL test to be PASS or NOT_APPLICABLE",
+    )
     parser.add_argument(
         "--require-pass-from",
         default=None,
@@ -164,7 +183,7 @@ def main() -> int:
     else:
         status = "ledger structure PASS"
     print(f"HIL qualification: {status} ({version})")
-    print("  " + ", ".join(f"{name}={counts[name]}" for name in ("PASS", "PENDING", "BLOCKED", "FAIL")))
+    print("  " + ", ".join(f"{name}={counts[name]}" for name in SUMMARY_ORDER))
     return 0
 
 

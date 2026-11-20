@@ -37,7 +37,7 @@ void quadratureEdgeThunk() {
         (digitalRead(gQuadraturePhaseA) == HIGH ? 2U : 0U) |
         (digitalRead(gQuadraturePhaseB) == HIGH ? 1U : 0U);
     const std::uint8_t transitionIndex = static_cast<std::uint8_t>(
-        (static_cast<std::uint16_t>(gQuadraturePreviousState) << 2U) | currentState);
+        (static_cast<std::uint32_t>(gQuadraturePreviousState) << 2U) | currentState);
     gQuadraturePreviousState = currentState;
     gQuadratureCount += static_cast<std::uint32_t>(
         static_cast<std::int32_t>(kQuadratureTransitions[transitionIndex]));

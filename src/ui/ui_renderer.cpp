@@ -25,8 +25,8 @@ constexpr std::uint16_t kBootVersionBaselineY = 46U;
 void drawBootLogoBitmap(hal::OledDisplay& display) {
     for (std::uint16_t row = 0U; row < bootlogo::kHeight; ++row) {
         for (std::uint16_t byteIndex = 0U; byteIndex < bootlogo::kBytesPerRow; ++byteIndex) {
-            const std::uint8_t packed = bootlogo::kBitmap[
-                static_cast<std::size_t>(row) * bootlogo::kBytesPerRow + byteIndex];
+            const std::uint8_t packed = bootlogo::kBitmap
+                [static_cast<std::size_t>(row) * bootlogo::kBytesPerRow + byteIndex];
             if (packed == 0U) {
                 continue;
             }
@@ -36,8 +36,8 @@ void drawBootLogoBitmap(hal::OledDisplay& display) {
                     continue;
                 }
                 display.setPixel(
-                    static_cast<std::int16_t>(bootlogo::kX +
-                        static_cast<std::int16_t>(byteIndex * 8U + bit)),
+                    static_cast<std::int16_t>(
+                        bootlogo::kX + static_cast<std::int16_t>(byteIndex * 8U + bit)),
                     static_cast<std::int16_t>(bootlogo::kY + static_cast<std::int16_t>(row)),
                     hal::PixelColor::White);
             }
@@ -50,40 +50,27 @@ void drawBootLogoBitmap(hal::OledDisplay& display) {
 UiRenderer::UiRenderer(
     hal::OledDisplay& display,
     const services::PersistentStateService& persistentState)
-    : display_(display),
-      persistentState_(persistentState),
-      performanceRenderer_(display, nullptr),
-      channelNavigationRenderer_(display),
-      settingsRenderer_(display),
-      grooveEditorRenderer_(display),
-      screensaverRenderer_(display) {}
+    : display_(display), persistentState_(persistentState), performanceRenderer_(display, nullptr),
+      channelNavigationRenderer_(display), settingsRenderer_(display),
+      grooveEditorRenderer_(display), screensaverRenderer_(display) {}
 
 UiRenderer::UiRenderer(
     hal::OledDisplay& display,
     const services::PersistentStateService& persistentState,
     const services::CustomGrooveStore& customGrooveStore)
-    : display_(display),
-      persistentState_(persistentState),
-      customGrooveStore_(&customGrooveStore),
-      performanceRenderer_(display, &customGrooveStore),
-      channelNavigationRenderer_(display),
-      settingsRenderer_(display),
-      grooveEditorRenderer_(display),
-      screensaverRenderer_(display) {}
+    : display_(display), persistentState_(persistentState), customGrooveStore_(&customGrooveStore),
+      performanceRenderer_(display, &customGrooveStore), channelNavigationRenderer_(display),
+      settingsRenderer_(display), grooveEditorRenderer_(display), screensaverRenderer_(display) {}
 
 UiRenderer::UiRenderer(
     hal::OledDisplay& display,
     const services::PersistentStateService& persistentState,
     const services::CustomGrooveStore& customGrooveStore,
     const services::SequencerPatternStore& sequencerPatternStore)
-    : display_(display),
-      persistentState_(persistentState),
-      customGrooveStore_(&customGrooveStore),
+    : display_(display), persistentState_(persistentState), customGrooveStore_(&customGrooveStore),
       sequencerPatternStore_(&sequencerPatternStore),
-      performanceRenderer_(display, &customGrooveStore),
-      channelNavigationRenderer_(display),
-      settingsRenderer_(display, &sequencerPatternStore),
-      grooveEditorRenderer_(display),
+      performanceRenderer_(display, &customGrooveStore), channelNavigationRenderer_(display),
+      settingsRenderer_(display, &sequencerPatternStore), grooveEditorRenderer_(display),
       screensaverRenderer_(display) {}
 
 UiRenderer::UiRenderer(
@@ -92,15 +79,10 @@ UiRenderer::UiRenderer(
     const services::CustomGrooveStore& customGrooveStore,
     const services::SequencerPatternStore& sequencerPatternStore,
     const services::SequencerStepStore& sequencerStepStore)
-    : display_(display),
-      persistentState_(persistentState),
-      customGrooveStore_(&customGrooveStore),
-      sequencerPatternStore_(&sequencerPatternStore),
-      sequencerStepStore_(&sequencerStepStore),
-      performanceRenderer_(display, &customGrooveStore),
-      channelNavigationRenderer_(display),
-      settingsRenderer_(display, &sequencerPatternStore),
-      grooveEditorRenderer_(display),
+    : display_(display), persistentState_(persistentState), customGrooveStore_(&customGrooveStore),
+      sequencerPatternStore_(&sequencerPatternStore), sequencerStepStore_(&sequencerStepStore),
+      performanceRenderer_(display, &customGrooveStore), channelNavigationRenderer_(display),
+      settingsRenderer_(display, &sequencerPatternStore), grooveEditorRenderer_(display),
       screensaverRenderer_(display) {}
 
 void UiRenderer::render(
@@ -112,7 +94,8 @@ void UiRenderer::render(
         case Screen::Performance: {
             const SequencerPatternV2* pattern = nullptr;
             if (sequencerPatternStore_ != nullptr && navigation.selectedChannel < kChannelCount) {
-                const std::uint8_t slot = sequencerPatternStore_->activeSlot(navigation.selectedChannel);
+                const std::uint8_t slot =
+                    sequencerPatternStore_->activeSlot(navigation.selectedChannel);
                 pattern = &sequencerPatternStore_->pattern(navigation.selectedChannel, slot);
             }
             performanceRenderer_.render(state, navigation, engineSnapshot, pattern);
@@ -138,10 +121,10 @@ void UiRenderer::render(
                 pattern = &sequencerPatternStore_->pattern(navigation.selectedChannel, slot);
             }
             std::array<SequencerStepMetadataWord, kSequencerMaximumSteps> metadata{};
-            const std::array<SequencerStepMetadataWord, kSequencerMaximumSteps>* metadataPtr = nullptr;
+            const std::array<SequencerStepMetadataWord, kSequencerMaximumSteps>* metadataPtr =
+                nullptr;
             if (sequencerStepStore_ != nullptr && pattern != nullptr) {
-                sequencerStepStore_->loadPatternWords(
-                    navigation.selectedChannel, slot, metadata);
+                sequencerStepStore_->loadPatternWords(navigation.selectedChannel, slot, metadata);
                 metadataPtr = &metadata;
             }
             channelNavigationRenderer_.renderSequencerEditor(
@@ -195,17 +178,21 @@ void UiRenderer::render(
             if (customGrooveStore_ != nullptr) {
                 grooveEditorRenderer_.renderSlots(navigation, *customGrooveStore_);
             } else {
-                grooveEditorRenderer_.renderConfirm(text::get(text::TextId::GrooveStoreUnavailable), navigation);
+                grooveEditorRenderer_.renderConfirm(
+                    text::get(text::TextId::GrooveStoreUnavailable), navigation);
             }
             break;
         case Screen::GrooveOverwriteConfirm:
-            grooveEditorRenderer_.renderConfirm(text::get(text::TextId::OverwriteGroove), navigation);
+            grooveEditorRenderer_.renderConfirm(
+                text::get(text::TextId::OverwriteGroove), navigation);
             break;
         case Screen::GrooveDeleteConfirm:
-            grooveEditorRenderer_.renderConfirm(text::get(text::TextId::DeleteGrooveConfirm), navigation);
+            grooveEditorRenderer_.renderConfirm(
+                text::get(text::TextId::DeleteGrooveConfirm), navigation);
             break;
         case Screen::GrooveDiscardConfirm:
-            grooveEditorRenderer_.renderConfirm(text::get(text::TextId::DiscardChanges), navigation);
+            grooveEditorRenderer_.renderConfirm(
+                text::get(text::TextId::DiscardChanges), navigation);
             break;
         case Screen::GrooveNameEntry:
             grooveEditorRenderer_.renderNameEntry(navigation);
@@ -219,9 +206,7 @@ void UiRenderer::render(
     }
 }
 
-bool UiRenderer::informationValueOverflows(
-    const char* const label,
-    const char* const value) {
+bool UiRenderer::informationValueOverflows(const char* const label, const char* const value) {
     return settingsRenderer_.informationValueOverflows(label, value);
 }
 
@@ -245,12 +230,14 @@ void UiRenderer::renderBootScreen(std::uint32_t elapsedMs) {
     const hal::TextBounds versionBounds = display_.measureText(versionText, 0, 0);
     display_.drawText(
         static_cast<std::int16_t>(
-            (static_cast<int>(hal::OledDisplay::kWidth) - static_cast<int>(versionBounds.width)) / 2),
+            (static_cast<int>(hal::OledDisplay::kWidth) - static_cast<int>(versionBounds.width)) /
+            2),
         static_cast<std::int16_t>(kBootVersionBaselineY),
         versionText);
 
     const std::uint16_t progressWidth = static_cast<std::uint16_t>(
-        (static_cast<std::uint32_t>(hal::OledDisplay::kWidth) * elapsedMs) / config::kBootDurationMs);
+        (static_cast<std::uint32_t>(hal::OledDisplay::kWidth) * elapsedMs) /
+        config::kBootDurationMs);
     if (progressWidth > 0U) {
         display_.fillRectangle(
             0,
@@ -263,9 +250,7 @@ void UiRenderer::renderBootScreen(std::uint32_t elapsedMs) {
     display_.present();
 }
 
-void UiRenderer::renderScreensaver(
-    const ScreensaverMode mode,
-    const std::uint32_t frameIndex) {
+void UiRenderer::renderScreensaver(const ScreensaverMode mode, const std::uint32_t frameIndex) {
     screensaverRenderer_.render(mode, frameIndex);
 }
 

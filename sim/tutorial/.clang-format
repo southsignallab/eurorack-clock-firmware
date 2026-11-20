@@ -1,0 +1,7 @@
+# Author: Axel Napolitano
+# License: PolyForm-Noncommercial-1.0.0
+# Pinned formatter version: clang-format 23.1.5 (see CONTRIBUTING.md).
+# The tutorial pipeline keeps the repository style but packs call arguments.
+
+BasedOnStyle: InheritParentConfig
+BinPackArguments: true

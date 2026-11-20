@@ -78,53 +78,79 @@ struct LayoutDefinition {
     Color ledOnColor{235U, 52U, 52U};
     Color ledOffColor{17U, 17U, 19U};
 
-    std::array<PhysicalPoint, 8U> outputs{{
-        {7.75F, 88.93F}, {19.4167F, 88.93F}, {31.0833F, 88.93F}, {42.75F, 88.93F},
-        {7.75F, 107.73F}, {19.4167F, 107.73F}, {31.0833F, 107.73F}, {42.75F, 107.73F}
-    }};
-    std::array<JackType, 8U> outputJackTypes{{
-        JackType::Ts, JackType::Ts, JackType::Ts, JackType::Ts,
-        JackType::Ts, JackType::Ts, JackType::Ts, JackType::Ts
-    }};
-    std::array<PhysicalPoint, 8U> leds{{
-        {10.915F, 81.56F}, {22.5817F, 81.56F}, {34.2483F, 81.56F}, {45.915F, 81.56F},
-        {10.915F, 100.36F}, {22.5817F, 100.36F}, {34.2483F, 100.36F}, {45.915F, 100.36F}
-    }};
-    std::array<PhysicalPoint, 4U> screws{{
-        {7.47F, 3.0F}, {43.03F, 3.0F}, {7.47F, 125.5F}, {43.03F, 125.5F}
-    }};
+    std::array<PhysicalPoint, 8U> outputs{
+        {{7.75F, 88.93F},
+         {19.4167F, 88.93F},
+         {31.0833F, 88.93F},
+         {42.75F, 88.93F},
+         {7.75F, 107.73F},
+         {19.4167F, 107.73F},
+         {31.0833F, 107.73F},
+         {42.75F, 107.73F}}};
+    std::array<JackType, 8U> outputJackTypes{
+        {JackType::Ts,
+         JackType::Ts,
+         JackType::Ts,
+         JackType::Ts,
+         JackType::Ts,
+         JackType::Ts,
+         JackType::Ts,
+         JackType::Ts}};
+    std::array<PhysicalPoint, 8U> leds{
+        {{10.915F, 81.56F},
+         {22.5817F, 81.56F},
+         {34.2483F, 81.56F},
+         {45.915F, 81.56F},
+         {10.915F, 100.36F},
+         {22.5817F, 100.36F},
+         {34.2483F, 100.36F},
+         {45.915F, 100.36F}}};
+    std::array<PhysicalPoint, 4U> screws{
+        {{7.47F, 3.0F}, {43.03F, 3.0F}, {7.47F, 125.5F}, {43.03F, 125.5F}}};
 };
 
-PhysicalPoint consumePoint(ini::Section& section, const PhysicalPoint& fallback, const std::string& context) {
-    return {ini::takeFloat(section, "x_mm", fallback.xMm, context),
-            ini::takeFloat(section, "y_mm", fallback.yMm, context)};
+PhysicalPoint consumePoint(
+    ini::Section& section,
+    const PhysicalPoint& fallback,
+    const std::string& context) {
+    return {
+        ini::takeFloat(section, "x_mm", fallback.xMm, context),
+        ini::takeFloat(section, "y_mm", fallback.yMm, context)};
 }
 
-PhysicalRect consumeRect(ini::Section& section, const PhysicalRect& fallback, const std::string& context) {
+PhysicalRect consumeRect(
+    ini::Section& section,
+    const PhysicalRect& fallback,
+    const std::string& context) {
     return {
         ini::takeFloat(section, "x_mm", fallback.xMm, context),
         ini::takeFloat(section, "y_mm", fallback.yMm, context),
         ini::takeFloat(section, "width_mm", fallback.widthMm, context),
-        ini::takeFloat(section, "height_mm", fallback.heightMm, context)
-    };
+        ini::takeFloat(section, "height_mm", fallback.heightMm, context)};
 }
 
 void consumeCircle(ini::Section& section, PhysicalCircle& circle, const std::string& context) {
     circle.center = consumePoint(section, circle.center, context);
-    circle.actuatorDiameterMm = ini::takeFloat(
-        section, "actuator_diameter_mm", circle.actuatorDiameterMm, context);
-    circle.bodyDiameterMm = ini::takeFloat(section, "body_diameter_mm", circle.bodyDiameterMm, context);
+    circle.actuatorDiameterMm =
+        ini::takeFloat(section, "actuator_diameter_mm", circle.actuatorDiameterMm, context);
+    circle.bodyDiameterMm =
+        ini::takeFloat(section, "body_diameter_mm", circle.bodyDiameterMm, context);
     circle.color = ini::takeColor(section, "color", circle.color, context);
 }
 
 Point mapPoint(const LayoutDefinition& definition, const PhysicalPoint& point) {
-    return {definition.panel.x + point.xMm * definition.pixelsPerMm,
-            definition.panel.y + point.yMm * definition.pixelsPerMm};
+    return {
+        definition.panel.x + point.xMm * definition.pixelsPerMm,
+        definition.panel.y + point.yMm * definition.pixelsPerMm};
 }
 
 Rect mapRect(const LayoutDefinition& definition, const PhysicalRect& rect) {
     const Point origin = mapPoint(definition, {rect.xMm, rect.yMm});
-    return {origin.x, origin.y, rect.widthMm * definition.pixelsPerMm, rect.heightMm * definition.pixelsPerMm};
+    return {
+        origin.x,
+        origin.y,
+        rect.widthMm * definition.pixelsPerMm,
+        rect.heightMm * definition.pixelsPerMm};
 }
 
 float mapRadius(const LayoutDefinition& definition, const float diameterMm) {
@@ -147,15 +173,17 @@ JackGeometry mapJack(const LayoutDefinition& definition, const PhysicalJack& jac
 }
 
 void validateJack(const PhysicalJack& jack, const std::string& name) {
-    if (jack.nutDiameterMm <= 0.0F || jack.bushingDiameterMm <= 0.0F || jack.openingDiameterMm <= 0.0F ||
-        jack.openingDiameterMm >= jack.bushingDiameterMm || jack.bushingDiameterMm > jack.nutDiameterMm) {
+    if (jack.nutDiameterMm <= 0.0F || jack.bushingDiameterMm <= 0.0F ||
+        jack.openingDiameterMm <= 0.0F || jack.openingDiameterMm >= jack.bushingDiameterMm ||
+        jack.bushingDiameterMm > jack.nutDiameterMm) {
         throw std::runtime_error(
             name + " requires 0 < opening_diameter_mm < bushing_diameter_mm <= nut_diameter_mm");
     }
 }
 
 void validateDefinition(const LayoutDefinition& definition) {
-    if (definition.windowWidth <= 0 || definition.windowHeight <= 0 || definition.pixelsPerMm <= 0.0F) {
+    if (definition.windowWidth <= 0 || definition.windowHeight <= 0 ||
+        definition.pixelsPerMm <= 0.0F) {
         throw std::runtime_error("simulator window dimensions and pixels_per_mm must be positive");
     }
     if (definition.physicalWidthMm <= 0.0F || definition.physicalHeightMm <= 0.0F) {
@@ -168,7 +196,8 @@ void validateDefinition(const LayoutDefinition& definition) {
         definition.tap.bodyDiameterMm < definition.tap.actuatorDiameterMm ||
         definition.stop.bodyDiameterMm < definition.stop.actuatorDiameterMm ||
         definition.ledDiameterMm <= 0.0F) {
-        throw std::runtime_error("display/control dimensions must be positive and button body >= actuator");
+        throw std::runtime_error(
+            "display/control dimensions must be positive and button body >= actuator");
     }
     validateJack(definition.tsJack, "jack_ts");
     validateJack(definition.trsJack, "jack_trs");
@@ -184,7 +213,8 @@ PanelLayout resolve(const LayoutDefinition& definition) {
     layout.windowHeight = definition.windowHeight;
     layout.pixelsPerMm = definition.pixelsPerMm;
     layout.panel = {
-        definition.panel.x, definition.panel.y,
+        definition.panel.x,
+        definition.panel.y,
         definition.physicalWidthMm * definition.pixelsPerMm,
         definition.physicalHeightMm * definition.pixelsPerMm};
     layout.developerPanel = definition.developerPanel;
@@ -263,45 +293,64 @@ PanelLayout loadPanelLayout(const std::filesystem::path& path) {
     ini::Document document = ini::parse(path);
 
     ini::consumeSection(document, "simulator", [&](ini::Section& section) {
-        definition.windowWidth = ini::takeInt(section, "window_width", definition.windowWidth, "simulator");
-        definition.windowHeight = ini::takeInt(section, "window_height", definition.windowHeight, "simulator");
-        definition.pixelsPerMm = ini::takeFloat(section, "pixels_per_mm", definition.pixelsPerMm, "simulator");
+        definition.windowWidth =
+            ini::takeInt(section, "window_width", definition.windowWidth, "simulator");
+        definition.windowHeight =
+            ini::takeInt(section, "window_height", definition.windowHeight, "simulator");
+        definition.pixelsPerMm =
+            ini::takeFloat(section, "pixels_per_mm", definition.pixelsPerMm, "simulator");
         definition.panel.x = ini::takeFloat(section, "panel_x", definition.panel.x, "simulator");
         definition.panel.y = ini::takeFloat(section, "panel_y", definition.panel.y, "simulator");
-        definition.developerPanel.x = ini::takeFloat(section, "developer_x", definition.developerPanel.x, "simulator");
-        definition.developerPanel.y = ini::takeFloat(section, "developer_y", definition.developerPanel.y, "simulator");
-        definition.developerPanel.width = ini::takeFloat(section, "developer_width", definition.developerPanel.width, "simulator");
-        definition.developerPanel.height = ini::takeFloat(section, "developer_height", definition.developerPanel.height, "simulator");
+        definition.developerPanel.x =
+            ini::takeFloat(section, "developer_x", definition.developerPanel.x, "simulator");
+        definition.developerPanel.y =
+            ini::takeFloat(section, "developer_y", definition.developerPanel.y, "simulator");
+        definition.developerPanel.width = ini::takeFloat(
+            section, "developer_width", definition.developerPanel.width, "simulator");
+        definition.developerPanel.height = ini::takeFloat(
+            section, "developer_height", definition.developerPanel.height, "simulator");
     });
 
     ini::consumeSection(document, "panel", [&](ini::Section& section) {
-        definition.physicalWidthMm = ini::takeFloat(section, "width_mm", definition.physicalWidthMm, "panel");
-        definition.physicalHeightMm = ini::takeFloat(section, "height_mm", definition.physicalHeightMm, "panel");
-        definition.drawBuiltinLabels = ini::takeBool(section, "draw_builtin_labels", definition.drawBuiltinLabels, "panel");
-        definition.drawScrews = ini::takeBool(section, "draw_screws", definition.drawScrews, "panel");
+        definition.physicalWidthMm =
+            ini::takeFloat(section, "width_mm", definition.physicalWidthMm, "panel");
+        definition.physicalHeightMm =
+            ini::takeFloat(section, "height_mm", definition.physicalHeightMm, "panel");
+        definition.drawBuiltinLabels =
+            ini::takeBool(section, "draw_builtin_labels", definition.drawBuiltinLabels, "panel");
+        definition.drawScrews =
+            ini::takeBool(section, "draw_screws", definition.drawScrews, "panel");
         const std::string image = ini::take(section, "background_image", "");
         if (!image.empty()) {
             const std::filesystem::path imagePath(image);
-            definition.backgroundImagePath = imagePath.is_absolute() ? imagePath : path.parent_path() / imagePath;
+            definition.backgroundImagePath =
+                imagePath.is_absolute() ? imagePath : path.parent_path() / imagePath;
         }
     });
 
     ini::consumeSection(document, "display", [&](ini::Section& section) {
         definition.display = consumeRect(section, definition.display, "display");
-        definition.displayPixelScale = ini::takeInt(section, "pixel_scale", definition.displayPixelScale, "display");
+        definition.displayPixelScale =
+            ini::takeInt(section, "pixel_scale", definition.displayPixelScale, "display");
     });
     ini::consumeSection(document, "encoder", [&](ini::Section& section) {
         definition.encoder = consumePoint(section, definition.encoder, "encoder");
-        definition.encoderDiameterMm = ini::takeFloat(
-            section, "knob_diameter_mm", definition.encoderDiameterMm, "encoder");
+        definition.encoderDiameterMm =
+            ini::takeFloat(section, "knob_diameter_mm", definition.encoderDiameterMm, "encoder");
     });
-    ini::consumeSection(document, "play", [&](ini::Section& section) { consumeCircle(section, definition.play, "play"); });
-    ini::consumeSection(document, "tap", [&](ini::Section& section) { consumeCircle(section, definition.tap, "tap"); });
-    ini::consumeSection(document, "stop", [&](ini::Section& section) { consumeCircle(section, definition.stop, "stop"); });
+    ini::consumeSection(document, "play", [&](ini::Section& section) {
+        consumeCircle(section, definition.play, "play");
+    });
+    ini::consumeSection(document, "tap", [&](ini::Section& section) {
+        consumeCircle(section, definition.tap, "tap");
+    });
+    ini::consumeSection(document, "stop", [&](ini::Section& section) {
+        consumeCircle(section, definition.stop, "stop");
+    });
 
     ini::consumeSection(document, "jack_ts", [&](ini::Section& section) {
-        definition.tsJack.nutDiameterMm = ini::takeFloat(
-            section, "nut_diameter_mm", definition.tsJack.nutDiameterMm, "jack_ts");
+        definition.tsJack.nutDiameterMm =
+            ini::takeFloat(section, "nut_diameter_mm", definition.tsJack.nutDiameterMm, "jack_ts");
         definition.tsJack.bushingDiameterMm = ini::takeFloat(
             section, "bushing_diameter_mm", definition.tsJack.bushingDiameterMm, "jack_ts");
         definition.tsJack.openingDiameterMm = ini::takeFloat(
@@ -317,26 +366,33 @@ PanelLayout loadPanelLayout(const std::filesystem::path& path) {
     });
     ini::consumeSection(document, "sync", [&](ini::Section& section) {
         definition.sync = consumePoint(section, definition.sync, "sync");
-        definition.syncJackType = ini::takeJackType(section, "jack_type", definition.syncJackType, "sync");
+        definition.syncJackType =
+            ini::takeJackType(section, "jack_type", definition.syncJackType, "sync");
     });
     ini::consumeSection(document, "reset", [&](ini::Section& section) {
         definition.reset = consumePoint(section, definition.reset, "reset");
-        definition.resetJackType = ini::takeJackType(section, "jack_type", definition.resetJackType, "reset");
+        definition.resetJackType =
+            ini::takeJackType(section, "jack_type", definition.resetJackType, "reset");
     });
     ini::consumeSection(document, "leds", [&](ini::Section& section) {
-        definition.ledDiameterMm = ini::takeFloat(section, "diameter_mm", definition.ledDiameterMm, "leds");
+        definition.ledDiameterMm =
+            ini::takeFloat(section, "diameter_mm", definition.ledDiameterMm, "leds");
         definition.ledOnColor = ini::takeColor(section, "on_color", definition.ledOnColor, "leds");
-        definition.ledOffColor = ini::takeColor(section, "off_color", definition.ledOffColor, "leds");
+        definition.ledOffColor =
+            ini::takeColor(section, "off_color", definition.ledOffColor, "leds");
     });
 
     for (std::size_t index = 0U; index < definition.outputs.size(); ++index) {
         const std::string sectionName = "output_" + std::to_string(index + 1U);
         ini::consumeSection(document, sectionName, [&](ini::Section& section) {
-            definition.outputs[index] = consumePoint(section, definition.outputs[index], sectionName);
+            definition.outputs[index] =
+                consumePoint(section, definition.outputs[index], sectionName);
             definition.outputJackTypes[index] = ini::takeJackType(
                 section, "jack_type", definition.outputJackTypes[index], sectionName);
-            definition.leds[index].xMm = ini::takeFloat(section, "led_x_mm", definition.leds[index].xMm, sectionName);
-            definition.leds[index].yMm = ini::takeFloat(section, "led_y_mm", definition.leds[index].yMm, sectionName);
+            definition.leds[index].xMm =
+                ini::takeFloat(section, "led_x_mm", definition.leds[index].xMm, sectionName);
+            definition.leds[index].yMm =
+                ini::takeFloat(section, "led_y_mm", definition.leds[index].yMm, sectionName);
         });
     }
 
@@ -347,7 +403,8 @@ PanelLayout loadPanelLayout(const std::filesystem::path& path) {
         });
     }
 
-    if (!document.empty()) throw std::runtime_error("unknown panel layout section [" + document.begin()->first + "]");
+    if (!document.empty())
+        throw std::runtime_error("unknown panel layout section [" + document.begin()->first + "]");
     return resolve(definition);
 }
 
@@ -356,7 +413,8 @@ void overrideBackgroundImage(PanelLayout& layout, const std::filesystem::path& i
 }
 
 void overrideDisplayPixelScale(PanelLayout& layout, const int pixelScale) {
-    if (pixelScale < 1 || pixelScale > 8) throw std::runtime_error("display pixel scale must be in the range 1..8");
+    if (pixelScale < 1 || pixelScale > 8)
+        throw std::runtime_error("display pixel scale must be in the range 1..8");
     layout.displayPixelScale = pixelScale;
 }
 

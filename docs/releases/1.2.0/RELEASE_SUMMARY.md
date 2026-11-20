@@ -14,6 +14,12 @@ CLOCK 1.2.0 brings Sequencer 2.0 to the same STM32F401 hardware and deterministi
 - **Clearer menus and dialogs:** `APPLY TEMPLATE?` asks first with NO preselected, the display wakes from front-panel use and from START or STOP at an input, and lists, popovers and the Custom Groove choice behave consistently.
 - **Qualification stays explicit:** 682 named Native tests with the 95/95/90 coverage gates intact. Physical timing measurements are tracked in the HIL ledger and are not replaced by host tests.
 
+## Known issues
+
+- **Hardware evidence follows in 1.2.1:** the timing and input fixes of this release are proven by host tests and calculation; the oscilloscope and logic-analyzer measurements on the module follow with 1.2.1.
+- **Display idle timer (suspected):** after a long run that ends in STOP, for example after a lost SYNC lock, the display may dim or switch off sooner than the configured delay. This is under investigation.
+- **Conservative display clock:** the display SPI runs at a calculated 656 kHz until the SSD1315 datasheet check; a faster clock is planned for 1.2.1.
+
 ## Firmware updates
 
 Routine USB updates continue to use the persistence-preserving DfuSe release images, or the PlatformIO upload through `scripts/upload_preserving_persistence.py`; both leave the A/B persistence sectors untouched. Never use a mass erase or a contiguous `.bin` image across the persistence sectors. Disconnect Eurorack power before connecting USB. ST-LINK/SWD remains the recommended first-install and recovery path.

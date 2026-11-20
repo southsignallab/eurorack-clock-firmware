@@ -71,7 +71,6 @@ inline constexpr DividerBank kDividerBank = DividerBank::PowersOfTwo;
 /** Factory divider-bank gate length. */
 inline constexpr std::uint16_t kDividerGateLengthMs = 10U;
 
-
 /** Factory STOP-mode screensaver effect. */
 inline constexpr ScreensaverMode kScreensaverMode = ScreensaverMode::Clock;
 

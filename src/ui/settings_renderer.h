@@ -18,7 +18,7 @@ namespace clockfw::ui {
 
 /** @brief Renders compact text-based configuration screens using one consistent visual grammar. */
 class SettingsRenderer final {
-public:
+  public:
     /**
      * @brief Constructs the renderer around the shared OLED abstraction.
      * @param display Display HAL receiving all drawing commands.
@@ -76,7 +76,7 @@ public:
      */
     bool informationValueOverflows(const char* label, const char* value);
 
-private:
+  private:
     hal::OledDisplay& display_;
     const services::SequencerPatternStore* sequencerPatternStore_ = nullptr;
 };

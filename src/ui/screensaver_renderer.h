@@ -19,7 +19,7 @@ namespace clockfw::ui {
 
 /** @brief Renders low-frequency idle effects without participating in clock timing. */
 class ScreensaverRenderer final {
-public:
+  public:
     /** @brief Constructs the renderer around the display HAL. */
     explicit ScreensaverRenderer(hal::OledDisplay& display);
 
@@ -30,7 +30,7 @@ public:
      */
     void render(ScreensaverMode mode, std::uint32_t frameIndex);
 
-private:
+  private:
     /** @brief Renders a progressively revealed fixed-point Barnsley-fern crop. */
     void renderFractal(std::uint32_t frameIndex);
 
@@ -79,8 +79,7 @@ private:
     /** @brief Launches a pixel rocket and renders a compact upper-screen burst. */
     void renderFireworks(std::uint32_t frameIndex);
 
-    static constexpr std::uint32_t kInvalidFrameIndex =
-        std::numeric_limits<std::uint32_t>::max();
+    static constexpr std::uint32_t kInvalidFrameIndex = std::numeric_limits<std::uint32_t>::max();
 
     hal::OledDisplay& display_;
     std::uint32_t fernViewportRandomState_ = 0xA341316CU;

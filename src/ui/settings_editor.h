@@ -25,7 +25,7 @@ namespace clockfw::ui {
  * while UiController decides which screen/row is currently active.
  */
 class SettingsEditor final {
-public:
+  public:
     /**
      * @brief Constructs the editor around mutable application state and the real-time engine.
      * @param state Mutable musical/application state.
@@ -71,7 +71,7 @@ public:
      */
     bool executeSequencerCommand(std::uint8_t channelIndex, std::uint8_t rowIndex);
 
-private:
+  private:
     /** @brief Adjusts one external-input role assignment. */
     void adjustInputAssignments(std::uint8_t rowIndex, std::int8_t delta);
 

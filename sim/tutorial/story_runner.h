@@ -71,7 +71,7 @@ struct StoryRunResult {
  * pacing, explicit waits and wait_until polling advance both presentation and simulator/firmware time.
  */
 class StoryRunner final {
-public:
+  public:
     /** @brief Binds one strict simulator port and the canonical docs/tutorials resource root. */
     StoryRunner(
         StorySimulatorPort& port,
@@ -82,7 +82,7 @@ public:
     /** @brief Validates and executes one complete story deterministically. */
     StoryRunResult run(const Story& story);
 
-private:
+  private:
     StorySimulatorPort& port_;
     std::filesystem::path tutorialRoot_;
     StoryPresentationSink* presentationSink_ = nullptr;

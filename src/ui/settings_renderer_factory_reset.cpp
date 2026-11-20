@@ -21,9 +21,7 @@ void SettingsRenderer::renderFactoryResetConfirm(const NavigationState& navigati
     const char* const title = text::get(text::TextId::FactoryResetConfirm);
     const hal::TextBounds titleBounds = display_.measureText(title, 0, 0);
     display_.drawText(
-        static_cast<std::int16_t>((hal::OledDisplay::kWidth - titleBounds.width) / 2),
-        7,
-        title);
+        static_cast<std::int16_t>((hal::OledDisplay::kWidth - titleBounds.width) / 2), 7, title);
 
     const char* const warning = text::get(text::TextId::EraseAllData);
     const hal::TextBounds warningBounds = display_.measureText(warning, 0, 0);
@@ -32,9 +30,7 @@ void SettingsRenderer::renderFactoryResetConfirm(const NavigationState& navigati
         21,
         warning);
 
-    const char* const choices[2] = {
-        text::get(text::TextId::No),
-        text::get(text::TextId::Yes)};
+    const char* const choices[2] = {text::get(text::TextId::No), text::get(text::TextId::Yes)};
     constexpr std::int16_t kChoiceX[2] = {35, 93};
     for (std::uint8_t index = 0U; index < 2U; ++index) {
         const hal::TextBounds bounds = display_.measureText(choices[index], 0, 0);
@@ -47,7 +43,8 @@ void SettingsRenderer::renderFactoryResetConfirm(const NavigationState& navigati
             display_.drawRectangle(boxX, 39, boxWidth, 15);
         }
         display_.drawText(
-            static_cast<std::int16_t>(kChoiceX[index] - static_cast<std::int16_t>(bounds.width / 2)),
+            static_cast<std::int16_t>(
+                kChoiceX[index] - static_cast<std::int16_t>(bounds.width / 2)),
             43,
             choices[index]);
         display_.setTextColor(hal::PixelColor::White);

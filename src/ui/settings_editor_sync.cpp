@@ -16,8 +16,8 @@ namespace clockfw::ui {
 
 void SettingsEditor::adjustSync(const std::uint8_t rowIndex, const std::int8_t delta) {
     if (rowIndex == 0U) {
-        state_.source = static_cast<ClockSource>(clampInt(
-            static_cast<int>(state_.source) + delta, 0, 2));
+        state_.source =
+            static_cast<ClockSource>(clampInt(static_cast<int>(state_.source) + delta, 0, 2));
     } else if (rowIndex == 1U) {
         std::size_t currentIndex = 0U;
         for (std::size_t index = 0U; index < kExternalPpqnOptions.size(); ++index) {
@@ -34,25 +34,20 @@ void SettingsEditor::adjustSync(const std::uint8_t rowIndex, const std::int8_t d
     } else if (rowIndex == 2U) {
         state_.externalSync.edge = delta > 0 ? SyncEdge::Falling : SyncEdge::Rising;
     } else if (rowIndex == 3U) {
-        state_.externalSync.lossMode = static_cast<SyncLossMode>(clampInt(
-            static_cast<int>(state_.externalSync.lossMode) + delta, 0, 2));
+        state_.externalSync.lossMode = static_cast<SyncLossMode>(
+            clampInt(static_cast<int>(state_.externalSync.lossMode) + delta, 0, 2));
     } else if (rowIndex == 4U) {
-        state_.externalSync.resetMode = delta > 0
-            ? ExternalResetMode::Gate
-            : ExternalResetMode::Trigger;
+        state_.externalSync.resetMode =
+            delta > 0 ? ExternalResetMode::Gate : ExternalResetMode::Trigger;
     } else if (rowIndex == 5U) {
-        state_.externalSync.glitchFilterUs = static_cast<std::uint16_t>(clampInt(
-            static_cast<int>(state_.externalSync.glitchFilterUs) + delta * 250,
-            0,
-            5000));
+        state_.externalSync.glitchFilterUs = static_cast<std::uint16_t>(
+            clampInt(static_cast<int>(state_.externalSync.glitchFilterUs) + delta * 250, 0, 5000));
     } else if (rowIndex == 6U) {
-        state_.externalSync.smoothing = static_cast<SyncSmoothing>(clampInt(
-            static_cast<int>(state_.externalSync.smoothing) + delta, 0, 3));
+        state_.externalSync.smoothing = static_cast<SyncSmoothing>(
+            clampInt(static_cast<int>(state_.externalSync.smoothing) + delta, 0, 3));
     } else if (rowIndex == 7U) {
-        state_.externalSync.timeoutMs = static_cast<std::uint16_t>(clampInt(
-            static_cast<int>(state_.externalSync.timeoutMs) + delta * 100,
-            200,
-            5000));
+        state_.externalSync.timeoutMs = static_cast<std::uint16_t>(
+            clampInt(static_cast<int>(state_.externalSync.timeoutMs) + delta * 100, 200, 5000));
     } else if (rowIndex == 8U && delta != 0) {
         state_.externalSync.autostartOnLock = delta > 0;
     }

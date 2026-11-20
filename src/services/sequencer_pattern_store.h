@@ -26,7 +26,7 @@ namespace clockfw::services {
  * is global user data rather than being duplicated inside CURRENT/eight presets.
  */
 class SequencerPatternStore final {
-public:
+  public:
     static constexpr std::size_t kStorageOffset = hal::persistent_layout::kSequencer2RegionOffset;
     static constexpr std::size_t kStorageBytes = hal::persistent_layout::kSequencerPatternBankBytes;
     static constexpr std::size_t kHeaderBytes = 16U;
@@ -47,7 +47,10 @@ public:
     std::uint8_t activeSlot(std::uint8_t channelIndex) const;
 
     /** @brief Selects P1..P8 for one channel and schedules a coalesced persistent commit. */
-    [[nodiscard]] bool setActiveSlot(std::uint8_t channelIndex, std::uint8_t slotIndex, std::uint32_t nowMs);
+    [[nodiscard]] bool setActiveSlot(
+        std::uint8_t channelIndex,
+        std::uint8_t slotIndex,
+        std::uint32_t nowMs);
 
     /**
      * @brief Seeds P1 of every channel from the legacy 1.x SequencerSettings.
@@ -83,21 +86,26 @@ public:
     void markCommitted();
 
     /** @brief Increments with every accepted bank mutation; drives the central debounce. */
-    std::uint32_t changeRevision() const { return changeRevision_; }
+    std::uint32_t changeRevision() const {
+        return changeRevision_;
+    }
 
     /** @brief Restores clean defaults after ERASE ALL DATA; nothing remains pending (F-008). */
     void resetToFactory();
 
     /** @brief Returns whether RAM differs from the durable pattern bank. */
-    bool dirty() const { return dirty_; }
+    bool dirty() const {
+        return dirty_;
+    }
     /** @brief Returns whether a valid Sequencer 2.0 bank was loaded or committed. */
-    bool hasDurableBank() const { return hasDurableBank_; }
+    bool hasDurableBank() const {
+        return hasDurableBank_;
+    }
 
-private:
+  private:
     static constexpr std::uint8_t kFormatVersion = 2U;
     static constexpr std::uint8_t kLegacyFormatVersion = 1U;
-    static constexpr std::size_t kActiveSlotsOffset =
-        kHeaderBytes + kPatternCount * kRecordBytes;
+    static constexpr std::size_t kActiveSlotsOffset = kHeaderBytes + kPatternCount * kRecordBytes;
 
     /** @brief Maps channel and slot indices onto the fixed bank array. */
     static std::size_t flatIndex(std::uint8_t channelIndex, std::uint8_t slotIndex);

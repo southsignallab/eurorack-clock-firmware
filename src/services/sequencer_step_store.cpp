@@ -20,7 +20,7 @@ constexpr std::uint32_t kMagic = 0x53513253UL;  // "S2QS" little-endian; format-
 constexpr std::size_t kCrcOffset = 8U;
 constexpr std::size_t kPayloadOffset = SequencerStepStore::kHeaderBytes;
 constexpr std::uint16_t kKeyReservedMask = 0xE000U;
-}
+}  // namespace
 
 SequencerStepStore::SequencerStepStore(hal::PersistentStorage& storage) : storage_(storage) {
     resetDefaults();
@@ -31,7 +31,7 @@ std::uint16_t SequencerStepStore::makeKey(
     const std::uint8_t slotIndex,
     const std::uint8_t step) {
     return static_cast<std::uint16_t>(
-        static_cast<std::uint16_t>(step) |
+        static_cast<std::uint32_t>(step) |
         static_cast<std::uint16_t>(static_cast<std::uint16_t>(channelIndex) << 7U) |
         static_cast<std::uint16_t>(static_cast<std::uint16_t>(slotIndex) << 10U));
 }
@@ -45,15 +45,15 @@ bool SequencerStepStore::decodeKey(
         return false;
     }
     step = static_cast<std::uint8_t>(key & 0x007FU);
-    channelIndex = static_cast<std::uint8_t>((key >> 7U) & 0x0007U);
-    slotIndex = static_cast<std::uint8_t>((key >> 10U) & 0x0007U);
-    return channelIndex < kChannelCount &&
-        slotIndex < kSequencerPatternSlotsPerChannel && step < kSequencerMaximumSteps;
+    channelIndex = static_cast<std::uint8_t>((static_cast<std::uint32_t>(key) >> 7U) & 0x0007U);
+    slotIndex = static_cast<std::uint8_t>((static_cast<std::uint32_t>(key) >> 10U) & 0x0007U);
+    return channelIndex < kChannelCount && slotIndex < kSequencerPatternSlotsPerChannel &&
+        step < kSequencerMaximumSteps;
 }
 
 void SequencerStepStore::write16(std::uint8_t* const destination, const std::uint16_t value) {
     destination[0] = static_cast<std::uint8_t>(value & 0xFFU);
-    destination[1] = static_cast<std::uint8_t>((value >> 8U) & 0xFFU);
+    destination[1] = static_cast<std::uint8_t>((static_cast<std::uint32_t>(value) >> 8U) & 0xFFU);
 }
 
 std::uint16_t SequencerStepStore::read16(const std::uint8_t* const source) {
@@ -69,8 +69,7 @@ void SequencerStepStore::write32(std::uint8_t* const destination, const std::uin
 }
 
 std::uint32_t SequencerStepStore::read32(const std::uint8_t* const source) {
-    return static_cast<std::uint32_t>(source[0]) |
-        (static_cast<std::uint32_t>(source[1]) << 8U) |
+    return static_cast<std::uint32_t>(source[0]) | (static_cast<std::uint32_t>(source[1]) << 8U) |
         (static_cast<std::uint32_t>(source[2]) << 16U) |
         (static_cast<std::uint32_t>(source[3]) << 24U);
 }
@@ -166,9 +165,8 @@ bool SequencerStepStore::begin() {
         resetDefaults();
         return false;
     }
-    const bool erased = std::all_of(bytes.begin(), bytes.end(), [](const std::uint8_t value) {
-        return value == 0xFFU;
-    });
+    const bool erased = std::all_of(
+        bytes.begin(), bytes.end(), [](const std::uint8_t value) { return value == 0xFFU; });
     if (erased) {
         resetDefaults();
         return true;
@@ -190,9 +188,8 @@ SequencerStepMetadata SequencerStepStore::metadata(
         return SequencerStepMetadata{};
     }
     const std::size_t index = findKey(makeKey(channelIndex, slotIndex, step));
-    return index < kMaximumOverrides
-        ? unpackSequencerStepMetadata(words_[index])
-        : SequencerStepMetadata{};
+    return index < kMaximumOverrides ? unpackSequencerStepMetadata(words_[index])
+                                     : SequencerStepMetadata{};
 }
 
 void SequencerStepStore::loadPatternWords(
@@ -272,6 +269,8 @@ bool SequencerStepStore::clearPattern(
         std::uint8_t recordChannel = 0U;
         std::uint8_t recordSlot = 0U;
         std::uint8_t recordStep = 0U;
+        // keys_ holds only keys that passed decodeKey() on load or that makeKey() built
+        // from checked indices, so decoding cannot fail here.
         (void)decodeKey(keys_[index], recordChannel, recordSlot, recordStep);
         if (recordChannel == channelIndex && recordSlot == slotIndex) {
             changed = true;
@@ -316,6 +315,8 @@ bool SequencerStepStore::replacePatternWords(
         std::uint8_t recordChannel = 0U;
         std::uint8_t recordSlot = 0U;
         std::uint8_t recordStep = 0U;
+        // keys_ holds only keys that passed decodeKey() on load or that makeKey() built
+        // from checked indices, so decoding cannot fail here.
         (void)decodeKey(keys_[index], recordChannel, recordSlot, recordStep);
         if (recordChannel == channelIndex && recordSlot == slotIndex) {
             ++existingTarget;
@@ -330,11 +331,7 @@ bool SequencerStepStore::replacePatternWords(
         const SequencerStepMetadata metadataValue = unpackSequencerStepMetadata(words[step]);
         if (!isSequencerStepMetadataDefault(metadataValue) &&
             !updateMetadata(
-                channelIndex,
-                slotIndex,
-                static_cast<std::uint8_t>(step),
-                metadataValue,
-                nowMs)) {
+                channelIndex, slotIndex, static_cast<std::uint8_t>(step), metadataValue, nowMs)) {
             return false;
         }
     }

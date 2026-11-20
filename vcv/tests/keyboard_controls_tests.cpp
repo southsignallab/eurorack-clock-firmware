@@ -16,12 +16,12 @@
 namespace {
 
 using clockfw::vcv::applyKeyboardEvent;
-using clockfw::vcv::reconcileHeldControls;
-using clockfw::vcv::releaseHeldControls;
 using clockfw::vcv::KeyAction;
 using clockfw::vcv::KeyboardEventResult;
 using clockfw::vcv::KeyboardHeldControls;
 using clockfw::vcv::PanelKey;
+using clockfw::vcv::reconcileHeldControls;
+using clockfw::vcv::releaseHeldControls;
 
 /** @brief Fails the test binary independently of NDEBUG. */
 void require(const bool condition, const char* const message) {
@@ -74,9 +74,13 @@ void testModifierInterleavingsNeverLeaveControlsHeld() {
         {{Step::ModifierDown, Step::KeyDown, Step::ModifierUp, Step::KeyUp}},
         {{Step::ModifierDown, Step::ModifierUp, Step::KeyDown, Step::KeyUp}},
     }};
-    constexpr std::array<PanelKey, 6U> kHoldKeys{{
-        PanelKey::EncoderPush, PanelKey::Play, PanelKey::Tap, PanelKey::Stop,
-        PanelKey::LeftShift, PanelKey::RightShift}};
+    constexpr std::array<PanelKey, 6U> kHoldKeys{
+        {PanelKey::EncoderPush,
+         PanelKey::Play,
+         PanelKey::Tap,
+         PanelKey::Stop,
+         PanelKey::LeftShift,
+         PanelKey::RightShift}};
 
     for (const PanelKey key : kHoldKeys) {
         const bool isShift = key == PanelKey::LeftShift || key == PanelKey::RightShift;
@@ -89,25 +93,33 @@ void testModifierInterleavingsNeverLeaveControlsHeld() {
                     case Step::ModifierDown:
                         modifierDown = true;
                         // The modifier key itself is not a CLOCK key and goes to Rack.
-                        require(!applyKeyboardEvent(held, PanelKey::Unmapped, KeyAction::Press, true).consumed,
-                                "modifier press must reach Rack");
+                        require(
+                            !applyKeyboardEvent(held, PanelKey::Unmapped, KeyAction::Press, true)
+                                 .consumed,
+                            "modifier press must reach Rack");
                         break;
                     case Step::ModifierUp:
                         modifierDown = false;
-                        require(!applyKeyboardEvent(held, PanelKey::Unmapped, KeyAction::Release, false).consumed,
-                                "modifier release must reach Rack");
+                        require(
+                            !applyKeyboardEvent(held, PanelKey::Unmapped, KeyAction::Release, false)
+                                 .consumed,
+                            "modifier release must reach Rack");
                         break;
                     case Step::KeyDown: {
                         const KeyboardEventResult result =
                             applyKeyboardEvent(held, key, KeyAction::Press, modifierDown);
                         pressedAsControl = isShift || !modifierDown;
-                        require(result.consumed == pressedAsControl,
-                                "a modified press is a Rack shortcut, an unmodified one a CLOCK control");
-                        require(heldFlag(held, key) == pressedAsControl,
-                                "press must hold exactly the CLOCK controls it consumed");
+                        require(
+                            result.consumed == pressedAsControl,
+                            "a modified press is a Rack shortcut, an unmodified one a CLOCK "
+                            "control");
+                        require(
+                            heldFlag(held, key) == pressedAsControl,
+                            "press must hold exactly the CLOCK controls it consumed");
                         // Auto-repeat while the modifier state changes must not alter the hold.
                         (void)applyKeyboardEvent(held, key, KeyAction::Repeat, modifierDown);
-                        require(heldFlag(held, key) == pressedAsControl, "repeat must keep the hold");
+                        require(
+                            heldFlag(held, key) == pressedAsControl, "repeat must keep the hold");
                         break;
                     }
                     case Step::KeyUp: {
@@ -129,10 +141,13 @@ void testModifierInterleavingsNeverLeaveControlsHeld() {
 /** @brief Unchanged behavior: encoder detents, unmapped keys and modified encoder turns. */
 void testEncoderKeysAndForwarding() {
     KeyboardHeldControls held{};
-    KeyboardEventResult result = applyKeyboardEvent(held, PanelKey::EncoderUp, KeyAction::Press, false);
+    KeyboardEventResult result =
+        applyKeyboardEvent(held, PanelKey::EncoderUp, KeyAction::Press, false);
     require(result.consumed && result.encoderDetents == 1, "Up is one clockwise detent");
     result = applyKeyboardEvent(held, PanelKey::EncoderDown, KeyAction::Repeat, false);
-    require(result.consumed && result.encoderDetents == -1, "Down repeat is one counter-clockwise detent");
+    require(
+        result.consumed && result.encoderDetents == -1,
+        "Down repeat is one counter-clockwise detent");
     result = applyKeyboardEvent(held, PanelKey::EncoderUp, KeyAction::Release, false);
     require(result.consumed && result.encoderDetents == 0, "encoder key release queues nothing");
     result = applyKeyboardEvent(held, PanelKey::EncoderUp, KeyAction::Press, true);
@@ -168,10 +183,14 @@ void testReleaseElsewhereIsFoundFromTheKeyState() {
     require(!held.play && held.tap, "only the control whose key is up is released");
     require(!reconcileHeldControls(held, onlyTapDown), "nothing changes while the key stays down");
     const auto nothingDown = [](PanelKey) { return false; };
-    require(reconcileHeldControls(held, nothingDown) && noneHeld(held), "all keys up: nothing held");
-    for (const PanelKey key : {PanelKey::LeftShift, PanelKey::RightShift, PanelKey::EncoderPush, PanelKey::Stop}) {
+    require(
+        reconcileHeldControls(held, nothingDown) && noneHeld(held), "all keys up: nothing held");
+    for (const PanelKey key :
+         {PanelKey::LeftShift, PanelKey::RightShift, PanelKey::EncoderPush, PanelKey::Stop}) {
         applyKeyboardEvent(held, key, KeyAction::Press, false);
-        require(reconcileHeldControls(held, nothingDown) && !heldFlag(held, key), "each held key is reconciled");
+        require(
+            reconcileHeldControls(held, nothingDown) && !heldFlag(held, key),
+            "each held key is reconciled");
     }
 }
 

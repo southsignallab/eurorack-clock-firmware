@@ -22,14 +22,17 @@ PersistenceCoordinator::PersistenceCoordinator(
 
 std::uint32_t PersistenceCoordinator::retryDelayMs(const std::uint8_t failures) {
     std::uint32_t delayMs = config::kPersistenceRetryInitialMs;
-    for (std::uint8_t step = 1U; step < failures && delayMs < config::kPersistenceRetryMaximumMs; ++step) {
+    for (std::uint8_t step = 1U; step < failures && delayMs < config::kPersistenceRetryMaximumMs;
+         ++step) {
         delayMs *= 2U;
     }
-    return delayMs < config::kPersistenceRetryMaximumMs ? delayMs : config::kPersistenceRetryMaximumMs;
+    return delayMs < config::kPersistenceRetryMaximumMs ? delayMs
+                                                        : config::kPersistenceRetryMaximumMs;
 }
 
 bool PersistenceCoordinator::hasPendingCommit() const {
-    return state_.hasPendingCommit() || grooves_.hasPendingCommit() || patterns_.dirty() || steps_.dirty();
+    return state_.hasPendingCommit() || grooves_.hasPendingCommit() || patterns_.dirty() ||
+        steps_.dirty();
 }
 
 bool PersistenceCoordinator::hasUrgentCommit() const {
@@ -100,8 +103,8 @@ bool PersistenceCoordinator::commitAll(const std::uint32_t nowMs) {
 bool PersistenceCoordinator::snapshotImageForSimulator(
     std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>& image) {
     if (hasPendingCommit() && !storage_.writeLocked() && storage_.beginUpdate()) {
-        const bool staged =
-            grooves_.stage() && state_.stagePendingRecords(true) && patterns_.stage() && steps_.stage();
+        const bool staged = grooves_.stage() && state_.stagePendingRecords(true) &&
+            patterns_.stage() && steps_.stage();
         const bool copied = staged && storage_.copyStagedImageForSimulator(image);
         storage_.cancelUpdate();
         if (copied) {

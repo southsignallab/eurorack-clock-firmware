@@ -19,9 +19,12 @@ namespace clockfw::game {
 
 /** @brief Eight-gate one-bar rhythm player with encoder tempo and TAP style selection. */
 class Beatknecht final {
-public:
+  public:
     /** @brief Constructs the rhythm generator around the shared display, controls, and gate HAL. */
-    Beatknecht(hal::OledDisplay& display, hal::ControlPanel& controls, hal::GateOutputDriver& gateOutputs);
+    Beatknecht(
+        hal::OledDisplay& display,
+        hal::ControlPanel& controls,
+        hal::GateOutputDriver& gateOutputs);
     /** @brief Runs the selected boot rhythm generator synchronously until exit. */
     void run();
 #ifdef CLOCK_SIMULATOR
@@ -31,7 +34,7 @@ public:
     bool serviceForSimulator(std::uint32_t nowMs);
 #endif
 
-private:
+  private:
     friend struct BeatknechtTestAccess;
     /** @brief Restores the default style, tempo, step, and output state. */
     void resetSession(std::uint32_t nowMs);

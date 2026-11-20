@@ -41,41 +41,42 @@ inline constexpr std::uint32_t kTapTempoButtonPin = mcu::PA3;
 /** Dedicated STOP/BACK front-panel button (SW3, net BTN_RESET_BACK). */
 inline constexpr std::uint32_t kResetBackButtonPin = mcu::PA2;
 
-/** Channel 1 gate source (net GATE_SRC_1) feeding 74HCT541 input A0; LED 1 is driven from the buffered output. */
+// The buffer input that carries each channel differs between the DIY and SMD variants;
+// the MCU pin to output jack assignment is the same in both.
+/** Channel 1 gate source (net GATE_SRC_1) feeding one input of the gate output buffer; LED 1 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel1GateLedPin = mcu::PB0;
 
-/** Channel 2 gate source (net GATE_SRC_2) feeding 74HCT541 input A1; LED 2 is driven from the buffered output. */
+/** Channel 2 gate source (net GATE_SRC_2) feeding one input of the gate output buffer; LED 2 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel2GateLedPin = mcu::PB1;
 
-/** Channel 3 gate source (net GATE_SRC_3) feeding 74HCT541 input A2; LED 3 is driven from the buffered output. */
+/** Channel 3 gate source (net GATE_SRC_3) feeding one input of the gate output buffer; LED 3 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel3GateLedPin = mcu::PB2;
 
-/** Channel 4 gate source (net GATE_SRC_4) feeding 74HCT541 input A3; LED 4 is driven from the buffered output. */
+/** Channel 4 gate source (net GATE_SRC_4) feeding one input of the gate output buffer; LED 4 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel4GateLedPin = mcu::PB5;
 
-/** Channel 5 gate source (net GATE_SRC_5) feeding 74HCT541 input A4; LED 5 is driven from the buffered output. */
+/** Channel 5 gate source (net GATE_SRC_5) feeding one input of the gate output buffer; LED 5 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel5GateLedPin = mcu::PB8;
 
-/** Channel 6 gate source (net GATE_SRC_6) feeding 74HCT541 input A5; LED 6 is driven from the buffered output. */
+/** Channel 6 gate source (net GATE_SRC_6) feeding one input of the gate output buffer; LED 6 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel6GateLedPin = mcu::PB10;
 
-/** Channel 7 gate source (net GATE_SRC_7) feeding 74HCT541 input A6; LED 7 is driven from the buffered output. */
+/** Channel 7 gate source (net GATE_SRC_7) feeding one input of the gate output buffer; LED 7 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel7GateLedPin = mcu::PB12;
 
-/** Channel 8 gate source (net GATE_SRC_8) feeding 74HCT541 input A7; LED 8 is driven from the buffered output. */
+/** Channel 8 gate source (net GATE_SRC_8) feeding one input of the gate output buffer; LED 8 is driven from the buffered output. */
 inline constexpr std::uint32_t kChannel8GateLedPin = mcu::PB13;
 
 /** Ordered channel-pin table used by the gate-output driver. */
-inline constexpr std::array<std::uint32_t, kChannelCount> kGateChannelPins{{
-    kChannel1GateLedPin,
-    kChannel2GateLedPin,
-    kChannel3GateLedPin,
-    kChannel4GateLedPin,
-    kChannel5GateLedPin,
-    kChannel6GateLedPin,
-    kChannel7GateLedPin,
-    kChannel8GateLedPin
-}};
+inline constexpr std::array<std::uint32_t, kChannelCount> kGateChannelPins{
+    {kChannel1GateLedPin,
+     kChannel2GateLedPin,
+     kChannel3GateLedPin,
+     kChannel4GateLedPin,
+     kChannel5GateLedPin,
+     kChannel6GateLedPin,
+     kChannel7GateLedPin,
+     kChannel8GateLedPin}};
 
 /** Encoded port identifier of GPIOB (see hal/gpio_pin.h: bits 15..8 of a pin hold the port). */
 inline constexpr std::uint32_t kGpioPortB = 0xBU;
@@ -95,8 +96,8 @@ constexpr bool gatePinsShareOnePortWithoutDuplicates(
     const std::array<std::uint32_t, kChannelCount>& pins) {
     std::uint32_t usedLines = 0U;
     for (const std::uint32_t pin : pins) {
-        if (pin == kUnassignedDigitalPin || pinPort(pin) != kGpioPortB ||
-            (pin & 0xF0U) != 0U || (usedLines & pinLineMask(pin)) != 0U) {
+        if (pin == kUnassignedDigitalPin || pinPort(pin) != kGpioPortB || (pin & 0xF0U) != 0U ||
+            (usedLines & pinLineMask(pin)) != 0U) {
             return false;
         }
         usedLines |= pinLineMask(pin);
@@ -106,8 +107,9 @@ constexpr bool gatePinsShareOnePortWithoutDuplicates(
 
 // Contract V1: all eight gates are written with one GPIOB BSRR access per scheduler tick.
 // That is only correct when every gate pin sits on GPIOB and each uses its own line.
-static_assert(gatePinsShareOnePortWithoutDuplicates(kGateChannelPins),
-              "All gate pins must be on GPIOB and must not share a GPIO line");
+static_assert(
+    gatePinsShareOnePortWithoutDuplicates(kGateChannelPins),
+    "All gate pins must be on GPIOB and must not share a GPIO line");
 
 /** Optional active-low gate-buffer output-enable input.
  *
@@ -172,12 +174,15 @@ inline constexpr std::uint32_t kDisplaySpiDataCommandPin = CLOCK_DISPLAY_SPI_DC_
 /** OLED reset GPIO. Active-low at the panel. */
 inline constexpr std::uint32_t kDisplayResetPin = CLOCK_DISPLAY_RESET_PIN;
 
-static_assert(kDisplaySpiChipSelectPin != kDisplaySpiDataCommandPin,
-              "OLED CS and D/C must use different GPIOs");
-static_assert(kDisplaySpiChipSelectPin != kDisplayResetPin,
-              "OLED CS and RESET must use different GPIOs");
-static_assert(kDisplaySpiDataCommandPin != kDisplayResetPin,
-              "OLED D/C and RESET must use different GPIOs");
+static_assert(
+    kDisplaySpiChipSelectPin != kDisplaySpiDataCommandPin,
+    "OLED CS and D/C must use different GPIOs");
+static_assert(
+    kDisplaySpiChipSelectPin != kDisplayResetPin,
+    "OLED CS and RESET must use different GPIOs");
+static_assert(
+    kDisplaySpiDataCommandPin != kDisplayResetPin,
+    "OLED D/C and RESET must use different GPIOs");
 
 #ifndef CLOCK_EXTERNAL_SYNC_PIN
 #define CLOCK_EXTERNAL_SYNC_PIN clockfw::mcu::PA8
@@ -213,8 +218,8 @@ inline constexpr std::uint32_t kExternalResetJackDetectPin = CLOCK_EXTERNAL_RESE
 
 static_assert(
     kExternalSyncSignalPin == kUnassignedDigitalPin ||
-    kExternalResetSignalPin == kUnassignedDigitalPin ||
-    kExternalSyncSignalPin != kExternalResetSignalPin,
+        kExternalResetSignalPin == kUnassignedDigitalPin ||
+        kExternalSyncSignalPin != kExternalResetSignalPin,
     "External SYNC and RST comparator outputs must not share a GPIO");
 
 constexpr bool distinctAssignedPins(const std::array<std::uint32_t, 21U>& pins) {
@@ -231,33 +236,28 @@ constexpr bool distinctAssignedPins(const std::array<std::uint32_t, 21U>& pins) 
     return true;
 }
 
-inline constexpr std::array<std::uint32_t, 21U> kFinalHardwareDigitalPins{{
-    kPlayPauseButtonPin, kResetBackButtonPin, kTapTempoButtonPin,
-    kDisplaySpiChipSelectPin, kDisplaySpiClockPin, kDisplaySpiDataPin, kDisplaySpiDataCommandPin,
-    kChannel1GateLedPin, kChannel2GateLedPin, kChannel3GateLedPin,
-    kChannel4GateLedPin, kEncoderPhaseAPin, kEncoderPhaseBPin,
-    kChannel5GateLedPin, kChannel6GateLedPin, kChannel7GateLedPin,
-    kChannel8GateLedPin, kEncoderPushButtonPin, kDisplayResetPin,
-    kExternalSyncSignalPin, kExternalResetSignalPin
-}};
+inline constexpr std::array<std::uint32_t, 21U> kFinalHardwareDigitalPins{
+    {kPlayPauseButtonPin,       kResetBackButtonPin,    kTapTempoButtonPin,
+     kDisplaySpiChipSelectPin,  kDisplaySpiClockPin,    kDisplaySpiDataPin,
+     kDisplaySpiDataCommandPin, kChannel1GateLedPin,    kChannel2GateLedPin,
+     kChannel3GateLedPin,       kChannel4GateLedPin,    kEncoderPhaseAPin,
+     kEncoderPhaseBPin,         kChannel5GateLedPin,    kChannel6GateLedPin,
+     kChannel7GateLedPin,       kChannel8GateLedPin,    kEncoderPushButtonPin,
+     kDisplayResetPin,          kExternalSyncSignalPin, kExternalResetSignalPin}};
 
 #ifndef CLOCK_ENFORCE_FINAL_PIN_MAP
 #define CLOCK_ENFORCE_FINAL_PIN_MAP 1
 #endif
 
 #if CLOCK_ENFORCE_FINAL_PIN_MAP
-static_assert(distinctAssignedPins(kFinalHardwareDigitalPins),
-              "Final hardware GPIO map contains a duplicate assignment");
-static_assert(kDisplaySpiChipSelectPin == mcu::PA4,
-              "Final hardware requires OLED CS on PA4");
-static_assert(kDisplaySpiClockPin == mcu::PA5,
-              "Final hardware requires OLED CLK/SCK on PA5");
-static_assert(kDisplaySpiDataPin == mcu::PA7,
-              "Final hardware requires OLED DIN/MOSI on PA7");
-static_assert(kDisplaySpiDataCommandPin == mcu::PB9,
-              "Final hardware requires OLED D/C on PB9");
-static_assert(kDisplayResetPin == mcu::PB15,
-              "Final hardware requires OLED RES on PB15");
+static_assert(
+    distinctAssignedPins(kFinalHardwareDigitalPins),
+    "Final hardware GPIO map contains a duplicate assignment");
+static_assert(kDisplaySpiChipSelectPin == mcu::PA4, "Final hardware requires OLED CS on PA4");
+static_assert(kDisplaySpiClockPin == mcu::PA5, "Final hardware requires OLED CLK/SCK on PA5");
+static_assert(kDisplaySpiDataPin == mcu::PA7, "Final hardware requires OLED DIN/MOSI on PA7");
+static_assert(kDisplaySpiDataCommandPin == mcu::PB9, "Final hardware requires OLED D/C on PB9");
+static_assert(kDisplayResetPin == mcu::PB15, "Final hardware requires OLED RES on PB15");
 #endif
 
 }  // namespace clockfw::pinmap

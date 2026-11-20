@@ -20,7 +20,7 @@ namespace clockfw::game {
 
 /** @brief Automatic-speed pseudo-3D racer with traffic, crashes, laps, and a durable high score. */
 class Formula1Game final {
-public:
+  public:
     /** @brief Constructs the game around the shared display, controls, safe gate HAL, and score slot. */
     Formula1Game(
         hal::OledDisplay& display,
@@ -36,9 +36,13 @@ public:
     bool serviceForSimulator(std::uint32_t nowMs);
 #endif
 
-private:
+  private:
     friend struct Formula1GameTestAccess;
-    struct Car final { std::int8_t lane = 0; std::int16_t y = -20; bool active = false; };
+    struct Car final {
+        std::int8_t lane = 0;
+        std::int16_t y = -20;
+        bool active = false;
+    };
 
     /** @brief Restores player, speed, traffic, crashes, and score state for a new run. */
     void resetSession();

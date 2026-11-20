@@ -36,18 +36,24 @@ void strokeRect(SDL_Renderer* const renderer, const layout::Rect& rect) {
 
 const char* transportName(const TransportState state) {
     switch (state) {
-        case TransportState::Stopped: return "STOP";
-        case TransportState::Paused: return "PAUSE";
-        case TransportState::Playing: return "PLAY";
+        case TransportState::Stopped:
+            return "STOP";
+        case TransportState::Paused:
+            return "PAUSE";
+        case TransportState::Playing:
+            return "PLAY";
     }
     return "?";
 }
 
 const char* operatingModeName(const OperatingMode mode) {
     switch (mode) {
-        case OperatingMode::Independent: return "INDEPENDENT";
-        case OperatingMode::UnifiedClock: return "ONE CLOCK";
-        case OperatingMode::DividerBank: return "DIVIDER";
+        case OperatingMode::Independent:
+            return "INDEPENDENT";
+        case OperatingMode::UnifiedClock:
+            return "ONE CLOCK";
+        case OperatingMode::DividerBank:
+            return "DIVIDER";
     }
     return "?";
 }
@@ -111,18 +117,40 @@ void PanelRenderer::renderDeveloperPanel(
         static_cast<unsigned>(reset.periodMs),
         static_cast<unsigned long long>(reset.resetCount));
     drawText(renderer, 430.0F, 116.0F, resetStatus);
-    drawText(renderer, 430.0F, 136.0F, "MOUSE: L jack=cable  R jack=run  M jack=waveform  wheel=tempo/period");
-    drawText(renderer, 430.0F, 156.0F, "KEYS: A/D ENC  E push  P/SPACE play  T tap  S stop  R single reset");
-    drawText(renderer, 430.0F, 176.0F, "SYNC C/G [/] PgUp/PgDn Q PPQN | W waveform | F2 POWER | F1 dev | F12 shot");
+    drawText(
+        renderer,
+        430.0F,
+        136.0F,
+        "MOUSE: L jack=cable  R jack=run  M jack=waveform  wheel=tempo/period");
+    drawText(
+        renderer,
+        430.0F,
+        156.0F,
+        "KEYS: A/D ENC  E push  P/SPACE play  T tap  S stop  R single reset");
+    drawText(
+        renderer,
+        430.0F,
+        176.0F,
+        "SYNC C/G [/] PgUp/PgDn Q PPQN | W waveform | F2 POWER | F1 dev | F12 shot");
 
     const layout::Rect powerBox{
         panelLayout_.developerPanel.x + panelLayout_.developerPanel.width - 118.0F,
-        panelLayout_.developerPanel.y + 26.0F, 92.0F, 20.0F};
-    setColor(renderer, runtime.poweredOn() ? 92U : 58U, runtime.poweredOn() ? 132U : 60U, runtime.poweredOn() ? 96U : 62U);
+        panelLayout_.developerPanel.y + 26.0F,
+        92.0F,
+        20.0F};
+    setColor(
+        renderer,
+        runtime.poweredOn() ? 92U : 58U,
+        runtime.poweredOn() ? 132U : 60U,
+        runtime.poweredOn() ? 96U : 62U);
     fillRect(renderer, powerBox);
     setColor(renderer, 195U, 198U, 202U);
     strokeRect(renderer, powerBox);
-    drawText(renderer, powerBox.x + 10.0F, powerBox.y + 6.0F, runtime.poweredOn() ? "POWER ON" : "POWER OFF");
+    drawText(
+        renderer,
+        powerBox.x + 10.0F,
+        powerBox.y + 6.0F,
+        runtime.poweredOn() ? "POWER ON" : "POWER OFF");
 
     const layout::Rect freezeBox{430.0F, 196.0F, 14.0F, 14.0F};
     setColor(renderer, 118U, 121U, 126U);
@@ -142,14 +170,12 @@ void PanelRenderer::renderDeveloperPanel(
     constexpr float rowHeight = 73.0F;
 
     const std::uint64_t safeWindowUs = std::clamp<std::uint64_t>(
-        scopeView.windowUs,
-        scope::kWindowOptionsUs.front(),
-        scope::kWindowOptionsUs.back());
+        scopeView.windowUs, scope::kWindowOptionsUs.front(), scope::kWindowOptionsUs.back());
     const SyncInputTelemetry syncGrid = runtime.syncInputTelemetry();
-    const std::uint32_t referenceBpmMilli = scope::effectiveReferenceBpmMilli(
-        state, syncGrid.locked, syncGrid.engineBpmMilli);
-    const scope::MusicalGridSpec grid = scope::musicalGridSpec(
-        state, referenceBpmMilli, safeWindowUs);
+    const std::uint32_t referenceBpmMilli =
+        scope::effectiveReferenceBpmMilli(state, syncGrid.locked, syncGrid.engineBpmMilli);
+    const scope::MusicalGridSpec grid =
+        scope::musicalGridSpec(state, referenceBpmMilli, safeWindowUs);
     const double referenceUs = static_cast<double>(scopeView.referenceUs);
     const double startUs = referenceUs - static_cast<double>(safeWindowUs);
     // Gate telemetry is timestamped in integer microseconds. Keep its clipping
@@ -159,21 +185,21 @@ void PanelRenderer::renderDeveloperPanel(
     const std::int64_t gateReferenceUs = static_cast<std::int64_t>(scopeView.referenceUs);
     const std::int64_t gateStartUs = gateReferenceUs - static_cast<std::int64_t>(safeWindowUs);
     const float graphTop = firstRowY + 2.0F;
-    const float graphBottom = firstRowY +
-        static_cast<float>(kChannelCount - 1U) * rowHeight + 32.0F;
+    const float graphBottom =
+        firstRowY + static_cast<float>(kChannelCount - 1U) * rowHeight + 32.0F;
 
     if (scopeView.started) {
         // Keep the ruler unswung/unhumanized, but phase-lock it to the real engine
         // position instead of reconstructing historical phase from current BPM.
         // This prevents tempo, external-sync and rate changes from making the
         // reference ruler visibly walk away from the pulses it is meant to explain.
-        const scope::GridAnchor anchor = scope::phaseLockedGridAnchor(
-            state, runtime.engineSnapshot(), referenceUs, grid);
+        const scope::GridAnchor anchor =
+            scope::phaseLockedGridAnchor(state, runtime.engineSnapshot(), referenceUs, grid);
         const std::uint64_t serialStep = std::max<std::uint32_t>(grid.minorEvery, 1U);
         const double timeStepUs = grid.intervalUs * static_cast<double>(serialStep);
         std::uint64_t serial = anchor.serial - (anchor.serial % serialStep);
-        double gridTimeUs = anchor.timeUs -
-            static_cast<double>(anchor.serial - serial) * grid.intervalUs;
+        double gridTimeUs =
+            anchor.timeUs - static_cast<double>(anchor.serial - serial) * grid.intervalUs;
 
         while (serial >= serialStep && gridTimeUs - timeStepUs >= startUs) {
             serial -= serialStep;
@@ -188,18 +214,16 @@ void PanelRenderer::renderDeveloperPanel(
             if (gridTimeUs > referenceUs) {
                 break;
             }
-            const float x = graphLeft + static_cast<float>(scope::normalizedPosition(
-                gridTimeUs, startUs, safeWindowUs)) * graphWidth;
+            const float x = graphLeft +
+                static_cast<float>(scope::normalizedPosition(gridTimeUs, startUs, safeWindowUs)) *
+                    graphWidth;
             const bool major = scope::isMajorReference(serial, grid);
             setColor(renderer, major ? 72U : 49U, major ? 74U : 51U, major ? 79U : 55U);
             (void)SDL_RenderLine(renderer, x, graphTop, x, graphBottom);
             if (major) {
                 char referenceLabel[24]{};
                 std::snprintf(
-                    referenceLabel,
-                    sizeof(referenceLabel),
-                    "%.3fs",
-                    gridTimeUs / 1000000.0);
+                    referenceLabel, sizeof(referenceLabel), "%.3fs", gridTimeUs / 1000000.0);
                 setColor(renderer, 122U, 124U, 129U);
                 drawText(renderer, std::min(x + 3.0F, graphRight - 64.0F), 214.0F, referenceLabel);
             }
@@ -220,9 +244,7 @@ void PanelRenderer::renderDeveloperPanel(
 
     const char* const scopeState = !scopeView.started
         ? "ARMED"
-        : (scopeView.freezeOnStop && state.transport == TransportState::Stopped
-            ? "FROZEN"
-            : "RUN");
+        : (scopeView.freezeOnStop && state.transport == TransportState::Stopped ? "FROZEN" : "RUN");
     char scopeStatus[80]{};
     std::snprintf(
         scopeStatus,
@@ -262,8 +284,8 @@ void PanelRenderer::renderDeveloperPanel(
                 if (transition.timestampUs < scopeView.epochSimulatorUs) {
                     continue;
                 }
-                const std::int64_t transitionUs = static_cast<std::int64_t>(
-                    transition.timestampUs - scopeView.epochSimulatorUs);
+                const std::int64_t transitionUs =
+                    static_cast<std::int64_t>(transition.timestampUs - scopeView.epochSimulatorUs);
                 if (transitionUs < gateStartUs) {
                     high = transition.high;
                     continue;
@@ -271,21 +293,25 @@ void PanelRenderer::renderDeveloperPanel(
                 if (transitionUs > gateReferenceUs) {
                     break;
                 }
-                const float x = graphLeft + static_cast<float>(scope::normalizedPosition(
-                    static_cast<double>(transitionUs),
-                    static_cast<double>(gateStartUs),
-                    safeWindowUs)) * graphWidth;
+                const float x = graphLeft +
+                    static_cast<float>(scope::normalizedPosition(
+                        static_cast<double>(transitionUs),
+                        static_cast<double>(gateStartUs),
+                        safeWindowUs)) *
+                        graphWidth;
                 setColor(renderer, 160U, 220U, 170U);
-                (void)SDL_RenderLine(renderer, previousX, high ? highY : lowY, x, high ? highY : lowY);
-                (void)SDL_RenderLine(renderer, x, high ? highY : lowY, x, transition.high ? highY : lowY);
+                (void)SDL_RenderLine(
+                    renderer, previousX, high ? highY : lowY, x, high ? highY : lowY);
+                (void)SDL_RenderLine(
+                    renderer, x, high ? highY : lowY, x, transition.high ? highY : lowY);
                 previousX = x;
                 high = transition.high;
             }
             setColor(renderer, 160U, 220U, 170U);
-            (void)SDL_RenderLine(renderer, previousX, high ? highY : lowY, graphRight, high ? highY : lowY);
+            (void)SDL_RenderLine(
+                renderer, previousX, high ? highY : lowY, graphRight, high ? highY : lowY);
         }
     }
 }
-
 
 }  // namespace clockfw::sim

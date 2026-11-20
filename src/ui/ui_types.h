@@ -87,14 +87,7 @@ enum class SettingsPage : std::uint8_t {
 };
 
 /** @brief One action exposed by the horizontally scrolling mode selector. */
-enum class ModeFunction : std::uint8_t {
-    Off,
-    Clock,
-    Euclid,
-    Sequencer,
-    UnifiedClock,
-    DividerBank
-};
+enum class ModeFunction : std::uint8_t { Off, Clock, Euclid, Sequencer, UnifiedClock, DividerBank };
 
 /** @brief Operation being performed on the explicit user preset slots. */
 enum class PresetSlotAction : std::uint8_t { Load, Save };
@@ -118,11 +111,12 @@ struct DiagnosticSnapshot {
     std::array<bool, 8U> outputs{};
 
     bool operator==(const DiagnosticSnapshot& other) const {
-        return syncHigh == other.syncHigh &&
-               resetHigh == other.resetHigh &&
-               outputs == other.outputs;
+        return syncHigh == other.syncHigh && resetHigh == other.resetHigh &&
+            outputs == other.outputs;
     }
-    bool operator!=(const DiagnosticSnapshot& other) const { return !(*this == other); }
+    bool operator!=(const DiagnosticSnapshot& other) const {
+        return !(*this == other);
+    }
 };
 
 /** @brief Complete mutable UI navigation state, deliberately separate from musical state. */

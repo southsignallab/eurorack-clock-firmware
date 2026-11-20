@@ -51,12 +51,14 @@ void fitInformationalValue(
 
     constexpr char kEllipsis[] = "...";
     const std::size_t sourceLength = std::strlen(source);
-    std::size_t prefixLength = std::min<std::size_t>(sourceLength, destinationSize - sizeof(kEllipsis));
+    std::size_t prefixLength =
+        std::min<std::size_t>(sourceLength, destinationSize - sizeof(kEllipsis));
     while (prefixLength > 0U) {
         std::memcpy(destination, source, prefixLength);
         destination[prefixLength] = '\0';
         std::strncat(destination, kEllipsis, destinationSize - std::strlen(destination) - 1U);
-        if (static_cast<std::int16_t>(display.measureText(destination, 0, 0).width) <= maximumWidth) {
+        if (static_cast<std::int16_t>(display.measureText(destination, 0, 0).width) <=
+            maximumWidth) {
             return;
         }
         --prefixLength;
@@ -76,13 +78,12 @@ constexpr std::uint8_t kUpdateQrModules = 29U;
  * rendered at 2x (58 px) inside a white 64x64 field, leaving a 3-pixel quiet
  * margin on every side.
  */
-constexpr std::array<std::uint32_t, kUpdateQrModules> kUpdateQrRows{{
-    0x1FD4417FUL, 0x105A3341UL, 0x17456B5DUL, 0x1752225DUL, 0x174F1B5DUL,
-    0x10546241UL, 0x1FD5557FUL, 0x00183400UL, 0x1D2B41F9UL, 0x0D8EC98BUL,
-    0x05F0C3CFUL, 0x1352C295UL, 0x1051854BUL, 0x1FE7B0AEUL, 0x15E88DC3UL,
-    0x15A0C11EUL, 0x021C33F2UL, 0x0D1D8C29UL, 0x1228AFC7UL, 0x06B8A12FUL,
-    0x0FFB3BF7UL, 0x0314EF00UL, 0x035DB97FUL, 0x191BAF41UL, 0x0BF9AB5DUL,
-    0x102FEB5DUL, 0x1DB0DC5DUL, 0x16E4B841UL, 0x03D80F7FUL}};
+constexpr std::array<std::uint32_t, kUpdateQrModules> kUpdateQrRows{
+    {0x1FD4417FUL, 0x105A3341UL, 0x17456B5DUL, 0x1752225DUL, 0x174F1B5DUL, 0x10546241UL,
+     0x1FD5557FUL, 0x00183400UL, 0x1D2B41F9UL, 0x0D8EC98BUL, 0x05F0C3CFUL, 0x1352C295UL,
+     0x1051854BUL, 0x1FE7B0AEUL, 0x15E88DC3UL, 0x15A0C11EUL, 0x021C33F2UL, 0x0D1D8C29UL,
+     0x1228AFC7UL, 0x06B8A12FUL, 0x0FFB3BF7UL, 0x0314EF00UL, 0x035DB97FUL, 0x191BAF41UL,
+     0x0BF9AB5DUL, 0x102FEB5DUL, 0x1DB0DC5DUL, 0x16E4B841UL, 0x03D80F7FUL}};
 
 /** Draws the scannable update QR as a conventional black-on-white symbol. */
 void drawUpdateQr(hal::OledDisplay& display) {
@@ -91,7 +92,9 @@ void drawUpdateQr(hal::OledDisplay& display) {
     constexpr std::int16_t kQrX = 35;
     constexpr std::int16_t kQrY = 3;
     constexpr std::int16_t kScale = 2;
-    static_assert(kUpdateQrModules * kScale + 2 * (kQrX - kFieldX) == kFieldSize, "QR must be centred in its field");
+    static_assert(
+        kUpdateQrModules * kScale + 2 * (kQrX - kFieldX) == kFieldSize,
+        "QR must be centred in its field");
     static_assert(kQrY == kQrX - kFieldX, "equal quiet margin on every side");
 
     display.fillRectangle(kFieldX, 0, kFieldSize, kFieldSize, hal::PixelColor::White);
@@ -117,9 +120,7 @@ SettingsRenderer::SettingsRenderer(
     const services::SequencerPatternStore* const sequencerPatternStore)
     : display_(display), sequencerPatternStore_(sequencerPatternStore) {}
 
-bool SettingsRenderer::informationValueOverflows(
-    const char* const label,
-    const char* const value) {
+bool SettingsRenderer::informationValueOverflows(const char* const label, const char* const value) {
     if (label == nullptr || value == nullptr || value[0] == '\0') {
         return false;
     }
@@ -127,8 +128,8 @@ bool SettingsRenderer::informationValueOverflows(
     const hal::TextBounds labelBounds = display_.measureText(label, 0, 0);
     const hal::TextBounds valueBounds = display_.measureText(value, 0, 0);
     const std::int16_t labelRight = static_cast<std::int16_t>(2 + labelBounds.width);
-    const std::int16_t maximumValueWidth = static_cast<std::int16_t>(
-        121 - labelRight - kSettingsValueGap);
+    const std::int16_t maximumValueWidth =
+        static_cast<std::int16_t>(121 - labelRight - kSettingsValueGap);
     return static_cast<std::int16_t>(valueBounds.width) > maximumValueWidth;
 }
 
@@ -150,7 +151,8 @@ void drawDiagnosticBox(
         display.setTextColor(hal::PixelColor::White);
     }
     const hal::TextBounds bounds = display.measureText(label, 0, 0);
-    const std::int16_t textX = static_cast<std::int16_t>(x + (width - static_cast<std::int16_t>(bounds.width)) / 2);
+    const std::int16_t textX =
+        static_cast<std::int16_t>(x + (width - static_cast<std::int16_t>(bounds.width)) / 2);
     const std::int16_t textY = static_cast<std::int16_t>(y + (height - 7) / 2);
     display.drawText(textX, textY, label);
     display.setTextColor(hal::PixelColor::White);
@@ -162,7 +164,8 @@ void renderDiagnosticHeader(hal::OledDisplay& display, const char* const title) 
     display.setTextColor(hal::PixelColor::White);
     const hal::TextBounds bounds = display.measureText(title, 0, 0);
     display.drawText(
-        static_cast<std::int16_t>((static_cast<int>(hal::OledDisplay::kWidth) - static_cast<int>(bounds.width)) / 2),
+        static_cast<std::int16_t>(
+            (static_cast<int>(hal::OledDisplay::kWidth) - static_cast<int>(bounds.width)) / 2),
         0,
         title);
     display.drawHorizontalLine(0, 9, hal::OledDisplay::kWidth);
@@ -181,8 +184,22 @@ void SettingsRenderer::renderSettings(
         constexpr std::int16_t kHeight = 22;
         constexpr std::int16_t kGap = 8;
         constexpr std::int16_t kStartX = (128 - (kWidth * 2 + kGap)) / 2;
-        drawDiagnosticBox(display_, kStartX, 25, kWidth, kHeight, text::get(text::TextId::Input1), diagnostics.syncHigh);
-        drawDiagnosticBox(display_, kStartX + kWidth + kGap, 25, kWidth, kHeight, text::get(text::TextId::Input2), diagnostics.resetHigh);
+        drawDiagnosticBox(
+            display_,
+            kStartX,
+            25,
+            kWidth,
+            kHeight,
+            text::get(text::TextId::Input1),
+            diagnostics.syncHigh);
+        drawDiagnosticBox(
+            display_,
+            kStartX + kWidth + kGap,
+            25,
+            kWidth,
+            kHeight,
+            text::get(text::TextId::Input2),
+            diagnostics.resetHigh);
         display_.present();
         return;
     }
@@ -245,8 +262,10 @@ void SettingsRenderer::renderSettings(
             break;
         }
         MenuRow row{};
-        if (navigation.settingsPage == SettingsPage::Sequencer && sequencerPatternStore_ != nullptr) {
-            const std::uint8_t activeSlot = sequencerPatternStore_->activeSlot(navigation.selectedChannel);
+        if (navigation.settingsPage == SettingsPage::Sequencer &&
+            sequencerPatternStore_ != nullptr) {
+            const std::uint8_t activeSlot =
+                sequencerPatternStore_->activeSlot(navigation.selectedChannel);
             row = buildSequencerV2MenuRow(
                 rowIndex,
                 activeSlot,
@@ -273,14 +292,19 @@ void SettingsRenderer::renderSettings(
         if (navigation.settingsPage == SettingsPage::GrooveRecordMenu) {
             if (rowIndex == 0U) {
                 std::snprintf(
-                    row.value, sizeof(row.value), "%s",
-                    text::get(navigation.grooveRecordMode == GrooveRecordMode::OneShot
-                        ? text::TextId::OneShot : text::TextId::Endless));
+                    row.value,
+                    sizeof(row.value),
+                    "%s",
+                    text::get(
+                        navigation.grooveRecordMode == GrooveRecordMode::OneShot
+                            ? text::TextId::OneShot
+                            : text::TextId::Endless));
             } else if (rowIndex == 1U) {
                 if (navigation.grooveRecordCountInBeats == 0U) {
                     std::snprintf(row.value, sizeof(row.value), "%s", text::get(text::TextId::Off));
                 } else {
-                    std::snprintf(row.value, sizeof(row.value), "%u", navigation.grooveRecordCountInBeats);
+                    std::snprintf(
+                        row.value, sizeof(row.value), "%u", navigation.grooveRecordCountInBeats);
                 }
             } else if (rowIndex == 2U) {
                 std::snprintf(row.value, sizeof(row.value), "%u", navigation.grooveDraft.length);
@@ -305,8 +329,8 @@ void SettingsRenderer::renderSettings(
             if (row.expandableInformation) {
                 const hal::TextBounds labelBounds = display_.measureText(row.label, 0, y);
                 const std::int16_t labelRight = static_cast<std::int16_t>(2 + labelBounds.width);
-                const std::int16_t maximumValueWidth = static_cast<std::int16_t>(
-                    121 - labelRight - kSettingsValueGap);
+                const std::int16_t maximumValueWidth =
+                    static_cast<std::int16_t>(121 - labelRight - kSettingsValueGap);
                 fitInformationalValue(
                     display_, row.value, maximumValueWidth, renderedValue, sizeof(renderedValue));
                 valueText = renderedValue;
@@ -336,8 +360,8 @@ void SettingsRenderer::renderSettings(
         constexpr std::int16_t kScrollHeight = 50;
         display_.drawVerticalLine(127, kScrollY, kScrollHeight);
 
-        const std::uint8_t thumbHeight = static_cast<std::uint8_t>(
-            (kScrollHeight * visibleRows) / itemCount);
+        const std::uint8_t thumbHeight =
+            static_cast<std::uint8_t>((kScrollHeight * visibleRows) / itemCount);
         const std::uint8_t thumbY = static_cast<std::uint8_t>(
             static_cast<unsigned>(kScrollY) +
             ((static_cast<unsigned>(kScrollHeight) - thumbHeight) * navigation.cursor) /

@@ -21,7 +21,7 @@ namespace clockfw::game {
 
 /** @brief Runs the boot-only Pixel Raid Easter egg while all Eurorack gate outputs are disabled. */
 class PixelRaidGame final {
-public:
+  public:
     /** @brief Constructs the game around existing display, controls, LED/gate HAL, and score storage. */
     PixelRaidGame(
         hal::OledDisplay& display,
@@ -44,7 +44,7 @@ public:
     bool serviceForSimulator(std::uint32_t nowMs);
 #endif
 
-private:
+  private:
     friend struct PixelRaidGameTestAccess;
 
     static constexpr std::uint8_t kAlienColumns = 8U;

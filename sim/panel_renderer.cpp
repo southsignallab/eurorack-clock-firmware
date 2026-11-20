@@ -7,8 +7,8 @@
  */
 #include "panel_renderer.h"
 
-#include "scope_timeline.h"
 #include "panel_led_visual.h"
+#include "scope_timeline.h"
 
 #include <algorithm>
 #include <array>
@@ -41,7 +41,11 @@ void strokeRect(SDL_Renderer* renderer, const layout::Rect& rect) {
     (void)SDL_RenderRect(renderer, &sdlRect);
 }
 
-void drawCenteredDebugText(SDL_Renderer* renderer, const float centerX, const float y, const char* text) {
+void drawCenteredDebugText(
+    SDL_Renderer* renderer,
+    const float centerX,
+    const float y,
+    const char* text) {
     const float width = static_cast<float>(std::strlen(text)) * 8.0F;
     (void)SDL_RenderDebugText(renderer, centerX - width * 0.5F, y, text);
 }
@@ -106,7 +110,10 @@ void PanelRenderer::renderFrontPanel(
     const double speedMultiplier) const {
     if (panelBackgroundTexture_ != nullptr) {
         const SDL_FRect target{
-            panelLayout_.panel.x, panelLayout_.panel.y, panelLayout_.panel.width, panelLayout_.panel.height};
+            panelLayout_.panel.x,
+            panelLayout_.panel.y,
+            panelLayout_.panel.width,
+            panelLayout_.panel.height};
         (void)SDL_RenderTexture(renderer, panelBackgroundTexture_, nullptr, &target);
     } else {
         setColor(renderer, 10U, 10U, 11U);
@@ -127,7 +134,12 @@ void PanelRenderer::renderFrontPanel(
     renderOled(renderer, runtime);
 
     setColor(renderer, 58U, 59U, 62U);
-    drawCircle(renderer, panelLayout_.encoderCenter.x, panelLayout_.encoderCenter.y, panelLayout_.encoderRadius, true);
+    drawCircle(
+        renderer,
+        panelLayout_.encoderCenter.x,
+        panelLayout_.encoderCenter.y,
+        panelLayout_.encoderRadius,
+        true);
     setColor(renderer, 220U, 221U, 222U);
     const float encoderInset = 0.7F * panelLayout_.pixelsPerMm;
     drawCircle(
@@ -152,11 +164,10 @@ void PanelRenderer::renderFrontPanel(
         const char* primary;
         const char* secondary;
     };
-    const std::array<ButtonLabel, 3U> buttons{{
-        {&panelLayout_.playButton, "PLAY", "PAUSE"},
-        {&panelLayout_.tapButton, "TAP", "SHIFT"},
-        {&panelLayout_.stopButton, "STOP", "BACK"}
-    }};
+    const std::array<ButtonLabel, 3U> buttons{
+        {{&panelLayout_.playButton, "PLAY", "PAUSE"},
+         {&panelLayout_.tapButton, "TAP", "SHIFT"},
+         {&panelLayout_.stopButton, "STOP", "BACK"}}};
     for (const ButtonLabel& item : buttons) {
         const layout::CircleControl& button = *item.control;
         setColor(renderer, button.color);
@@ -164,7 +175,8 @@ void PanelRenderer::renderFrontPanel(
         setColor(renderer, 25U, 26U, 28U);
         drawCircle(renderer, button.center.x, button.center.y, button.radius, false);
         if (panelLayout_.drawBuiltinLabels) {
-            const float primaryY = button.center.y + button.radius + 1.25F * panelLayout_.pixelsPerMm;
+            const float primaryY =
+                button.center.y + button.radius + 1.25F * panelLayout_.pixelsPerMm;
             setColor(renderer, 244U, 244U, 244U);
             drawCenteredDebugText(renderer, button.center.x, primaryY, item.primary);
             setColor(renderer, 142U, 144U, 148U);
@@ -186,9 +198,10 @@ void PanelRenderer::renderFrontPanel(
         drawCenteredDebugText(renderer, panelLayout_.syncInputCenter.x, inputLabelY, "IN 1");
         drawCenteredDebugText(renderer, panelLayout_.resetInputCenter.x, inputLabelY, "IN 2");
     }
-    const auto drawInputJack = [&](
-        const layout::Point& center, const layout::JackType jackType,
-        const bool connected, const bool high) {
+    const auto drawInputJack = [&](const layout::Point& center,
+                                   const layout::JackType jackType,
+                                   const bool connected,
+                                   const bool high) {
         const layout::JackGeometry& jack = panelLayout_.jackGeometry(jackType);
         setColor(renderer, connected ? 88U : 145U, connected ? 98U : 147U, connected ? 88U : 150U);
         drawCircle(renderer, center.x, center.y, jack.nutRadius, true);
@@ -197,8 +210,16 @@ void PanelRenderer::renderFrontPanel(
         setColor(renderer, high ? 200U : 25U, high ? 230U : 26U, high ? 180U : 28U);
         drawCircle(renderer, center.x, center.y, jack.openingRadius, true);
     };
-    drawInputJack(panelLayout_.syncInputCenter, panelLayout_.syncJackType, sync.cableConnected, sync.signalHigh);
-    drawInputJack(panelLayout_.resetInputCenter, panelLayout_.resetJackType, reset.cableConnected, reset.signalHigh);
+    drawInputJack(
+        panelLayout_.syncInputCenter,
+        panelLayout_.syncJackType,
+        sync.cableConnected,
+        sync.signalHigh);
+    drawInputJack(
+        panelLayout_.resetInputCenter,
+        panelLayout_.resetJackType,
+        reset.cableConnected,
+        reset.signalHigh);
 
     const auto& channels = runtime.telemetry();
     const std::uint64_t nowUs = runtime.nowMicroseconds();
@@ -209,7 +230,8 @@ void PanelRenderer::renderFrontPanel(
         setColor(renderer, ledLit ? panelLayout_.ledOnColor : panelLayout_.ledOffColor);
         drawCircle(renderer, led.x, led.y, panelLayout_.ledRadius, true);
 
-        const layout::JackGeometry& jack = panelLayout_.jackGeometry(panelLayout_.outputJackTypes[index]);
+        const layout::JackGeometry& jack =
+            panelLayout_.jackGeometry(panelLayout_.outputJackTypes[index]);
         setColor(renderer, 145U, 147U, 150U);
         drawCircle(renderer, center.x, center.y, jack.nutRadius, true);
         setColor(renderer, 118U, 120U, 122U);
@@ -221,7 +243,8 @@ void PanelRenderer::renderFrontPanel(
         std::snprintf(label, sizeof(label), "%u", static_cast<unsigned>(index + 1U));
         if (panelLayout_.drawBuiltinLabels) {
             setColor(renderer, 244U, 244U, 244U);
-            const layout::JackGeometry& labelJack = panelLayout_.jackGeometry(panelLayout_.outputJackTypes[index]);
+            const layout::JackGeometry& labelJack =
+                panelLayout_.jackGeometry(panelLayout_.outputJackTypes[index]);
             drawCenteredDebugText(
                 renderer,
                 center.x,
@@ -247,14 +270,15 @@ void PanelRenderer::renderFrontPanel(
     }
 }
 
-void PanelRenderer::renderOled(SDL_Renderer* const renderer, const SimulatorRuntime& runtime) const {
+void PanelRenderer::renderOled(SDL_Renderer* const renderer, const SimulatorRuntime& runtime)
+    const {
     const int scale = panelLayout_.displayPixelScale;
     const float renderedWidth = static_cast<float>(hal::OledDisplay::kWidth * scale);
     const float renderedHeight = static_cast<float>(hal::OledDisplay::kHeight * scale);
-    const float displayX = std::round(panelLayout_.display.x +
-        (panelLayout_.display.width - renderedWidth) * 0.5F);
-    const float displayY = std::round(panelLayout_.display.y +
-        (panelLayout_.display.height - renderedHeight) * 0.5F);
+    const float displayX =
+        std::round(panelLayout_.display.x + (panelLayout_.display.width - renderedWidth) * 0.5F);
+    const float displayY =
+        std::round(panelLayout_.display.y + (panelLayout_.display.height - renderedHeight) * 0.5F);
     const layout::Rect pixelArea{displayX, displayY, renderedWidth, renderedHeight};
 
     // The configurable physical display opening can be a few desktop pixels
@@ -264,13 +288,10 @@ void PanelRenderer::renderOled(SDL_Renderer* const renderer, const SimulatorRunt
     const float wellLeft = std::min(panelLayout_.display.x, pixelArea.x);
     const float wellTop = std::min(panelLayout_.display.y, pixelArea.y);
     const float wellRight = std::max(
-        panelLayout_.display.x + panelLayout_.display.width,
-        pixelArea.x + pixelArea.width);
+        panelLayout_.display.x + panelLayout_.display.width, pixelArea.x + pixelArea.width);
     const float wellBottom = std::max(
-        panelLayout_.display.y + panelLayout_.display.height,
-        pixelArea.y + pixelArea.height);
-    const layout::Rect displayWell{
-        wellLeft, wellTop, wellRight - wellLeft, wellBottom - wellTop};
+        panelLayout_.display.y + panelLayout_.display.height, pixelArea.y + pixelArea.height);
+    const layout::Rect displayWell{wellLeft, wellTop, wellRight - wellLeft, wellBottom - wellTop};
 
     setColor(renderer, 5U, 6U, 7U);
     fillRect(renderer, displayWell);
@@ -280,8 +301,7 @@ void PanelRenderer::renderOled(SDL_Renderer* const renderer, const SimulatorRunt
     // screen-pixel row/column and made edge content look cropped.
     setColor(renderer, 82U, 84U, 87U);
     const layout::Rect bezel{
-        pixelArea.x - 1.0F, pixelArea.y - 1.0F,
-        pixelArea.width + 2.0F, pixelArea.height + 2.0F};
+        pixelArea.x - 1.0F, pixelArea.y - 1.0F, pixelArea.width + 2.0F, pixelArea.height + 2.0F};
     strokeRect(renderer, bezel);
 
     const auto& framebuffer = runtime.framebuffer();
@@ -289,7 +309,8 @@ void PanelRenderer::renderOled(SDL_Renderer* const renderer, const SimulatorRunt
     for (std::int16_t y = 0; y < hal::OledDisplay::kHeight; ++y) {
         for (std::int16_t x = 0; x < hal::OledDisplay::kWidth; ++x) {
             const std::size_t byteIndex = static_cast<std::size_t>(x) +
-                static_cast<std::size_t>(y / 8) * static_cast<std::size_t>(hal::OledDisplay::kWidth);
+                static_cast<std::size_t>(y / 8) *
+                    static_cast<std::size_t>(hal::OledDisplay::kWidth);
             const std::uint8_t bitMask = static_cast<std::uint8_t>(1U << (y & 7));
             if ((framebuffer[byteIndex] & bitMask) == 0U) {
                 continue;
@@ -319,7 +340,8 @@ void PanelRenderer::drawCircle(
                 continue;
             }
             const float extent = std::sqrt(extentSquared);
-            (void)SDL_RenderLine(renderer, centerX - extent, centerY + yFloat, centerX + extent, centerY + yFloat);
+            (void)SDL_RenderLine(
+                renderer, centerX - extent, centerY + yFloat, centerX + extent, centerY + yFloat);
         }
         return;
     }
@@ -328,7 +350,8 @@ void PanelRenderer::drawCircle(
     float previousX = centerX + radius;
     float previousY = centerY;
     for (int segment = 1; segment <= kSegments; ++segment) {
-        const float angle = 2.0F * kPi * static_cast<float>(segment) / static_cast<float>(kSegments);
+        const float angle =
+            2.0F * kPi * static_cast<float>(segment) / static_cast<float>(kSegments);
         const float x = centerX + std::cos(angle) * radius;
         const float y = centerY + std::sin(angle) * radius;
         (void)SDL_RenderLine(renderer, previousX, previousY, x, y);

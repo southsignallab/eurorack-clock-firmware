@@ -29,17 +29,20 @@ void drawLayer(
     const std::uint8_t speed,
     const std::int16_t length) {
     for (std::uint8_t star = 0U; star < starCount; ++star) {
-        const std::uint32_t seed = starHash(layerSeed + static_cast<std::uint32_t>(star) * 0x9E3779B9U);
+        const std::uint32_t seed =
+            starHash(layerSeed + static_cast<std::uint32_t>(star) * 0x9E3779B9U);
         const std::uint32_t baseX = seed & 0x7FU;
         const std::int16_t y = static_cast<std::int16_t>((seed >> 8U) & 0x3FU);
         const std::uint32_t movement = frameIndex * static_cast<std::uint32_t>(speed);
-        const std::int16_t x = static_cast<std::int16_t>((baseX + 128U - (movement & 0x7FU)) & 0x7FU);
+        const std::int16_t x =
+            static_cast<std::int16_t>((baseX + 128U - (movement & 0x7FU)) & 0x7FU);
         if (length <= 1) {
             display.setPixel(x, y);
         } else {
             display.drawHorizontalLine(x, y, length);
             if (x + length > hal::OledDisplay::kWidth) {
-                display.drawHorizontalLine(0, y, static_cast<std::int16_t>(x + length - hal::OledDisplay::kWidth));
+                display.drawHorizontalLine(
+                    0, y, static_cast<std::int16_t>(x + length - hal::OledDisplay::kWidth));
             }
         }
     }

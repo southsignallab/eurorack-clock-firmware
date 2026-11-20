@@ -6,6 +6,7 @@
  * @license PolyForm-Noncommercial-1.0.0
  */
 #include "game/egg_journey_game.h"
+#include "game/boot_game_controls.h"
 
 #include <algorithm>
 #include <array>
@@ -17,14 +18,13 @@
 
 namespace clockfw::game {
 namespace {
+using egg_journey::kEggHeight;
+using egg_journey::kGroundY;
+using egg_journey::kPhysicsScale;
 constexpr std::uint32_t kFrameIntervalMs = 45U;
-constexpr std::uint32_t kExitLongPressMs = 900U;
-constexpr std::int16_t kGroundY = 46;
 constexpr std::int16_t kInitialPlayerScreenX = 42;
 constexpr std::int16_t kMinPlayerScreenX = 20;
 constexpr std::int16_t kMaxPlayerScreenX = 104;
-constexpr std::int16_t kEggHeight = 11;
-constexpr std::int16_t kPhysicsScale = 8;
 constexpr std::int16_t kJumpImpulse = 27;
 constexpr std::int16_t kGravity = 3;
 constexpr std::int16_t kMaxHorizontalVelocity = 7;
@@ -35,9 +35,10 @@ std::int32_t floorDiv(const std::int32_t value, const std::int32_t divisor) {
     return remainder < 0 ? quotient - 1 : quotient;
 }
 
-
 std::uint8_t journeyStage(const std::int32_t worldX) {
-    if (worldX <= 0) return 1U;
+    if (worldX <= 0) {
+        return 1U;
+    }
     const std::int32_t stage = 1 + worldX / 900;
     return static_cast<std::uint8_t>(std::min<std::int32_t>(8, stage));
 }
@@ -57,19 +58,28 @@ std::uint32_t hashCell(const std::int32_t cell) {
 }
 
 bool staticCraterForCell(const std::int32_t cell, std::int32_t& center, std::int16_t& radius) {
-    if (cell == 0) return false;
+    if (cell == 0) {
+        return false;
+    }
     const std::uint32_t hash = hashCell(cell);
     const std::uint8_t stage = journeyStage(std::abs(cell) * 58);
     const std::uint32_t densityPercent = static_cast<std::uint32_t>(45U + (stage - 1U) * 3U);
-    if (std::abs(cell) != 1 && (hash % 100U) >= densityPercent) return false;
+    if (std::abs(cell) != 1 && (hash % 100U) >= densityPercent) {
+        return false;
+    }
     center = cell * 58 + 18 + static_cast<std::int32_t>((hash >> 8U) % 23U);
     radius = static_cast<std::int16_t>(5 + (hash >> 16U) % 5U + stage / 3U);
     return true;
 }
 
-std::int16_t craterDepth(const std::int32_t worldX, const std::int32_t center, const std::int16_t radius) {
+std::int16_t craterDepth(
+    const std::int32_t worldX,
+    const std::int32_t center,
+    const std::int16_t radius) {
     const std::int32_t delta = std::abs(worldX - center);
-    if (delta >= radius) return 0;
+    if (delta >= radius) {
+        return 0;
+    }
     return static_cast<std::int16_t>((static_cast<std::int32_t>(radius) - delta) * 6 / radius);
 }
 
@@ -80,51 +90,95 @@ EggJourneyGame::EggJourneyGame(
     hal::ControlPanel& controls,
     hal::GateOutputDriver& gateOutputs,
     ArcadeLeaderboardStore& leaderboard)
-    : display_(display), controls_(controls), gateOutputs_(gateOutputs), shell_(display, ArcadeTitle::EggJourney, &leaderboard) {}
+    : display_(display), controls_(controls), gateOutputs_(gateOutputs),
+      shell_(display, ArcadeTitle::EggJourney, &leaderboard) {}
 
 void EggJourneyGame::run() {
-    gateOutputs_.disableOutputStage(); gateOutputs_.setAllChannelsLow();
-    const std::uint32_t startedAtMs = hal::SystemClock::milliseconds(); shell_.begin(startedAtMs);
+    gateOutputs_.disableOutputStage();
+    gateOutputs_.setAllChannelsLow();
+    const std::uint32_t startedAtMs = hal::SystemClock::milliseconds();
+    shell_.begin(startedAtMs);
 #ifdef CLOCK_HOST_TEST
-    shell_.startImmediatelyForTest(); highScore_.score = shell_.highScore(); resetSession(); render(); return;
+    shell_.startImmediatelyForTest();
+    highScore_.score = shell_.highScore();
+    resetSession();
+    render();
+    return;
 #else
     std::uint32_t lastFrameAtMs = startedAtMs;
     while (!exitRequested_) {
         const std::uint32_t nowMs = hal::SystemClock::milliseconds();
         const hal::ControlSample controls = controls_.sample(nowMs);
-        if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs)) exitRequested_ = true;
+        if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs)) {
+            exitRequested_ = true;
+        }
         const ArcadeShell::Action action = shell_.update(controls, nowMs);
-        if (action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun) { highScore_.score = shell_.highScore(); resetSession(); }
-        if (shell_.playing()) update(controls, nowMs);
-        if (nowMs - lastFrameAtMs >= kFrameIntervalMs) { if (shell_.playing()) render(); else shell_.render(nowMs); lastFrameAtMs = nowMs; }
+        if (action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun) {
+            highScore_.score = shell_.highScore();
+            resetSession();
+        }
+        if (shell_.playing()) {
+            update(controls, nowMs);
+        }
+        if (nowMs - lastFrameAtMs >= kFrameIntervalMs) {
+            if (shell_.playing()) {
+                render();
+            } else {
+                shell_.render(nowMs);
+            }
+            lastFrameAtMs = nowMs;
+        }
         (void)display_.service();  // only reports pending I2C work
         hal::SystemClock::delayMilliseconds(1U);
     }
-    gateOutputs_.setAllChannelsLow(); gateOutputs_.disableOutputStage();
+    gateOutputs_.setAllChannelsLow();
+    gateOutputs_.disableOutputStage();
 #endif
 }
 
 #ifdef CLOCK_SIMULATOR
 void EggJourneyGame::beginForSimulator() {
-    gateOutputs_.disableOutputStage(); gateOutputs_.setAllChannelsLow();
-    const std::uint32_t nowMs = hal::SystemClock::milliseconds(); shell_.begin(nowMs);
-    lastSimulatorFrameAtMs_ = nowMs; shell_.render(nowMs);
+    gateOutputs_.disableOutputStage();
+    gateOutputs_.setAllChannelsLow();
+    const std::uint32_t nowMs = hal::SystemClock::milliseconds();
+    shell_.begin(nowMs);
+    lastSimulatorFrameAtMs_ = nowMs;
+    shell_.render(nowMs);
 }
 
 bool EggJourneyGame::serviceForSimulator(const std::uint32_t nowMs) {
     const hal::ControlSample controls = controls_.sample(nowMs);
-    if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs)) exitRequested_ = true;
+    if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs)) {
+        exitRequested_ = true;
+    }
     const ArcadeShell::Action action = shell_.update(controls, nowMs);
-    if (action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun) { highScore_.score = shell_.highScore(); resetSession(); }
-    if (shell_.playing()) update(controls, nowMs);
-    if (nowMs - lastSimulatorFrameAtMs_ >= kFrameIntervalMs) { if (shell_.playing()) render(); else shell_.render(nowMs); lastSimulatorFrameAtMs_ = nowMs; }
-    if (exitRequested_) { gateOutputs_.setAllChannelsLow(); gateOutputs_.disableOutputStage(); }
+    if (action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun) {
+        highScore_.score = shell_.highScore();
+        resetSession();
+    }
+    if (shell_.playing()) {
+        update(controls, nowMs);
+    }
+    if (nowMs - lastSimulatorFrameAtMs_ >= kFrameIntervalMs) {
+        if (shell_.playing()) {
+            render();
+        } else {
+            shell_.render(nowMs);
+        }
+        lastSimulatorFrameAtMs_ = nowMs;
+    }
+    if (exitRequested_) {
+        gateOutputs_.setAllChannelsLow();
+        gateOutputs_.disableOutputStage();
+    }
     return !exitRequested_;
 }
 #endif
 
 void EggJourneyGame::resetSession() {
-    for (ImpactCrater& crater : impactCraters_) crater = {};
+    for (ImpactCrater& crater : impactCraters_) {
+        crater = {};
+    }
     asteroid_ = {};
     nextImpactCraterSlot_ = 0U;
     cameraWorldX_ = 0;
@@ -158,7 +212,9 @@ std::uint32_t EggJourneyGame::nextRandom() {
 }
 
 void EggJourneyGame::spawnAsteroid(const std::uint32_t nowMs) {
-    if (asteroid_.active || gameOver_) return;
+    if (asteroid_.active || gameOver_) {
+        return;
+    }
     const std::int32_t offset = 24 + static_cast<std::int32_t>(nextRandom() % 34U);
     const std::int32_t direction = (nextRandom() & 1U) != 0U ? 1 : -1;
     asteroid_.targetWorldX = playerWorldX_ + direction * offset;
@@ -179,7 +235,9 @@ void EggJourneyGame::addImpactCrater(const std::int32_t worldX, const std::int16
 }
 
 void EggJourneyGame::impactAsteroid(const std::uint32_t nowMs) {
-    if (!asteroid_.active) return;
+    if (!asteroid_.active) {
+        return;
+    }
     const std::int32_t target = asteroid_.targetWorldX;
     asteroid_.active = false;
     addImpactCrater(target, 9);
@@ -189,7 +247,8 @@ void EggJourneyGame::impactAsteroid(const std::uint32_t nowMs) {
         fail(FailureMode::Flattened);
         return;
     }
-    score_ = std::min<std::uint32_t>(999999U, score_ + 100U + static_cast<std::uint32_t>(journeyStage(cameraWorldX_)) * 25U);
+    score_ = std::min<std::uint32_t>(
+        999999U, score_ + 100U + static_cast<std::uint32_t>(journeyStage(cameraWorldX_)) * 25U);
 }
 
 std::int16_t EggJourneyGame::craterDepthAt(const std::int32_t worldX) const {
@@ -203,18 +262,24 @@ std::int16_t EggJourneyGame::craterDepthAt(const std::int32_t worldX) const {
         }
     }
     for (const ImpactCrater& crater : impactCraters_) {
-        if (crater.active) depth = std::max(depth, craterDepth(worldX, crater.worldX, crater.radius));
+        if (crater.active) {
+            depth = std::max(depth, craterDepth(worldX, crater.worldX, crater.radius));
+        }
     }
     return depth;
 }
 
 void EggJourneyGame::fail(const FailureMode mode) {
-    if (gameOver_ || awaitingRetry_) return;
+    if (gameOver_ || awaitingRetry_) {
+        return;
+    }
     failureMode_ = mode;
     horizontalVelocity_ = 0;
     jumpVelocityFp_ = 0;
     asteroid_.active = false;
-    if (lives_ > 0U) --lives_;
+    if (lives_ > 0U) {
+        --lives_;
+    }
     retryArmed_ = false;
     if (lives_ == 0U) {
         gameOver_ = true;
@@ -241,24 +306,34 @@ void EggJourneyGame::respawnAfterFailure() {
 }
 
 void EggJourneyGame::update(const hal::ControlSample& controls, const std::uint32_t nowMs) {
-    if (gameOver_) return;
+    if (gameOver_) {
+        return;
+    }
     if (awaitingRetry_) {
         // A fresh physical press is required. Merely holding TAP across the
         // collision cannot accidentally consume the next life.
-        if (!controls.tapButton.pressed) retryArmed_ = true;
-        if (retryArmed_ && controls.tapButton.edge == hal::ButtonEdge::Pressed) respawnAfterFailure();
+        if (!controls.tapButton.pressed) {
+            retryArmed_ = true;
+        }
+        if (retryArmed_ && controls.tapButton.edge == hal::ButtonEdge::Pressed) {
+            respawnAfterFailure();
+        }
         return;
     }
 
     if (controls.encoderDelta != 0) {
-        const int velocity = static_cast<int>(horizontalVelocity_) + static_cast<int>(controls.encoderDelta) * 2;
-        horizontalVelocity_ = static_cast<std::int16_t>(std::clamp<int>(velocity, -kMaxHorizontalVelocity, kMaxHorizontalVelocity));
+        const int velocity =
+            static_cast<int>(horizontalVelocity_) + static_cast<int>(controls.encoderDelta) * 2;
+        horizontalVelocity_ = static_cast<std::int16_t>(
+            std::clamp<int>(velocity, -kMaxHorizontalVelocity, kMaxHorizontalVelocity));
     }
     if (controls.tapButton.edge == hal::ButtonEdge::Pressed && jumpHeightFp_ == 0) {
         jumpVelocityFp_ = kJumpImpulse;
     }
 
-    if (nowMs - lastPhysicsAtMs_ < kFrameIntervalMs) return;
+    if (nowMs - lastPhysicsAtMs_ < kFrameIntervalMs) {
+        return;
+    }
     lastPhysicsAtMs_ = nowMs;
 
     const std::uint8_t stage = journeyStage(cameraWorldX_);
@@ -268,8 +343,11 @@ void EggJourneyGame::update(const hal::ControlSample& controls, const std::uint3
         kMinPlayerScreenX,
         kMaxPlayerScreenX));
     playerWorldX_ = cameraWorldX_ + playerScreenX_;
-    if (horizontalVelocity_ > 0) --horizontalVelocity_;
-    else if (horizontalVelocity_ < 0) ++horizontalVelocity_;
+    if (horizontalVelocity_ > 0) {
+        --horizontalVelocity_;
+    } else if (horizontalVelocity_ < 0) {
+        ++horizontalVelocity_;
+    }
 
     if (jumpHeightFp_ > 0 || jumpVelocityFp_ > 0) {
         jumpHeightFp_ = static_cast<std::int16_t>(jumpHeightFp_ + jumpVelocityFp_);
@@ -296,29 +374,33 @@ void EggJourneyGame::update(const hal::ControlSample& controls, const std::uint3
     }
     if (asteroid_.active) {
         const std::uint8_t asteroidStage = journeyStage(cameraWorldX_);
-        const std::int16_t fallSpeed = static_cast<std::int16_t>(2 + (asteroidStage >= 4U ? 1 : 0) + (asteroidStage >= 7U ? 1 : 0));
+        const std::int16_t fallSpeed = static_cast<std::int16_t>(
+            2 + (asteroidStage >= 4U ? 1 : 0) + (asteroidStage >= 7U ? 1 : 0));
         asteroid_.y = static_cast<std::int16_t>(asteroid_.y + fallSpeed);
-        const std::int16_t playerBottom = static_cast<std::int16_t>(kGroundY - jumpHeightFp_ / kPhysicsScale);
+        const std::int16_t playerBottom =
+            static_cast<std::int16_t>(kGroundY - jumpHeightFp_ / kPhysicsScale);
         const std::int16_t playerTop = static_cast<std::int16_t>(playerBottom - kEggHeight + 1);
         const std::int32_t horizontalDistance = std::abs(playerWorldX_ - asteroid_.targetWorldX);
-        if (horizontalDistance <= 5 && asteroid_.y + 4 >= playerTop && asteroid_.y <= playerBottom) {
+        if (horizontalDistance <= 5 && asteroid_.y + 4 >= playerTop &&
+            asteroid_.y <= playerBottom) {
             impactAsteroid(nowMs);
             return;
         }
-        const std::int16_t targetSurface = static_cast<std::int16_t>(kGroundY + craterDepthAt(asteroid_.targetWorldX));
-        if (asteroid_.y + 4 >= targetSurface) impactAsteroid(nowMs);
+        const std::int16_t targetSurface =
+            static_cast<std::int16_t>(kGroundY + craterDepthAt(asteroid_.targetWorldX));
+        if (asteroid_.y + 4 >= targetSurface) {
+            impactAsteroid(nowMs);
+        }
     }
 }
 
 void EggJourneyGame::finishScore() {
-    if (scoreFinalized_) return;
+    if (scoreFinalized_) {
+        return;
+    }
     shell_.finishRun(score_);
     highScore_.score = std::max<std::uint32_t>(highScore_.score, score_);
     scoreFinalized_ = true;
 }
-
-
-
-
 
 }  // namespace clockfw::game

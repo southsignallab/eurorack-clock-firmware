@@ -46,7 +46,7 @@ struct EngineSnapshot {
  * copied into the engine inside interrupt-safe critical sections.
  */
 class ClockEngine final {
-public:
+  public:
     /** @brief Packed DEFAULT/Probability/Gate/Tie/Ratchet values of steps 0..127 of a channel. */
     using StepMetadataTable = std::array<SequencerStepMetadataWord, kSequencerMaximumSteps>;
 
@@ -105,9 +105,7 @@ public:
      * @param channelIndex Zero-based channel index.
      * @param metadata Packed DEFAULT/Probability/Gate/Tie/Ratchet values for steps 0..127.
      */
-    void updateSequencerStepMetadata(
-        std::size_t channelIndex,
-        const StepMetadataTable& metadata);
+    void updateSequencerStepMetadata(std::size_t channelIndex, const StepMetadataTable& metadata);
 
     /**
      * @brief Replaces one in-memory Custom Groove library slot used by real-time scheduling.
@@ -129,9 +127,7 @@ public:
         bool rescheduleChannel = true);
 
     /** @brief Clears a runtime-only Custom Groove preview from one channel. */
-    void clearCustomGroovePreview(
-        std::size_t channelIndex,
-        bool rescheduleChannel = true);
+    void clearCustomGroovePreview(std::size_t channelIndex, bool rescheduleChannel = true);
 
     /** @brief Starts or resumes scheduler progression. */
     void play();
@@ -211,9 +207,7 @@ public:
      * The caller must already execute in an interrupt context that cannot race the
      * scheduler ISR. This method deliberately does not manipulate global interrupt state.
      */
-    void acceptExternalPulseFromIsr(
-        std::uint32_t bpmMilli,
-        std::uint8_t pulsesPerQuarterNote);
+    void acceptExternalPulseFromIsr(std::uint32_t bpmMilli, std::uint8_t pulsesPerQuarterNote);
 
     /** @brief ISR-only: opens the quantum whose gate changes processSchedulerTick() writes once. */
     void beginSchedulerQuantumFromIsr();
@@ -273,15 +267,16 @@ public:
      * changing normal button debounce semantics. The estimate is quantized to
      * the 20 kHz scheduler cadence and bounded to recent timestamps.
      */
-    std::uint64_t estimateMasterPositionAtUs(
-        std::uint32_t eventTimestampUs,
-        std::uint32_t nowUs) const;
+    std::uint64_t estimateMasterPositionAtUs(std::uint32_t eventTimestampUs, std::uint32_t nowUs)
+        const;
 
 #ifdef CLOCK_HOST_TEST
     /** @brief Returns how many full runtime resets were executed in deterministic host tests. */
     std::uint32_t resetRuntimeCountForTest() const;
     /** @brief Returns the channels the engine currently holds HIGH (bit n = channel n). */
-    std::uint8_t gateHighMaskForTest() const { return gateHighMask_; }
+    std::uint8_t gateHighMaskForTest() const {
+        return gateHighMask_;
+    }
     /** @brief Returns how many rising edges moved by one tick because the gate was still HIGH. */
     std::uint32_t deferredGateRiseCountForTest() const;
     /** @brief Returns how often the tick catch-up reached config::kMaximumSchedulerCatchUpTicks. */
@@ -313,13 +308,9 @@ public:
         return *sequencerPatterns_[channelIndex < kChannelCount ? channelIndex : 0U];
     }
 
-    /** @brief Returns the engine's 128-step expression snapshot of one channel. */
-    const StepMetadataTable& sequencerStepMetadataForTest(std::size_t channelIndex) const {
-        return *sequencerStepMetadata_[channelIndex < kChannelCount ? channelIndex : 0U];
-    }
 #endif
 
-private:
+  private:
     /** @brief Real-time copy of configuration values needed inside the ISR. */
     struct EngineConfiguration {
         std::uint16_t bpm = 120U;
@@ -437,8 +428,9 @@ private:
         std::uint64_t nextEventQ32;
         std::uint64_t nextEventSlotQ32;
     };
-    static_assert(std::is_trivially_default_constructible<PreparedChannelSchedule>::value,
-                  "A schedule must not be cleared byte by byte under the lock");
+    static_assert(
+        std::is_trivially_default_constructible<PreparedChannelSchedule>::value,
+        "A schedule must not be cleared byte by byte under the lock");
 
     /**
      * @brief A computed pattern step phase; FREE channels are bounded at install.
@@ -451,8 +443,9 @@ private:
         std::uint8_t step;
         std::uint8_t displayedStep;
     };
-    static_assert(std::is_trivially_default_constructible<PreparedStepPhase>::value,
-                  "A restart must not clear its prepared step phases byte by byte");
+    static_assert(
+        std::is_trivially_default_constructible<PreparedStepPhase>::value,
+        "A restart must not clear its prepared step phases byte by byte");
 
     /** @brief Configuration, groove table, pattern and Humanize spacings that one swap installs. */
     struct StagedConfiguration {
@@ -490,8 +483,9 @@ private:
         /** Channels the restart reschedules (GLOBAL; bit n = channel n). */
         std::uint8_t resetMask;
     };
-    static_assert(std::is_trivially_default_constructible<PreparedRestart>::value,
-                  "The scheduler interrupt must not clear a restart byte by byte");
+    static_assert(
+        std::is_trivially_default_constructible<PreparedRestart>::value,
+        "The scheduler interrupt must not clear a restart byte by byte");
 
     /** @brief Transport change that restarts the GLOBAL schedules. */
     enum class TransportRequest : std::uint8_t { Play, Stop, Reset };
@@ -635,9 +629,8 @@ private:
         bool includeCurrentBoundary = false);
 
     /** @brief Returns the live basis of one channel; caller holds the lock or is the ISR. */
-    ChannelScheduleBasis liveScheduleBasis(
-        std::size_t channelIndex,
-        bool includeCurrentBoundary) const;
+    ChannelScheduleBasis liveScheduleBasis(std::size_t channelIndex, bool includeCurrentBoundary)
+        const;
 
     /** @brief Computes the next event of one channel from @p basis (64-bit divisions). */
     PreparedChannelSchedule prepareChannelSchedule(
@@ -711,9 +704,8 @@ private:
         PreparedStepPhase (&phases)[kChannelCount]) const;
 
     /** @brief True when the scheduler has not moved a basis of @p channelMask since @p snapshot. */
-    bool scheduleSnapshotCurrentUnsafe(
-        const ScheduleSnapshot& snapshot,
-        std::uint8_t channelMask) const;
+    bool scheduleSnapshotCurrentUnsafe(const ScheduleSnapshot& snapshot, std::uint8_t channelMask)
+        const;
 
     /** @brief Installs a prepared swap; caller holds the lock. */
     void installConfigurationSwapUnsafe(
@@ -735,9 +727,7 @@ private:
         std::uint64_t baseIntervalQ32);
 
     /** @brief Applies one external reference without manipulating global interrupt state. */
-    void acceptExternalPulseUnsafe(
-        std::uint32_t bpmMilli,
-        std::uint8_t pulsesPerQuarterNote);
+    void acceptExternalPulseUnsafe(std::uint32_t bpmMilli, std::uint8_t pulsesPerQuarterNote);
 
     /** @brief Shifts pending GLOBAL schedules by an observed external phase correction. */
     void alignGlobalSchedulesToExternalPulse(std::uint64_t expectedPulsePositionQ32);
@@ -769,7 +759,10 @@ private:
      * @param context Passed to @p condition.
      * @return False when @p condition declined.
      */
-    bool applyTransportRequestWhen(TransportRequest request, StartCondition condition, void* context);
+    bool applyTransportRequestWhen(
+        TransportRequest request,
+        StartCondition condition,
+        void* context);
 
     /**
      * @brief Calls @p condition and applies @p request if it agrees; caller holds the lock.

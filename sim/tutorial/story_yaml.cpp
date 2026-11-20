@@ -22,8 +22,11 @@ struct SourceLine {
 };
 
 std::string trim(const std::string& value) {
-    const auto first = std::find_if_not(value.begin(), value.end(), [](const unsigned char ch) { return std::isspace(ch) != 0; });
-    const auto last = std::find_if_not(value.rbegin(), value.rend(), [](const unsigned char ch) { return std::isspace(ch) != 0; }).base();
+    const auto first = std::find_if_not(
+        value.begin(), value.end(), [](const unsigned char ch) { return std::isspace(ch) != 0; });
+    const auto last = std::find_if_not(value.rbegin(), value.rend(), [](const unsigned char ch) {
+                          return std::isspace(ch) != 0;
+                      }).base();
     if (first >= last) {
         return {};
     }
@@ -118,12 +121,23 @@ bool decodeQuoted(const std::string& value, std::string& out) {
         if (quote == '"' && ch == '\\' && i + 2U < value.size()) {
             const char next = value[++i];
             switch (next) {
-                case 'n': out.push_back('\n'); break;
-                case 't': out.push_back('\t'); break;
-                case 'r': out.push_back('\r'); break;
-                case '"': out.push_back('"'); break;
-                case '\\': out.push_back('\\'); break;
-                default: return false;
+                case 'n':
+                    out.push_back('\n');
+                    break;
+                case 't':
+                    out.push_back('\t');
+                    break;
+                case 'r':
+                    out.push_back('\r');
+                    break;
+                case '"':
+                    out.push_back('"');
+                    break;
+                case '\\':
+                    out.push_back('\\');
+                    break;
+                default:
+                    return false;
             }
             continue;
         }
@@ -132,7 +146,10 @@ bool decodeQuoted(const std::string& value, std::string& out) {
     return true;
 }
 
-StoryYamlNode scalarNode(const std::string& token, const std::size_t line, std::vector<StoryYamlIssue>& issues) {
+StoryYamlNode scalarNode(
+    const std::string& token,
+    const std::size_t line,
+    std::vector<StoryYamlIssue>& issues) {
     StoryYamlNode node;
     node.line = line;
     const std::string value = trim(token);
@@ -164,7 +181,7 @@ StoryYamlNode scalarNode(const std::string& token, const std::size_t line, std::
 }
 
 class Parser final {
-public:
+  public:
     explicit Parser(const std::string_view source) {
         std::istringstream input{std::string(source)};
         std::string raw;
@@ -172,7 +189,8 @@ public:
         while (std::getline(input, raw)) {
             ++lineNumber;
             if (raw.find('\t') != std::string::npos) {
-                issues_.push_back({lineNumber, "tabs are not permitted in Storybook YAML indentation"});
+                issues_.push_back(
+                    {lineNumber, "tabs are not permitted in Storybook YAML indentation"});
             }
             std::size_t indent = 0U;
             while (indent < raw.size() && raw[indent] == ' ') {
@@ -207,7 +225,7 @@ public:
         return result;
     }
 
-private:
+  private:
     std::size_t nextSignificant(std::size_t index) const {
         while (index < lines_.size() && lines_[index].content.empty()) {
             ++index;
@@ -266,7 +284,9 @@ private:
             ++index;
             return;
         }
-        if (std::any_of(parent.mapping.begin(), parent.mapping.end(), [&](const auto& entry) { return entry.first == key; })) {
+        if (std::any_of(parent.mapping.begin(), parent.mapping.end(), [&](const auto& entry) {
+                return entry.first == key;
+            })) {
             issues_.push_back({line.number, "duplicate mapping key '" + key + "'"});
         }
         const std::string rest = trim(line.content.substr(colon + 1U));
@@ -347,7 +367,8 @@ private:
                             item.mapping.begin(), item.mapping.end(),
                             [&](const auto& existing) { return existing.first == entry.first; });
                         if (duplicate) {
-                            issues_.push_back({entry.second.line, "duplicate mapping key '" + entry.first + "'"});
+                            issues_.push_back(
+                                {entry.second.line, "duplicate mapping key '" + entry.first + "'"});
                         } else {
                             item.mapping.push_back(std::move(entry));
                         }
@@ -401,7 +422,8 @@ const StoryYamlNode* StoryYamlNode::find(const std::string_view key) const {
     if (type != Type::Mapping) {
         return nullptr;
     }
-    const auto it = std::find_if(mapping.begin(), mapping.end(), [&](const auto& entry) { return entry.first == key; });
+    const auto it = std::find_if(
+        mapping.begin(), mapping.end(), [&](const auto& entry) { return entry.first == key; });
     return it == mapping.end() ? nullptr : &it->second;
 }
 

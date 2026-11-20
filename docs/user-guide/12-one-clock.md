@@ -10,6 +10,7 @@ One shared configuration controls all eight outputs:
 
 - rate and rational ratio;
 - Swing;
+- Groove;
 - gate length;
 - Phase;
 - **Humanize**.

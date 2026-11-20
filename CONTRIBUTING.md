@@ -46,6 +46,14 @@ pio run -e blackpill_f401cc
 pio run -e blackpill_f401cc_spi
 ```
 
+### Formatting
+
+C and C++ sources in `src/`, `lib/`, `sim/` and `vcv/` follow `.clang-format`, formatted with **clang-format 23.1.5**; other versions can format differently. `sim/tutorial/.clang-format` inherits the repository style and packs call arguments. Format a file in place with `clang-format -i <file>` and keep its LF line endings. Generated sources listed in `.clang-format-ignore` keep the exact generator output. A formatting-only change must leave the firmware image unchanged (next section).
+
+### Static analysis
+
+`.clang-tidy` is the project profile, with the reason for every enabled and every disabled check. `python scripts/check_static_analysis.py --clang-tidy <clang-tidy 23.1.4>` analyzes the host configuration of `src/` and `lib/` and fails on a finding that is not in `scripts/static_analysis_baseline.json`; findings are compared by file, check and message, not by line. After fixing findings, lower the baseline with `--write-baseline`. On Windows, pass `--extra-arg=--target=x86_64-w64-windows-gnu --extra-arg=--sysroot=C:/msys64/ucrt64`. The check list is still a proposal and the check is not yet part of CI.
+
 ### Proving that a change leaves the firmware image unchanged
 
 A change that only formats code or edits comments must leave `firmware.bin` byte-identical in all ten firmware environments (the five target builds and the five `release_*` flavors). Record the reference on the commit before the change, then compare the working tree:
@@ -56,6 +64,17 @@ python scripts/check_image_identity.py compare --manifest build/image-identity/r
 ```
 
 Each environment is built into its own directory under `build/image-identity/`. The script reports `equal` or `UNEQUAL` per environment and exits non-zero on any difference; for a difference it names the loaded ELF sections that changed. Debug information and the linker map are not compared because they depend on line numbers and the build directory. A refactoring without intended behavior change is proven by equal test results instead; any image difference it causes must be explained in its commit message.
+
+## Code documentation
+
+Public C++ declarations carry concise Doxygen comments. The rules:
+
+- **What:** every public function, method, type, enumerator, constant and public struct field has a `@brief` (or a one-line `/** ... */` for fields and constants). Parameters and return values get `@param` and `@return` when their meaning is not obvious from the type and name. Relevant shared state and non-obvious data structures are documented as well.
+- **Content:** explain why a declaration exists, ownership and side effects, units and ranges, and non-obvious safety behavior. Inline comments explain why, not what the next line does.
+- **Units:** every time, rate and frequency parameter, field and return value states its unit, in the name (`…Ms`, `…Us`, `…Hz`, `…Q32` for Q32 fixed point) and in the comment when the name does not carry it.
+- **Interrupt context:** a function that may run in an interrupt says so. APIs meant for interrupt context end in `FromIsr()`; their comment and the comment of every other function reachable from an interrupt entry point states the contract: bounded run time, non-blocking, no allocation, no output, no interrupt lock opened.
+- **File headers:** `@file`, `@brief`, `@author`, `@copyright` and `@license`; the Doxyfile renders `@license` as a paragraph.
+- **Check:** `python scripts/check_doxygen.py` fails when a source directory has more Doxygen warnings than `scripts/doxygen_warning_baseline.json`; lower the baseline with `--write-baseline` after documenting. CI uploads the generated HTML as the artifact `doxygen-api-<commit>`.
 
 ## Documentation changes
 

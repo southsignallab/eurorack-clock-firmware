@@ -1,5 +1,6 @@
 # Author: Axel Napolitano
 # License: PolyForm-Noncommercial-1.0.0
+# Pinned formatter version: clang-format 23.1.5 (see CONTRIBUTING.md).
 
 BasedOnStyle: LLVM
 Language: Cpp
@@ -15,3 +16,13 @@ PointerAlignment: Left
 ReferenceAlignment: Left
 SortIncludes: CaseSensitive
 SpaceBeforeParens: ControlStatements
+IndentCaseLabels: true
+BinPackParameters: false
+BinPackArguments: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AlignAfterOpenBracket: AlwaysBreak
+BreakAfterOpenBracketIf: false
+SpacesBeforeTrailingComments: 2
+AlignOperands: DontAlign
+PenaltyReturnTypeOnItsOwnLine: 1000
+ReflowComments: Never

@@ -212,7 +212,7 @@ pio run -e blackpill_f401cc_spi_ssd1315
 pio run -e blackpill_f401cc_spi_ssd1306
 ```
 
-Both profiles use PA5=OLED `CLK`, PA7=OLED `DIN` (SPI MOSI; `SDA` on the earlier prototype module), PA4=`CS`, PB9=`DC` and PB15=active-low `RES`; `blackpill_f401cc_spi_ssd1306` selects SSD1306 and `blackpill_f401cc_spi_ssd1315` selects SSD1315. The write-only OLED bus keeps SPI1 in the proven normal two-line master mode; only SCK and MOSI are configured as alternate-function pins, so PA6/MISO remains unconfigured and free. The legacy I2C transport remains host-regression code only because PB6/PB7 are dedicated to the encoder on final hardware.
+Both profiles use PA5=OLED `CLK`, PA7=OLED `DIN` (SPI MOSI; `SDA` on the earlier prototype module), PA4=`CS`, PB9=`DC` and PB15=active-low `RES`; `blackpill_f401cc_spi_ssd1306` selects SSD1306 and `blackpill_f401cc_spi_ssd1315` selects SSD1315. The write-only OLED bus keeps SPI1 in the proven normal two-line master mode; only SCK and MOSI are configured as alternate-function pins, so PA6/MISO remains unconfigured and free. The legacy I2C transport is exercised only by host regression variants because PB6/PB7 are dedicated to the encoder on final hardware; the target build compiles it, but no firmware image contains it.
 
 ### Runtime instrumentation (debug builds only)
 
@@ -610,25 +610,7 @@ pio run -e blackpill_f401cc_spi_ssd1315
 
 ## 26. Coverage policy
 
-The CI gates are intentionally strict without making normal maintenance brittle:
-
-```text
-Executable lines:        >= 95%
-Production functions:    >= 95%
-Decision branches:       >= 90%
-ASan:                    clean
-UBSan:                   clean
-Host compiler warnings:  zero (-Werror)
-```
-
-The gates are deliberately high but no longer absolute. The goal is meaningful behavioral coverage rather than artificial tests written solely to reach a percentage. Uncovered production functions are still reported explicitly by the coverage script and should normally be justified or tested before merge.
-
-Coverage reports are written to:
-
-```text
-coverage/full_coverage.txt
-coverage/full_coverage.json
-```
+The coverage and sanitizer gates, the current figures and the report location are defined in [`TEST_COVERAGE.md`](TEST_COVERAGE.md#hard-ci-gates). Section 15 above shows how to run them on Windows.
 
 ## 27. Memory policy
 

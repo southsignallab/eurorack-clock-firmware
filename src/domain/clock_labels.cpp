@@ -14,45 +14,65 @@ namespace clockfw {
 
 const char* channelModeShortLabel(const ChannelMode mode) {
     switch (mode) {
-        case ChannelMode::Off: return text::get(text::TextId::ModeOffShort);
-        case ChannelMode::Euclid: return text::get(text::TextId::ModeEuclidShort);
-        case ChannelMode::Sequencer: return text::get(text::TextId::ModeSequencerShort);
+        case ChannelMode::Off:
+            return text::get(text::TextId::ModeOffShort);
+        case ChannelMode::Euclid:
+            return text::get(text::TextId::ModeEuclidShort);
+        case ChannelMode::Sequencer:
+            return text::get(text::TextId::ModeSequencerShort);
         case ChannelMode::Clock:
-        default: return text::get(text::TextId::ModeClockShort);
+        default:
+            return text::get(text::TextId::ModeClockShort);
     }
 }
 
 const char* channelModeLongLabel(const ChannelMode mode) {
     switch (mode) {
-        case ChannelMode::Off: return text::get(text::TextId::ModeOffLong);
-        case ChannelMode::Euclid: return text::get(text::TextId::ModeEuclidLong);
-        case ChannelMode::Sequencer: return text::get(text::TextId::ModeSequencerLong);
+        case ChannelMode::Off:
+            return text::get(text::TextId::ModeOffLong);
+        case ChannelMode::Euclid:
+            return text::get(text::TextId::ModeEuclidLong);
+        case ChannelMode::Sequencer:
+            return text::get(text::TextId::ModeSequencerLong);
         case ChannelMode::Clock:
-        default: return text::get(text::TextId::ModeClockLong);
+        default:
+            return text::get(text::TextId::ModeClockLong);
     }
 }
 
 const char* clockSourceLabel(const ClockSource source) {
     switch (source) {
-        case ClockSource::External: return text::get(text::TextId::SourceExternal);
-        case ClockSource::Auto: return text::get(text::TextId::SourceAuto);
+        case ClockSource::External:
+            return text::get(text::TextId::SourceExternal);
+        case ClockSource::Auto:
+            return text::get(text::TextId::SourceAuto);
         case ClockSource::Internal:
-        default: return text::get(text::TextId::SourceInternal);
+        default:
+            return text::get(text::TextId::SourceInternal);
     }
 }
 
 const char* inputFunctionLabel(const InputFunction function) {
     switch (function) {
-        case InputFunction::Sync: return text::get(text::TextId::Sync);
-        case InputFunction::Reset: return text::get(text::TextId::Reset);
-        case InputFunction::Run: return text::get(text::TextId::Run);
-        case InputFunction::Start: return text::get(text::TextId::InputStart);
-        case InputFunction::Stop: return text::get(text::TextId::InputStop);
-        case InputFunction::Restart: return text::get(text::TextId::Restart);
-        case InputFunction::Tap: return text::get(text::TextId::Tap);
-        case InputFunction::Fill: return text::get(text::TextId::Fill);
+        case InputFunction::Sync:
+            return text::get(text::TextId::Sync);
+        case InputFunction::Reset:
+            return text::get(text::TextId::Reset);
+        case InputFunction::Run:
+            return text::get(text::TextId::Run);
+        case InputFunction::Start:
+            return text::get(text::TextId::InputStart);
+        case InputFunction::Stop:
+            return text::get(text::TextId::InputStop);
+        case InputFunction::Restart:
+            return text::get(text::TextId::Restart);
+        case InputFunction::Tap:
+            return text::get(text::TextId::Tap);
+        case InputFunction::Fill:
+            return text::get(text::TextId::Fill);
         case InputFunction::Off:
-        default: return text::get(text::TextId::Off);
+        default:
+            return text::get(text::TextId::Off);
     }
 }
 

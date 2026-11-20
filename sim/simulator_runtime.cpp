@@ -129,8 +129,8 @@ void SimulatorRuntime::flushPersistence() {
     persistence_.flushIfChanged();
 }
 
-std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>
-SimulatorRuntime::persistenceImage() const {
+std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes> SimulatorRuntime::
+    persistenceImage() const {
     std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes> image{};
     if (poweredOn_ && application_ != nullptr &&
         application_->persistenceSnapshotForSimulator(image)) {
@@ -163,8 +163,8 @@ void SimulatorRuntime::restorePersistenceImage(
     }
 }
 
-const std::array<std::uint8_t, hal::OledDisplay::kFramebufferSize>&
-SimulatorRuntime::framebuffer() const {
+const std::array<std::uint8_t, hal::OledDisplay::kFramebufferSize>& SimulatorRuntime::framebuffer()
+    const {
     if (!poweredOn_ || application_ == nullptr) {
         return poweredOffFramebuffer_;
     }
@@ -204,11 +204,13 @@ std::uint64_t SimulatorRuntime::nowMicroseconds() const {
 }
 
 TransportTelemetry SimulatorRuntime::transportTelemetry() const {
-    return {observedTransport_, transportStartSequence_, lastTransportStartUs_, lastTransportStopUs_};
+    return {
+        observedTransport_, transportStartSequence_, lastTransportStartUs_, lastTransportStopUs_};
 }
 
 engine::EngineSnapshot SimulatorRuntime::engineSnapshot() const {
-    return application_ != nullptr ? application_->engineSnapshotForSimulator() : engine::EngineSnapshot{};
+    return application_ != nullptr ? application_->engineSnapshotForSimulator()
+                                   : engine::EngineSnapshot{};
 }
 
 void SimulatorRuntime::setTelemetryHistoryFrozen(const bool frozen) {
@@ -347,9 +349,8 @@ void SimulatorRuntime::pruneTelemetry() {
     if (telemetryHistoryFrozen_) {
         return;
     }
-    const std::uint64_t cutoff = simfw::nowUs > scope::kMaximumWindowUs
-        ? simfw::nowUs - scope::kMaximumWindowUs
-        : 0ULL;
+    const std::uint64_t cutoff =
+        simfw::nowUs > scope::kMaximumWindowUs ? simfw::nowUs - scope::kMaximumWindowUs : 0ULL;
     for (ChannelTelemetry& channel : telemetry_) {
         while (!channel.transitions.empty() && channel.transitions.front().timestampUs < cutoff) {
             channel.transitions.pop_front();
@@ -378,18 +379,20 @@ void SimulatorRuntime::serviceTransportTelemetry() {
 
 void SimulatorRuntime::applyStoredButtonLevels() {
     for (std::size_t index = 0U; index < buttonPressed_.size(); ++index) {
-        simfw::setPin(
-            buttonPin(static_cast<SimButton>(index)),
-            buttonPressed_[index] ? LOW : HIGH);
+        simfw::setPin(buttonPin(static_cast<SimButton>(index)), buttonPressed_[index] ? LOW : HIGH);
     }
 }
 
 std::uint32_t SimulatorRuntime::buttonPin(const SimButton button) {
     switch (button) {
-        case SimButton::Encoder: return pinmap::kEncoderPushButtonPin;
-        case SimButton::Play: return pinmap::kPlayPauseButtonPin;
-        case SimButton::Tap: return pinmap::kTapTempoButtonPin;
-        case SimButton::Stop: return pinmap::kResetBackButtonPin;
+        case SimButton::Encoder:
+            return pinmap::kEncoderPushButtonPin;
+        case SimButton::Play:
+            return pinmap::kPlayPauseButtonPin;
+        case SimButton::Tap:
+            return pinmap::kTapTempoButtonPin;
+        case SimButton::Stop:
+            return pinmap::kResetBackButtonPin;
     }
     return pinmap::kEncoderPushButtonPin;
 }

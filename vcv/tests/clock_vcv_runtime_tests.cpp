@@ -9,9 +9,9 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
-#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -38,7 +38,10 @@ void require(const bool condition, const char* const message) {
     }
 }
 
-void advance(clockfw::vcv::ClockVcvRuntime& runtime, const double seconds, const double sampleRate) {
+void advance(
+    clockfw::vcv::ClockVcvRuntime& runtime,
+    const double seconds,
+    const double sampleRate) {
     const std::size_t samples = static_cast<std::size_t>(seconds * sampleRate);
     const double sampleTime = 1.0 / sampleRate;
     for (std::size_t i = 0U; i < samples; ++i) {
@@ -83,7 +86,6 @@ void oneSampleResetPulse(clockfw::vcv::ClockVcvRuntime& runtime, const double sa
     runtime.processSample(sampleTime, false, 0.0F, true, 5.0F);
     runtime.processSample(sampleTime, false, 0.0F, true, 0.0F);
 }
-
 
 std::array<std::uint8_t, clockfw::hal::PersistentStorage::kCapacityBytes>
 makeUnifiedSwingPersistenceImage(const std::uint8_t swingPercent) {
@@ -138,8 +140,9 @@ void assertAudioThreadPerformsNoFileWrites(const double sampleRate) {
         advance(runtime, 0.100, sampleRate);
         // Past the three-second commit delay and several 500-ms host flush periods.
         advance(runtime, 4.000, sampleRate);
-        require(clockfw::sim::SimulatorPersistence::fileWritesOnThisThreadForTest() == writesBefore,
-                "processSample() must not write the persistence mirror");
+        require(
+            clockfw::sim::SimulatorPersistence::fileWritesOnThisThreadForTest() == writesBefore,
+            "processSample() must not write the persistence mirror");
 
         const PersistenceImage expected = runtime.persistenceImage();
         bool mirrored = false;
@@ -183,7 +186,8 @@ void assertPatchSaveCarriesLiveSettings(const double sampleRate) {
         saver.join();
         runtime.restorePersistenceImage(saved);
         advance(runtime, 1.100, sampleRate);
-        require(runtime.bpmForTest() == liveBpm, "a patch saved during PLAY restores the live tempo");
+        require(
+            runtime.bpmForTest() == liveBpm, "a patch saved during PLAY restores the live tempo");
 
         // Right after an edit in STOP, before the commit delay.
         runtime.rotateEncoder(-2);
@@ -229,8 +233,7 @@ void assertSwingOneClockGates(const double sampleRate, const char* suffix) {
     const double toleranceSamples = std::max(4.0, sampleRate * 0.00015);
     std::array<double, 4U> intervals{};
     for (std::size_t index = 0U; index < intervals.size(); ++index) {
-        intervals[index] = static_cast<double>(
-            risingSamples[index + 1U] - risingSamples[index]);
+        intervals[index] = static_cast<double>(risingSamples[index + 1U] - risingSamples[index]);
     }
 
     const bool startsLong = std::abs(intervals[0] - expectedLongSamples) <= toleranceSamples;
@@ -282,8 +285,8 @@ void assertRegularOneClockGates(const double sampleRate, const char* suffix) {
     const double expectedSamples = sampleRate * 0.5;
     const double toleranceSamples = std::max(4.0, sampleRate * 0.0001);
     for (std::size_t index = 1U; index < risingSamples[0].size(); ++index) {
-        const double actualSamples = static_cast<double>(
-            risingSamples[0][index] - risingSamples[0][index - 1U]);
+        const double actualSamples =
+            static_cast<double>(risingSamples[0][index] - risingSamples[0][index - 1U]);
         assert(std::abs(actualSamples - expectedSamples) <= toleranceSamples);
     }
 
@@ -305,7 +308,8 @@ int main() {
     assertSwingOneClockGates(96000.0, "96000");
     assertAudioThreadPerformsNoFileWrites(kSampleRate);
     assertPatchSaveCarriesLiveSettings(kSampleRate);
-    const auto statePath = std::filesystem::temp_directory_path() / "ssl-clock-vcv-runtime-test.bin";
+    const auto statePath =
+        std::filesystem::temp_directory_path() / "ssl-clock-vcv-runtime-test.bin";
     std::error_code ignored;
     std::filesystem::remove(statePath, ignored);
 
@@ -385,7 +389,8 @@ int main() {
     click(runtime, &clockfw::vcv::PanelControls::playPressed, kSampleRate);
     std::array<std::uint32_t, 8U> risingEdges{};
     std::array<bool, 8U> previousHigh{};
-    for (std::size_t sample = 0U; sample < static_cast<std::size_t>(2.100 * kSampleRate); ++sample) {
+    for (std::size_t sample = 0U; sample < static_cast<std::size_t>(2.100 * kSampleRate);
+         ++sample) {
         runtime.processSample(1.0 / kSampleRate, false, 0.0F, false, 0.0F);
         for (std::size_t channel = 0U; channel < 8U; ++channel) {
             const float voltage = runtime.gateVoltage(channel);

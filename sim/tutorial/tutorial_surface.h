@@ -21,7 +21,8 @@ struct TutorialColor {
     std::uint8_t alpha = 255U;
 
     bool operator==(const TutorialColor& other) const {
-        return red == other.red && green == other.green && blue == other.blue && alpha == other.alpha;
+        return red == other.red && green == other.green && blue == other.blue &&
+            alpha == other.alpha;
     }
 };
 
@@ -35,7 +36,7 @@ struct TutorialRect {
 
 /** @brief Deterministic in-memory RGBA8 raster independent of SDL/windowing. */
 class TutorialSurface final {
-public:
+  public:
     TutorialSurface(std::size_t width, std::size_t height, TutorialColor background = {});
 
     std::size_t width() const;
@@ -55,9 +56,12 @@ public:
     void composite(const TutorialSurface& source, int destinationX, int destinationY);
 
     /** @brief Nearest-neighbour blits one source rectangle into an arbitrary destination rectangle. */
-    void blitNearest(const TutorialSurface& source, TutorialRect sourceRect, TutorialRect destinationRect);
+    void blitNearest(
+        const TutorialSurface& source,
+        TutorialRect sourceRect,
+        TutorialRect destinationRect);
 
-private:
+  private:
     std::size_t width_ = 0U;
     std::size_t height_ = 0U;
     std::vector<TutorialColor> pixels_{};

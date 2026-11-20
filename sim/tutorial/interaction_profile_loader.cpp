@@ -58,16 +58,18 @@ InteractionTimingResult loadInteractionTiming(
     const std::filesystem::path path = tutorialRoot / "interaction_profiles.yaml";
     const std::string source = readFile(path);
     if (source.empty()) {
-        result.issues.push_back({profileName, std::nullopt, std::nullopt, 0U,
-                                 "could not read interaction profile resource: " + path.string()});
+        result.issues.push_back(
+            {profileName, std::nullopt, std::nullopt, 0U,
+             "could not read interaction profile resource: " + path.string()});
         return result;
     }
 
     const StoryYamlResult yaml = parseStoryYaml(source);
     if (!yaml || !yaml.root) {
         for (const StoryYamlIssue& issue : yaml.issues) {
-            result.issues.push_back({profileName, std::nullopt, std::nullopt, issue.line,
-                                     "interaction profile YAML: " + issue.reason});
+            result.issues.push_back(
+                {profileName, std::nullopt, std::nullopt, issue.line,
+                 "interaction profile YAML: " + issue.reason});
         }
         return result;
     }
@@ -75,8 +77,9 @@ InteractionTimingResult loadInteractionTiming(
     const StoryYamlNode* schema = yaml.root->find("schema");
     if (schema == nullptr || schema->type != StoryYamlNode::Type::Scalar ||
         schema->scalar != std::to_string(currentSchemaVersion())) {
-        result.issues.push_back({profileName, std::nullopt, std::nullopt, yaml.root->line,
-                                 "interaction profile schema must match Storybook schema 1"});
+        result.issues.push_back(
+            {profileName, std::nullopt, std::nullopt, yaml.root->line,
+             "interaction profile schema must match Storybook schema 1"});
         return result;
     }
 
@@ -84,9 +87,10 @@ InteractionTimingResult loadInteractionTiming(
     const StoryYamlNode* selected = profiles != nullptr ? profiles->find(profileName) : nullptr;
     if (profiles == nullptr || profiles->type != StoryYamlNode::Type::Mapping ||
         selected == nullptr || selected->type != StoryYamlNode::Type::Mapping) {
-        result.issues.push_back({profileName, std::nullopt, std::nullopt,
-                                 profiles != nullptr ? profiles->line : yaml.root->line,
-                                 "interaction profile is not defined: " + profileName});
+        result.issues.push_back(
+            {profileName, std::nullopt, std::nullopt,
+             profiles != nullptr ? profiles->line : yaml.root->line,
+             "interaction profile is not defined: " + profileName});
         return result;
     }
 
@@ -111,11 +115,13 @@ InteractionTimingResult loadInteractionTiming(
 
     for (const Field& field : fields) {
         const StoryYamlNode* node = selected->find(field.name);
-        const std::optional<std::uint32_t> value = node != nullptr ? parseUnsigned(*node) : std::nullopt;
+        const std::optional<std::uint32_t> value =
+            node != nullptr ? parseUnsigned(*node) : std::nullopt;
         if (!value) {
-            result.issues.push_back({profileName, std::nullopt, std::nullopt,
-                                     node != nullptr ? node->line : selected->line,
-                                     std::string("interaction profile field is missing/invalid: ") + field.name});
+            result.issues.push_back(
+                {profileName, std::nullopt, std::nullopt,
+                 node != nullptr ? node->line : selected->line,
+                 std::string("interaction profile field is missing/invalid: ") + field.name});
             continue;
         }
         timing.*(field.member) = *value;

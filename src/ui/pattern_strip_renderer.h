@@ -18,7 +18,7 @@ namespace clockfw::ui {
 
 /** @brief Draws non-interactive rhythm strips shared by performance and editor screens. */
 class PatternStripRenderer final {
-public:
+  public:
     /**
      * @brief Constructs the helper around the shared OLED framebuffer.
      * @param display Display HAL receiving all drawing primitives.
@@ -54,9 +54,7 @@ public:
         std::int16_t topY);
 
     /** @brief Draws 8-step editor-page progress for patterns up to 128 steps. */
-    void drawSequencerEditorPageIndicator(
-        std::uint8_t sequenceLength,
-        std::uint8_t activeStep);
+    void drawSequencerEditorPageIndicator(std::uint8_t sequenceLength, std::uint8_t activeStep);
 
     /**
      * @brief Draws 16-step block indicators at the two bottom OLED rows.
@@ -67,11 +65,9 @@ public:
      * two-pixel-high line on rows 62-63, making playback position visible without
      * consuming normal content rows.
      */
-    void drawSequencerBlockIndicator(
-        std::uint8_t sequenceLength,
-        std::uint8_t activeStep);
+    void drawSequencerBlockIndicator(std::uint8_t sequenceLength, std::uint8_t activeStep);
 
-private:
+  private:
     /** @brief Draws shared 16-step block progress for long Euclid/Sequencer patterns. */
     void drawPatternBlockIndicator(
         std::uint8_t sequenceLength,
@@ -79,9 +75,7 @@ private:
         std::uint8_t blockSize);
 
     /** @brief Draws a two-pixel-high underline for one current pattern slot. */
-    void drawCurrentStepUnderline(
-        std::int16_t slotX,
-        std::int16_t slotWidth);
+    void drawCurrentStepUnderline(std::int16_t slotX, std::int16_t slotWidth);
 
     hal::OledDisplay& display_;
 };

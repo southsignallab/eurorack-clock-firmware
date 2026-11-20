@@ -7,15 +7,15 @@
  */
 
 #include "game/pixel_raid_game.h"
+#include "game/boot_game_controls.h"
 
-#include <algorithm>
-#include <cstdio>
 #include "hal/system_clock.h"
 #include "ui_text.h"
+#include <algorithm>
+#include <cstdio>
 namespace clockfw::game {
 namespace {
 constexpr std::uint32_t kFrameIntervalMs = 40U;
-constexpr std::uint32_t kExitLongPressMs = 900U;
 constexpr std::uint32_t kEnemyShotIntervalMs = 950U;
 constexpr std::int16_t kPlayerY = 59;
 constexpr std::int16_t kPlayerWidth = 7;
@@ -29,9 +29,7 @@ PixelRaidGame::PixelRaidGame(
     hal::ControlPanel& controls,
     hal::GateOutputDriver& gateOutputs,
     ArcadeLeaderboardStore& leaderboard)
-    : display_(display),
-      controls_(controls),
-      gateOutputs_(gateOutputs),
+    : display_(display), controls_(controls), gateOutputs_(gateOutputs),
       shell_(display, ArcadeTitle::PixelRaid, &leaderboard) {}
 void PixelRaidGame::run() {
     gateOutputs_.disableOutputStage();
@@ -58,9 +56,15 @@ void PixelRaidGame::run() {
             highScore_.score = shell_.highScore();
             resetSession();
         }
-        if (shell_.playing()) update(controls, nowMs);
+        if (shell_.playing()) {
+            update(controls, nowMs);
+        }
         if (nowMs - lastFrameAtMs >= kFrameIntervalMs) {
-            if (shell_.playing()) render(); else shell_.render(nowMs);
+            if (shell_.playing()) {
+                render();
+            } else {
+                shell_.render(nowMs);
+            }
             lastFrameAtMs = nowMs;
         }
         (void)display_.service();  // only reports pending I2C work
@@ -72,24 +76,40 @@ void PixelRaidGame::run() {
 }
 #ifdef CLOCK_SIMULATOR
 void PixelRaidGame::beginForSimulator() {
-    gateOutputs_.disableOutputStage(); gateOutputs_.setAllChannelsLow();
+    gateOutputs_.disableOutputStage();
+    gateOutputs_.setAllChannelsLow();
     const std::uint32_t nowMs = hal::SystemClock::milliseconds();
-    shell_.begin(nowMs); lastSimulatorFrameAtMs_ = nowMs; shell_.render(nowMs);
+    shell_.begin(nowMs);
+    lastSimulatorFrameAtMs_ = nowMs;
+    shell_.render(nowMs);
 }
 bool PixelRaidGame::serviceForSimulator(const std::uint32_t nowMs) {
     const hal::ControlSample controls = controls_.sample(nowMs);
-    if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs)) exitRequested_ = true;
+    if (exitHold_.update(controls.encoderButton, nowMs, kExitLongPressMs)) {
+        exitRequested_ = true;
+    }
     const ArcadeShell::Action action = shell_.update(controls, nowMs);
     if (action == ArcadeShell::Action::StartRun || action == ArcadeShell::Action::RestartRun) {
-        highScore_.score = shell_.highScore(); resetSession();
+        highScore_.score = shell_.highScore();
+        resetSession();
     }
-    if (shell_.playing()) update(controls, nowMs);
+    if (shell_.playing()) {
+        update(controls, nowMs);
+    }
     if (nowMs - lastSimulatorFrameAtMs_ >= kFrameIntervalMs) {
-        if (shell_.playing()) render(); else shell_.render(nowMs);
+        if (shell_.playing()) {
+            render();
+        } else {
+            shell_.render(nowMs);
+        }
         lastSimulatorFrameAtMs_ = nowMs;
     }
-    if (!exitRequested_) return true;
-    gateOutputs_.setAllChannelsLow(); gateOutputs_.disableOutputStage(); return false;
+    if (!exitRequested_) {
+        return true;
+    }
+    gateOutputs_.setAllChannelsLow();
+    gateOutputs_.disableOutputStage();
+    return false;
 }
 #endif
 
@@ -112,7 +132,9 @@ void PixelRaidGame::resetSession() {
 }
 
 void PixelRaidGame::update(const hal::ControlSample& controls, const std::uint32_t nowMs) {
-    if (gameOver_) return;
+    if (gameOver_) {
+        return;
+    }
 
     if (controls.encoderDelta != 0) {
         playerX_ = static_cast<std::int16_t>(std::clamp<int>(
@@ -170,8 +192,8 @@ void PixelRaidGame::updateEnemyShot(const std::uint32_t nowMs) {
         return;
     }
 
-    if (enemyShotY_ >= kPlayerY - 1 &&
-        enemyShotX_ >= playerX_ && enemyShotX_ < playerX_ + kPlayerWidth) {
+    if (enemyShotY_ >= kPlayerY - 1 && enemyShotX_ >= playerX_ &&
+        enemyShotX_ < playerX_ + kPlayerWidth) {
         enemyShotActive_ = false;
         if (lives_ > 0U) {
             --lives_;
@@ -204,8 +226,8 @@ void PixelRaidGame::updateAliens(const std::uint32_t nowMs) {
     }
 
     const std::int16_t nextOffset = static_cast<std::int16_t>(alienOffsetX_ + alienDirection_ * 2);
-    const std::int16_t formationWidth = static_cast<std::int16_t>(
-        (kAlienColumns - 1U) * kAlienCellWidth + kAlienWidth);
+    const std::int16_t formationWidth =
+        static_cast<std::int16_t>((kAlienColumns - 1U) * kAlienCellWidth + kAlienWidth);
     if (nextOffset < 1 || nextOffset + formationWidth >= hal::OledDisplay::kWidth - 1) {
         alienDirection_ = static_cast<std::int8_t>(-alienDirection_);
         alienOffsetY_ = static_cast<std::int16_t>(alienOffsetY_ + 2);
@@ -243,7 +265,10 @@ void PixelRaidGame::render() {
     display_.setTextColor(hal::PixelColor::White);
 
     char header[32]{};
-    std::snprintf(header, sizeof(header), text::get(text::TextId::GameHeaderFormat),
+    std::snprintf(
+        header,
+        sizeof(header),
+        text::get(text::TextId::GameHeaderFormat),
         static_cast<unsigned long>(score_),
         static_cast<unsigned long>(highScore_.score),
         lives_);
@@ -340,8 +365,6 @@ bool PixelRaidGame::confirmExit() {
 #endif
 }
 
-
-
 bool PixelRaidGame::hitAlien(const std::int16_t x, const std::int16_t y) {
     for (std::uint8_t row = 0U; row < kAlienRows; ++row) {
         for (std::uint8_t column = 0U; column < kAlienColumns; ++column) {
@@ -349,10 +372,12 @@ bool PixelRaidGame::hitAlien(const std::int16_t x, const std::int16_t y) {
             if (!aliens_[index]) {
                 continue;
             }
-            const std::int16_t alienX = static_cast<std::int16_t>(alienOffsetX_ + column * kAlienCellWidth);
-            const std::int16_t alienY = static_cast<std::int16_t>(alienOffsetY_ + row * kAlienCellHeight);
-            if (x >= alienX && x < alienX + kAlienWidth &&
-                y >= alienY && y < alienY + kAlienHeight) {
+            const std::int16_t alienX =
+                static_cast<std::int16_t>(alienOffsetX_ + column * kAlienCellWidth);
+            const std::int16_t alienY =
+                static_cast<std::int16_t>(alienOffsetY_ + row * kAlienCellHeight);
+            if (x >= alienX && x < alienX + kAlienWidth && y >= alienY &&
+                y < alienY + kAlienHeight) {
                 aliens_[index] = false;
                 return true;
             }
@@ -368,7 +393,8 @@ std::int16_t PixelRaidGame::chooseEnemyShotX() {
 
     const std::uint8_t startColumn = static_cast<std::uint8_t>(randomState_ % kAlienColumns);
     for (std::uint8_t offset = 0U; offset < kAlienColumns; ++offset) {
-        const std::uint8_t column = static_cast<std::uint8_t>((startColumn + offset) % kAlienColumns);
+        const std::uint8_t column =
+            static_cast<std::uint8_t>((startColumn + offset) % kAlienColumns);
         for (std::int8_t row = static_cast<std::int8_t>(kAlienRows) - 1; row >= 0; --row) {
             const std::size_t index = static_cast<std::size_t>(row) * kAlienColumns + column;
             if (aliens_[index]) {

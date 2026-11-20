@@ -34,12 +34,14 @@ struct TutorialCompositionLayout {
 
 /** @brief Resolves fixed side-by-side composition without reading simulator state. */
 TutorialCompositionLayout resolveTutorialComposition(
-    const OutputProfile& output, bool scopeVisible,
-    std::uint32_t subtitleHeightPx = 132U, std::uint32_t subtitleSafeBottomPx = 150U);
+    const OutputProfile& output,
+    bool scopeVisible,
+    std::uint32_t subtitleHeightPx = 132U,
+    std::uint32_t subtitleSafeBottomPx = 150U);
 
 /** @brief Deterministic scene renderer combining production OLED, panel telemetry and Story presentation. */
 class TutorialRenderer final {
-public:
+  public:
     TutorialRenderer(std::filesystem::path tutorialRoot, layout::PanelLayout panelLayout);
 
     /**
@@ -60,7 +62,7 @@ public:
         const std::string& activeSubtitle = {},
         double speedMultiplier = 1.0);
 
-private:
+  private:
     const StoryTheme& resolveTheme(const std::string& themeId);
     const TutorialSurface* resolveBackgroundImage(const StoryTheme& theme);
 

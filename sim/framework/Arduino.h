@@ -22,9 +22,13 @@ inline constexpr int RISING = 5;
 inline constexpr int FALLING = 6;
 using voidFuncPtr = void (*)();
 
-inline constexpr std::uint32_t PA0=0xA00, PA1=0xA01, PA2=0xA02, PA3=0xA03, PA4=0xA04, PA5=0xA05, PA6=0xA06, PA7=0xA07, PA8=0xA08, PA9=0xA09, PA10=0xA0A;
-inline constexpr std::uint32_t PB0=0xB00, PB1=0xB01, PB3=0xB03, PB4=0xB04, PB5=0xB05, PB6=0xB06, PB7=0xB07, PB8=0xB08, PB9=0xB09, PB10=0xB0A, PB12=0xB0C, PB13=0xB0D, PB14=0xB0E, PB15=0xB0F;
-inline constexpr PinName PA_5=PA5, PA_6=PA6, PA_7=PA7, PB_6=0xB06, PB_7=0xB07;
+inline constexpr std::uint32_t PA0 = 0xA00, PA1 = 0xA01, PA2 = 0xA02, PA3 = 0xA03, PA4 = 0xA04,
+                               PA5 = 0xA05, PA6 = 0xA06, PA7 = 0xA07, PA8 = 0xA08, PA9 = 0xA09,
+                               PA10 = 0xA0A;
+inline constexpr std::uint32_t PB0 = 0xB00, PB1 = 0xB01, PB3 = 0xB03, PB4 = 0xB04, PB5 = 0xB05,
+                               PB6 = 0xB06, PB7 = 0xB07, PB8 = 0xB08, PB9 = 0xB09, PB10 = 0xB0A,
+                               PB12 = 0xB0C, PB13 = 0xB0D, PB14 = 0xB0E, PB15 = 0xB0F;
+inline constexpr PinName PA_5 = PA5, PA_6 = PA6, PA_7 = PA7, PB_6 = 0xB06, PB_7 = 0xB07;
 inline constexpr std::uint32_t TIM3 = 3U;
 
 namespace clockfw::simfw {
@@ -42,7 +46,10 @@ inline std::map<std::uint32_t, std::uint8_t> pinValues{};
 inline std::vector<PinWrite> writes{};
 inline std::uint64_t nowUs = 0ULL;
 inline unsigned interruptDisableDepth = 0U;
-struct InterruptBinding { voidFuncPtr callback = nullptr; int mode = CHANGE; };
+struct InterruptBinding {
+    voidFuncPtr callback = nullptr;
+    int mode = CHANGE;
+};
 inline std::map<std::uint32_t, InterruptBinding> interruptBindings{};
 
 /** @brief Resets all simulated GPIO and time state to power-on defaults. */
@@ -60,13 +67,16 @@ inline void setPin(const std::uint32_t pin, const std::uint8_t value) {
     const auto existing = pinValues.find(pin);
     const std::uint8_t previous = existing == pinValues.end() ? HIGH : existing->second;
     pinValues[pin] = value;
-    if (previous == value || interruptDisableDepth != 0U) return;
+    if (previous == value || interruptDisableDepth != 0U)
+        return;
     const auto binding = interruptBindings.find(pin);
-    if (binding == interruptBindings.end() || binding->second.callback == nullptr) return;
+    if (binding == interruptBindings.end() || binding->second.callback == nullptr)
+        return;
     const bool rising = previous == LOW && value == HIGH;
     const bool falling = previous == HIGH && value == LOW;
     if (binding->second.mode == CHANGE || (binding->second.mode == RISING && rising) ||
-        (binding->second.mode == FALLING && falling)) binding->second.callback();
+        (binding->second.mode == FALLING && falling))
+        binding->second.callback();
 }
 
 /** @brief Returns the current simulated logic level, defaulting to pulled-up HIGH. */
@@ -106,11 +116,15 @@ inline std::uint32_t micros() {
     return static_cast<std::uint32_t>(clockfw::simfw::nowUs);
 }
 
-inline std::uint32_t digitalPinToInterrupt(const std::uint32_t pin) { return pin; }
+inline std::uint32_t digitalPinToInterrupt(const std::uint32_t pin) {
+    return pin;
+}
 inline void attachInterrupt(const std::uint32_t pin, voidFuncPtr callback, const int mode) {
     clockfw::simfw::interruptBindings[pin] = {callback, mode};
 }
-inline void detachInterrupt(const std::uint32_t pin) { clockfw::simfw::interruptBindings.erase(pin); }
+inline void detachInterrupt(const std::uint32_t pin) {
+    clockfw::simfw::interruptBindings.erase(pin);
+}
 
 inline void delay(const std::uint32_t durationMs) {
     clockfw::simfw::advanceMicroseconds(static_cast<std::uint64_t>(durationMs) * 1000ULL);

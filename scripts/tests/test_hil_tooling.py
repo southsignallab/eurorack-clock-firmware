@@ -215,5 +215,78 @@ class HilQualificationLedgerTests(unittest.TestCase):
         self.assertTrue(any("does not exist" in error for error in errors))
 
 
+    def validate_modified(self, change) -> list[str]:
+        """Validate a temporary copy of the repository ledger after applying ``change``."""
+        original = QUAL.LEDGER
+        with tempfile.TemporaryDirectory() as tmp:
+            temp_ledger = Path(tmp) / "ledger.json"
+            data = json.loads(original.read_text(encoding="utf-8"))
+            change(data)
+            temp_ledger.write_text(json.dumps(data), encoding="utf-8")
+            QUAL.LEDGER = temp_ledger
+            try:
+                return QUAL.validate(require_pass=getattr(change, "require_pass", False))
+            finally:
+                QUAL.LEDGER = original
+
+    def test_not_applicable_without_reason_is_rejected(self) -> None:
+        """NOT_APPLICABLE must say why the test cannot apply."""
+        def change(data: dict) -> None:
+            data["tests"][0]["status"] = "NOT_APPLICABLE"
+            data["tests"][0].pop("reason", None)
+            data["tests"][0].pop("evidence", None)
+        errors = self.validate_modified(change)
+        self.assertTrue(any("NOT_APPLICABLE requires a non-empty reason" in error for error in errors))
+
+    def test_not_applicable_with_empty_reason_is_rejected(self) -> None:
+        """A blank reason is no reason."""
+        for reason in ("", "   "):
+            with self.subTest(reason=reason):
+                def change(data: dict, reason: str = reason) -> None:
+                    data["tests"][0]["status"] = "NOT_APPLICABLE"
+                    data["tests"][0]["reason"] = reason
+                    data["tests"][0].pop("evidence", None)
+                errors = self.validate_modified(change)
+                self.assertTrue(any("NOT_APPLICABLE requires a non-empty reason" in error for error in errors))
+
+    def test_not_applicable_with_evidence_is_rejected(self) -> None:
+        """A test that cannot apply has nothing to measure, so it carries no evidence."""
+        def change(data: dict) -> None:
+            data["tests"][0]["status"] = "NOT_APPLICABLE"
+            data["tests"][0]["reason"] = "no environment builds this profile"
+            data["tests"][0]["evidence"] = ["docs/HIL_TEST_PLAN.md"]
+        errors = self.validate_modified(change)
+        self.assertTrue(any("NOT_APPLICABLE must not carry evidence" in error for error in errors))
+
+    def test_enforced_gate_accepts_not_applicable_entries(self) -> None:
+        """The all-PASS gate is green when every other test passed with evidence."""
+        def change(data: dict) -> None:
+            for entry in data["tests"]:
+                if entry.get("status") != "NOT_APPLICABLE":
+                    entry["status"] = "PASS"
+                    entry["evidence"] = ["docs/HIL_TEST_PLAN.md"]
+        change.require_pass = True
+        self.assertEqual(self.validate_modified(change), [])
+
+    def test_repository_ledger_marks_i2c_display_tests_not_applicable(self) -> None:
+        """HIL-DISP-001/003/004 need an I2C display build that no environment provides."""
+        data = json.loads(QUAL.LEDGER.read_text(encoding="utf-8"))
+        entries = {entry["id"]: entry for entry in data["tests"]}
+        for test_id in ("HIL-DISP-001", "HIL-DISP-003", "HIL-DISP-004"):
+            with self.subTest(test_id=test_id):
+                self.assertEqual(entries[test_id]["status"], "NOT_APPLICABLE")
+                self.assertIn("I2C", entries[test_id]["reason"])
+        self.assertEqual(entries["HIL-DISP-002"]["status"], "PENDING")
+
+    def test_summary_counts_not_applicable_separately(self) -> None:
+        """The summary line lists NOT_APPLICABLE next to the other states."""
+        result = subprocess.run(
+            [PYTHON, str(ROOT / "scripts/check_hil_qualification.py")],
+            text=True, capture_output=True, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("NOT_APPLICABLE=3", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

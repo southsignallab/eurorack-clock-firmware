@@ -50,10 +50,7 @@ struct CircleControl {
 };
 
 /** @brief Supported Thonkiconn-family front-panel jack geometries. */
-enum class JackType : std::uint8_t {
-    Ts,
-    Trs
-};
+enum class JackType : std::uint8_t { Ts, Trs };
 
 /** @brief Front-visible dimensions of one jack profile after mm-to-pixel resolution. */
 struct JackGeometry {
@@ -96,24 +93,41 @@ struct PanelLayout {
     Color ledOnColor{235U, 52U, 52U};
     Color ledOffColor{17U, 17U, 19U};
 
-    std::array<Point, 8U> outputCenters{{
-        {66.1517F, 690.6798F}, {145.6892F, 690.6798F}, {225.2267F, 690.6798F}, {304.7642F, 690.6798F},
-        {66.1517F, 807.0625F}, {145.6892F, 807.0625F}, {225.2267F, 807.0625F}, {304.7642F, 807.0625F}
-    }};
+    std::array<Point, 8U> outputCenters{
+        {{66.1517F, 690.6798F},
+         {145.6892F, 690.6798F},
+         {225.2267F, 690.6798F},
+         {304.7642F, 690.6798F},
+         {66.1517F, 807.0625F},
+         {145.6892F, 807.0625F},
+         {225.2267F, 807.0625F},
+         {304.7642F, 807.0625F}}};
 
-    std::array<JackType, 8U> outputJackTypes{{
-        JackType::Ts, JackType::Ts, JackType::Ts, JackType::Ts,
-        JackType::Ts, JackType::Ts, JackType::Ts, JackType::Ts
-    }};
+    std::array<JackType, 8U> outputJackTypes{
+        {JackType::Ts,
+         JackType::Ts,
+         JackType::Ts,
+         JackType::Ts,
+         JackType::Ts,
+         JackType::Ts,
+         JackType::Ts,
+         JackType::Ts}};
 
-    std::array<Point, 8U> ledCenters{{
-        {66.1517F, 649.2552F}, {145.6892F, 649.2552F}, {225.2267F, 649.2552F}, {304.7642F, 649.2552F},
-        {66.1517F, 765.6379F}, {145.6892F, 765.6379F}, {225.2267F, 765.6379F}, {304.7642F, 765.6379F}
-    }};
+    std::array<Point, 8U> ledCenters{
+        {{66.1517F, 649.2552F},
+         {145.6892F, 649.2552F},
+         {225.2267F, 649.2552F},
+         {304.7642F, 649.2552F},
+         {66.1517F, 765.6379F},
+         {145.6892F, 765.6379F},
+         {225.2267F, 765.6379F},
+         {304.7642F, 765.6379F}}};
 
-    std::array<Point, 4U> screwCenters{{
-        {34.7294F, 35.7731F}, {358.8679F, 35.7731F}, {34.7294F, 903.7269F}, {358.8679F, 903.7269F}
-    }};
+    std::array<Point, 4U> screwCenters{
+        {{34.7294F, 35.7731F},
+         {358.8679F, 35.7731F},
+         {34.7294F, 903.7269F},
+         {358.8679F, 903.7269F}}};
 
     std::filesystem::path backgroundImagePath{};
     bool drawBuiltinLabels = true;

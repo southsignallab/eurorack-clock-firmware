@@ -23,8 +23,7 @@ std::uint16_t readUint16LeV10(const std::uint8_t* const source) {
 
 /** @brief Reads one little-endian 32-bit value from a legacy v10 record. */
 std::uint32_t readUint32LeV10(const std::uint8_t* const source) {
-    return static_cast<std::uint32_t>(source[0]) |
-        (static_cast<std::uint32_t>(source[1]) << 8U) |
+    return static_cast<std::uint32_t>(source[0]) | (static_cast<std::uint32_t>(source[1]) << 8U) |
         (static_cast<std::uint32_t>(source[2]) << 16U) |
         (static_cast<std::uint32_t>(source[3]) << 24U);
 }
@@ -32,8 +31,7 @@ std::uint32_t readUint32LeV10(const std::uint8_t* const source) {
 /** @brief Returns whether a v10 preset-name byte belongs to the supported alphabet. */
 bool isAllowedV10PresetCharacter(const char character) {
     return character == ' ' || character == '-' || character == '_' ||
-        (character >= '0' && character <= '9') ||
-        (character >= 'A' && character <= 'Z');
+        (character >= '0' && character <= '9') || (character >= 'A' && character <= 'Z');
 }
 
 }  // namespace
@@ -56,9 +54,8 @@ bool PersistentStateService::deserializeV10CurrentRecord(
     const std::array<std::uint8_t, kV10CurrentRecordSize>& record,
     ClockState& state) {
     constexpr std::uint32_t kCurrentMagicValue = 0x30315543UL;  // "CU10"
-    if (readUint32LeV10(record.data()) != kCurrentMagicValue ||
-        record[4] != kV10SchemaVersion || record[5] != 0U ||
-        readUint16LeV10(record.data() + 6U) != kV10StatePayloadSize ||
+    if (readUint32LeV10(record.data()) != kCurrentMagicValue || record[4] != kV10SchemaVersion ||
+        record[5] != 0U || readUint16LeV10(record.data() + 6U) != kV10StatePayloadSize ||
         readUint32LeV10(record.data() + kV10CurrentRecordSize - 4U) !=
             calculateCrc32(record.data(), kV10CurrentRecordSize - 4U)) {
         return false;
@@ -75,9 +72,8 @@ bool PersistentStateService::deserializeV10PresetRecord(
     constexpr std::uint32_t kPresetMagicValue = 0x30315250UL;  // "PR10"
     constexpr std::size_t kNameOffset = 8U;
     constexpr std::size_t kPayloadOffset = kNameOffset + kPresetNameLength;
-    if (readUint32LeV10(record.data()) != kPresetMagicValue ||
-        record[4] != kV10SchemaVersion || record[5] != 1U ||
-        readUint16LeV10(record.data() + 6U) != kV10StatePayloadSize ||
+    if (readUint32LeV10(record.data()) != kPresetMagicValue || record[4] != kV10SchemaVersion ||
+        record[5] != 1U || readUint16LeV10(record.data() + 6U) != kV10StatePayloadSize ||
         readUint32LeV10(record.data() + kV10PresetRecordSize - 4U) !=
             calculateCrc32(record.data(), kV10PresetRecordSize - 4U)) {
         return false;

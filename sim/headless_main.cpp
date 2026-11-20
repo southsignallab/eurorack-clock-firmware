@@ -36,8 +36,7 @@ int main() {
 
     runtime.flushPersistence();
     std::filesystem::remove(statePath);
-    std::cout << "simulator-smoke bpm=" << runtime.state().bpm
-              << " edges=" << totalEdges
+    std::cout << "simulator-smoke bpm=" << runtime.state().bpm << " edges=" << totalEdges
               << " framebuffer=0x" << std::hex << framebufferChecksum << std::dec << '\n';
 
     return totalEdges > 0ULL ? 0 : 1;

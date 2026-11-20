@@ -39,7 +39,7 @@ struct PanelControls final {
  * forwards panel gestures, and exposes the real gate states and OLED framebuffer.
  */
 class ClockVcvRuntime final {
-public:
+  public:
     static constexpr float kGateHighVoltage = 5.0F;
     static constexpr float kInputHighThresholdVolts = 1.5F;
     static constexpr float kInputLowThresholdVolts = 0.5F;
@@ -113,7 +113,7 @@ public:
     /** @brief Returns the live foreground BPM for host adapter regression tests. */
     std::uint16_t bpmForTest() const;
 
-private:
+  private:
     /**
      * @brief Fixed-capacity transition bridge from Rack sample time to scheduler time.
      *

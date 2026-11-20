@@ -56,7 +56,9 @@ void recordInterruptLock(const std::uint32_t startCycles) {
 }
 #else
 void begin() {}
-std::uint32_t cycleCount() { return 0U; }
+std::uint32_t cycleCount() {
+    return 0U;
+}
 void recordInterruptLock(const std::uint32_t) {}
 #endif
 

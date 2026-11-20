@@ -7,11 +7,11 @@
  */
 #include "services/persistent_state_service.h"
 
+#include "config.h"
 #include "hal/crc32.h"
 #include "services/persistent_state_validation.h"
 #include <algorithm>
 #include <cstring>
-#include "config.h"
 namespace clockfw::services {
 namespace {
 /** Four-byte CURRENT magic value "CU13" stored little-endian. */
@@ -25,20 +25,19 @@ constexpr std::size_t kCurrentPayloadOffset = 8U;
 constexpr std::size_t kPresetNameOffset = 8U;
 
 /** Fixed byte offset at which one preset state payload begins. */
-constexpr std::size_t kPresetPayloadOffset = kPresetNameOffset +
-    PersistentStateService::kPresetNameLength;
+constexpr std::size_t kPresetPayloadOffset =
+    kPresetNameOffset + PersistentStateService::kPresetNameLength;
 
 /** Returns true for characters supported by the on-device high-score name editor. */
 bool isAllowedPresetCharacter(const char character) {
     return character == ' ' || character == '-' || character == '_' ||
-        (character >= 'A' && character <= 'Z') ||
-        (character >= '0' && character <= '9');
+        (character >= 'A' && character <= 'Z') || (character >= '0' && character <= '9');
 }
 
 /** Writes one 16-bit little-endian integer into a byte array. */
 void writeUint16Le(std::uint8_t* const destination, const std::uint16_t value) {
     destination[0] = static_cast<std::uint8_t>(value & 0xFFU);
-    destination[1] = static_cast<std::uint8_t>((value >> 8U) & 0xFFU);
+    destination[1] = static_cast<std::uint8_t>((static_cast<std::uint32_t>(value) >> 8U) & 0xFFU);
 }
 
 /** Reads one 16-bit little-endian integer from a byte array. */
@@ -57,8 +56,7 @@ void writeUint32Le(std::uint8_t* const destination, const std::uint32_t value) {
 
 /** Reads one 32-bit little-endian integer from a byte array. */
 std::uint32_t readUint32Le(const std::uint8_t* const source) {
-    return static_cast<std::uint32_t>(source[0]) |
-        (static_cast<std::uint32_t>(source[1]) << 8U) |
+    return static_cast<std::uint32_t>(source[0]) | (static_cast<std::uint32_t>(source[1]) << 8U) |
         (static_cast<std::uint32_t>(source[2]) << 16U) |
         (static_cast<std::uint32_t>(source[3]) << 24U);
 }
@@ -81,10 +79,12 @@ std::uint64_t readUint64Le(const std::uint8_t* const source) {
 
 /** Small cursor used to keep field-by-field serialization auditable. */
 class ByteWriter final {
-public:
+  public:
     explicit ByteWriter(std::uint8_t* const destination) : destination_(destination) {}
 
-    void write8(const std::uint8_t value) { destination_[position_++] = value; }
+    void write8(const std::uint8_t value) {
+        destination_[position_++] = value;
+    }
     void write16(const std::uint16_t value) {
         writeUint16Le(destination_ + position_, value);
         position_ += 2U;
@@ -93,19 +93,23 @@ public:
         writeUint64Le(destination_ + position_, value);
         position_ += 8U;
     }
-    std::size_t position() const { return position_; }
+    std::size_t position() const {
+        return position_;
+    }
 
-private:
+  private:
     std::uint8_t* destination_;
     std::size_t position_ = 0U;
 };
 
 /** Matching cursor used by the stable serialized state schema. */
 class ByteReader final {
-public:
+  public:
     explicit ByteReader(const std::uint8_t* const source) : source_(source) {}
 
-    std::uint8_t read8() { return source_[position_++]; }
+    std::uint8_t read8() {
+        return source_[position_++];
+    }
     std::uint16_t read16() {
         const std::uint16_t value = readUint16Le(source_ + position_);
         position_ += 2U;
@@ -116,17 +120,19 @@ public:
         position_ += 8U;
         return value;
     }
-    std::size_t position() const { return position_; }
+    std::size_t position() const {
+        return position_;
+    }
 
-private:
+  private:
     const std::uint8_t* source_;
     std::size_t position_ = 0U;
 };
 
 }  // namespace
 
-std::array<std::uint8_t, PersistentStateService::kStatePayloadSize>
-PersistentStateService::serializeState(const ClockState& state) {
+std::array<std::uint8_t, PersistentStateService::kStatePayloadSize> PersistentStateService::
+    serializeState(const ClockState& state) {
     std::array<std::uint8_t, kStatePayloadSize> payload{};
     ByteWriter writer(payload.data());
 
@@ -312,8 +318,8 @@ bool PersistentStateService::deserializeState(
     return true;
 }
 
-std::array<std::uint8_t, PersistentStateService::kCurrentRecordSize>
-PersistentStateService::serializeCurrentRecord(const ClockState& state) {
+std::array<std::uint8_t, PersistentStateService::kCurrentRecordSize> PersistentStateService::
+    serializeCurrentRecord(const ClockState& state) {
     std::array<std::uint8_t, kCurrentRecordSize> record{};
     writeUint32Le(record.data(), kCurrentMagic);
     record[4] = kSchemaVersion;
@@ -331,8 +337,7 @@ PersistentStateService::serializeCurrentRecord(const ClockState& state) {
 bool PersistentStateService::deserializeCurrentRecord(
     const std::array<std::uint8_t, kCurrentRecordSize>& record,
     ClockState& state) {
-    if (readUint32Le(record.data()) != kCurrentMagic ||
-        record[4] != kSchemaVersion ||
+    if (readUint32Le(record.data()) != kCurrentMagic || record[4] != kSchemaVersion ||
         readUint16Le(record.data() + 6U) != kStatePayloadSize ||
         readUint32Le(record.data() + kCurrentRecordSize - 4U) !=
             calculateCrc32(record.data(), kCurrentRecordSize - 4U)) {
@@ -344,10 +349,8 @@ bool PersistentStateService::deserializeCurrentRecord(
     return deserializeState(payload, state);
 }
 
-std::array<std::uint8_t, PersistentStateService::kPresetRecordSize>
-PersistentStateService::serializePresetRecord(
-    const char* const name,
-    const ClockState& state) {
+std::array<std::uint8_t, PersistentStateService::kPresetRecordSize> PersistentStateService::
+    serializePresetRecord(const char* const name, const ClockState& state) {
     std::array<std::uint8_t, kPresetRecordSize> record{};
     writeUint32Le(record.data(), kPresetMagic);
     record[4] = kSchemaVersion;
@@ -373,10 +376,8 @@ bool PersistentStateService::deserializePresetRecord(
     const std::array<std::uint8_t, kPresetRecordSize>& record,
     char* const name,
     ClockState& state) {
-    if (readUint32Le(record.data()) != kPresetMagic ||
-        record[4] != kSchemaVersion ||
-        record[5] != 1U ||
-        readUint16Le(record.data() + 6U) != kStatePayloadSize ||
+    if (readUint32Le(record.data()) != kPresetMagic || record[4] != kSchemaVersion ||
+        record[5] != 1U || readUint16Le(record.data() + 6U) != kStatePayloadSize ||
         readUint32Le(record.data() + kPresetRecordSize - 4U) !=
             calculateCrc32(record.data(), kPresetRecordSize - 4U)) {
         return false;
@@ -420,16 +421,13 @@ void PersistentStateService::normalizePresetName(
         if (normalizedCharacter >= 'a' && normalizedCharacter <= 'z') {
             normalizedCharacter = static_cast<char>(normalizedCharacter - 'a' + 'A');
         }
-        destination[index] = isAllowedPresetCharacter(normalizedCharacter)
-            ? normalizedCharacter
-            : ' ';
+        destination[index] =
+            isAllowedPresetCharacter(normalizedCharacter) ? normalizedCharacter : ' ';
     }
     destination[kPresetNameLength] = '\0';
 }
 
-bool PersistentStateService::statesEqual(
-    const ClockState& first,
-    const ClockState& second) {
+bool PersistentStateService::statesEqual(const ClockState& first, const ClockState& second) {
     return serializeState(first) == serializeState(second);
 }
 

@@ -55,7 +55,6 @@ MenuRow buildMenuRow(
     const ClockState& state,
     bool highScoreResetAvailable = false);
 
-
 /** @brief Formats one Sequencer 2.0 settings row from an active pattern snapshot. */
 MenuRow buildSequencerV2MenuRow(
     std::uint8_t rowIndex,

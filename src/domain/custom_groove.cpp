@@ -62,9 +62,9 @@ std::int32_t combinedOffsetQ16(
     const std::uint32_t eventSerial,
     const std::int32_t oddSwingQ16) {
     const std::uint32_t step = (eventSerial + rotation % length) % length;
-    const std::int32_t customQ16 =
-        ((static_cast<std::int32_t>(pattern.offsets256[step]) *
-          static_cast<std::int32_t>(boundedAmount)) / 100) *
+    const std::int32_t customQ16 = ((static_cast<std::int32_t>(pattern.offsets256[step]) *
+                                     static_cast<std::int32_t>(boundedAmount)) /
+                                    100) *
         kOffset256ToQ16;
     const std::int32_t swingQ16 = (eventSerial & 1U) != 0U ? oddSwingQ16 : 0;
     return std::clamp<std::int32_t>(customQ16 + swingQ16, -kHalfIntervalQ16, kHalfIntervalQ16);

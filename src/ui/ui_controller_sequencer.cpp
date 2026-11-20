@@ -47,8 +47,8 @@ void UiController::openSequencerStepEditor() {
         return;
     }
     const SequencerPatternV2* const pattern = activeSequencerPattern();
-    const std::uint8_t absoluteStep = static_cast<std::uint8_t>(
-        navigation_.sequencerPage * 8U + navigation_.sequencerCursor);
+    const std::uint8_t absoluteStep =
+        static_cast<std::uint8_t>(navigation_.sequencerPage * 8U + navigation_.sequencerCursor);
     if (pattern == nullptr || absoluteStep >= pattern->length) {
         return;
     }
@@ -65,14 +65,12 @@ SequencerStepMetadata UiController::activeSequencerStepMetadata() const {
     }
     const std::uint8_t channel = navigation_.selectedChannel;
     const std::uint8_t slot = sequencerPatternStore_->activeSlot(channel);
-    const std::uint8_t absoluteStep = static_cast<std::uint8_t>(
-        navigation_.sequencerPage * 8U + navigation_.sequencerCursor);
+    const std::uint8_t absoluteStep =
+        static_cast<std::uint8_t>(navigation_.sequencerPage * 8U + navigation_.sequencerCursor);
     return sequencerStepStore_->metadata(channel, slot, absoluteStep);
 }
 
-void UiController::adjustSequencerStepMetadata(
-    const std::int8_t delta,
-    const std::uint32_t nowMs) {
+void UiController::adjustSequencerStepMetadata(const std::int8_t delta, const std::uint32_t nowMs) {
     if (delta == 0 || sequencerPatternStore_ == nullptr || sequencerStepStore_ == nullptr ||
         navigation_.selectedChannel >= kChannelCount || navigation_.cursor == 0U) {
         return;
@@ -80,16 +78,16 @@ void UiController::adjustSequencerStepMetadata(
     const std::uint8_t channel = navigation_.selectedChannel;
     const std::uint8_t slot = sequencerPatternStore_->activeSlot(channel);
     const SequencerPatternV2& pattern = sequencerPatternStore_->pattern(channel, slot);
-    const std::uint8_t absoluteStep = static_cast<std::uint8_t>(
-        navigation_.sequencerPage * 8U + navigation_.sequencerCursor);
+    const std::uint8_t absoluteStep =
+        static_cast<std::uint8_t>(navigation_.sequencerPage * 8U + navigation_.sequencerCursor);
     if (absoluteStep >= pattern.length) {
         return;
     }
 
     SequencerStepMetadata metadata = sequencerStepStore_->metadata(channel, slot, absoluteStep);
     if (navigation_.cursor == 1U) {
-        metadata.probabilityPercent = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(metadata.probabilityPercent) + delta, 0, 100));
+        metadata.probabilityPercent = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(metadata.probabilityPercent) + delta, 0, 100));
     } else if (navigation_.cursor == 2U) {
         const int next = clampInt(
             static_cast<int>(metadata.gateProfile) + delta,
@@ -98,7 +96,8 @@ void UiController::adjustSequencerStepMetadata(
         metadata.gateProfile = static_cast<SequencerGateProfile>(next);
     } else if (navigation_.cursor == 3U) {
         metadata.ratchetCount = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(metadata.ratchetCount) + delta, 1,
+            static_cast<int>(metadata.ratchetCount) + delta,
+            1,
             static_cast<int>(kSequencerMaximumRatchetCount)));
         if (metadata.ratchetCount > 1U) {
             metadata.tie = false;
@@ -107,7 +106,7 @@ void UiController::adjustSequencerStepMetadata(
         if (pattern.direction == SequencerPlayDirection::Random) {
             return;
         }
-        const int next = clampInt(static_cast<int>(metadata.tie ? 1 : 0) + delta, 0, 1);
+        const int next = clampInt((metadata.tie ? 1 : 0) + delta, 0, 1);
         metadata.tie = next != 0;
         if (metadata.tie) {
             metadata.ratchetCount = 1U;
@@ -126,9 +125,7 @@ void UiController::toggleSequencerStepGateFromDetail(const std::uint32_t nowMs) 
     toggleSequencerStepV2(nowMs);
 }
 
-void UiController::adjustSequencerV2(
-    const std::int8_t delta,
-    const std::uint32_t nowMs) {
+void UiController::adjustSequencerV2(const std::int8_t delta, const std::uint32_t nowMs) {
     if (sequencerPatternStore_ == nullptr || delta == 0 ||
         navigation_.selectedChannel >= kChannelCount || navigation_.cursor == 0U) {
         return;
@@ -155,8 +152,7 @@ void UiController::adjustSequencerV2(
     bool changed = false;
     if (navigation_.cursor == 2U) {
         pattern.length = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(pattern.length) + delta, 1,
-            static_cast<int>(kSequencerMaximumSteps)));
+            static_cast<int>(pattern.length) + delta, 1, static_cast<int>(kSequencerMaximumSteps)));
         if (pattern.rotation >= pattern.length) {
             pattern.rotation = 0U;
         }
@@ -164,9 +160,7 @@ void UiController::adjustSequencerV2(
         changed = true;
     } else if (navigation_.cursor == 3U) {
         pattern.rotation = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(pattern.rotation) + delta,
-            0,
-            static_cast<int>(pattern.length - 1U)));
+            static_cast<int>(pattern.rotation) + delta, 0, static_cast<int>(pattern.length - 1U)));
         changed = true;
     } else if (navigation_.cursor == 4U) {
         const int next = clampInt(
@@ -197,8 +191,8 @@ void UiController::toggleSequencerStepV2(const std::uint32_t nowMs) {
     const std::uint8_t channel = navigation_.selectedChannel;
     const std::uint8_t slot = sequencerPatternStore_->activeSlot(channel);
     const SequencerPatternV2& pattern = sequencerPatternStore_->pattern(channel, slot);
-    const std::uint8_t absoluteStep = static_cast<std::uint8_t>(
-        navigation_.sequencerPage * 8U + navigation_.sequencerCursor);
+    const std::uint8_t absoluteStep =
+        static_cast<std::uint8_t>(navigation_.sequencerPage * 8U + navigation_.sequencerCursor);
     if (absoluteStep >= pattern.length) {
         return;
     }
@@ -249,6 +243,8 @@ bool UiController::executeSequencerPatternCommandV2(
             } else if (rowIndex == 2U) {
                 enabled = (step % 2U) == 0U;
             }
+            // It fails only for step >= kSequencerMaximumSteps; step stays below the
+            // pattern length, which never exceeds that bound.
             (void)setSequencerPatternGate(pattern, step, enabled);
         }
         clampSequencerPattern(pattern);

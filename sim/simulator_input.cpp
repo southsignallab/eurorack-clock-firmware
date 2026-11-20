@@ -60,9 +60,7 @@ bool SimulatorInput::consumeScreenshotRequest() {
     return requested;
 }
 
-void SimulatorInput::handleKeyboard(
-    const SDL_KeyboardEvent& keyboard,
-    SimulatorRuntime& runtime) {
+void SimulatorInput::handleKeyboard(const SDL_KeyboardEvent& keyboard, SimulatorRuntime& runtime) {
     const bool pressed = keyboard.down;
     if (pressed && !keyboard.repeat) {
         if (keyboard.key == SDLK_MINUS || keyboard.key == SDLK_KP_MINUS) {
@@ -76,9 +74,9 @@ void SimulatorInput::handleKeyboard(
         }
     }
 
-    const bool encoderRotationKey =
-        keyboard.scancode == SDL_SCANCODE_LEFT || keyboard.scancode == SDL_SCANCODE_A ||
-        keyboard.scancode == SDL_SCANCODE_RIGHT || keyboard.scancode == SDL_SCANCODE_D;
+    const bool encoderRotationKey = keyboard.scancode == SDL_SCANCODE_LEFT ||
+        keyboard.scancode == SDL_SCANCODE_A || keyboard.scancode == SDL_SCANCODE_RIGHT ||
+        keyboard.scancode == SDL_SCANCODE_D;
     if (pressed && keyboard.repeat && !encoderRotationKey) {
         return;
     }
@@ -86,11 +84,13 @@ void SimulatorInput::handleKeyboard(
     switch (keyboard.scancode) {
         case SDL_SCANCODE_LEFT:
         case SDL_SCANCODE_A:
-            if (pressed) runtime.rotateEncoder(-1);
+            if (pressed)
+                runtime.rotateEncoder(-1);
             break;
         case SDL_SCANCODE_RIGHT:
         case SDL_SCANCODE_D:
-            if (pressed) runtime.rotateEncoder(1);
+            if (pressed)
+                runtime.rotateEncoder(1);
             break;
         case SDL_SCANCODE_RETURN:
         case SDL_SCANCODE_E:
@@ -108,7 +108,8 @@ void SimulatorInput::handleKeyboard(
             runtime.setButton(SimButton::Stop, pressed);
             break;
         case SDL_SCANCODE_ESCAPE:
-            if (pressed) quitRequested_ = true;
+            if (pressed)
+                quitRequested_ = true;
             break;
         case SDL_SCANCODE_C:
             if (pressed) {
@@ -123,46 +124,60 @@ void SimulatorInput::handleKeyboard(
             }
             break;
         case SDL_SCANCODE_Q:
-            if (pressed) runtime.cycleSyncPpqn();
+            if (pressed)
+                runtime.cycleSyncPpqn();
             break;
         case SDL_SCANCODE_LEFTBRACKET:
-            if (pressed) runtime.adjustSyncBpm(-1);
+            if (pressed)
+                runtime.adjustSyncBpm(-1);
             break;
         case SDL_SCANCODE_RIGHTBRACKET:
-            if (pressed) runtime.adjustSyncBpm(1);
+            if (pressed)
+                runtime.adjustSyncBpm(1);
             break;
         case SDL_SCANCODE_PAGEUP:
-            if (pressed) runtime.adjustSyncBpm(10);
+            if (pressed)
+                runtime.adjustSyncBpm(10);
             break;
         case SDL_SCANCODE_PAGEDOWN:
-            if (pressed) runtime.adjustSyncBpm(-10);
+            if (pressed)
+                runtime.adjustSyncBpm(-10);
             break;
         case SDL_SCANCODE_F1:
-            if (pressed) developerViewEnabled_ = !developerViewEnabled_;
+            if (pressed)
+                developerViewEnabled_ = !developerViewEnabled_;
             break;
         case SDL_SCANCODE_F2:
-            if (pressed) runtime.togglePower();
+            if (pressed)
+                runtime.togglePower();
             break;
         case SDL_SCANCODE_R:
-            if (pressed) runtime.triggerResetPulse();
+            if (pressed)
+                runtime.triggerResetPulse();
             break;
         case SDL_SCANCODE_W:
             if (pressed) {
-                if (selectedInput_ == InputTarget::Sync) runtime.cycleSyncWaveform();
-                else runtime.cycleResetWaveform();
+                if (selectedInput_ == InputTarget::Sync)
+                    runtime.cycleSyncWaveform();
+                else
+                    runtime.cycleResetWaveform();
             }
             break;
         case SDL_SCANCODE_F12:
-            if (pressed) screenshotRequested_ = true;
+            if (pressed)
+                screenshotRequested_ = true;
             break;
         case SDL_SCANCODE_1:
-            if (pressed) speedMultiplier_ = 1.0;
+            if (pressed)
+                speedMultiplier_ = 1.0;
             break;
         case SDL_SCANCODE_2:
-            if (pressed) speedMultiplier_ = 4.0;
+            if (pressed)
+                speedMultiplier_ = 4.0;
             break;
         case SDL_SCANCODE_3:
-            if (pressed) speedMultiplier_ = 16.0;
+            if (pressed)
+                speedMultiplier_ = 16.0;
             break;
         default:
             break;
@@ -174,15 +189,16 @@ void SimulatorInput::handleMouseButton(
     SimulatorRuntime& runtime) {
     if (developerViewEnabled_ && button.down && button.button == SDL_BUTTON_LEFT) {
         const layout::Rect& developer = panelLayout_.developerPanel;
-        const layout::Rect powerBox{developer.x + developer.width - 118.0F, developer.y + 26.0F, 92.0F, 20.0F};
+        const layout::Rect powerBox{
+            developer.x + developer.width - 118.0F, developer.y + 26.0F, 92.0F, 20.0F};
         if (powerBox.contains(button.x, button.y)) {
             runtime.togglePower();
             return;
         }
         const float boxX = developer.x + 26.0F;
         const float boxY = developer.y + 176.0F;
-        if (button.x >= boxX && button.x <= boxX + 176.0F &&
-            button.y >= boxY && button.y <= boxY + 20.0F) {
+        if (button.x >= boxX && button.x <= boxX + 176.0F && button.y >= boxY &&
+            button.y <= boxY + 20.0F) {
             scopeSession_.toggleFreezeOnStop();
             return;
         }
@@ -243,9 +259,7 @@ void SimulatorInput::handleMouseButton(
     runtime.setButton(activeMouseButton_, true);
 }
 
-void SimulatorInput::handleMouseWheel(
-    const SDL_MouseWheelEvent& wheel,
-    SimulatorRuntime& runtime) {
+void SimulatorInput::handleMouseWheel(const SDL_MouseWheelEvent& wheel, SimulatorRuntime& runtime) {
     if (wheel.y == 0.0F) {
         return;
     }

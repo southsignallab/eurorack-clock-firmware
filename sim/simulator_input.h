@@ -18,7 +18,7 @@ namespace clockfw::sim {
 
 /** @brief Maps mouse and keyboard events onto the physical control-panel HAL. */
 class SimulatorInput final {
-public:
+  public:
     /** @brief Creates an input mapper using the same runtime geometry as the renderer. */
     explicit SimulatorInput(const layout::PanelLayout& panelLayout);
 
@@ -43,7 +43,7 @@ public:
     /** @brief Returns and clears the interactive screenshot hotkey request. */
     bool consumeScreenshotRequest();
 
-private:
+  private:
     /** @brief Applies keyboard down/up state to one physical control or simulator tool. */
     void handleKeyboard(const SDL_KeyboardEvent& keyboard, SimulatorRuntime& runtime);
 

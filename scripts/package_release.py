@@ -329,6 +329,40 @@ def linked_archives(map_text: str) -> list[str]:
     return sorted(dict.fromkeys(matches))
 
 
+def path_spellings(path: Path) -> list[str]:
+    """Return the spellings under which GNU ld and PlatformIO may print one directory."""
+    spellings: set[str] = set()
+    candidates = [path]
+    if not path.is_absolute():
+        candidates.append(Path.cwd() / path)
+    else:
+        try:
+            candidates.append(path.relative_to(Path.cwd()))
+        except ValueError:
+            pass
+    for candidate in candidates:
+        text = str(candidate).rstrip("/\\")
+        for variant in (text, text.replace("\\", "/"), text.replace("/", "\\")):
+            if variant and variant != ".":
+                spellings.update((variant, variant.lower()))
+    return sorted(spellings, key=len, reverse=True)
+
+
+def normalized_map_text(map_text: str, build_dir: Path, packages_dir: Path) -> str:
+    """Replace the build directory and the PlatformIO packages directory by fixed tokens.
+
+    The map names object files and archives by path, so the same source built in another
+    directory or on another machine gives a different map. With the two directories replaced
+    by `<build>` and `<packages>`, the hash and the archive list in BUILD-INFO.txt depend on
+    the build only.
+    """
+    text = map_text
+    for directory, token in ((build_dir, "<build>"), (packages_dir, "<packages>")):
+        for spelling in path_spellings(directory):
+            text = re.sub(re.escape(spelling), lambda _match, token=token: token, text, flags=re.IGNORECASE)
+    return text
+
+
 def build_info(args: argparse.Namespace) -> int:
     """Generate release build provenance from linker maps and the pinned ARM toolchain."""
     version = read_version(Path(args.version_file).resolve())
@@ -351,17 +385,21 @@ def build_info(args: argparse.Namespace) -> int:
         "",
         "Each flavor below was built independently. The linked archive list is derived",
         "from that build's GNU ld map and is intended for release-license auditing.",
+        "Paths in the map are normalized: <build> is the flavor's build directory and",
+        "<packages> the PlatformIO packages directory, so the hash does not depend on them.",
         "",
     ]
     for flavor, title in FIRMWARE_FLAVORS:
         path = supplied[flavor].resolve()
         if not path.is_file():
             raise SystemExit(f"Linker map missing for {flavor}: {path}")
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = normalized_map_text(
+            path.read_text(encoding="utf-8", errors="replace"), path.parent, toolchain_dir.parent)
         archives = linked_archives(text)
         lines.extend([
             f"[{flavor}] {title}",
-            f"Map SHA-256: {sha256(path)}",
+            f"Map SHA-256 (build and package paths normalized): "
+            f"{hashlib.sha256(text.encode('utf-8')).hexdigest()}",
             "Linked static archives:",
         ])
         if archives:

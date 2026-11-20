@@ -278,6 +278,8 @@ Display qualification is a timing test, not only a visual test. Run the same mus
 
 ### HIL-DISP-001 — I2C bounded-refresh stress
 
+**Status: not applicable.** No firmware environment builds an I2C display profile; PB6/PB7 are reserved for the encoder. The ledger records this test as `NOT_APPLICABLE` with that reason. The procedure below is kept for reference should an I2C display build return.
+
 Build an SSD1306 or SSD1315 I2C profile at the configured 400 kHz rate. Exercise the densest changing screens/screensavers while all eight outputs run, including representative 20, 120, and 999 BPM cases plus mixed multipliers/dividers.
 
 **Pass criteria**
@@ -299,6 +301,8 @@ Repeat the identical workload with the reference SPI build.
 
 ### HIL-DISP-003 — A/B transport comparison
 
+**Status: not applicable.** No firmware environment builds an I2C display profile; PB6/PB7 are reserved for the encoder. The ledger records this test as `NOT_APPLICABLE` with that reason. The procedure below is kept for reference should an I2C display build return.
+
 Capture the same output channel simultaneously with a display-bus trace or display-service marker for both firmware variants. Compare idle-display and maximum-refresh runs.
 
 **Pass criteria**
@@ -308,6 +312,8 @@ Capture the same output channel simultaneously with a display-bus trace or displ
 - if I2C exceeds the 50-us V1 timing budget, the release is blocked and the next implementation step is interrupt/DMA display transport rather than relaxing the musical timing requirement
 
 ### HIL-DISP-004 — Faulted I2C bus
+
+**Status: not applicable.** No firmware environment builds an I2C display profile; PB6/PB7 are reserved for the encoder. The ledger records this test as `NOT_APPLICABLE` with that reason. The procedure below is kept for reference should an I2C display build return.
 
 Temporarily disconnect the OLED or hold the bus in an error condition that exercises the configured transfer timeout.
 

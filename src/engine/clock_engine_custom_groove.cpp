@@ -16,9 +16,7 @@ void ClockEngine::calculateCustomGrooveSpacingsQ16(
     std::uint32_t (&spacingQ16)[kChannelCount]) const {
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
         spacingQ16[channelIndex] = calculateCustomGrooveSpacingQ16(
-            *grooveSources_,
-            channelIndex,
-            resolvePhysicalOutputConfiguration(state, channelIndex));
+            *grooveSources_, channelIndex, resolvePhysicalOutputConfiguration(state, channelIndex));
     }
 }
 
@@ -80,7 +78,8 @@ void ClockEngine::setCustomGroovePreview(
     staged.customGrooveSpacingQ16[channelIndex] = calculateCustomGrooveSpacingQ16(
         *grooves, channelIndex, configuration_->channels[channelIndex]);
     swapConfiguration(
-        staged, static_cast<std::uint8_t>(rescheduleChannel ? (1U << channelIndex) : 0U),
+        staged,
+        static_cast<std::uint8_t>(rescheduleChannel ? (1U << channelIndex) : 0U),
         rescheduleChannel);
 }
 
@@ -97,7 +96,8 @@ void ClockEngine::clearCustomGroovePreview(
     staged.customGrooveSpacingQ16[channelIndex] = calculateCustomGrooveSpacingQ16(
         *grooves, channelIndex, configuration_->channels[channelIndex]);
     swapConfiguration(
-        staged, static_cast<std::uint8_t>(rescheduleChannel ? (1U << channelIndex) : 0U),
+        staged,
+        static_cast<std::uint8_t>(rescheduleChannel ? (1U << channelIndex) : 0U),
         rescheduleChannel);
 }
 

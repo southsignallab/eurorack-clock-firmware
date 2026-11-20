@@ -6,8 +6,8 @@
  * @license PolyForm-Noncommercial-1.0.0
  */
 #pragma once
-#include <cstdint>
 #include "hal/gpio_pin.h"
+#include <cstdint>
 
 namespace clockfw::hal::platform {
 using InterruptCallback = void (*)();
@@ -94,4 +94,4 @@ void delayMilliseconds(std::uint32_t durationMs);
 std::uint32_t enterCritical();
 /** @brief Restores the PRIMASK state captured by enterCritical(). */
 void exitCritical(std::uint32_t previousPrimask);
-} // namespace clockfw::hal::platform
+}  // namespace clockfw::hal::platform

@@ -37,7 +37,7 @@ struct TextBounds {
  * compile-time configuration choice in config.h and is invisible to callers.
  */
 class OledDisplay final {
-public:
+  public:
     /** @brief Physical display width in pixels. */
     static constexpr std::int16_t kWidth = static_cast<std::int16_t>(config::kDisplayWidth);
 
@@ -82,19 +82,42 @@ public:
     void drawCharacter(std::int16_t x, std::int16_t y, char character);
 
     /** @brief Draws a one-pixel horizontal line. */
-    void drawHorizontalLine(std::int16_t x, std::int16_t y, std::int16_t width, PixelColor color = PixelColor::White);
+    void drawHorizontalLine(
+        std::int16_t x,
+        std::int16_t y,
+        std::int16_t width,
+        PixelColor color = PixelColor::White);
 
     /** @brief Draws a one-pixel vertical line. */
-    void drawVerticalLine(std::int16_t x, std::int16_t y, std::int16_t height, PixelColor color = PixelColor::White);
+    void drawVerticalLine(
+        std::int16_t x,
+        std::int16_t y,
+        std::int16_t height,
+        PixelColor color = PixelColor::White);
 
     /** @brief Draws a line between two pixel coordinates. */
-    void drawLine(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, PixelColor color = PixelColor::White);
+    void drawLine(
+        std::int16_t x0,
+        std::int16_t y0,
+        std::int16_t x1,
+        std::int16_t y1,
+        PixelColor color = PixelColor::White);
 
     /** @brief Draws a rectangle outline. */
-    void drawRectangle(std::int16_t x, std::int16_t y, std::int16_t width, std::int16_t height, PixelColor color = PixelColor::White);
+    void drawRectangle(
+        std::int16_t x,
+        std::int16_t y,
+        std::int16_t width,
+        std::int16_t height,
+        PixelColor color = PixelColor::White);
 
     /** @brief Draws a filled rectangle. */
-    void fillRectangle(std::int16_t x, std::int16_t y, std::int16_t width, std::int16_t height, PixelColor color = PixelColor::White);
+    void fillRectangle(
+        std::int16_t x,
+        std::int16_t y,
+        std::int16_t width,
+        std::int16_t height,
+        PixelColor color = PixelColor::White);
 
     /** @brief Sets one framebuffer pixel with clipping. */
     void setPixel(std::int16_t x, std::int16_t y, PixelColor color = PixelColor::White);
@@ -126,7 +149,9 @@ public:
     const std::array<std::uint8_t, kFramebufferSize>& panelFramebufferForSimulator() const;
 #endif
 
-private:
+  private:
+    /** Bytes per framebuffer page: one byte per display column. */
+    static constexpr std::size_t kPageWidth = static_cast<std::size_t>(config::kDisplayWidth);
 
     /** @brief Configures the I2C transport and resolves the OLED address. */
     bool beginI2c();

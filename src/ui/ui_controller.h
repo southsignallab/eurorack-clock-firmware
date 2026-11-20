@@ -17,11 +17,11 @@
 #include "hal/control_panel.h"
 #include "hal/external_input_capture.h"
 #include "hal/gate_output_driver.h"
-#include "services/persistent_state_service.h"
 #include "services/custom_groove_store.h"
+#include "services/groove_recorder.h"
+#include "services/persistent_state_service.h"
 #include "services/sequencer_pattern_store.h"
 #include "services/sequencer_step_store.h"
-#include "services/groove_recorder.h"
 #include "services/tap_tempo.h"
 #include "ui/settings_editor.h"
 #include "ui/ui_renderer.h"
@@ -37,7 +37,7 @@ namespace clockfw::ui {
  * persistence is delegated to PersistentStateService, and drawing to UiRenderer.
  */
 class UiController final {
-public:
+  public:
     /**
      * @brief Constructs the controller around application state and collaborators.
      * @param state Mutable musical/application state.
@@ -126,7 +126,9 @@ public:
     void processControls(const hal::ControlSample& controls, std::uint32_t nowMs);
 
     /** @brief True while STOP-mode display protection has switched the OLED off (host tests). */
-    bool displayPoweredOffForTest() const { return displayPoweredOff_; }
+    bool displayPoweredOffForTest() const {
+        return displayPoweredOff_;
+    }
 #endif
 
     /**
@@ -158,7 +160,9 @@ public:
     void showPersistenceNotice(PersistenceNotice notice, std::uint32_t nowMs);
 
     /** @brief Increments with every control sample that carries a front-panel action. */
-    std::uint32_t controlActivityRevision() const { return controlActivityRevision_; }
+    std::uint32_t controlActivityRevision() const {
+        return controlActivityRevision_;
+    }
 
     /** @brief Seeds pseudo-random human-readable default names for this boot session. */
     void seedGeneratedNames(std::uint32_t seed);
@@ -168,7 +172,7 @@ public:
     void openGeneralSettingsForHost();
 #endif
 
-private:
+  private:
     friend struct UiControllerTestAccess;
 
     /**
@@ -184,7 +188,10 @@ private:
 
     /** @brief Routes one encoder detent according to the active screen and edit state. */
     void handleEncoderDelta(
-        std::int8_t delta, bool tapPressed, bool transportPressed, std::uint32_t nowMs);
+        std::int8_t delta,
+        bool tapPressed,
+        bool transportPressed,
+        std::uint32_t nowMs);
 
     /** @brief Handles encoder push/release events. */
     void handleEncoderButton(const hal::ButtonSample& button, std::uint32_t nowMs);
@@ -193,10 +200,7 @@ private:
     void handleTransportButton(const hal::ButtonSample& button, std::uint32_t nowMs);
 
     /** @brief Handles tap tempo, overview TAP-Turn mode selection, and sequencer page-back action. */
-    void handleTapButton(
-        const hal::ButtonSample& button,
-        std::uint32_t nowMs,
-        std::uint32_t nowUs);
+    void handleTapButton(const hal::ButtonSample& button, std::uint32_t nowMs, std::uint32_t nowUs);
 
     /** @brief Handles stop/reset and generic back navigation. */
     void handleResetButton(const hal::ButtonSample& button, std::uint32_t nowMs);
@@ -312,7 +316,6 @@ private:
     /** @brief Activates the Sequencer editor entry or one pattern command. */
     void activateSequencerPatternSetting(std::uint32_t nowMs);
 
-
     /** @brief Returns the selected channel's active Sequencer 2.0 pattern when available. */
     const SequencerPatternV2* activeSequencerPattern() const;
 
@@ -372,7 +375,6 @@ private:
 
     /** @brief Loads the selected preset without causing an implicit transport transition. */
     void loadSelectedPreset(std::uint32_t nowMs);
-
 
     /** @brief Opens the graphical Custom Groove editor with a runtime-only live preview. */
     void openGrooveEditor();

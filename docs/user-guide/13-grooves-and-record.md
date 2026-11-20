@@ -19,7 +19,7 @@ Editor controls:
 - **TAP TEMPO** — select the next marker;
 - **encoder turn** — move the selected marker finely;
 - **TAP TEMPO + turn** — coarse marker movement;
-- **START + turn** — quick zoom through `FIT / 32 / 16 / 8 / 4` without issuing a transport command;
+- **START + turn** — quick zoom from `FIT` to a window of at most 32 steps (below the pattern length), then in 4-step stages down to 4 steps, without issuing a transport command;
 - **encoder long press** — open the Groove editor menu;
 - **BACK** — leave immediately when clean, or open `DISCARD CHANGES?` when the draft has changed.
 
@@ -58,4 +58,4 @@ Front-panel TAP capture preserves the high-resolution physical press timestamp t
 
 ### Custom Groove library
 
-The frozen 1.1.0 storage scope is **10 named Custom Groove slots**. The normal Groove page exposes `LOAD >`; saved Grooves can also be overwritten, renamed, or deleted with explicit safe confirmations. The Performance screen uses the stored name rather than a generic `CUSTOM` label. The earlier 99-slot idea remains a later storage target and is not part of the 1.1.0 release contract.
+The storage scope, frozen with 1.1.0 and unchanged in 1.2.0, is **10 named Custom Groove slots**. The normal Groove page exposes `LOAD >`; saved Grooves can also be overwritten, renamed, or deleted with explicit safe confirmations. The Performance screen uses the stored name rather than a generic `CUSTOM` label. The earlier 99-slot idea remains a later storage target and is not part of the 1.1.0 release contract.

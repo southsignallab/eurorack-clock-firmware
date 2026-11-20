@@ -41,7 +41,7 @@ The native simulator is not a release artifact. A future VCV Rack package may be
 
 The embedded target is pinned to `platformio/toolchain-gccarmnoneeabi@1.70201.0`. The release job verifies that the installed compiler identifies itself as GCC 7.2.1, then archives the license material from that exact package. This keeps the binary release tied to the toolchain that actually produced it rather than to a generic or newer license bundle.
 
-Every release PlatformIO environment also emits `firmware.map`. `BUILD-INFO.txt` records the map hash and static archives referenced by each flavor. This provides an auditable bridge between the published binary and its runtime-license inventory.
+Every release PlatformIO environment also emits `firmware.map`. `BUILD-INFO.txt` records the map hash and static archives referenced by each flavor. Before hashing, the build directory and the PlatformIO packages directory in the map are replaced by `<build>` and `<packages>`, so the same source gives the same `BUILD-INFO.txt` in any build directory. This provides an auditable bridge between the published binary and its runtime-license inventory.
 
 ## Manual publication
 
@@ -65,6 +65,19 @@ GitHub release notes are generated from three curated sources rather than GitHub
 
 This follows the same principle used by the Quantizer release workflow: concise user-facing context first, detailed changes second, with reproducible artifacts and checksums attached.
 
+## Preparing a release
+
+Before tagging, prepare the user-facing release summary and freeze the maintained user manual for the current firmware version:
+
+```bash
+python scripts/prepare_release_summary.py
+# edit docs/releases/<version>/RELEASE_SUMMARY.md until the review placeholders are gone
+python scripts/check_release_summary.py docs/releases/<version>/RELEASE_SUMMARY.md --version <version>
+python scripts/prepare_release_manual.py
+```
+
+The summary explains what CLOCK is and the important changes from a user perspective; the detailed engineering history remains in `CHANGELOG.md`. From 1.2.0 on the summary has a `## Known issues` section with at most eight known limitations of the release, or a sentence that none are known; `check_release_summary.py` counts these bullets separately from the 2–10 bullets of the other sections. For a final stable release, manual preparation creates and commits `docs/manual/clock-user-manual.<version>.odt`; Alpha, Beta and RC manuals are generated transiently and are not archived there. The tag workflow requires the stable frozen ODT when publishing a final release and always requires the version-matched release summary.
+
 ## Tagging
 
 For a normal release:
@@ -74,6 +87,20 @@ git tag v<version>
 git push origin v<version>
 ```
 
-The workflow validates that the tag matches `src/version.h`, runs all release gates, builds the five ARM images, creates the manual and legal payload, uploads the complete `dist/` directory as a workflow artifact, and only then creates the GitHub Release.
+The workflow validates that the tag matches `src/version.h`, runs all release gates, builds the five ARM images, creates the manual and legal payload, uploads the complete `dist/` directory as a workflow artifact, and only then creates the GitHub Release. In order, a tag build:
+
+1. validates architecture policy
+2. validates version/tag consistency
+3. runs Python tooling tests
+4. runs native production-core tests
+5. enforces coverage thresholds
+6. builds the STM32 firmware
+7. regenerates the deterministic OLED screenshot catalog from the exact release source and refreshes every screenshot in the frozen ODT
+8. validates the refreshed versioned ODT manual
+9. converts that ODT to `clock-user-manual.<version>.pdf` with LibreOffice and validates the PDF/font contract
+10. extracts release notes from the matching `CHANGELOG.md` section
+11. publishes the GitHub Release with the versioned **ODT and PDF manual artifacts** attached
+
+A mismatch between tag and `src/version.h` fails before publication. GitHub supplies the source archive for the tagged commit; the firmware binaries are eligible for release packaging because the embedded runtime uses STM32CubeF4/CMSIS without the former STM32duino LGPL dependency (see [`LICENSING.md`](LICENSING.md)).
 
 A stable version is released once. If its tag `v<version>` already exists on another commit, the workflow stops before any build with `Version <version> is already released as tag v<version>`: the release path regenerates the manual screenshots from the checked-out firmware, so a later source would put screenshots of other firmware into the frozen manual. Rebuild a released version from its tag, or raise `CLOCK_FIRMWARE_VERSION` in `src/version.h` before releasing new work. The same check runs locally with `python scripts/version.py --require-unreleased`. Prerelease versions are not affected.

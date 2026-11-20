@@ -39,8 +39,10 @@ void generateDefaultName(
 
     const std::uint32_t first = mix(seed ^ (sequence * 0x9E3779B9U) ^ salt);
     const std::uint32_t second = mix(first ^ 0xA5A5A5A5U ^ (salt << 1U));
-    const char* const qualifier = text::kGrooveNameQualifiers[first % text::kGrooveNameQualifiers.size()];
-    const char* const rhythm = text::kGrooveNameRhythmWords[second % text::kGrooveNameRhythmWords.size()];
+    const char* const qualifier =
+        text::kGrooveNameQualifiers[first % text::kGrooveNameQualifiers.size()];
+    const char* const rhythm =
+        text::kGrooveNameRhythmWords[second % text::kGrooveNameRhythmWords.size()];
     std::snprintf(destination, destinationSize, "%s %s", qualifier, rhythm);
 }
 

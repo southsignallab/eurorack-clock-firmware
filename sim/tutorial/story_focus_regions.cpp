@@ -47,7 +47,8 @@ constexpr std::array<Entry, 23U> kRegions{{
 
 std::optional<StoryOledFocusRegion> storyOledFocusRegion(const std::string_view name) {
     for (const auto& [entryName, region] : kRegions) {
-        if (entryName == name) return region;
+        if (entryName == name)
+            return region;
     }
     return std::nullopt;
 }

@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <cstdint>
 
-
 #include "domain/clock_options.h"
 
 namespace clockfw::sim {
@@ -25,16 +24,19 @@ constexpr std::uint32_t kResetMaximumPeriodMs = 60000U;
 void SimulatorRuntime::setSyncCableConnected(const bool connected) {
     syncDirectDriven_ = false;
     syncCableConnected_ = connected;
-    if (connected) syncGeneratorRunning_ = true;
+    if (connected)
+        syncGeneratorRunning_ = true;
     resetExternalSyncAcquisition();
 }
 
 void SimulatorRuntime::setSyncGeneratorRunning(const bool running) {
     syncDirectDriven_ = false;
-    if (syncGeneratorRunning_ == running) return;
+    if (syncGeneratorRunning_ == running)
+        return;
     syncGeneratorRunning_ = running;
     if (running) {
-        if (!syncCableConnected_) syncCableConnected_ = true;
+        if (!syncCableConnected_)
+            syncCableConnected_ = true;
         resetExternalSyncAcquisition();
         return;
     }
@@ -62,7 +64,8 @@ void SimulatorRuntime::cycleSyncPpqn() {
     const auto& values = clockfw::kExternalPpqnOptions;
     std::size_t index = 0U;
     for (; index < values.size(); ++index) {
-        if (values[index] == syncPpqn_) break;
+        if (values[index] == syncPpqn_)
+            break;
     }
     syncPpqn_ = values[(index + 1U) % values.size()];
     resetExternalSyncAcquisition();
@@ -79,30 +82,39 @@ SyncInputTelemetry SimulatorRuntime::syncInputTelemetry() const {
         engineSnapshot = application_->engineSnapshotForSimulator();
     }
     return {
-        syncCableConnected_, syncGeneratorRunning_, syncComparatorHigh_, syncLocked_, syncWaveform_,
-        syncBpmMilli_, syncPpqn_, state().externalSync.pulsesPerQuarterNote,
-        engineSnapshot.externalBpmMilli, syncPulseCount_};
+        syncCableConnected_,
+        syncGeneratorRunning_,
+        syncComparatorHigh_,
+        syncLocked_,
+        syncWaveform_,
+        syncBpmMilli_,
+        syncPpqn_,
+        state().externalSync.pulsesPerQuarterNote,
+        engineSnapshot.externalBpmMilli,
+        syncPulseCount_};
 }
 
 void SimulatorRuntime::setResetCableConnected(const bool connected) {
     resetDirectDriven_ = false;
     resetCableConnected_ = connected;
-    if (connected) resetGeneratorRunning_ = true;
+    if (connected)
+        resetGeneratorRunning_ = true;
     resetExternalResetAcquisition();
 }
 
 void SimulatorRuntime::setResetGeneratorRunning(const bool running) {
     resetDirectDriven_ = false;
     resetGeneratorRunning_ = running;
-    if (running && !resetCableConnected_) resetCableConnected_ = true;
+    if (running && !resetCableConnected_)
+        resetCableConnected_ = true;
     resetExternalResetAcquisition();
 }
 
 void SimulatorRuntime::adjustResetPeriod(const int deltaSteps) {
     const std::int64_t adjusted = static_cast<std::int64_t>(resetPeriodMs_) +
         static_cast<std::int64_t>(deltaSteps) * kResetPeriodStepMs;
-    resetPeriodMs_ = static_cast<std::uint32_t>(std::clamp<std::int64_t>(
-        adjusted, kResetMinimumPeriodMs, kResetMaximumPeriodMs));
+    resetPeriodMs_ = static_cast<std::uint32_t>(
+        std::clamp<std::int64_t>(adjusted, kResetMinimumPeriodMs, kResetMaximumPeriodMs));
     resetExternalResetAcquisition();
 }
 
@@ -112,15 +124,21 @@ void SimulatorRuntime::cycleResetWaveform() {
 }
 
 void SimulatorRuntime::triggerResetPulse() {
-    if (application_ == nullptr || !application_->runningForSimulator()) return;
+    if (application_ == nullptr || !application_->runningForSimulator())
+        return;
     application_->injectExternalResetLevelForSimulator(true);
     application_->injectExternalResetLevelForSimulator(false);
     ++resetCount_;
 }
 
 ResetInputTelemetry SimulatorRuntime::resetInputTelemetry() const {
-    return {resetCableConnected_, resetGeneratorRunning_, resetComparatorHigh_,
-        resetWaveform_, resetPeriodMs_, resetCount_};
+    return {
+        resetCableConnected_,
+        resetGeneratorRunning_,
+        resetComparatorHigh_,
+        resetWaveform_,
+        resetPeriodMs_,
+        resetCount_};
 }
 
 void SimulatorRuntime::setExternalSyncInput(const bool connected, const bool high) {
@@ -169,9 +187,13 @@ void SimulatorRuntime::serviceExternalSync() {
 
     if (syncGeneratorRunning_) {
         const std::uint64_t denominator = static_cast<std::uint64_t>(syncBpmMilli_) * syncPpqn_;
-        const std::uint64_t periodUs = denominator != 0ULL ? 60000000000ULL / denominator : 60000000ULL;
+        const std::uint64_t periodUs =
+            denominator != 0ULL ? 60000000000ULL / denominator : 60000000ULL;
         const bool high = comparatorHigh(
-            syncWaveform_, nowMicroseconds(), syncEpochUs_, std::max<std::uint64_t>(periodUs, 1ULL));
+            syncWaveform_,
+            nowMicroseconds(),
+            syncEpochUs_,
+            std::max<std::uint64_t>(periodUs, 1ULL));
         if (syncComparatorHigh_ != high) {
             application_->injectExternalSyncLevelForSimulator(high);
             if (high) {

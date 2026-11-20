@@ -76,8 +76,7 @@ std::uint64_t ClockEngine::estimateMasterPositionAtUs(
         configuration_->beatUnit,
         config::kSchedulerFrequencyHz,
         remainder);
-    const std::uint64_t rewindQ32 = incrementQ32 != 0U &&
-            elapsedTicks > UINT64_MAX / incrementQ32
+    const std::uint64_t rewindQ32 = incrementQ32 != 0U && elapsedTicks > UINT64_MAX / incrementQ32
         ? UINT64_MAX
         : incrementQ32 * elapsedTicks;
     return rewindQ32 >= positionQ32 ? 0U : positionQ32 - rewindQ32;

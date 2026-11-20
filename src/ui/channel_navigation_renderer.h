@@ -23,7 +23,7 @@ namespace clockfw::ui {
 
 /** @brief Renders graphical navigation and pattern-editing screens. */
 class ChannelNavigationRenderer final {
-public:
+  public:
     /**
      * @brief Constructs the renderer around the shared OLED abstraction.
      * @param display Display HAL receiving all drawing commands.
@@ -41,9 +41,7 @@ public:
      * @param state Complete channel configuration used for mode symbols.
      * @param navigation Current candidate channel.
      */
-    void renderChannelQuickSelect(
-        const ClockState& state,
-        const NavigationState& navigation);
+    void renderChannelQuickSelect(const ClockState& state, const NavigationState& navigation);
 
     /**
      * @brief Draws the horizontally scrolling mode carousel.
@@ -76,7 +74,7 @@ public:
         std::uint8_t activeSlot,
         const SequencerStepMetadata& metadata);
 
-private:
+  private:
     /** @brief Draws the simplified overview shown while a global operating mode is active. */
     void renderGlobalModeOverview(const ClockState& state);
 

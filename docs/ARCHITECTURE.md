@@ -250,9 +250,51 @@ Layout:
 0x08020000  Sector 5  128 KiB   firmware
 ```
 
-Firmware budget: **224 KiB**. Persistence: **2 × 16 KiB**. Released 1.1.0 used an 8-KiB logical image. Released 1.2.0 uses the already documented **12-KiB architectural ceiling** for Sequencer 2.0: bytes 8192–10239 hold the first 2-KiB Sequencer pattern-bank extension and 10240–12287 remain reserved for later sparse step/Song data. Valid 8-KiB and older 4-KiB generations remain readable and are promoted only on a later durable write. The release ELF passes the 90 % memory gate of `scripts/platformio_memory_gate.py`: Flash 116 212 of 229 376 B, RAM 37 836 of 65 536 B (`release_default`, 1.2.0). The lower 8 KiB retain the released settings, Custom Groove, score and leaderboard layout unchanged.
+Firmware budget: **224 KiB**. Persistence: **2 × 16 KiB**. Released 1.1.0 used an 8-KiB logical image. Released 1.2.0 uses the already documented **12-KiB architectural ceiling** for Sequencer 2.0: bytes 8192–10239 hold the Sequencer pattern bank, followed by sparse step-expression records and a final region reserved for Song Mode (map below). Valid 8-KiB and older 4-KiB generations remain readable and are promoted only on a later durable write. The release ELF passes the 90 % memory gate of `scripts/platformio_memory_gate.py`: Flash 116 212 of 229 376 B, RAM 37 836 of 65 536 B (`release_default`, 1.2.0). The lower 8 KiB retain the released settings, Custom Groove, score and leaderboard layout unchanged.
 
-`PersistentStateService` serializes fields explicitly, validates ranges, checks CRC, and migrates supported prior schemas. The storage layer writes the inactive slot and programs COMMIT last.
+### Logical image map
+
+The logical image is committed as a whole into the inactive 16-KiB A/B slot. The boundaries come from `src/hal/persistent_layout.h`, which checks their order and the end of the image with `static_assert`; `CustomGrooveStore` checks that its records end at the leaderboard region. The table is generated from the code.
+
+<!-- generated:persistence-map begin (scripts/generate_reference_tables.py) -->
+| Bytes | Size (B) | Content | Defined by |
+| --- | ---: | --- | --- |
+| 0–3071 | 3072 | CURRENT and 8 named presets (2891 B used: 307 + 8 × 323) | `persistent_layout::kClockStateRegionOffset` |
+| 3072–3135 | 64 | historical single-score records | `persistent_layout::kLegacyScoreRegionOffset` |
+| 3136–4095 | 960 | 10 Custom Groove records of 96 B | `persistent_layout::kCustomGrooveRegionOffset` |
+| 4096–8191 | 4096 | four Top-100 leaderboard records | `persistent_layout::kLeaderboardRegionOffset` |
+| 8192–10239 | 2048 | Sequencer pattern bank | `persistent_layout::kSequencer2RegionOffset` |
+| 10240–11775 | 1536 | sparse Sequencer step-expression records | `persistent_layout::kSequencerStepMetadataOffset` |
+| 11776–12287 | 512 | reserved for Song Mode | `persistent_layout::kSequencerSongRegionOffset` |
+<!-- generated:persistence-map end -->
+
+The bytes between the used CURRENT/preset records and byte 3072 are the only room for in-place growth of the repeated state record; each serialized state byte costs nine image bytes (CURRENT plus eight presets). [`V1_FORWARD_COMPATIBILITY.md`](V1_FORWARD_COMPATIBILITY.md) derives this budget and the constraints for later storage-heavy features.
+
+### Stored state
+
+`PersistentStateService` stores one autosaved `CURRENT` state plus eight named user preset slots. Each state includes master settings (including Pre-Count), configurable INPUT 1/2 roles and external-sync parameters, display/screensaver preferences, every channel's common settings including Groove selection, CLOCK meter data, Euclid parameters, complete 64-bit Sequencer patterns, and the active Custom Groove slot reference. Preset names are limited to 16 display-supported characters. A Custom Groove record carries a 16-character name, one signed 1–64-step microtiming pattern, metadata and its own CRC; ten slots are the frozen 1.1.0 release scope.
+
+`PersistentStateService` serializes fields explicitly, validates ranges, checks CRC, and migrates supported prior schemas. Storage records are schema-versioned and CRC-32 protected; raw C++ structs and compiler bitfields are never serialized into Flash. The storage layer writes the inactive slot and programs COMMIT last. `PersistentStorage` keeps one complete staging image in static RAM so a commit needs no large stack frame; the 12-KiB image therefore adds 4 KiB of BSS versus 1.1.0. Host persistence tests are not target-memory evidence; `scripts/platformio_memory_gate.py` checks the linked target image.
+
+### Schema versions and decoder lifetime
+
+Firmware 1.2.0 writes **schema v13**, which appends the SYNC `AUTOSTART` setting; v12 records (the 1.1.0 write format) migrate with `AUTOSTART = OFF`, and missing newer fields of older formats are injected with their documented factory-safe defaults. Schema v10 migrates with the factory input roles `SYNC / RESET`. A migrated boot image is written back in the current schema as soon as Flash writes are allowed.
+
+Decoders for formats that only prereleases wrote are kept through 1.2.x; decoders for the write formats of stable releases are kept until 2.0.0:
+
+| Schema | Written by | Decoder kept |
+| --- | --- | --- |
+| v13 | 1.2.0 | current write format |
+| v12 | 1.1.0 | until 2.0.0 |
+| v10, v11 | development builds before 1.1.0 | through 1.2.x; removed in 1.3.0 |
+| v9 | no stable release | through 1.2.x; removed in 1.3.0 |
+| v8 | 1.0.x | until 2.0.0 |
+| v3–v7 | 0.x prereleases | through 1.2.x; removed in 1.3.0 |
+
+A device that still holds a prerelease format must run a 1.2.x release once before it is updated to 1.3.0 or later, so that 1.2.x rewrites its data in the current schema. Updates always go through `scripts/upload_preserving_persistence.py`; see [`FIRMWARE_UPDATE.md`](FIRMWARE_UPDATE.md).
+
+### Slot validation and commits
+
 
 Slot validation (one table-driven CRC-32 per slot) runs once per boot; the result is cached until the next commit, which re-validates only the slot it wrote. Every later read is a bounded copy. A committed slot with an intact header in an unknown format or size marks Flash as written by newer firmware: while such a slot holds the newest generation, every write is refused (`UPDATE FIRMWARE`) and only the guarded factory reset replaces it. Future slot formats must keep the first six header words and the COMMIT word at offset 28 so that this detection keeps working.
 

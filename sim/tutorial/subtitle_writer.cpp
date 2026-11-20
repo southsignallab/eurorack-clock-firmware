@@ -22,17 +22,18 @@ std::string timestamp(const std::uint64_t us, const char millisecondSeparator) {
     const std::uint64_t seconds = (totalMs / 1000ULL) % 60ULL;
     const std::uint64_t milliseconds = totalMs % 1000ULL;
     std::ostringstream out;
-    out << std::setfill('0') << std::setw(2) << hours << ':'
-        << std::setw(2) << minutes << ':' << std::setw(2) << seconds
-        << millisecondSeparator << std::setw(3) << milliseconds;
+    out << std::setfill('0') << std::setw(2) << hours << ':' << std::setw(2) << minutes << ':'
+        << std::setw(2) << seconds << millisecondSeparator << std::setw(3) << milliseconds;
     return out.str();
 }
 
 void writeText(const std::filesystem::path& path, const std::string& text) {
     std::ofstream stream(path, std::ios::binary | std::ios::trunc);
-    if (!stream) throw std::runtime_error("cannot create subtitle sidecar: " + path.string());
+    if (!stream)
+        throw std::runtime_error("cannot create subtitle sidecar: " + path.string());
     stream.write(text.data(), static_cast<std::streamsize>(text.size()));
-    if (!stream) throw std::runtime_error("cannot write subtitle sidecar: " + path.string());
+    if (!stream)
+        throw std::runtime_error("cannot write subtitle sidecar: " + path.string());
 }
 
 }  // namespace
@@ -45,7 +46,8 @@ std::vector<SubtitleCue> subtitleCuesFromTrace(const StoryRunResult& run) {
     std::vector<SubtitleCue> cues;
 
     auto closeAt = [&](const std::uint64_t endUs) {
-        if (!open) return;
+        if (!open)
+            return;
         if (endUs > openStartUs && !openText.empty()) {
             cues.push_back({openStartUs, endUs, openText});
         }
@@ -64,8 +66,8 @@ std::vector<SubtitleCue> subtitleCuesFromTrace(const StoryRunResult& run) {
             }
             continue;
         }
-        if (event.kind == StoryTraceKind::SceneEnd && event.sceneIndex.has_value() &&
-            open && openSceneIndex == *event.sceneIndex) {
+        if (event.kind == StoryTraceKind::SceneEnd && event.sceneIndex.has_value() && open &&
+            openSceneIndex == *event.sceneIndex) {
             closeAt(event.presentationUs);
         }
     }
@@ -77,7 +79,8 @@ std::string renderSrt(const std::vector<SubtitleCue>& cues) {
     std::ostringstream out;
     for (std::size_t index = 0U; index < cues.size(); ++index) {
         out << (index + 1U) << '\n'
-            << timestamp(cues[index].startUs, ',') << " --> " << timestamp(cues[index].endUs, ',') << '\n'
+            << timestamp(cues[index].startUs, ',') << " --> " << timestamp(cues[index].endUs, ',')
+            << '\n'
             << cues[index].text << "\n\n";
     }
     return out.str();

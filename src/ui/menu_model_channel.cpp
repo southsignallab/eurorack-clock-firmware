@@ -59,9 +59,7 @@ ChannelMenuAction channelMenuAction(const ChannelMode mode, const std::uint8_t r
     return kActions[rowIndex < 4U ? rowIndex : 0U];
 }
 
-std::uint8_t channelMenuIndexForAction(
-    const ChannelMode mode,
-    const ChannelMenuAction action) {
+std::uint8_t channelMenuIndexForAction(const ChannelMode mode, const ChannelMenuAction action) {
     const std::uint8_t count = channelMenuItemCount(mode);
     for (std::uint8_t index = 0U; index < count; ++index) {
         if (channelMenuAction(mode, index) == action) {
@@ -71,9 +69,7 @@ std::uint8_t channelMenuIndexForAction(
     return 0U;
 }
 
-MenuRow buildChannelMenuRow(
-    const std::uint8_t rowIndex,
-    const ChannelConfig& channel) {
+MenuRow buildChannelMenuRow(const std::uint8_t rowIndex, const ChannelConfig& channel) {
     MenuRow row{};
     const ChannelMenuAction action = channelMenuAction(channel.common.mode, rowIndex);
 
@@ -81,10 +77,7 @@ MenuRow buildChannelMenuRow(
         case ChannelMenuAction::Mode:
             copyText(row.label, sizeof(row.label), text::TextId::Mode);
             std::snprintf(
-                row.value,
-                sizeof(row.value),
-                "%s",
-                channelModeLongLabel(channel.common.mode));
+                row.value, sizeof(row.value), "%s", channelModeLongLabel(channel.common.mode));
             break;
         case ChannelMenuAction::Timing:
             copyText(row.label, sizeof(row.label), text::TextId::Timing);
@@ -110,10 +103,7 @@ MenuRow buildChannelMenuRow(
     return row;
 }
 
-
-MenuRow buildChannelTimingMenuRow(
-    const std::uint8_t rowIndex,
-    const ChannelConfig& channel) {
+MenuRow buildChannelTimingMenuRow(const std::uint8_t rowIndex, const ChannelConfig& channel) {
     MenuRow row{};
     constexpr text::TextId kLabels[] = {
         text::TextId::DivideMultiply,
@@ -140,9 +130,7 @@ MenuRow buildChannelTimingMenuRow(
     return row;
 }
 
-MenuRow buildChannelOutputMenuRow(
-    const std::uint8_t rowIndex,
-    const ChannelConfig& channel) {
+MenuRow buildChannelOutputMenuRow(const std::uint8_t rowIndex, const ChannelConfig& channel) {
     MenuRow row{};
     constexpr text::TextId kLabels[] = {
         text::TextId::Probability,
@@ -173,9 +161,8 @@ MenuRow buildChannelOutputMenuRow(
         copyText(
             row.value,
             sizeof(row.value),
-            channel.common.resetMode == ResetMode::Global
-                ? text::TextId::Global
-                : text::TextId::SyncFree);
+            channel.common.resetMode == ResetMode::Global ? text::TextId::Global
+                                                          : text::TextId::SyncFree);
     } else {
         copyText(
             row.value,
@@ -188,9 +175,7 @@ MenuRow buildChannelOutputMenuRow(
 MenuRow buildUnifiedClockMenuRow(const std::uint8_t rowIndex) {
     MenuRow row{};
     constexpr text::TextId kLabels[] = {
-        text::TextId::Mode,
-        text::TextId::Timing,
-        text::TextId::Output};
+        text::TextId::Mode, text::TextId::Timing, text::TextId::Output};
     copyText(row.label, sizeof(row.label), kLabels[rowIndex]);
     copyText(
         row.value,
@@ -244,9 +229,7 @@ MenuRow buildUnifiedOutputMenuRow(
     const UnifiedClockSettings& settings) {
     MenuRow row{};
     copyText(
-        row.label,
-        sizeof(row.label),
-        rowIndex == 0U ? text::TextId::Gate : text::TextId::Phase);
+        row.label, sizeof(row.label), rowIndex == 0U ? text::TextId::Gate : text::TextId::Phase);
     if (rowIndex == 0U) {
         std::snprintf(
             row.value,

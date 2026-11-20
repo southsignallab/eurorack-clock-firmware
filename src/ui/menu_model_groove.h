@@ -6,10 +6,13 @@
  * @license PolyForm-Noncommercial-1.0.0
  */
 #pragma once
-#include <cstdint>
 #include "domain/clock_types.h"
 #include "ui/menu_model.h"
+#include <cstdint>
 namespace clockfw::ui {
 /** @brief Formats one row of the active global/per-channel Groove assignment. */
-MenuRow buildGrooveMenuRow(std::uint8_t rowIndex, std::uint8_t selectedChannel, const ClockState& state);
+MenuRow buildGrooveMenuRow(
+    std::uint8_t rowIndex,
+    std::uint8_t selectedChannel,
+    const ClockState& state);
 }  // namespace clockfw::ui

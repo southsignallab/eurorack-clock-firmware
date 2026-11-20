@@ -22,7 +22,7 @@ struct StoryNarrationBeatFinish final {
 };
 
 class StoryNarrationBeat final {
-public:
+  public:
     bool begin(const StoryAction& action, std::uint64_t presentationUs, std::string& error);
     bool finish(
         const StoryAction& action,
@@ -32,7 +32,7 @@ public:
     bool active() const;
     void retainFocus(FocusTarget target);
 
-private:
+  private:
     std::optional<std::string> id_;
     std::optional<FocusTarget> focus_;
     std::uint64_t startUs_ = 0ULL;

@@ -20,7 +20,7 @@ namespace clockfw::game {
 
 /** @brief Encoder-controlled brick breaker with variable angles and original power-up mechanics. */
 class BreakoutGame final {
-public:
+  public:
     /** @brief Constructs the game around the shared display, controls, and safe gate-output HAL. */
     BreakoutGame(
         hal::OledDisplay& display,
@@ -36,7 +36,7 @@ public:
     bool serviceForSimulator(std::uint32_t nowMs);
 #endif
 
-private:
+  private:
     friend struct BreakoutGameTestAccess;
     static constexpr std::uint8_t kColumns = 12U;
     static constexpr std::uint8_t kRows = 4U;

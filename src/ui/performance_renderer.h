@@ -22,7 +22,7 @@ namespace clockfw::ui {
 
 /** @brief Renders the calm, tempo-focused performance view used during normal operation. */
 class PerformanceRenderer final {
-public:
+  public:
     /**
      * @brief Constructs the renderer around the shared OLED abstraction.
      * @param display Display HAL receiving all drawing commands.
@@ -43,7 +43,7 @@ public:
         const engine::EngineSnapshot& engineSnapshot,
         const SequencerPatternV2* activeSequencerPattern = nullptr);
 
-private:
+  private:
     /** @brief Draws PLAY, PAUSE, or STOP right-aligned in the status line. */
     void drawTransport(TransportState transport);
 
@@ -79,9 +79,7 @@ private:
     void drawTapIndicator(std::int16_t x, std::int16_t y, std::uint8_t frame);
 
     /** @brief Draws the centered static silent count-in popover and meter progress. */
-    void drawPreCountOverlay(
-        const ClockState& state,
-        const engine::EngineSnapshot& engineSnapshot);
+    void drawPreCountOverlay(const ClockState& state, const engine::EngineSnapshot& engineSnapshot);
 
     /** @brief Applies transient Performance overlays and presents the completed frame. */
     void presentPerformanceFrame(

@@ -26,12 +26,7 @@ enum class OperatingMode : std::uint8_t { Independent, UnifiedClock, DividerBank
 enum class DividerBank : std::uint8_t { PowersOfTwo, Integers, Primes };
 
 /** @brief Selects the rhythm generator used by one output channel. */
-enum class ChannelMode : std::uint8_t {
-    Clock = 0U,
-    Euclid = 1U,
-    Sequencer = 2U,
-    Off = 3U
-};
+enum class ChannelMode : std::uint8_t { Clock = 0U, Euclid = 1U, Sequencer = 2U, Off = 3U };
 
 /** @brief Selects the STOP-mode OLED idle animation. Values intentionally match the UI MODE numbers. */
 enum class ScreensaverMode : std::uint8_t {
@@ -74,17 +69,7 @@ enum class ExternalResetMode : std::uint8_t { Trigger, Gate };
  * Fill is reserved for the later Euclid/Sequencer fill feature and is not
  * selectable in the current 1.1 development UI.
  */
-enum class InputFunction : std::uint8_t {
-    Off,
-    Sync,
-    Reset,
-    Run,
-    Start,
-    Stop,
-    Restart,
-    Tap,
-    Fill
-};
+enum class InputFunction : std::uint8_t { Off, Sync, Reset, Run, Start, Stop, Restart, Tap, Fill };
 
 /** @brief Global role assignment for the two electrically equivalent inputs. */
 struct ExternalInputAssignments {
@@ -165,7 +150,6 @@ struct SequencerSettings {
     std::uint8_t rotation = 0U;
     std::uint64_t pattern = 0x1111ULL;
 };
-
 
 /** @brief Settings for the global one-clock-to-eight-outputs operating mode. */
 struct UnifiedClockSettings {

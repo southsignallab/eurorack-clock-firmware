@@ -40,7 +40,7 @@ struct StoryPortResult {
  * generator is started. It never writes ClockState directly.
  */
 class StorySimulatorPort final {
-public:
+  public:
     /** @brief Wraps one already constructed simulator runtime without taking ownership. */
     explicit StorySimulatorPort(SimulatorRuntime& runtime);
 
@@ -102,7 +102,7 @@ public:
      */
     SimulatorRuntime& presentationRuntime();
 
-private:
+  private:
     /** @brief Maps a Storybook module control to the existing simulator button enum. */
     static StoryPortResult mapButton(ModuleControl control, SimButton& button);
 

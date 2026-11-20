@@ -104,7 +104,7 @@ struct PanelPresentationSnapshot {
  * @brief Records physical-presentation events emitted by StoryRunner and reconstructs deterministic state.
  */
 class PanelPresentationTimeline final : public StoryPresentationSink {
-public:
+  public:
     /** @brief Clears all recorded physical-presentation events. */
     void clear();
 
@@ -125,11 +125,26 @@ public:
     void onPatchSettled(std::uint64_t presentationUs, PatchAction patch, bool connected) override;
     void onScopeState(std::uint64_t presentationUs, ScopeMode mode) override;
     void onFocusState(
-        std::uint64_t presentationUs, FocusTarget target, bool visible,
-        FocusPlacement placement, int x, int y, int width, int height, const std::string& label) override;
+        std::uint64_t presentationUs,
+        FocusTarget target,
+        bool visible,
+        FocusPlacement placement,
+        int x,
+        int y,
+        int width,
+        int height,
+        const std::string& label) override;
 
-private:
-    enum class EventKind : std::uint8_t { Encoder, Control, Power, PatchMotion, PatchSettled, Scope, Focus };
+  private:
+    enum class EventKind : std::uint8_t {
+        Encoder,
+        Control,
+        Power,
+        PatchMotion,
+        PatchSettled,
+        Scope,
+        Focus
+    };
 
     struct Event {
         EventKind kind = EventKind::Encoder;

@@ -1,0 +1,54 @@
+# Author: Axel Napolitano
+# License: PolyForm-Noncommercial-1.0.0
+# Project clang-tidy profile, checked with clang-tidy 23.1.4 (see CONTRIBUTING.md).
+#
+# Enabled, with the reason:
+#   bugprone-*                    error classes found in this code base: narrowing, signed bitwise
+#                                 operations, signed char as index, duplicated branches (CERT
+#                                 INT31-C, INT13-C; C++ Core Guidelines ES.46, ES.101).
+#   -bugprone-easily-swappable-parameters
+#                                 off: pairs of timestamps (nowMs, nowUs) are the normal case and
+#                                 every call would be reported.
+#   cert-*                        ignored results (ERR33-C), signed char (STR34-C), throwing static
+#                                 initialization (ERR58-CPP).
+#   clang-analyzer-*              dead stores, enum values out of range, null dereference.
+#   cppcoreguidelines-narrowing-conversions, cppcoreguidelines-init-variables,
+#   cppcoreguidelines-pro-type-member-init
+#                                 project rule: no implicit narrowing, no uninitialized state
+#                                 (C++ Core Guidelines ES.46, ES.20, Type.6).
+#   misc-redundant-expression, misc-misplaced-const
+#                                 hidden conditions.
+#   performance-*                 copies in hot paths.
+#   readability-braces-around-statements, readability-isolate-declaration,
+#   readability-misleading-indentation
+#                                 one statement per line, bodies with braces (C++ Core Guidelines
+#                                 ES.10, NL.21).
+#   readability-redundant-casting casts that hide the real operand type.
+#   readability-function-cognitive-complexity
+#                                 long state machines; threshold 25 (tool default).
+#
+# Not enabled, with the reason:
+#   readability-magic-numbers     about 2 000 pixel coordinates in renderers and games.
+#   readability-identifier-length x, y and i are the convention in renderers.
+#   misc-unused-parameters        uniform service(nowMs) signatures keep unused parameters.
+#   readability-implicit-bool-conversion, readability-else-after-return
+#                                 style only; no finding today.
+Checks: >-
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  cert-*,
+  clang-analyzer-*,
+  cppcoreguidelines-narrowing-conversions,
+  cppcoreguidelines-init-variables,
+  cppcoreguidelines-pro-type-member-init,
+  misc-redundant-expression,
+  misc-misplaced-const,
+  performance-*,
+  readability-braces-around-statements,
+  readability-isolate-declaration,
+  readability-misleading-indentation,
+  readability-redundant-casting,
+  readability-function-cognitive-complexity
+HeaderFilterRegex: '.*/(src|lib)/.*'
+WarningsAsErrors: ''

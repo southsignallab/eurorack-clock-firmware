@@ -21,7 +21,8 @@ namespace {
 using namespace clockfw::sim::tutorial;
 
 bool require(const bool condition, const char* message) {
-    if (!condition) std::cerr << "Storybook publication failure: " << message << '\n';
+    if (!condition)
+        std::cerr << "Storybook publication failure: " << message << '\n';
     return condition;
 }
 
@@ -33,7 +34,8 @@ std::string readText(const std::filesystem::path& path) {
 void writeFrames(const std::filesystem::path& generatedDir) {
     std::filesystem::create_directories(generatedDir / "frames");
     for (std::size_t index = 0U; index < 3U; ++index) {
-        TutorialSurface frame(64U, 64U, {static_cast<std::uint8_t>(40U + index * 50U), 30U, 90U, 255U});
+        TutorialSurface frame(
+            64U, 64U, {static_cast<std::uint8_t>(40U + index * 50U), 30U, 90U, 255U});
         frame.fillRect({static_cast<int>(8U + index * 8U), 12, 20, 20}, {230U, 230U, 230U, 255U});
         char name[32];
         std::snprintf(name, sizeof(name), "frame-%06zu.png", index);
@@ -62,27 +64,68 @@ StoryFramePipelineResult generatedResult(const std::filesystem::path& directory)
 }
 
 void makeIntro(const std::filesystem::path& ffmpeg, const std::filesystem::path& output) {
-    runHostProcess({ffmpeg.string(), "-y", "-v", "error", "-f", "lavfi", "-i",
-                    "color=c=blue:s=80x60:r=25:d=0.4", "-f", "lavfi", "-i",
-                    "sine=frequency=440:sample_rate=48000:duration=0.4", "-shortest",
-                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", output.string()});
+    runHostProcess(
+        {ffmpeg.string(),
+         "-y",
+         "-v",
+         "error",
+         "-f",
+         "lavfi",
+         "-i",
+         "color=c=blue:s=80x60:r=25:d=0.4",
+         "-f",
+         "lavfi",
+         "-i",
+         "sine=frequency=440:sample_rate=48000:duration=0.4",
+         "-shortest",
+         "-c:v",
+         "libx264",
+         "-pix_fmt",
+         "yuv420p",
+         "-c:a",
+         "aac",
+         output.string()});
 }
 
 void makeOutro(const std::filesystem::path& ffmpeg, const std::filesystem::path& output) {
-    runHostProcess({ffmpeg.string(), "-y", "-v", "error", "-f", "lavfi", "-i",
-                    "color=c=red:s=96x72:r=24:d=0.3", "-c:v", "libx264", "-pix_fmt", "yuv420p",
-                    "-an", output.string()});
+    runHostProcess(
+        {ffmpeg.string(),
+         "-y",
+         "-v",
+         "error",
+         "-f",
+         "lavfi",
+         "-i",
+         "color=c=red:s=96x72:r=24:d=0.3",
+         "-c:v",
+         "libx264",
+         "-pix_fmt",
+         "yuv420p",
+         "-an",
+         output.string()});
 }
 
-bool probeHasStreams(const std::filesystem::path& ffprobe, const std::filesystem::path& media,
-                     const std::filesystem::path& probeFile, const bool expectAudio) {
-    const int result = runHostProcess({ffprobe.string(), "-v", "error", "-show_entries",
-                                      "stream=codec_type,width,height", "-of", "default=noprint_wrappers=1",
-                                      "-o", probeFile.string(), media.string()});
-    if (result != 0) return false;
+bool probeHasStreams(
+    const std::filesystem::path& ffprobe,
+    const std::filesystem::path& media,
+    const std::filesystem::path& probeFile,
+    const bool expectAudio) {
+    const int result = runHostProcess(
+        {ffprobe.string(),
+         "-v",
+         "error",
+         "-show_entries",
+         "stream=codec_type,width,height",
+         "-of",
+         "default=noprint_wrappers=1",
+         "-o",
+         probeFile.string(),
+         media.string()});
+    if (result != 0)
+        return false;
     const std::string text = readText(probeFile);
     const bool video = text.find("codec_type=video") != std::string::npos &&
-                       text.find("width=64") != std::string::npos && text.find("height=64") != std::string::npos;
+        text.find("width=64") != std::string::npos && text.find("height=64") != std::string::npos;
     const bool audio = text.find("codec_type=audio") != std::string::npos;
     return video && audio == expectAudio;
 }
@@ -91,18 +134,29 @@ bool probeHasStreams(const std::filesystem::path& ffprobe, const std::filesystem
 
 int main(const int argc, char** argv) {
     if (argc > 1 && std::string(argv[1]) == "--process-child") {
-        if (argc != 6) return 41;
-        if (std::string(argv[2]) != "value with spaces") return 42;
-        if (std::string(argv[3]) != "quote\"inside") return 43;
-        if (std::string(argv[4]) != "trailing\\") return 44;
-        if (std::string(argv[5]) != "plain") return 45;
+        if (argc != 6)
+            return 41;
+        if (std::string(argv[2]) != "value with spaces")
+            return 42;
+        if (std::string(argv[3]) != "quote\"inside")
+            return 43;
+        if (std::string(argv[4]) != "trailing\\")
+            return 44;
+        if (std::string(argv[5]) != "plain")
+            return 45;
         return 23;
     }
 
     const auto self = std::filesystem::absolute(argv[0]);
     const int processExit = runHostProcess(
-        {self.string(), "--process-child", "value with spaces", "quote\"inside", "trailing\\", "plain"});
-    if (!require(processExit == 23, "host process argv/exit-code round-trip failed")) return 1;
+        {self.string(),
+         "--process-child",
+         "value with spaces",
+         "quote\"inside",
+         "trailing\\",
+         "plain"});
+    if (!require(processExit == 23, "host process argv/exit-code round-trip failed"))
+        return 1;
 
     const auto ffmpeg = findHostExecutable("ffmpeg");
     const auto ffprobe = findHostExecutable("ffprobe");
@@ -123,8 +177,10 @@ int main(const int argc, char** argv) {
     const auto outro = root / "story" / "assets" / "outro.mp4";
     makeIntro(*ffmpeg, intro);
     makeOutro(*ffmpeg, outro);
-    if (!require(std::filesystem::file_size(intro) > 0U && std::filesystem::file_size(outro) > 0U,
-                 "test media generation failed")) return 1;
+    if (!require(
+            std::filesystem::file_size(intro) > 0U && std::filesystem::file_size(outro) > 0U,
+            "test media generation failed"))
+        return 1;
 
     Story story;
     story.schema = 1U;
@@ -141,53 +197,91 @@ int main(const int argc, char** argv) {
     const StoryPublicationResult result = pipeline.publish(
         story, storyPath, generated, output, {PublicationFormat::Mp4H264, PublicationFormat::WebM});
     if (!require(static_cast<bool>(result), "intro/outro publication failed")) {
-        for (const auto& issue : result.issues) std::cerr << issue.reason << '\n';
+        for (const auto& issue : result.issues)
+            std::cerr << issue.reason << '\n';
         return 1;
     }
-    if (!require(result.mp4Path && std::filesystem::file_size(*result.mp4Path) > 0U, "MP4 missing")) return 1;
-    if (!require(result.webmPath && std::filesystem::file_size(*result.webmPath) > 0U, "WebM missing")) return 1;
-    if (!require(result.introDurationUs >= 350000ULL && result.introDurationUs <= 450000ULL,
-                 "normalized intro duration not measured")) return 1;
-    if (!require(result.outroDurationUs >= 250000ULL && result.outroDurationUs <= 350000ULL,
-                 "normalized outro duration not measured")) return 1;
-    if (!require(probeHasStreams(*ffprobe, *result.mp4Path, root / "mp4-probe.txt", true),
-                 "MP4 stream profile invalid")) return 1;
-    if (!require(probeHasStreams(*ffprobe, *result.webmPath, root / "webm-probe.txt", true),
-                 "WebM stream profile invalid")) return 1;
+    if (!require(result.mp4Path && std::filesystem::file_size(*result.mp4Path) > 0U, "MP4 missing"))
+        return 1;
+    if (!require(
+            result.webmPath && std::filesystem::file_size(*result.webmPath) > 0U, "WebM missing"))
+        return 1;
+    if (!require(
+            result.introDurationUs >= 350000ULL && result.introDurationUs <= 450000ULL,
+            "normalized intro duration not measured"))
+        return 1;
+    if (!require(
+            result.outroDurationUs >= 250000ULL && result.outroDurationUs <= 350000ULL,
+            "normalized outro duration not measured"))
+        return 1;
+    if (!require(
+            probeHasStreams(*ffprobe, *result.mp4Path, root / "mp4-probe.txt", true),
+            "MP4 stream profile invalid"))
+        return 1;
+    if (!require(
+            probeHasStreams(*ffprobe, *result.webmPath, root / "webm-probe.txt", true),
+            "WebM stream profile invalid"))
+        return 1;
 
-    const std::vector<SubtitleCue> expected{{50000ULL + result.introDurationUs,
-                                              200000ULL + result.introDurationUs,
-                                              "Tutorial subtitle"}};
-    if (!require(readText(result.srtPath) == renderSrt(expected), "SRT intro offset mismatch")) return 1;
-    if (!require(readText(result.vttPath) == renderWebVtt(expected), "WebVTT intro offset mismatch")) return 1;
+    const std::vector<SubtitleCue> expected{
+        {50000ULL + result.introDurationUs,
+         200000ULL + result.introDurationUs,
+         "Tutorial subtitle"}};
+    if (!require(readText(result.srtPath) == renderSrt(expected), "SRT intro offset mismatch"))
+        return 1;
+    if (!require(
+            readText(result.vttPath) == renderWebVtt(expected), "WebVTT intro offset mismatch"))
+        return 1;
     const std::string manifest = readText(result.manifestPath);
-    if (!require(manifest.find("\"audio_present\": true") != std::string::npos &&
-                 manifest.find("\"narration_cue_count\": 1") != std::string::npos,
-                 "publication manifest lost audio/narration state")) return 1;
+    if (!require(
+            manifest.find("\"audio_present\": true") != std::string::npos &&
+                manifest.find("\"narration_cue_count\": 1") != std::string::npos,
+            "publication manifest lost audio/narration state"))
+        return 1;
     const std::string narration = readText(result.narrationPath);
-    if (!require(narration.find("\"timeline\": \"publication\"") != std::string::npos &&
-                 narration.find("\"id\": \"s01\"") != std::string::npos &&
-                 narration.find(std::to_string(50000ULL + result.introDurationUs)) != std::string::npos &&
-                 narration.find(std::to_string(200000ULL + result.introDurationUs)) != std::string::npos,
-                 "publication narration cue must include normalized intro offset")) return 1;
+    if (!require(
+            narration.find("\"timeline\": \"publication\"") != std::string::npos &&
+                narration.find("\"id\": \"s01\"") != std::string::npos &&
+                narration.find(std::to_string(50000ULL + result.introDurationUs)) !=
+                    std::string::npos &&
+                narration.find(std::to_string(200000ULL + result.introDurationUs)) !=
+                    std::string::npos,
+            "publication narration cue must include normalized intro offset"))
+        return 1;
 
     Story introOnly = story;
     introOnly.id = "publication-intro-only";
     introOnly.publication.outroVideo.reset();
     const StoryPublicationResult introOnlyResult = pipeline.publish(
-        introOnly, storyPath, generated, root / "published-intro-only", {PublicationFormat::Mp4H264});
-    if (!require(static_cast<bool>(introOnlyResult) && introOnlyResult.introDurationUs > 0ULL &&
-                 introOnlyResult.outroDurationUs == 0ULL, "intro-only publication failed")) return 1;
+        introOnly,
+        storyPath,
+        generated,
+        root / "published-intro-only",
+        {PublicationFormat::Mp4H264});
+    if (!require(
+            static_cast<bool>(introOnlyResult) && introOnlyResult.introDurationUs > 0ULL &&
+                introOnlyResult.outroDurationUs == 0ULL,
+            "intro-only publication failed"))
+        return 1;
 
     Story outroOnly = story;
     outroOnly.id = "publication-outro-only";
     outroOnly.publication.introVideo.reset();
     const StoryPublicationResult outroOnlyResult = pipeline.publish(
-        outroOnly, storyPath, generated, root / "published-outro-only", {PublicationFormat::Mp4H264});
-    if (!require(static_cast<bool>(outroOnlyResult) && outroOnlyResult.introDurationUs == 0ULL &&
-                 outroOnlyResult.outroDurationUs > 0ULL, "outro-only publication failed")) return 1;
-    if (!require(readText(outroOnlyResult.srtPath) == renderSrt(generated.subtitles),
-                 "outro-only subtitles must not be offset")) return 1;
+        outroOnly,
+        storyPath,
+        generated,
+        root / "published-outro-only",
+        {PublicationFormat::Mp4H264});
+    if (!require(
+            static_cast<bool>(outroOnlyResult) && outroOnlyResult.introDurationUs == 0ULL &&
+                outroOnlyResult.outroDurationUs > 0ULL,
+            "outro-only publication failed"))
+        return 1;
+    if (!require(
+            readText(outroOnlyResult.srtPath) == renderSrt(generated.subtitles),
+            "outro-only subtitles must not be offset"))
+        return 1;
 
     Story noClips = story;
     noClips.id = "publication-no-clips";
@@ -197,17 +291,28 @@ int main(const int argc, char** argv) {
     std::ofstream(noClipsOutput / "old-success.txt") << "previous";
     const StoryPublicationResult noClipsResult = pipeline.publish(
         noClips, storyPath, generated, noClipsOutput, {PublicationFormat::Mp4H264});
-    if (!require(static_cast<bool>(noClipsResult), "publication without intro/outro failed")) return 1;
-    if (!require(noClipsResult.introDurationUs == 0ULL && noClipsResult.outroDurationUs == 0ULL,
-                 "no-clip publication gained phantom durations")) return 1;
-    if (!require(probeHasStreams(*ffprobe, *noClipsResult.mp4Path, root / "silent-probe.txt", false),
-                 "tutorial-only publication should remain audio-free")) return 1;
-    if (!require(readText(noClipsResult.srtPath) == renderSrt(generated.subtitles),
-                 "tutorial-only subtitles should remain unshifted")) return 1;
-    if (!require(!std::filesystem::exists(noClipsOutput / "old-success.txt"),
-                 "successful publication did not replace previous output")) return 1;
-    if (!require(!std::filesystem::exists(root / "published-no-clips.previous"),
-                 "successful publication left previous-output backup")) return 1;
+    if (!require(static_cast<bool>(noClipsResult), "publication without intro/outro failed"))
+        return 1;
+    if (!require(
+            noClipsResult.introDurationUs == 0ULL && noClipsResult.outroDurationUs == 0ULL,
+            "no-clip publication gained phantom durations"))
+        return 1;
+    if (!require(
+            probeHasStreams(*ffprobe, *noClipsResult.mp4Path, root / "silent-probe.txt", false),
+            "tutorial-only publication should remain audio-free"))
+        return 1;
+    if (!require(
+            readText(noClipsResult.srtPath) == renderSrt(generated.subtitles),
+            "tutorial-only subtitles should remain unshifted"))
+        return 1;
+    if (!require(
+            !std::filesystem::exists(noClipsOutput / "old-success.txt"),
+            "successful publication did not replace previous output"))
+        return 1;
+    if (!require(
+            !std::filesystem::exists(root / "published-no-clips.previous"),
+            "successful publication left previous-output backup"))
+        return 1;
 
     Story missing = noClips;
     missing.id = "publication-missing-intro";
@@ -217,9 +322,16 @@ int main(const int argc, char** argv) {
     std::ofstream(failureOutput / "keep.txt") << "preserve";
     const StoryPublicationResult failed = pipeline.publish(
         missing, storyPath, generated, failureOutput, {PublicationFormat::Mp4H264});
-    if (!require(!static_cast<bool>(failed), "missing referenced media must fail publication")) return 1;
-    if (!require(readText(failureOutput / "keep.txt") == "preserve", "failed publication replaced prior output")) return 1;
-    if (!require(!std::filesystem::exists(root / "failure-output.staging"), "failed publication left staging output")) return 1;
+    if (!require(!static_cast<bool>(failed), "missing referenced media must fail publication"))
+        return 1;
+    if (!require(
+            readText(failureOutput / "keep.txt") == "preserve",
+            "failed publication replaced prior output"))
+        return 1;
+    if (!require(
+            !std::filesystem::exists(root / "failure-output.staging"),
+            "failed publication left staging output"))
+        return 1;
 
     std::filesystem::remove_all(root, ignored);
     std::cout << "Storybook publication pipeline: PASS\n";

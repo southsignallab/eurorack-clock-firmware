@@ -28,9 +28,11 @@ namespace clockfw::services {
  * the later Song Mode rather than being consumed by step expression.
  */
 class SequencerStepStore final {
-public:
-    static constexpr std::size_t kStorageOffset = hal::persistent_layout::kSequencerStepMetadataOffset;
-    static constexpr std::size_t kStorageBytes = hal::persistent_layout::kSequencerStepMetadataBytes;
+  public:
+    static constexpr std::size_t kStorageOffset =
+        hal::persistent_layout::kSequencerStepMetadataOffset;
+    static constexpr std::size_t kStorageBytes =
+        hal::persistent_layout::kSequencerStepMetadataBytes;
     static constexpr std::size_t kHeaderBytes = 16U;
     static constexpr std::size_t kRecordBytes = 4U;
     static constexpr std::size_t kMaximumOverrides = (kStorageBytes - kHeaderBytes) / kRecordBytes;
@@ -62,7 +64,10 @@ public:
         std::uint32_t nowMs);
 
     /** @brief Removes every expression override owned by one pattern slot. */
-    [[nodiscard]] bool clearPattern(std::uint8_t channelIndex, std::uint8_t slotIndex, std::uint32_t nowMs);
+    [[nodiscard]] bool clearPattern(
+        std::uint8_t channelIndex,
+        std::uint8_t slotIndex,
+        std::uint32_t nowMs);
 
     /** @brief Replaces one pattern's overrides from a complete 128-word snapshot. */
     [[nodiscard]] bool replacePatternWords(
@@ -81,23 +86,32 @@ public:
     void markCommitted();
 
     /** @brief Increments with every accepted mutation; drives the central debounce. */
-    std::uint32_t changeRevision() const { return changeRevision_; }
+    std::uint32_t changeRevision() const {
+        return changeRevision_;
+    }
 
     /** @brief Restores the all-DEFAULT image after ERASE ALL DATA; nothing remains pending (F-008). */
     void resetToFactory();
 
     /** @brief Returns the number of non-default sparse records currently held in RAM. */
-    std::size_t overrideCount() const { return count_; }
+    std::size_t overrideCount() const {
+        return count_;
+    }
 
     /** @brief Returns whether RAM differs from the durable sparse image. */
-    bool dirty() const { return dirty_; }
+    bool dirty() const {
+        return dirty_;
+    }
 
-private:
+  private:
     static constexpr std::uint8_t kFormatVersion = 1U;
     static constexpr std::uint16_t kUnusedKey = 0xFFFFU;
 
     /** @brief Builds the stable 13-bit channel/slot/step record key. */
-    static std::uint16_t makeKey(std::uint8_t channelIndex, std::uint8_t slotIndex, std::uint8_t step);
+    static std::uint16_t makeKey(
+        std::uint8_t channelIndex,
+        std::uint8_t slotIndex,
+        std::uint8_t step);
     /** @brief Decodes and validates one stable record key. */
     static bool decodeKey(
         std::uint16_t key,

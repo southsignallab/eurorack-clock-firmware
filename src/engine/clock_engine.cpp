@@ -10,21 +10,21 @@
 
 #include "clock_core.h"
 #include "config.h"
-#include "hal/interrupt_lock.h"
 #include "engine/output_mode_resolver.h"
+#include "hal/interrupt_lock.h"
 
 namespace clockfw::engine {
 namespace {
 
 /** Events one channel may process in one scheduler quantum. */
 constexpr std::uint8_t kMaximumChannelEventsPerQuantum = 8U;
-static_assert(config::kMaximumSchedulerCatchUpTicks <= kMaximumChannelEventsPerQuantum,
-              "Caught-up ticks must not hold more events than one quantum processes");
+static_assert(
+    config::kMaximumSchedulerCatchUpTicks <= kMaximumChannelEventsPerQuantum,
+    "Caught-up ticks must not hold more events than one quantum processes");
 
 }  // namespace
 
-ClockEngine::ClockEngine(hal::GateOutputDriver& gateOutputs)
-    : gateOutputs_(gateOutputs) {
+ClockEngine::ClockEngine(hal::GateOutputDriver& gateOutputs) : gateOutputs_(gateOutputs) {
     initializeBufferTables();
 }
 
@@ -124,8 +124,7 @@ void ClockEngine::runSchedulerTick(const std::uint32_t elapsedTicks) {
     if (!playing_) {
         return;
     }
-    if (configuration_->source == ClockSource::External &&
-        !externalLocked_ &&
+    if (configuration_->source == ClockSource::External && !externalLocked_ &&
         configuration_->syncLossMode == SyncLossMode::Stop) {
         return;
     }
@@ -200,9 +199,7 @@ void ClockEngine::runSchedulerTick(const std::uint32_t elapsedTicks) {
             runtime.lastEventSlotValid = true;
             ++runtime.nextEventSerial;
             runtime.nextEventQ32 = calculateEventPositionQ32(
-                channelIndex,
-                runtime.nextEventSerial,
-                &runtime.nextEventSlotQ32);
+                channelIndex, runtime.nextEventSerial, &runtime.nextEventSlotQ32);
         }
     }
     endGatesBeforeNextRise(advance.perTickFloorQ32);
@@ -271,13 +268,12 @@ void ClockEngine::resolveConfiguration(
     configuration.source = state.source;
     configuration.syncLossMode = state.externalSync.lossMode;
     configuration.operatingMode = state.operatingMode;
-    configuration.unifiedHumanizeUs = state.operatingMode == OperatingMode::UnifiedClock
-        ? state.unifiedClock.humanizeUs
-        : 0U;
+    configuration.unifiedHumanizeUs =
+        state.operatingMode == OperatingMode::UnifiedClock ? state.unifiedClock.humanizeUs : 0U;
 
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
-        configuration.channels[channelIndex] = resolvePhysicalOutputConfiguration(
-            state, channelIndex);
+        configuration.channels[channelIndex] =
+            resolvePhysicalOutputConfiguration(state, channelIndex);
     }
 }
 

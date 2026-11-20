@@ -15,6 +15,12 @@
 
 #include <cstdint>
 
+// The Arduino-compatible platform path (src/hal) exists only for host tests and the
+// simulator. A target build that defines either host macro would compile it in.
+#if (defined(CLOCK_HOST_TEST) || defined(CLOCK_SIMULATOR)) && defined(STM32F4xx)
+#error "CLOCK_HOST_TEST and CLOCK_SIMULATOR are host-only; they must not be set for an STM32 build"
+#endif
+
 namespace clockfw::config {
 
 /** @brief Display transport supported by the built-in monochrome OLED driver. */
@@ -27,7 +33,13 @@ enum class DisplayController : std::uint8_t { Ssd1306, Ssd1315 };
 enum class UiLanguage : std::uint8_t { EnglishUs, GermanDe };
 
 /** @brief Boot-only hidden game selected at compile time. */
-enum class EasterEgg : std::uint8_t { PixelRaid = 1U, Formula1 = 2U, Breakout = 3U, EggJourney = 4U, Beatknecht = 5U };
+enum class EasterEgg : std::uint8_t {
+    PixelRaid = 1U,
+    Formula1 = 2U,
+    Breakout = 3U,
+    EggJourney = 4U,
+    Beatknecht = 5U
+};
 
 /** Active UI language. English (US) is the only shipped catalog in this prerelease. */
 inline constexpr UiLanguage kUiLanguage = UiLanguage::EnglishUs;
@@ -35,7 +47,9 @@ inline constexpr UiLanguage kUiLanguage = UiLanguage::EnglishUs;
 #ifndef CLOCK_EASTER_EGG
 #define CLOCK_EASTER_EGG 5
 #endif
-static_assert(CLOCK_EASTER_EGG >= 1 && CLOCK_EASTER_EGG <= 5, "CLOCK_EASTER_EGG must be 1, 2, 3, 4, or 5");
+static_assert(
+    CLOCK_EASTER_EGG >= 1 && CLOCK_EASTER_EGG <= 5,
+    "CLOCK_EASTER_EGG must be 1, 2, 3, 4, or 5");
 inline constexpr EasterEgg kEasterEgg = static_cast<EasterEgg>(CLOCK_EASTER_EGG);
 
 /**
@@ -49,9 +63,8 @@ inline constexpr EasterEgg kEasterEgg = static_cast<EasterEgg>(CLOCK_EASTER_EGG)
 #endif
 
 /** Display transport selected for this firmware build. */
-inline constexpr DisplayTransport kDisplayTransport = CLOCK_DISPLAY_USE_SPI
-    ? DisplayTransport::Spi
-    : DisplayTransport::I2c;
+inline constexpr DisplayTransport kDisplayTransport =
+    CLOCK_DISPLAY_USE_SPI ? DisplayTransport::Spi : DisplayTransport::I2c;
 
 /**
  * OLED controller selector. Use numeric part-family identifiers in build flags
@@ -142,7 +155,6 @@ inline constexpr std::uint32_t kDisplayRefreshMinimumMs = 30UL;
 /** Encoder hold duration that opens the selected channel/global menu. */
 inline constexpr std::uint32_t kEncoderLongPressMs = 650UL;
 
-
 /** Delay before a changed transport state is committed to Flash. */
 inline constexpr std::uint32_t kPersistenceCommitDelayMs = 3000UL;
 
@@ -188,6 +200,5 @@ inline constexpr std::uint32_t kTapIndicatorFrameDurationMs = 50UL;
 
 /** Visibility of the Performance-screen notice that the tempo is set externally. */
 inline constexpr std::uint32_t kExternalTempoNoticeMs = 1500UL;
-
 
 }  // namespace clockfw::config

@@ -47,7 +47,8 @@ void printUsage() {
         << "  clock-storybook video <story.yaml> --output <directory> [--format mp4|webm|both]\n"
         << "                        [--keep-frames] [--ffmpeg <path>] [--ffprobe <path>]\n"
         << "                        [--source-revision <text>]\n\n"
-        << "The video command runs the deterministic frame pipeline first, then the publication pipeline.\n"
+        << "The video command runs the deterministic frame pipeline first, then the publication "
+           "pipeline.\n"
         << "Optional intro/outro clips are taken from the Story YAML publication block.\n";
 }
 
@@ -56,18 +57,21 @@ void printUsage() {
 }
 
 CliOptions parseOptions(const int argc, char** argv) {
-    if (argc < 3) usageError("missing command or story path");
+    if (argc < 3)
+        usageError("missing command or story path");
     CliOptions options;
     options.command = argv[1];
     options.storyPath = argv[2];
-    if (options.command != "validate" && options.command != "frames" && options.command != "video") {
+    if (options.command != "validate" && options.command != "frames" &&
+        options.command != "video") {
         usageError("unknown command: " + options.command);
     }
 
     for (int index = 3; index < argc; ++index) {
         const std::string argument = argv[index];
         auto requireValue = [&](const std::string& name) -> std::string {
-            if (index + 1 >= argc) usageError("missing value for " + name);
+            if (index + 1 >= argc)
+                usageError("missing value for " + name);
             ++index;
             return argv[index];
         };
@@ -106,9 +110,12 @@ CliOptions parseOptions(const int argc, char** argv) {
 
 void printIssue(const StoryIssue& issue) {
     std::cerr << (issue.storyId.empty() ? "story" : issue.storyId);
-    if (issue.sourceLine > 0U) std::cerr << ':' << issue.sourceLine;
-    if (issue.sceneIndex) std::cerr << " scene=" << (*issue.sceneIndex + 1U);
-    if (issue.actionIndex) std::cerr << " action=" << (*issue.actionIndex + 1U);
+    if (issue.sourceLine > 0U)
+        std::cerr << ':' << issue.sourceLine;
+    if (issue.sceneIndex)
+        std::cerr << " scene=" << (*issue.sceneIndex + 1U);
+    if (issue.actionIndex)
+        std::cerr << " action=" << (*issue.actionIndex + 1U);
     std::cerr << ": " << issue.reason << '\n';
 }
 
@@ -117,12 +124,14 @@ std::optional<Story> loadValidatedStory(
     const std::filesystem::path& tutorialRoot) {
     const StoryParseResult parsed = parseStoryFile(storyPath);
     if (!parsed) {
-        for (const auto& issue : parsed.issues) printIssue(issue);
+        for (const auto& issue : parsed.issues)
+            printIssue(issue);
         return std::nullopt;
     }
     const auto issues = validateStory(*parsed.story, tutorialRoot);
     if (!issues.empty()) {
-        for (const auto& issue : issues) printIssue(issue);
+        for (const auto& issue : issues)
+            printIssue(issue);
         return std::nullopt;
     }
     return parsed.story;
@@ -133,11 +142,13 @@ std::filesystem::path resolveExecutable(
     const std::string& name) {
     if (configured) {
         const auto resolved = findHostExecutable(configured->string());
-        if (resolved) return *resolved;
+        if (resolved)
+            return *resolved;
         throw std::runtime_error("cannot locate " + name + ": " + configured->string());
     }
     const auto resolved = findHostExecutable(name);
-    if (!resolved) throw std::runtime_error(name + " not found on PATH");
+    if (!resolved)
+        throw std::runtime_error(name + " not found on PATH");
     return *resolved;
 }
 
@@ -153,7 +164,8 @@ int execute(const CliOptions& options) {
     const std::filesystem::path tutorialRoot = sourceRoot / "docs" / "tutorials";
     const std::filesystem::path storyPath = std::filesystem::absolute(options.storyPath);
     const auto story = loadValidatedStory(storyPath, tutorialRoot);
-    if (!story) return EXIT_FAILURE;
+    if (!story)
+        return EXIT_FAILURE;
 
     if (options.command == "validate") {
         std::cout << "VALID " << story->id << " — " << story->title << '\n';
@@ -174,13 +186,17 @@ int execute(const CliOptions& options) {
     StoryFramePipeline framePipeline(tutorialRoot, panelLayout, options.sourceRevision);
     std::cout << "Rendering Storybook frames for " << story->id << "..." << std::endl;
     const StoryFramePipelineResult generated = framePipeline.generate(
-        *story, port, framesDirectory,
-        options.command == "video" ? FrameStorageMode::SparseForPublication : FrameStorageMode::Materialized);
+        *story,
+        port,
+        framesDirectory,
+        options.command == "video" ? FrameStorageMode::SparseForPublication
+                                   : FrameStorageMode::Materialized);
     runtime.flushPersistence();
     std::filesystem::remove(statePath, ignored);
 
     if (!generated) {
-        for (const auto& issue : generated.issues) printIssue(issue);
+        for (const auto& issue : generated.issues)
+            printIssue(issue);
         return EXIT_FAILURE;
     }
 
@@ -192,17 +208,20 @@ int execute(const CliOptions& options) {
         return EXIT_SUCCESS;
     }
 
-    std::cout << "Generated " << generated.frames.size() << " frames. Starting publication..." << std::endl;
+    std::cout << "Generated " << generated.frames.size() << " frames. Starting publication..."
+              << std::endl;
     const auto ffmpeg = resolveExecutable(options.ffmpeg, "ffmpeg");
     const auto ffprobe = resolveExecutable(options.ffprobe, "ffprobe");
     std::cout << "FFmpeg: " << ffmpeg.string() << std::endl;
     std::cout << "FFprobe: " << ffprobe.string() << std::endl;
     StoryPublicationPipeline publication(ffmpeg, ffprobe);
-    const StoryPublicationResult published = publication.publish(
-        *story, storyPath, generated, output, options.formats);
+    const StoryPublicationResult published =
+        publication.publish(*story, storyPath, generated, output, options.formats);
     if (!published) {
-        for (const auto& issue : published.issues) printIssue(issue);
-        if (!options.keepFrames) std::filesystem::remove_all(framesDirectory, ignored);
+        for (const auto& issue : published.issues)
+            printIssue(issue);
+        if (!options.keepFrames)
+            std::filesystem::remove_all(framesDirectory, ignored);
         return EXIT_FAILURE;
     }
 
@@ -212,8 +231,10 @@ int execute(const CliOptions& options) {
         std::cout << "Frames: " << framesDirectory.string() << '\n';
     }
 
-    if (published.mp4Path) std::cout << "MP4: " << published.mp4Path->string() << '\n';
-    if (published.webmPath) std::cout << "WebM: " << published.webmPath->string() << '\n';
+    if (published.mp4Path)
+        std::cout << "MP4: " << published.mp4Path->string() << '\n';
+    if (published.webmPath)
+        std::cout << "WebM: " << published.webmPath->string() << '\n';
     std::cout << "SRT: " << published.srtPath.string() << '\n';
     std::cout << "WebVTT: " << published.vttPath.string() << '\n';
     std::cout << "Manifest: " << published.manifestPath.string() << '\n';

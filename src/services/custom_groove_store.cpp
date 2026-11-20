@@ -31,19 +31,18 @@ void write32(std::uint8_t* const destination, const std::uint32_t value) {
 }
 
 std::uint32_t read32(const std::uint8_t* const source) {
-    return static_cast<std::uint32_t>(source[0]) |
-        (static_cast<std::uint32_t>(source[1]) << 8U) |
+    return static_cast<std::uint32_t>(source[0]) | (static_cast<std::uint32_t>(source[1]) << 8U) |
         (static_cast<std::uint32_t>(source[2]) << 16U) |
         (static_cast<std::uint32_t>(source[3]) << 24U);
 }
 }  // namespace
 
-CustomGrooveStore::CustomGrooveStore(
-    hal::PersistentStorage& storage, const bool deferredWrites)
+CustomGrooveStore::CustomGrooveStore(hal::PersistentStorage& storage, const bool deferredWrites)
     : storage_(storage), deferredWrites_(deferredWrites) {}
 
 bool CustomGrooveStore::writeRecord(
-    const std::uint8_t slotIndex, const std::array<std::uint8_t, kRecordBytes>& record) {
+    const std::uint8_t slotIndex,
+    const std::array<std::uint8_t, kRecordBytes>& record) {
     slotCache_[slotIndex].cached = false;
     ++changeRevision_;
     if (!deferredWrites_) {
@@ -55,7 +54,8 @@ bool CustomGrooveStore::writeRecord(
 }
 
 bool CustomGrooveStore::hasPendingCommit() const {
-    return std::any_of(queuedSlots_.begin(), queuedSlots_.end(), [](const bool queued) { return queued; });
+    return std::any_of(
+        queuedSlots_.begin(), queuedSlots_.end(), [](const bool queued) { return queued; });
 }
 
 bool CustomGrooveStore::stage() {
@@ -147,8 +147,7 @@ bool CustomGrooveStore::load(
     const bool recordAvailable = queuedSlots_[slotIndex]
         ? (record = queuedRecords_[slotIndex], true)
         : storage_.readBytes(slotOffset(slotIndex), record.data(), record.size());
-    if (!recordAvailable ||
-        read32(record.data()) != kMagic || record[4] != kVersion ||
+    if (!recordAvailable || read32(record.data()) != kMagic || record[4] != kVersion ||
         read32(record.data() + kCrcOffset) != calculateCrc32(record.data(), kCrcOffset)) {
         return false;
     }
@@ -240,7 +239,8 @@ void CustomGrooveStore::name(
     const std::size_t count = std::min<std::size_t>(kNameLength, destinationSize - 1U);
     std::copy_n(slotCache_[slotIndex].name.data(), count, destination);
     destination[count] = '\0';
-    for (std::size_t index = std::strlen(destination); index > 0U && destination[index - 1U] == ' '; --index) {
+    for (std::size_t index = std::strlen(destination); index > 0U && destination[index - 1U] == ' ';
+         --index) {
         destination[index - 1U] = '\0';
     }
 }

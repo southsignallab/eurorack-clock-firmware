@@ -15,7 +15,9 @@
 namespace clockfw::sim::tutorial {
 
 /** @brief Validates one parsed story against Phase-1 semantics and docs/tutorials resources. */
-std::vector<StoryIssue> validateStory(const Story& story, const std::filesystem::path& tutorialRoot);
+std::vector<StoryIssue> validateStory(
+    const Story& story,
+    const std::filesystem::path& tutorialRoot);
 
 /** @brief Validates story-ID uniqueness across one publication/catalog set. */
 std::vector<StoryIssue> validateUniqueStoryIds(const std::vector<Story>& stories);

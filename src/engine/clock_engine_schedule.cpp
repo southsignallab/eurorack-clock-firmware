@@ -69,8 +69,12 @@ ClockEngine::StagedConfiguration ClockEngine::stageLiveConfiguration(
 
 ClockEngine::ScheduleInputs ClockEngine::foregroundScheduleInputs(
     const TempoSnapshot& tempo) const {
-    return makeScheduleInputs(*configuration_, customGrooveSpacingQ16_, *grooveSources_,
-                              tempo.externalLocked, tempo.externalBpmMilli);
+    return makeScheduleInputs(
+        *configuration_,
+        customGrooveSpacingQ16_,
+        *grooveSources_,
+        tempo.externalLocked,
+        tempo.externalBpmMilli);
 }
 
 const SequencerPatternV2* ClockEngine::liveSequencerPattern(const std::size_t channelIndex) const {
@@ -104,8 +108,7 @@ void ClockEngine::updateChannel(
     staged.configuration->channels[channelIndex] = channelConfiguration;
     staged.customGrooveSpacingQ16[channelIndex] =
         calculateCustomGrooveSpacingQ16(*grooveSources_, channelIndex, channelConfiguration);
-    swapConfiguration(
-        staged, static_cast<std::uint8_t>(1U << channelIndex), rescheduleChannel);
+    swapConfiguration(staged, static_cast<std::uint8_t>(1U << channelIndex), rescheduleChannel);
 }
 
 void ClockEngine::swapConfiguration(
@@ -309,8 +312,7 @@ ClockEngine::PreparedChannelSchedule ClockEngine::prepareChannelSchedule(
         calculateEventPositionQ32(inputs, channelIndex, epochQ32, 0U);
     std::uint64_t eventSerial = 0U;
 
-    if (positionQ32 > firstEventQ32 ||
-        (positionQ32 == firstEventQ32 && !mayUseCurrentBoundary)) {
+    if (positionQ32 > firstEventQ32 || (positionQ32 == firstEventQ32 && !mayUseCurrentBoundary)) {
         const std::uint64_t elapsedQ32 = positionQ32 - firstEventQ32;
         const std::uint64_t baseIntervalQ32 = calculateNominalBaseIntervalQ32(inputs, channelIndex);
         eventSerial = baseIntervalQ32 != 0U ? elapsedQ32 / baseIntervalQ32 : 0U;
@@ -319,11 +321,10 @@ ClockEngine::PreparedChannelSchedule ClockEngine::prepareChannelSchedule(
         // cumulative offsets below, so correct both directions before selecting
         // the first event that is still eligible.
         while (eventSerial > 0U) {
-            const std::uint64_t previousPositionQ32 = calculateEventPositionQ32(
-                inputs, channelIndex, epochQ32, eventSerial - 1U);
-            const bool previousEligible = mayUseCurrentBoundary
-                ? previousPositionQ32 >= positionQ32
-                : previousPositionQ32 > positionQ32;
+            const std::uint64_t previousPositionQ32 =
+                calculateEventPositionQ32(inputs, channelIndex, epochQ32, eventSerial - 1U);
+            const bool previousEligible = mayUseCurrentBoundary ? previousPositionQ32 >= positionQ32
+                                                                : previousPositionQ32 > positionQ32;
             if (!previousEligible) {
                 break;
             }
@@ -333,9 +334,8 @@ ClockEngine::PreparedChannelSchedule ClockEngine::prepareChannelSchedule(
         for (;;) {
             const std::uint64_t eventPositionQ32 =
                 calculateEventPositionQ32(inputs, channelIndex, epochQ32, eventSerial);
-            const bool eligible = mayUseCurrentBoundary
-                ? eventPositionQ32 >= positionQ32
-                : eventPositionQ32 > positionQ32;
+            const bool eligible = mayUseCurrentBoundary ? eventPositionQ32 >= positionQ32
+                                                        : eventPositionQ32 > positionQ32;
             if (eligible || eventSerial == UINT64_MAX) {
                 break;
             }
@@ -345,7 +345,9 @@ ClockEngine::PreparedChannelSchedule ClockEngine::prepareChannelSchedule(
 
     // A reschedule never re-emits an event slot that has already been processed.
     eventSerial = firstSerialAfterLastEvent(inputs, channelIndex, basis, eventSerial);
-    PreparedChannelSchedule schedule;
+    // Trivially constructible on purpose (see PreparedChannelSchedule); every field is
+    // written below.
+    PreparedChannelSchedule schedule;  // NOLINT(cppcoreguidelines-pro-type-member-init)
     schedule.epochQ32 = epochQ32;
     schedule.nextEventSerial = eventSerial;
     schedule.nextEventQ32 = calculateEventPositionQ32(
@@ -399,14 +401,12 @@ ClockEngine::PreparedStepPhase ClockEngine::prepareStepPhase(
     if (configuration.channels[channelIndex].common.mode == ChannelMode::Sequencer &&
         sequencerPattern != nullptr) {
         const SequencerPatternV2& pattern = *sequencerPattern;
-        const std::uint32_t seed = 0x53455132UL ^
-            (static_cast<std::uint32_t>(channelIndex + 1U) * 0x9E3779B9UL);
-        const SequencerTraversalResult current = resolveSequencerTraversal(
-            nextEventSerial, pattern, seed);
+        const std::uint32_t seed =
+            0x53455132UL ^ (static_cast<std::uint32_t>(channelIndex + 1U) * 0x9E3779B9UL);
+        const SequencerTraversalResult current =
+            resolveSequencerTraversal(nextEventSerial, pattern, seed);
         const SequencerTraversalResult previous = resolveSequencerTraversal(
-            nextEventSerial == 0U ? 0U : nextEventSerial - 1U,
-            pattern,
-            seed);
+            nextEventSerial == 0U ? 0U : nextEventSerial - 1U, pattern, seed);
         phase.derivedFromSerial = true;
         phase.step = current.active ? rotateSequencerStep(current.step, pattern) : 0U;
         phase.displayedStep = previous.active ? rotateSequencerStep(previous.step, pattern) : 0U;

@@ -11,12 +11,12 @@
 #include <cstdio>
 
 #include "ui/preset_name_alphabet.h"
+#include "ui/sequencer_editor_primitives.h"
 #include "ui_text.h"
 
 namespace clockfw::ui {
 namespace {
 constexpr std::int16_t kHeaderRuleY = 9;
-constexpr std::int16_t kBeatLabelY = 11;
 constexpr std::int16_t kGridTop = 20;
 constexpr std::int16_t kGridBottom = 48;
 constexpr std::int16_t kMarkerY = 35;
@@ -89,11 +89,11 @@ void drawTimingGrid(
         if ((step % 4U) == 0U) {
             display.drawVerticalLine(x, kGridTop, kGridBottom - kGridTop + 1);
             char beat[4]{};
-            std::snprintf(beat, sizeof(beat), "%u", static_cast<unsigned>(step / 4U + 1U));
+            std::snprintf(beat, sizeof(beat), "%u", step / 4U + 1U);
             const hal::TextBounds bounds = display.measureText(beat, 0, 0);
             display.drawText(
                 static_cast<std::int16_t>(x - static_cast<std::int16_t>(bounds.width / 2U)),
-                kBeatLabelY,
+                sequencer_editor::kBeatLabelY,
                 beat);
         } else {
             for (std::int16_t y = kGridTop; y <= kGridBottom; y += 2) {
@@ -129,7 +129,8 @@ void drawChoices(hal::OledDisplay& display, const NavigationState& navigation) {
             display.drawRectangle(x, 39, width, 13);
         }
         display.drawText(
-            static_cast<std::int16_t>(centers[index] - static_cast<std::int16_t>(bounds.width / 2U)),
+            static_cast<std::int16_t>(
+                centers[index] - static_cast<std::int16_t>(bounds.width / 2U)),
             42,
             choices[index]);
         display.setTextColor(hal::PixelColor::White);
@@ -153,7 +154,8 @@ void GrooveEditorRenderer::renderEditor(const NavigationState& navigation) {
 
     for (std::uint8_t local = 0U; local < visible; ++local) {
         const std::uint8_t step = static_cast<std::uint8_t>(start + local);
-        drawDiamond(display_, markerX(navigation, step, local, visible), step == navigation.grooveCursor);
+        drawDiamond(
+            display_, markerX(navigation, step, local, visible), step == navigation.grooveCursor);
     }
 
     char status[24]{};
@@ -162,7 +164,7 @@ void GrooveEditorRenderer::renderEditor(const NavigationState& navigation) {
         status,
         sizeof(status),
         text::get(text::TextId::CustomGrooveStatusFormat),
-        static_cast<unsigned>(navigation.grooveCursor + 1U),
+        navigation.grooveCursor + 1U,
         static_cast<int>(offset),
         static_cast<unsigned>(navigation.grooveDraft.length));
     display_.drawText(0, 55, status);
@@ -170,7 +172,11 @@ void GrooveEditorRenderer::renderEditor(const NavigationState& navigation) {
         display_.drawText(102, 55, text::get(text::TextId::Fit));
     } else {
         char zoom[5]{};
-        std::snprintf(zoom, sizeof(zoom), text::get(text::TextId::ZoomFormat), static_cast<unsigned>(navigation.grooveZoomSteps));
+        std::snprintf(
+            zoom,
+            sizeof(zoom),
+            text::get(text::TextId::ZoomFormat),
+            static_cast<unsigned>(navigation.grooveZoomSteps));
         display_.drawText(102, 55, zoom);
     }
     display_.present();
@@ -189,34 +195,40 @@ void GrooveEditorRenderer::renderRecorder(const NavigationState& navigation) {
 
     if (navigation.grooveRecordPlayheadStep >= start &&
         navigation.grooveRecordPlayheadStep < static_cast<std::uint8_t>(start + visible)) {
-        const std::uint8_t local = static_cast<std::uint8_t>(
-            navigation.grooveRecordPlayheadStep - start);
+        const std::uint8_t local =
+            static_cast<std::uint8_t>(navigation.grooveRecordPlayheadStep - start);
         const int spacing = visible > 1U ? (kRight - kLeft) / static_cast<int>(visible - 1U) : 0;
         const int x = static_cast<int>(nominalX(local, visible)) +
             (spacing * navigation.grooveRecordPlayheadPhase256) / 256;
         display_.drawVerticalLine(
-            static_cast<std::int16_t>(std::clamp(x, static_cast<int>(kLeft), static_cast<int>(kRight))),
+            static_cast<std::int16_t>(
+                std::clamp(x, static_cast<int>(kLeft), static_cast<int>(kRight))),
             kGridTop,
             kGridBottom - kGridTop + 1);
     }
 
     for (std::uint8_t local = 0U; local < visible; ++local) {
         const std::uint8_t step = static_cast<std::uint8_t>(start + local);
-        if ((navigation.grooveRecordCapturedMask & (1ULL << step)) == 0U) continue;
+        if ((navigation.grooveRecordCapturedMask & (1ULL << step)) == 0U)
+            continue;
         drawDiamond(display_, markerX(navigation, step, local, visible), false);
     }
 
     char status[24]{};
     if (navigation.grooveRecordState == GrooveRecordState::PreCount) {
         std::snprintf(
-            status, sizeof(status), "%s %u",
+            status,
+            sizeof(status),
+            "%s %u",
             text::get(text::TextId::CountIn),
             static_cast<unsigned>(navigation.grooveRecordCountInRemaining));
     } else if (navigation.grooveRecordState == GrooveRecordState::Recording) {
         std::snprintf(
-            status, sizeof(status), "%s S%02u/%u",
+            status,
+            sizeof(status),
+            "%s S%02u/%u",
             text::get(text::TextId::Recording),
-            static_cast<unsigned>(navigation.grooveRecordPlayheadStep + 1U),
+            navigation.grooveRecordPlayheadStep + 1U,
             static_cast<unsigned>(navigation.grooveDraft.length));
     } else {
         std::snprintf(status, sizeof(status), "%s", text::get(text::TextId::Ready));
@@ -227,7 +239,9 @@ void GrooveEditorRenderer::renderRecorder(const NavigationState& navigation) {
     } else {
         char zoom[5]{};
         std::snprintf(
-            zoom, sizeof(zoom), text::get(text::TextId::ZoomFormat),
+            zoom,
+            sizeof(zoom),
+            text::get(text::TextId::ZoomFormat),
             static_cast<unsigned>(navigation.grooveZoomSteps));
         display_.drawText(102, 55, zoom);
     }
@@ -252,17 +266,19 @@ void GrooveEditorRenderer::renderSlots(
     display_.drawHorizontalLine(0, 9, hal::OledDisplay::kWidth);
     for (std::uint8_t row = 0U; row < kVisibleSlotRows; ++row) {
         const std::uint8_t slot = static_cast<std::uint8_t>(navigation.scrollOffset + row);
-        if (slot >= kCustomGrooveSlotCount) break;
+        if (slot >= kCustomGrooveSlotCount)
+            break;
         const std::int16_t y = static_cast<std::int16_t>(12 + row * 10U);
         char name[services::CustomGrooveStore::kNameLength + 1U]{};
         store.name(slot, name, sizeof(name));
-        if (!store.exists(slot)) std::snprintf(name, sizeof(name), "%s", text::get(text::TextId::EmptyBracketed));
+        if (!store.exists(slot))
+            std::snprintf(name, sizeof(name), "%s", text::get(text::TextId::EmptyBracketed));
         if (slot == navigation.cursor) {
             display_.fillRectangle(0, y - 1, 126, 9);
             display_.setTextColor(hal::PixelColor::Black);
         }
         char number[4]{};
-        std::snprintf(number, sizeof(number), "%u", static_cast<unsigned>(slot + 1U));
+        std::snprintf(number, sizeof(number), "%u", slot + 1U);
         display_.drawText(2, y, number);
         display_.drawText(16, y, name);
         display_.setTextColor(hal::PixelColor::White);
@@ -270,12 +286,15 @@ void GrooveEditorRenderer::renderSlots(
     display_.present();
 }
 
-void GrooveEditorRenderer::renderConfirm(const char* const title, const NavigationState& navigation) {
+void GrooveEditorRenderer::renderConfirm(
+    const char* const title,
+    const NavigationState& navigation) {
     display_.clear();
     display_.setFont(hal::DisplayFont::Small);
     display_.setTextColor(hal::PixelColor::White);
     const hal::TextBounds bounds = display_.measureText(title, 0, 0);
-    display_.drawText(static_cast<std::int16_t>((hal::OledDisplay::kWidth - bounds.width) / 2), 16, title);
+    display_.drawText(
+        static_cast<std::int16_t>((hal::OledDisplay::kWidth - bounds.width) / 2), 16, title);
     drawChoices(display_, navigation);
     display_.present();
 }
@@ -288,9 +307,8 @@ void GrooveEditorRenderer::renderNameEntry(const NavigationState& navigation) {
         0,
         0,
         text::get(
-            navigation.grooveSlotAction == GrooveSlotAction::Rename
-                ? text::TextId::RenameGroove
-                : text::TextId::GrooveName));
+            navigation.grooveSlotAction == GrooveSlotAction::Rename ? text::TextId::RenameGroove
+                                                                    : text::TextId::GrooveName));
     display_.drawHorizontalLine(0, 9, hal::OledDisplay::kWidth);
     display_.drawText(16, 15, navigation.grooveNameBuffer.data());
     const std::int16_t cursorX = static_cast<std::int16_t>(16 + navigation.nameCharacterIndex * 6U);
@@ -315,9 +333,7 @@ void GrooveEditorRenderer::renderNameEntry(const NavigationState& navigation) {
     const hal::TextBounds saveBounds = display_.measureText(saveText, 0, 0);
     display_.drawText(0, 55, nextText);
     display_.drawText(
-        static_cast<std::int16_t>(hal::OledDisplay::kWidth - saveBounds.width),
-        55,
-        saveText);
+        static_cast<std::int16_t>(hal::OledDisplay::kWidth - saveBounds.width), 55, saveText);
     display_.present();
 }
 

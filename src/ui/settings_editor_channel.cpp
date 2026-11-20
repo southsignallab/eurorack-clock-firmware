@@ -22,11 +22,11 @@ void SettingsEditor::adjustCommonChannel(
     ChannelConfig& channel = state_.channels[channelIndex];
 
     if (rowIndex == 3U) {
-        channel.common.swingPercent = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(channel.common.swingPercent) + delta, 0, 50));
+        channel.common.swingPercent = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(channel.common.swingPercent) + delta, 0, 50));
     } else if (rowIndex == 4U) {
-        channel.common.probabilityPercent = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(channel.common.probabilityPercent) + delta, 0, 100));
+        channel.common.probabilityPercent = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(channel.common.probabilityPercent) + delta, 0, 100));
     } else if (rowIndex == 5U) {
         const std::size_t currentIndex = findGateLengthOptionIndex(channel.common.gateLengthMs);
         const std::size_t newIndex = static_cast<std::size_t>(clampInt(
@@ -35,8 +35,8 @@ void SettingsEditor::adjustCommonChannel(
             static_cast<int>(kGateLengthOptionsMs.size() - 1U)));
         channel.common.gateLengthMs = kGateLengthOptionsMs[newIndex];
     } else if (rowIndex == 6U) {
-        channel.common.phasePercent = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(channel.common.phasePercent) + delta, 0, 99));
+        channel.common.phasePercent = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(channel.common.phasePercent) + delta, 0, 99));
     } else if (rowIndex == 7U) {
         channel.common.resetMode = delta > 0 ? ResetMode::Free : ResetMode::Global;
     } else if (rowIndex == 8U) {
@@ -57,17 +57,15 @@ void SettingsEditor::adjustRate(
     if (rowIndex == 0U) {
         const std::size_t currentIndex = findRateOptionIndex(channel.common);
         const std::size_t newIndex = static_cast<std::size_t>(clampInt(
-            static_cast<int>(currentIndex) + delta,
-            0,
-            static_cast<int>(kRateOptions.size() - 1U)));
+            static_cast<int>(currentIndex) + delta, 0, static_cast<int>(kRateOptions.size() - 1U)));
         channel.common.rate.mode = kRateOptions[newIndex].mode;
         channel.common.rate.factor = kRateOptions[newIndex].factor;
     } else if (rowIndex == 1U) {
-        channel.common.rate.numerator = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(channel.common.rate.numerator) + delta, 1, 16));
+        channel.common.rate.numerator = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(channel.common.rate.numerator) + delta, 1, 16));
     } else if (rowIndex == 2U) {
-        channel.common.rate.denominator = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(channel.common.rate.denominator) + delta, 1, 16));
+        channel.common.rate.denominator = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(channel.common.rate.denominator) + delta, 1, 16));
     }
 
     engine_.updateChannel(channelIndex, channel, true);
@@ -80,8 +78,8 @@ void SettingsEditor::adjustClock(
     ChannelConfig& channel = state_.channels[channelIndex];
 
     if (rowIndex == 0U) {
-        channel.clock.meter.beats = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(channel.clock.meter.beats) + delta, 1, 16));
+        channel.clock.meter.beats = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(channel.clock.meter.beats) + delta, 1, 16));
     } else if (rowIndex == 1U) {
         const std::size_t currentIndex = findBeatUnitOptionIndex(channel.clock.meter.unit);
         const std::size_t newIndex = static_cast<std::size_t>(clampInt(
@@ -101,8 +99,8 @@ void SettingsEditor::adjustEuclid(
     ChannelConfig& channel = state_.channels[channelIndex];
 
     if (rowIndex == 0U) {
-        channel.euclid.steps = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(channel.euclid.steps) + delta, 1, 64));
+        channel.euclid.steps = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(channel.euclid.steps) + delta, 1, 64));
         if (channel.euclid.hits > channel.euclid.steps) {
             channel.euclid.hits = channel.euclid.steps;
         }
@@ -110,13 +108,11 @@ void SettingsEditor::adjustEuclid(
             channel.euclid.rotation = 0U;
         }
     } else if (rowIndex == 1U) {
-        channel.euclid.hits = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(channel.euclid.hits) + delta, 0, channel.euclid.steps));
+        channel.euclid.hits = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(channel.euclid.hits) + delta, 0, channel.euclid.steps));
     } else if (rowIndex == 2U) {
         channel.euclid.rotation = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(channel.euclid.rotation) + delta,
-            0,
-            channel.euclid.steps - 1));
+            static_cast<int>(channel.euclid.rotation) + delta, 0, channel.euclid.steps - 1));
     }
 
     engine_.updateChannel(channelIndex, channel, false);
@@ -129,16 +125,14 @@ void SettingsEditor::adjustSequencer(
     ChannelConfig& channel = state_.channels[channelIndex];
 
     if (rowIndex == 0U) {
-        channel.sequencer.length = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(channel.sequencer.length) + delta, 1, 64));
+        channel.sequencer.length = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(channel.sequencer.length) + delta, 1, 64));
         if (channel.sequencer.rotation >= channel.sequencer.length) {
             channel.sequencer.rotation = 0U;
         }
     } else if (rowIndex == 1U) {
         channel.sequencer.rotation = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(channel.sequencer.rotation) + delta,
-            0,
-            channel.sequencer.length - 1));
+            static_cast<int>(channel.sequencer.rotation) + delta, 0, channel.sequencer.length - 1));
     }
 
     engine_.updateChannel(channelIndex, channel, false);

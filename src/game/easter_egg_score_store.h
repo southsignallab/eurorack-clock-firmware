@@ -16,7 +16,12 @@
 namespace clockfw::game {
 
 /** @brief Identifies the independent durable score slot used by one Easter egg. */
-enum class EasterEggScoreId : std::uint8_t { PixelRaid = 0U, Formula1 = 1U, Breakout = 2U, EggJourney = 3U };
+enum class EasterEggScoreId : std::uint8_t {
+    PixelRaid = 0U,
+    Formula1 = 1U,
+    Breakout = 2U,
+    EggJourney = 3U
+};
 
 /** @brief Persistent three-letter arcade high-score entry. */
 struct HighScoreEntry {
@@ -26,7 +31,7 @@ struct HighScoreEntry {
 
 /** @brief Stores one Easter-egg high score in its own dedicated NVM slot. */
 class EasterEggScoreStore final {
-public:
+  public:
     /** @brief Constructs a store for the selected game; Pixel Raid remains the compatibility default. */
     explicit EasterEggScoreStore(
         hal::PersistentStorage& storage,
@@ -38,10 +43,14 @@ public:
     /** @brief Persists a validated score entry immediately. Safe because boot games run before clocks. */
     [[nodiscard]] bool save(const HighScoreEntry& entry);
 
-private:
-    static constexpr std::size_t kStorageBaseOffset = hal::persistent_layout::kLegacyScoreRegionOffset;
+  private:
+    static constexpr std::size_t kStorageBaseOffset =
+        hal::persistent_layout::kLegacyScoreRegionOffset;
     static constexpr std::size_t kRecordSize = 16U;
     static constexpr std::size_t kSlotCount = 4U;
+    static_assert(
+        kRecordSize * kSlotCount == hal::persistent_layout::kLegacyScoreRegionBytes,
+        "Legacy score records must fill the legacy score region exactly.");
 
     /** @brief Calculates the standard reflected CRC-32 used throughout firmware persistence. */
     static std::uint32_t calculateCrc32(const std::uint8_t* data, std::size_t size);
@@ -53,10 +62,5 @@ private:
     hal::PersistentStorage& storage_;
     EasterEggScoreId scoreId_;
 };
-
-static_assert(
-    hal::persistent_layout::kLegacyScoreRegionOffset + 16U * 4U <=
-        hal::persistent_layout::kLeaderboardRegionOffset,
-    "Legacy score records overlap the leaderboard region.");
 
 }  // namespace clockfw::game

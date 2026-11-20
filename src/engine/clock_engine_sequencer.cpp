@@ -85,8 +85,8 @@ void ClockEngine::serviceSequencerRatchets() {
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
         ChannelRuntime& runtime = channelRuntime_[channelIndex];
         std::uint8_t guard = 0U;
-        while (runtime.ratchetRemaining > 0U &&
-               masterPositionQ32_ >= runtime.nextRatchetQ32 && guard++ < 7U) {
+        while (runtime.ratchetRemaining > 0U && masterPositionQ32_ >= runtime.nextRatchetQ32 &&
+               guard++ < 7U) {
             // A bounded ratchet must create a real rising edge. Normal pulse sizing
             // leaves a LOW gap; otherwise the rise moves by one tick (setGateState).
             setGateState(channelIndex, false);
@@ -131,10 +131,10 @@ void ClockEngine::fireChannelEvent(const std::size_t channelIndex) {
             if (sequencerPatternV2Active_[channelIndex]) {
                 sequencerV2 = true;
                 activePattern = sequencerPatterns_[channelIndex];
-                const std::uint32_t seed = 0x53455132UL ^
-                    (static_cast<std::uint32_t>(channelIndex + 1U) * 0x9E3779B9UL);
-                const SequencerTraversalResult traversal = resolveSequencerTraversal(
-                    runtime.nextEventSerial, *activePattern, seed);
+                const std::uint32_t seed =
+                    0x53455132UL ^ (static_cast<std::uint32_t>(channelIndex + 1U) * 0x9E3779B9UL);
+                const SequencerTraversalResult traversal =
+                    resolveSequencerTraversal(runtime.nextEventSerial, *activePattern, seed);
                 if (traversal.active) {
                     runtime.displayedStep = rotateSequencerStep(traversal.step, *activePattern);
                     hit = sequencerPatternGate(*activePattern, runtime.displayedStep);
@@ -178,34 +178,35 @@ void ClockEngine::fireChannelEvent(const std::size_t channelIndex) {
     }
 
     const std::uint64_t currentEventQ32 = runtime.nextEventQ32;
-    const std::uint64_t nextEventQ32 = calculateEventPositionQ32(
-        channelIndex, runtime.nextEventSerial + 1U);
+    const std::uint64_t nextEventQ32 =
+        calculateEventPositionQ32(channelIndex, runtime.nextEventSerial + 1U);
     const std::uint64_t q32PerTick = std::max<std::uint64_t>(minimumOutputIntervalQ32(), 1U);
-    const std::uint64_t spanQ32 = nextEventQ32 > currentEventQ32
-        ? nextEventQ32 - currentEventQ32
-        : q32PerTick;
+    const std::uint64_t spanQ32 =
+        nextEventQ32 > currentEventQ32 ? nextEventQ32 - currentEventQ32 : q32PerTick;
     const std::uint64_t spanTicks64 = std::max<std::uint64_t>(ceilDivide(spanQ32, q32PerTick), 1U);
 
     std::uint8_t ratchetCount = sequencerV2 ? stepMetadata.ratchetCount : 1U;
     const std::uint64_t maximumDistinctRatchets = std::max<std::uint64_t>(spanTicks64 / 2U, 1U);
     ratchetCount = static_cast<std::uint8_t>(std::min<std::uint64_t>(
-        ratchetCount, std::min<std::uint64_t>(maximumDistinctRatchets, kSequencerMaximumRatchetCount)));
-    const std::uint64_t subIntervalTicks64 = std::max<std::uint64_t>(spanTicks64 / ratchetCount, 1U);
+        ratchetCount,
+        std::min<std::uint64_t>(maximumDistinctRatchets, kSequencerMaximumRatchetCount)));
+    const std::uint64_t subIntervalTicks64 =
+        std::max<std::uint64_t>(spanTicks64 / ratchetCount, 1U);
 
-    const std::uint8_t dutyPercent = sequencerV2
-        ? sequencerGateProfileDutyPercent(stepMetadata.gateProfile)
-        : 0U;
+    const std::uint8_t dutyPercent =
+        sequencerV2 ? sequencerGateProfileDutyPercent(stepMetadata.gateProfile) : 0U;
     std::uint32_t gateTicks = 1U;
     if (dutyPercent != 0U) {
-        const std::uint64_t requested = std::max<std::uint64_t>(
-            (subIntervalTicks64 * dutyPercent) / 100U, 1U);
+        const std::uint64_t requested =
+            std::max<std::uint64_t>((subIntervalTicks64 * dutyPercent) / 100U, 1U);
         const std::uint64_t maximum = ratchetCount > 1U && subIntervalTicks64 > 1U
             ? subIntervalTicks64 - 1U
             : subIntervalTicks64;
         gateTicks = static_cast<std::uint32_t>(std::min(requested, maximum));
     } else {
         const std::uint16_t gateLengthMs = sequencerV2
-            ? sequencerGateProfileMilliseconds(stepMetadata.gateProfile, channel.common.gateLengthMs)
+            ? sequencerGateProfileMilliseconds(
+                  stepMetadata.gateProfile, channel.common.gateLengthMs)
             : channel.common.gateLengthMs;
         const std::uint64_t subIntervalUs = subIntervalTicks64 * config::kSchedulerTickUs;
         gateTicks = core::calculateGatePulseTicks(
@@ -215,16 +216,16 @@ void ClockEngine::fireChannelEvent(const std::size_t channelIndex) {
     bool tieEnabled = false;
     if (sequencerV2 && activePattern != nullptr && stepMetadata.tie && ratchetCount == 1U &&
         activePattern->direction != SequencerPlayDirection::Random) {
-        const std::uint32_t seed = 0x53455132UL ^
-            (static_cast<std::uint32_t>(channelIndex + 1U) * 0x9E3779B9UL);
-        const SequencerTraversalResult nextTraversal = resolveSequencerTraversal(
-            runtime.nextEventSerial + 1U, *activePattern, seed);
+        const std::uint32_t seed =
+            0x53455132UL ^ (static_cast<std::uint32_t>(channelIndex + 1U) * 0x9E3779B9UL);
+        const SequencerTraversalResult nextTraversal =
+            resolveSequencerTraversal(runtime.nextEventSerial + 1U, *activePattern, seed);
         if (nextTraversal.active) {
             const std::uint8_t nextStep = rotateSequencerStep(nextTraversal.step, *activePattern);
-            const SequencerStepMetadata nextMetadata = unpackSequencerStepMetadata(
-                (*sequencerStepMetadata_[channelIndex])[nextStep]);
-            tieEnabled = sequencerPatternGate(*activePattern, nextStep) &&
-                nextMetadata.ratchetCount == 1U;
+            const SequencerStepMetadata nextMetadata =
+                unpackSequencerStepMetadata((*sequencerStepMetadata_[channelIndex])[nextStep]);
+            tieEnabled =
+                sequencerPatternGate(*activePattern, nextStep) && nextMetadata.ratchetCount == 1U;
         }
     }
 

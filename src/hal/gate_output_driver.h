@@ -15,7 +15,7 @@ namespace clockfw::hal {
 
 /** @brief Owns all physical gate-output GPIO operations. */
 class GateOutputDriver final {
-public:
+  public:
     /**
      * @brief Configures output GPIOs and leaves logical gate output muted.
      *
@@ -67,7 +67,7 @@ public:
     /** @brief Returns whether the logical gate-output stage currently accepts HIGH requests. */
     bool outputStageEnabled() const;
 
-private:
+  private:
     /** @brief Writes channel bit masks as GPIOB lines and updates the cached levels. */
     void writeChannelMasks(std::uint8_t setChannels, std::uint8_t resetChannels);
 

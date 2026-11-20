@@ -12,7 +12,8 @@
 
 namespace clockfw::hal {
 
-const std::array<std::uint8_t, OledDisplay::kFramebufferSize>& OledDisplay::panelFramebufferForSimulator() const {
+const std::array<std::uint8_t, OledDisplay::kFramebufferSize>& OledDisplay::
+    panelFramebufferForSimulator() const {
     // Production keeps the SSD1306/SSD1315 controller in A1/C8 and rotates the
     // bytes sent to display RAM when 180-degree mounting is selected. Apply the
     // same transfer transform here so simulator and hardware share one contract.

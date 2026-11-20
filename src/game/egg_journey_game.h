@@ -19,8 +19,19 @@
 namespace clockfw::game {
 
 /** @brief Lunar obstacle game with craters, falling asteroids, jumping, and a durable high score. */
+namespace egg_journey {
+
+/** Screen row of the ground line, in pixels. */
+inline constexpr std::int16_t kGroundY = 46;
+/** Height of the egg sprite, in pixels. */
+inline constexpr std::int16_t kEggHeight = 11;
+/** Fixed-point scale of the jump physics: units per pixel. */
+inline constexpr std::int16_t kPhysicsScale = 8;
+
+}  // namespace egg_journey
+
 class EggJourneyGame final {
-public:
+  public:
     /** @brief Constructs the game around the shared display, controls, safe gate HAL, and score slot. */
     EggJourneyGame(
         hal::OledDisplay& display,
@@ -37,7 +48,7 @@ public:
     bool serviceForSimulator(std::uint32_t nowMs);
 #endif
 
-private:
+  private:
     friend struct EggJourneyGameTestAccess;
 
     enum class FailureMode : std::uint8_t { None, Broken, Flattened };

@@ -16,7 +16,12 @@
 
 namespace clockfw::game {
 
-enum class ArcadeGameId : std::uint8_t { PixelRaid = 0U, Formula1 = 1U, Breakout = 2U, EggJourney = 3U };
+enum class ArcadeGameId : std::uint8_t {
+    PixelRaid = 0U,
+    Formula1 = 1U,
+    Breakout = 2U,
+    EggJourney = 3U
+};
 
 struct LeaderboardEntry final {
     std::uint32_t score = 0U;
@@ -30,7 +35,7 @@ struct LeaderboardTable final {
 };
 
 class ArcadeLeaderboardStore final {
-public:
+  public:
     /** @brief Constructs one leaderboard view for a specific ranked Easter egg. */
     ArcadeLeaderboardStore(hal::PersistentStorage& storage, ArcadeGameId gameId);
     /** @brief Loads and validates the Top-100 table, migrating a historical single score when needed. */
@@ -38,7 +43,9 @@ public:
     /** @brief Returns the zero-based insertion rank for a score, or -1 when it does not qualify. */
     std::int16_t qualifyingRank(std::uint32_t score, const LeaderboardTable& table) const;
     /** @brief Inserts one named score in sorted order and commits the updated table atomically. */
-    [[nodiscard]] std::int16_t insertAndSave(std::uint32_t score, const std::array<char, 4U>& initials);
+    [[nodiscard]] std::int16_t insertAndSave(
+        std::uint32_t score,
+        const std::array<char, 4U>& initials);
     /** @brief Returns true after this ranked Easter egg has created its durable leaderboard record. */
     bool hasPersistentRecord() const;
     /** @brief Creates the durable leaderboard record on first launch, preserving any legacy score. */
@@ -46,8 +53,9 @@ public:
     /** @brief Clears the complete Top-100 table while retaining the durable started marker. */
     [[nodiscard]] bool clear();
 
-private:
-    static constexpr std::size_t kStorageBaseOffset = hal::persistent_layout::kLeaderboardRegionOffset;
+  private:
+    static constexpr std::size_t kStorageBaseOffset =
+        hal::persistent_layout::kLeaderboardRegionOffset;
     static constexpr std::size_t kHeaderBytes = 8U;
     static constexpr std::size_t kEntryBytes = 8U;
     static constexpr std::size_t kCrcBytes = 4U;
@@ -73,8 +81,7 @@ private:
 };
 
 static_assert(
-    hal::persistent_layout::kLeaderboardRegionOffset +
-            (8U + 100U * 8U + 4U) * 4U <=
+    hal::persistent_layout::kLeaderboardRegionOffset + (8U + 100U * 8U + 4U) * 4U <=
         hal::PersistentStorage::kCapacityBytes,
     "Persistent storage is too small for four Top-100 leaderboards.");
 

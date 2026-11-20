@@ -34,6 +34,47 @@ CLOCK follows semantic release milestones from the stable 1.0.0 baseline. The de
 - The broken anchor in user guide chapter 2 points to chapter 20; chapter 24 no longer presents I2C as a display option.
 - Coverage and assertion figures are kept once, in `docs/TEST_COVERAGE.md` and the host test run, instead of repeating outdated copies in `README.md` and `test/README.md`; the input-suite case count in `docs/TEST_COVERAGE.md` is 125.
 
+### Changed: HIL ledger state for tests that cannot apply
+
+- `scripts/check_hil_qualification.py` accepts `NOT_APPLICABLE` with a mandatory, non-empty `reason` and no evidence; the all-PASS gate accepts it and the summary counts it separately. HIL-DISP-001, -003 and -004 are `NOT_APPLICABLE`: no firmware environment builds an I2C display profile, PB6/PB7 belong to the encoder.
+
+### Changed: release summary
+
+- The release summary has a `## Known issues` section from 1.2.0 on, with at most eight items or a sentence that none are known; `scripts/check_release_summary.py` counts these bullets separately and `scripts/prepare_release_summary.py` creates the section. The 1.2.0 summary lists three known issues.
+
+### Documentation: one source per topic, generated tables, audits
+
+- Persistence is described once, in `docs/ARCHITECTURE.md`: a logical image map generated from `src/hal/persistent_layout.h` and the stores, the stored state, and the schema versions with the lifetime of each decoder (prerelease formats until 1.2.x, v8 and v12 until 2.0.0). `docs/CONFIGURATION.md` and `docs/V1_FORWARD_COMPATIBILITY.md` link to it.
+- The interrupt priorities and a table of timing constants in `docs/TIMING.md` are generated from the code; `scripts/generate_reference_tables.py --check` covers them.
+- Coverage gates are kept in `docs/TEST_COVERAGE.md` and the release preparation and tag-build steps in `docs/RELEASE_PROCESS.md`; `docs/DEVELOPMENT.md` and `docs/DEVELOPER_README.md` link to them.
+- User guide checked against the menu model, defaults, timing and pin map: One Clock lists GROOVE, the Groove editor zoom steps, the `INTEGER` divider family, the conditional `HI-SCORES` root row, the `FONT` license rows, `DIV/MULT` in the recipes and the Sequencer recipe order are corrected; `README.md` lists `AUTOSTART`; the legacy I2C transport is described as compiled for the target but not linked into any image.
+
+### Changed: code formatting
+
+- `.clang-format` matches the house style (case labels indented, one argument or parameter per line when a call breaks, two spaces before trailing comments, no comment reflow) and names the pinned version, clang-format 23.1.5; `sim/tutorial/.clang-format` packs call arguments. `CONTRIBUTING.md` names the version.
+- `src/`, `lib/`, `sim/` and `vcv/` are formatted with it, except thirteen implementation files that would exceed the 450-line limit and still need to be split. Bodies of control statements in the HAL, the games and the screensavers have braces. All ten firmware images are byte-identical to the previous commit.
+- `scripts/check_architecture.py` skips the message of a `static_assert` that is wrapped over several lines when it looks for UI text outside `src/ui_text.h`.
+
+### Changed: code clean-up without behavior change
+
+- Bitwise operations in the engine, the HAL, the stores and the screensavers use unsigned operands of fixed width; no operand is a promoted signed `int` any more.
+- Quantities defined more than once have one definition: the exit long-press time of the boot games (`src/game/boot_game_controls.h`), the OLED page width, the Egg Journey ground, egg height and physics scale, the editor beat-label row and the dialog choice columns.
+- The Custom Groove region is defined in `src/hal/persistent_layout.h` like every other persistence region, with compile-time order checks; the layout and its values are unchanged.
+- The factory groove names `OFF` … `CUSTOM` are defined in `src/ui_text.h`; the texts are unchanged, and the architecture check now covers the groove catalog.
+- Every discarded result states its reason; an unused test accessor and redundant casts are removed; deliberately uninitialized scheduler records and defensive initial values in the tick path are marked with the reason.
+- The Groove editor cursor wraps through `UiController::wrapIndex()`; `scripts/check_architecture.py` rejects an inline modulo on a cursor index (the F-004 error class).
+- `src/config.h` stops an STM32 build that sets `CLOCK_HOST_TEST` or `CLOCK_SIMULATOR`, and the architecture check allows Arduino-style framework includes in `src/` only in the host-test and simulator branch.
+- The gate-buffer comments in `src/pin_map.h` no longer name buffer input positions that differ between hardware variants.
+- `BUILD-INFO.txt` hashes the linker map with the build and package directories replaced by `<build>` and `<packages>`, so the same source gives the same file in any build directory.
+- `.clang-tidy` is the proposed project profile with a reason per check; `scripts/check_static_analysis.py` compares the findings with `scripts/static_analysis_baseline.json` and fails on new ones. It is not yet part of CI.
+
+### Changed: code documentation tooling
+
+- The Doxyfile defines `@license`, which removes 209 Doxygen warnings.
+- `scripts/check_doxygen.py` counts Doxygen warnings per source directory and fails when a directory exceeds `scripts/doxygen_warning_baseline.json`; a new undocumented declaration, including a public struct field, therefore fails it.
+- CI uploads the generated Doxygen HTML as a workflow artifact.
+- `CONTRIBUTING.md` holds the rules for code documentation: what is documented, units, interrupt-context contracts and the warning baseline.
+
 ## [1.2.0] - YYYY-MM-DD
 
 ### Changed: repository in the citation metadata, CI step names

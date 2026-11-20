@@ -6,6 +6,7 @@
  * @license PolyForm-Noncommercial-1.0.0
  */
 #include "game/formula1_game.h"
+#include "game/boot_game_controls.h"
 
 #include <algorithm>
 #include <array>
@@ -17,7 +18,6 @@
 namespace clockfw::game {
 namespace {
 constexpr std::uint32_t kFrameIntervalMs = 45U;
-constexpr std::uint32_t kExitLongPressMs = 900U;
 constexpr std::uint32_t kCrashDurationMs = 820U;
 constexpr std::int16_t kHorizonY = 12;
 constexpr std::int16_t kRoadBottomY = 46;

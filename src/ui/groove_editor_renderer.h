@@ -15,7 +15,7 @@ namespace clockfw::ui {
 
 /** @brief Renders the graphical Custom Groove editor on the production framebuffer. */
 class GrooveEditorRenderer final {
-public:
+  public:
     /** @brief Constructs the renderer around the OLED HAL. */
     explicit GrooveEditorRenderer(hal::OledDisplay& display);
 
@@ -26,9 +26,7 @@ public:
     void renderRecorder(const NavigationState& navigation);
 
     /** @brief Renders the ten-slot fixed-record Custom Groove library. */
-    void renderSlots(
-        const NavigationState& navigation,
-        const services::CustomGrooveStore& store);
+    void renderSlots(const NavigationState& navigation, const services::CustomGrooveStore& store);
 
     /** @brief Renders overwrite/discard confirmation screens. */
     void renderConfirm(const char* title, const NavigationState& navigation);
@@ -36,7 +34,7 @@ public:
     /** @brief Renders the Custom Groove name editor. */
     void renderNameEntry(const NavigationState& navigation);
 
-private:
+  private:
     hal::OledDisplay& display_;
 };
 

@@ -29,8 +29,7 @@ void writeUint16LeMigration(std::uint8_t* const destination, const std::uint16_t
 
 /** @brief Reads one little-endian 32-bit value from a pre-v8 migration record. */
 std::uint32_t readUint32LeMigration(const std::uint8_t* const source) {
-    return static_cast<std::uint32_t>(source[0]) |
-        (static_cast<std::uint32_t>(source[1]) << 8U) |
+    return static_cast<std::uint32_t>(source[0]) | (static_cast<std::uint32_t>(source[1]) << 8U) |
         (static_cast<std::uint32_t>(source[2]) << 16U) |
         (static_cast<std::uint32_t>(source[3]) << 24U);
 }
@@ -38,8 +37,7 @@ std::uint32_t readUint32LeMigration(const std::uint8_t* const source) {
 /** @brief Returns whether a legacy preset-name byte belongs to the supported alphabet. */
 bool isAllowedLegacyPresetCharacter(const char character) {
     return character == ' ' || character == '-' || character == '_' ||
-        (character >= '0' && character <= '9') ||
-        (character >= 'A' && character <= 'Z');
+        (character >= '0' && character <= '9') || (character >= 'A' && character <= 'Z');
 }
 
 }  // namespace
@@ -60,8 +58,7 @@ bool PersistentStateService::deserializeV7CurrentRecord(
     ClockState& state) {
     constexpr std::uint32_t kCurrentMagicValue = 0x37525543UL;  // "CUR7"
     if (readUint32LeMigration(record.data()) != kCurrentMagicValue ||
-        record[4] != kV7SchemaVersion ||
-        record[5] != 0U ||
+        record[4] != kV7SchemaVersion || record[5] != 0U ||
         readUint16LeMigration(record.data() + 6U) != kV7StatePayloadSize ||
         readUint32LeMigration(record.data() + kV7CurrentRecordSize - 4U) !=
             calculateCrc32(record.data(), kV7CurrentRecordSize - 4U)) {
@@ -70,7 +67,10 @@ bool PersistentStateService::deserializeV7CurrentRecord(
 
     constexpr std::size_t kPayloadOffset = 8U;
     std::array<std::uint8_t, kV7StatePayloadSize> payload{};
-    std::copy_n(record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset), payload.size(), payload.begin());
+    std::copy_n(
+        record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset),
+        payload.size(),
+        payload.begin());
     return deserializeV7State(payload, state);
 }
 
@@ -82,8 +82,7 @@ bool PersistentStateService::deserializeV7PresetRecord(
     constexpr std::size_t kNameOffset = 8U;
     constexpr std::size_t kPayloadOffset = kNameOffset + kPresetNameLength;
     if (readUint32LeMigration(record.data()) != kPresetMagicValue ||
-        record[4] != kV7SchemaVersion ||
-        record[5] != 1U ||
+        record[4] != kV7SchemaVersion || record[5] != 1U ||
         readUint16LeMigration(record.data() + 6U) != kV7StatePayloadSize ||
         readUint32LeMigration(record.data() + kV7PresetRecordSize - 4U) !=
             calculateCrc32(record.data(), kV7PresetRecordSize - 4U)) {
@@ -99,7 +98,10 @@ bool PersistentStateService::deserializeV7PresetRecord(
     name[kPresetNameLength] = '\0';
 
     std::array<std::uint8_t, kV7StatePayloadSize> payload{};
-    std::copy_n(record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset), payload.size(), payload.begin());
+    std::copy_n(
+        record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset),
+        payload.size(),
+        payload.begin());
     return deserializeV7State(payload, state);
 }
 
@@ -120,8 +122,7 @@ bool PersistentStateService::deserializeV6CurrentRecord(
     ClockState& state) {
     constexpr std::uint32_t kCurrentMagicValue = 0x36525543UL;  // "CUR6"
     if (readUint32LeMigration(record.data()) != kCurrentMagicValue ||
-        record[4] != kV6SchemaVersion ||
-        record[5] != 0U ||
+        record[4] != kV6SchemaVersion || record[5] != 0U ||
         readUint16LeMigration(record.data() + 6U) != kV6StatePayloadSize ||
         readUint32LeMigration(record.data() + kV6CurrentRecordSize - 4U) !=
             calculateCrc32(record.data(), kV6CurrentRecordSize - 4U)) {
@@ -130,7 +131,10 @@ bool PersistentStateService::deserializeV6CurrentRecord(
 
     constexpr std::size_t kPayloadOffset = 8U;
     std::array<std::uint8_t, kV6StatePayloadSize> payload{};
-    std::copy_n(record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset), payload.size(), payload.begin());
+    std::copy_n(
+        record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset),
+        payload.size(),
+        payload.begin());
     return deserializeV6State(payload, state);
 }
 
@@ -142,8 +146,7 @@ bool PersistentStateService::deserializeV6PresetRecord(
     constexpr std::size_t kNameOffset = 8U;
     constexpr std::size_t kPayloadOffset = kNameOffset + kPresetNameLength;
     if (readUint32LeMigration(record.data()) != kPresetMagicValue ||
-        record[4] != kV6SchemaVersion ||
-        record[5] != 1U ||
+        record[4] != kV6SchemaVersion || record[5] != 1U ||
         readUint16LeMigration(record.data() + 6U) != kV6StatePayloadSize ||
         readUint32LeMigration(record.data() + kV6PresetRecordSize - 4U) !=
             calculateCrc32(record.data(), kV6PresetRecordSize - 4U)) {
@@ -159,7 +162,10 @@ bool PersistentStateService::deserializeV6PresetRecord(
     name[kPresetNameLength] = '\0';
 
     std::array<std::uint8_t, kV6StatePayloadSize> payload{};
-    std::copy_n(record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset), payload.size(), payload.begin());
+    std::copy_n(
+        record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset),
+        payload.size(),
+        payload.begin());
     return deserializeV6State(payload, state);
 }
 
@@ -184,8 +190,7 @@ bool PersistentStateService::deserializeV5CurrentRecord(
     ClockState& state) {
     constexpr std::uint32_t kCurrentMagicValue = 0x35525543UL;  // "CUR5"
     if (readUint32LeMigration(record.data()) != kCurrentMagicValue ||
-        record[4] != kV5SchemaVersion ||
-        record[5] != 0U ||
+        record[4] != kV5SchemaVersion || record[5] != 0U ||
         readUint16LeMigration(record.data() + 6U) != kV5StatePayloadSize ||
         readUint32LeMigration(record.data() + kV5CurrentRecordSize - 4U) !=
             calculateCrc32(record.data(), kV5CurrentRecordSize - 4U)) {
@@ -194,7 +199,10 @@ bool PersistentStateService::deserializeV5CurrentRecord(
 
     constexpr std::size_t kPayloadOffset = 8U;
     std::array<std::uint8_t, kV5StatePayloadSize> payload{};
-    std::copy_n(record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset), payload.size(), payload.begin());
+    std::copy_n(
+        record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset),
+        payload.size(),
+        payload.begin());
     return deserializeV5State(payload, state);
 }
 
@@ -206,8 +214,7 @@ bool PersistentStateService::deserializeV5PresetRecord(
     constexpr std::size_t kNameOffset = 8U;
     constexpr std::size_t kPayloadOffset = kNameOffset + kPresetNameLength;
     if (readUint32LeMigration(record.data()) != kPresetMagicValue ||
-        record[4] != kV5SchemaVersion ||
-        record[5] != 1U ||
+        record[4] != kV5SchemaVersion || record[5] != 1U ||
         readUint16LeMigration(record.data() + 6U) != kV5StatePayloadSize ||
         readUint32LeMigration(record.data() + kV5PresetRecordSize - 4U) !=
             calculateCrc32(record.data(), kV5PresetRecordSize - 4U)) {
@@ -223,7 +230,10 @@ bool PersistentStateService::deserializeV5PresetRecord(
     name[kPresetNameLength] = '\0';
 
     std::array<std::uint8_t, kV5StatePayloadSize> payload{};
-    std::copy_n(record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset), payload.size(), payload.begin());
+    std::copy_n(
+        record.begin() + static_cast<std::ptrdiff_t>(kPayloadOffset),
+        payload.size(),
+        payload.begin());
     return deserializeV5State(payload, state);
 }
 
@@ -263,8 +273,7 @@ bool PersistentStateService::deserializePreviousCurrentRecord(
     ClockState& state) {
     constexpr std::uint32_t kCurrentMagicValue = 0x34525543UL;  // "CUR4"
     if (readUint32LeMigration(record.data()) != kCurrentMagicValue ||
-        record[4] != kPreviousSchemaVersion ||
-        record[5] != 0U ||
+        record[4] != kPreviousSchemaVersion || record[5] != 0U ||
         readUint16LeMigration(record.data() + 6U) != kPreviousStatePayloadSize ||
         readUint32LeMigration(record.data() + kPreviousCurrentRecordSize - 4U) !=
             calculateCrc32(record.data(), kPreviousCurrentRecordSize - 4U)) {
@@ -286,11 +295,9 @@ bool PersistentStateService::deserializePreviousPresetRecord(
     ClockState& state) {
     constexpr std::uint32_t kPresetMagicValue = 0x34455250UL;  // "PRE4"
     constexpr std::size_t kPresetNameOffsetValue = 8U;
-    constexpr std::size_t kPresetPayloadOffsetValue =
-        kPresetNameOffsetValue + kPresetNameLength;
+    constexpr std::size_t kPresetPayloadOffsetValue = kPresetNameOffsetValue + kPresetNameLength;
     if (readUint32LeMigration(record.data()) != kPresetMagicValue ||
-        record[4] != kPreviousSchemaVersion ||
-        record[5] != 1U ||
+        record[4] != kPreviousSchemaVersion || record[5] != 1U ||
         readUint16LeMigration(record.data() + 6U) != kPreviousStatePayloadSize ||
         readUint32LeMigration(record.data() + kPreviousPresetRecordSize - 4U) !=
             calculateCrc32(record.data(), kPreviousPresetRecordSize - 4U)) {
@@ -322,8 +329,7 @@ bool PersistentStateService::deserializeLegacyState(
 
     std::array<std::uint8_t, kPreviousStatePayloadSize> upgradedV4{};
     std::copy_n(payload.begin(), kDisplayPreferencesOffset, upgradedV4.begin());
-    upgradedV4[kDisplayPreferencesOffset] =
-        static_cast<std::uint8_t>(defaults::kScreensaverMode);
+    upgradedV4[kDisplayPreferencesOffset] = static_cast<std::uint8_t>(defaults::kScreensaverMode);
     upgradedV4[kDisplayPreferencesOffset + 1U] = defaults::kScreensaverAfterMinutes;
     upgradedV4[kDisplayPreferencesOffset + 2U] = defaults::kScreensaverDimAfterMinutes;
     upgradedV4[kDisplayPreferencesOffset + 3U] = defaults::kScreensaverOffAfterMinutes;
@@ -339,8 +345,7 @@ bool PersistentStateService::deserializeLegacyCurrentRecord(
     ClockState& state) {
     constexpr std::uint32_t kCurrentMagicValue = 0x33525543UL;  // "CUR3"
     if (readUint32LeMigration(record.data()) != kCurrentMagicValue ||
-        record[4] != kLegacySchemaVersion ||
-        record[5] != 0U ||
+        record[4] != kLegacySchemaVersion || record[5] != 0U ||
         readUint16LeMigration(record.data() + 6U) != kLegacyStatePayloadSize ||
         readUint32LeMigration(record.data() + kLegacyCurrentRecordSize - 4U) !=
             calculateCrc32(record.data(), kLegacyCurrentRecordSize - 4U)) {
@@ -362,11 +367,9 @@ bool PersistentStateService::deserializeLegacyPresetRecord(
     ClockState& state) {
     constexpr std::uint32_t kPresetMagicValue = 0x33455250UL;  // "PRE3"
     constexpr std::size_t kPresetNameOffsetValue = 8U;
-    constexpr std::size_t kPresetPayloadOffsetValue =
-        kPresetNameOffsetValue + kPresetNameLength;
+    constexpr std::size_t kPresetPayloadOffsetValue = kPresetNameOffsetValue + kPresetNameLength;
     if (readUint32LeMigration(record.data()) != kPresetMagicValue ||
-        record[4] != kLegacySchemaVersion ||
-        record[5] != 1U ||
+        record[4] != kLegacySchemaVersion || record[5] != 1U ||
         readUint16LeMigration(record.data() + 6U) != kLegacyStatePayloadSize ||
         readUint32LeMigration(record.data() + kLegacyPresetRecordSize - 4U) !=
             calculateCrc32(record.data(), kLegacyPresetRecordSize - 4U)) {

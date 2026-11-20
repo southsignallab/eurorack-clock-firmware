@@ -26,11 +26,7 @@ void formatRate(
         std::snprintf(output, outputSize, "%s", integerRate);
     } else if (settings.rate.factor == 1U && settings.rate.mode == ClockRatioMode::Multiply) {
         std::snprintf(
-            output,
-            outputSize,
-            "%u:%u",
-            settings.rate.numerator,
-            settings.rate.denominator);
+            output, outputSize, "%u:%u", settings.rate.numerator, settings.rate.denominator);
     } else {
         std::snprintf(
             output,

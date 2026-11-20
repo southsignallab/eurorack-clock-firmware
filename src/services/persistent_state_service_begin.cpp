@@ -64,8 +64,8 @@ void PersistentStateService::begin() {
     }
 
     ClockState loadedCurrent{};
-    hasStoredCurrentState_ = loadCurrentRecord(
-        storage_, kCurrentRecordOffset, deserializeCurrentRecord, loadedCurrent);
+    hasStoredCurrentState_ =
+        loadCurrentRecord(storage_, kCurrentRecordOffset, deserializeCurrentRecord, loadedCurrent);
 
     // Migration always probes newest-to-oldest. The first valid record wins, so a
     // newer schema can never be shadowed by stale bytes that happen to resemble an
@@ -73,16 +73,26 @@ void PersistentStateService::begin() {
     bool migrationNeeded = false;
     if (!hasStoredCurrentState_) {
         migrationNeeded =
-            loadCurrentRecord(storage_, kCurrentRecordOffset, deserializeV12CurrentRecord, loadedCurrent) ||
-            loadCurrentRecord(storage_, kCurrentRecordOffset, deserializeV11CurrentRecord, loadedCurrent) ||
-            loadCurrentRecord(storage_, kCurrentRecordOffset, deserializeV10CurrentRecord, loadedCurrent) ||
-            loadCurrentRecord(storage_, kCurrentRecordOffset, deserializeV9CurrentRecord, loadedCurrent) ||
-            loadCurrentRecord(storage_, kCurrentRecordOffset, deserializeV8CurrentRecord, loadedCurrent) ||
-            loadCurrentRecord(storage_, kCurrentRecordOffset, deserializeV7CurrentRecord, loadedCurrent) ||
-            loadCurrentRecord(storage_, kCurrentRecordOffset, deserializeV6CurrentRecord, loadedCurrent) ||
-            loadCurrentRecord(storage_, kCurrentRecordOffset, deserializeV5CurrentRecord, loadedCurrent) ||
-            loadCurrentRecord(storage_, kCurrentRecordOffset, deserializePreviousCurrentRecord, loadedCurrent) ||
-            loadCurrentRecord(storage_, kCurrentRecordOffset, deserializeLegacyCurrentRecord, loadedCurrent);
+            loadCurrentRecord(
+                storage_, kCurrentRecordOffset, deserializeV12CurrentRecord, loadedCurrent) ||
+            loadCurrentRecord(
+                storage_, kCurrentRecordOffset, deserializeV11CurrentRecord, loadedCurrent) ||
+            loadCurrentRecord(
+                storage_, kCurrentRecordOffset, deserializeV10CurrentRecord, loadedCurrent) ||
+            loadCurrentRecord(
+                storage_, kCurrentRecordOffset, deserializeV9CurrentRecord, loadedCurrent) ||
+            loadCurrentRecord(
+                storage_, kCurrentRecordOffset, deserializeV8CurrentRecord, loadedCurrent) ||
+            loadCurrentRecord(
+                storage_, kCurrentRecordOffset, deserializeV7CurrentRecord, loadedCurrent) ||
+            loadCurrentRecord(
+                storage_, kCurrentRecordOffset, deserializeV6CurrentRecord, loadedCurrent) ||
+            loadCurrentRecord(
+                storage_, kCurrentRecordOffset, deserializeV5CurrentRecord, loadedCurrent) ||
+            loadCurrentRecord(
+                storage_, kCurrentRecordOffset, deserializePreviousCurrentRecord, loadedCurrent) ||
+            loadCurrentRecord(
+                storage_, kCurrentRecordOffset, deserializeLegacyCurrentRecord, loadedCurrent);
         hasStoredCurrentState_ = migrationNeeded;
     }
 
@@ -140,16 +150,30 @@ bool PersistentStateService::loadPresetAnySchema(
         return true;
     }
     priorSchema =
-        loadPresetRecord(storage_, v12PresetOffset(slotIndex), deserializeV12PresetRecord, name, state) ||
-        loadPresetRecord(storage_, v11PresetOffset(slotIndex), deserializeV11PresetRecord, name, state) ||
-        loadPresetRecord(storage_, v10PresetOffset(slotIndex), deserializeV10PresetRecord, name, state) ||
-        loadPresetRecord(storage_, v9PresetOffset(slotIndex), deserializeV9PresetRecord, name, state) ||
-        loadPresetRecord(storage_, v8PresetOffset(slotIndex), deserializeV8PresetRecord, name, state) ||
-        loadPresetRecord(storage_, v7PresetOffset(slotIndex), deserializeV7PresetRecord, name, state) ||
-        loadPresetRecord(storage_, v6PresetOffset(slotIndex), deserializeV6PresetRecord, name, state) ||
-        loadPresetRecord(storage_, v5PresetOffset(slotIndex), deserializeV5PresetRecord, name, state) ||
-        loadPresetRecord(storage_, previousPresetOffset(slotIndex), deserializePreviousPresetRecord, name, state) ||
-        loadPresetRecord(storage_, legacyPresetOffset(slotIndex), deserializeLegacyPresetRecord, name, state);
+        loadPresetRecord(
+            storage_, v12PresetOffset(slotIndex), deserializeV12PresetRecord, name, state) ||
+        loadPresetRecord(
+            storage_, v11PresetOffset(slotIndex), deserializeV11PresetRecord, name, state) ||
+        loadPresetRecord(
+            storage_, v10PresetOffset(slotIndex), deserializeV10PresetRecord, name, state) ||
+        loadPresetRecord(
+            storage_, v9PresetOffset(slotIndex), deserializeV9PresetRecord, name, state) ||
+        loadPresetRecord(
+            storage_, v8PresetOffset(slotIndex), deserializeV8PresetRecord, name, state) ||
+        loadPresetRecord(
+            storage_, v7PresetOffset(slotIndex), deserializeV7PresetRecord, name, state) ||
+        loadPresetRecord(
+            storage_, v6PresetOffset(slotIndex), deserializeV6PresetRecord, name, state) ||
+        loadPresetRecord(
+            storage_, v5PresetOffset(slotIndex), deserializeV5PresetRecord, name, state) ||
+        loadPresetRecord(
+            storage_,
+            previousPresetOffset(slotIndex),
+            deserializePreviousPresetRecord,
+            name,
+            state) ||
+        loadPresetRecord(
+            storage_, legacyPresetOffset(slotIndex), deserializeLegacyPresetRecord, name, state);
     return priorSchema;
 }
 

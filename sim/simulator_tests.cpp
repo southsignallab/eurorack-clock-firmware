@@ -11,11 +11,11 @@
 #include <filesystem>
 #include <iostream>
 
-#include "simulator_contract_tests.h"
-#include "simulator_regression_tests.h"
 #include "panel_led_visual.h"
 #include "scope_session.h"
 #include "scope_timeline.h"
+#include "simulator_contract_tests.h"
+#include "simulator_regression_tests.h"
 #include "simulator_runtime.h"
 
 namespace {
@@ -48,14 +48,14 @@ int main() {
         return fail("an LED without any rising edge must stay dark");
     }
 
-
     SimulatorRuntime runtime(statePath);
     runtime.begin();
     if (!runtime.poweredOn() || runtime.outputStageEnabled()) {
         return fail("power-on must expose the real boot interval with the gate buffer disabled");
     }
     bool bootPixel = false;
-    for (const std::uint8_t byte : runtime.framebuffer()) bootPixel = bootPixel || byte != 0U;
+    for (const std::uint8_t byte : runtime.framebuffer())
+        bootPixel = bootPixel || byte != 0U;
     if (!bootPixel) {
         return fail("boot screen must be visible before the non-blocking boot interval completes");
     }
@@ -72,13 +72,16 @@ int main() {
         return fail("POWER OFF must disable MCU/output-stage state");
     }
     for (const std::uint8_t byte : runtime.framebuffer()) {
-        if (byte != 0U) return fail("POWER OFF must blank the OLED framebuffer");
+        if (byte != 0U)
+            return fail("POWER OFF must blank the OLED framebuffer");
     }
     runtime.setButton(SimButton::Encoder, true);
     runtime.setPower(true);
     runtime.advanceMicroseconds(1050000ULL);
     if (!runtime.easterEggActive() || runtime.outputStageEnabled()) {
-        return fail("holding encoder across power-on boot must launch the selected Easter egg with outputs disabled");
+        return fail(
+            "holding encoder across power-on boot must launch the selected Easter egg with outputs "
+            "disabled");
     }
     runtime.setButton(SimButton::Encoder, false);
     runtime.advanceMicroseconds(35000ULL);
@@ -100,8 +103,8 @@ int main() {
     runtime.setSyncCableConnected(true);
     runtime.advanceMicroseconds(1500000ULL);
     const SyncInputTelemetry lockedSync = runtime.syncInputTelemetry();
-    if (!lockedSync.cableConnected || !lockedSync.generatorRunning ||
-        !lockedSync.locked || lockedSync.pulseCount < 2ULL || lockedSync.bpmMilli != 90000U) {
+    if (!lockedSync.cableConnected || !lockedSync.generatorRunning || !lockedSync.locked ||
+        lockedSync.pulseCount < 2ULL || lockedSync.bpmMilli != 90000U) {
         return fail("virtual SYNC IN generator must acquire lock from generated pulses");
     }
     // Decision D-01: factory SYNC AUTOSTART is OFF, so a lock alone never starts
@@ -151,7 +154,8 @@ int main() {
     // At 20 BPM / 1 PPQN, valid pulses are 3 s apart. The simulator must not impose
     // its former fixed 1.5-s timeout over the firmware's adaptive slow-clock policy.
     runtime.setSyncBpmMilli(20000U);
-    while (runtime.syncInputTelemetry().ppqn != 1U) runtime.cycleSyncPpqn();
+    while (runtime.syncInputTelemetry().ppqn != 1U)
+        runtime.cycleSyncPpqn();
     runtime.setSyncCableConnected(true);
     runtime.advanceMicroseconds(6500000ULL);
     const SyncInputTelemetry slowSync = runtime.syncInputTelemetry();
@@ -352,11 +356,13 @@ int main() {
         const SyncInputTelemetry sync = scopeRuntime.syncInputTelemetry();
         const std::uint32_t bpmMilli = scope::effectiveReferenceBpmMilli(
             scopeRuntime.state(), sync.locked, sync.engineBpmMilli);
-        const scope::MusicalGridSpec grid = scope::musicalGridSpec(
-            scopeRuntime.state(), bpmMilli, view.windowUs);
+        const scope::MusicalGridSpec grid =
+            scope::musicalGridSpec(scopeRuntime.state(), bpmMilli, view.windowUs);
         const scope::GridAnchor anchor = scope::phaseLockedGridAnchor(
-            scopeRuntime.state(), scopeRuntime.engineSnapshot(),
-            static_cast<double>(view.referenceUs), grid);
+            scopeRuntime.state(),
+            scopeRuntime.engineSnapshot(),
+            static_cast<double>(view.referenceUs),
+            grid);
         const std::uint64_t risingAbsoluteUs = scopeRuntime.telemetry()[0].lastRisingUs;
         if (risingAbsoluteUs < view.epochSimulatorUs) {
             return fail(message);
@@ -376,7 +382,8 @@ int main() {
     scopeRuntime.rotateEncoder(17);
     scopeRuntime.advanceMicroseconds(1200000ULL);
     phaseSession.update(scopeRuntime);
-    if (checkScopePhase("developer scope ruler must stay phase-locked after live BPM changes") != 0) {
+    if (checkScopePhase("developer scope ruler must stay phase-locked after live BPM changes") !=
+        0) {
         return 1;
     }
     std::filesystem::remove(scopeStatePath);

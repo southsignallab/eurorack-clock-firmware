@@ -16,7 +16,7 @@ namespace clockfw::services {
 
 /** @brief Applies factory rhythm templates to the complete clock state. */
 class TemplateService final {
-public:
+  public:
     /** Number of built-in factory templates. */
     static constexpr std::size_t kTemplateCount = 6U;
 

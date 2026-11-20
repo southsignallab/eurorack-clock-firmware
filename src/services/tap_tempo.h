@@ -15,7 +15,7 @@ namespace clockfw::services {
 
 /** @brief Estimates BPM from up to four recent valid tap intervals. */
 class TapTempo final {
-public:
+  public:
     /** @brief Clears all stored taps and interval history. */
     void reset();
 
@@ -53,7 +53,7 @@ public:
         std::uint16_t minimumBpm,
         std::uint16_t maximumBpm);
 
-private:
+  private:
     std::uint32_t previousTapAtUs_ = 0U;
     bool havePreviousTap_ = false;
     std::array<std::uint32_t, 4U> intervalsUs_{};

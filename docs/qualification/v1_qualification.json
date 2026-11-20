@@ -121,8 +121,8 @@
     },
     {
       "id": "HIL-DISP-001",
-      "status": "PENDING",
-      "evidence": []
+      "status": "NOT_APPLICABLE",
+      "reason": "No firmware environment builds an I2C display profile; PB6/PB7 are reserved for the encoder."
     },
     {
       "id": "HIL-DISP-002",
@@ -131,13 +131,13 @@
     },
     {
       "id": "HIL-DISP-003",
-      "status": "PENDING",
-      "evidence": []
+      "status": "NOT_APPLICABLE",
+      "reason": "No firmware environment builds an I2C display profile; PB6/PB7 are reserved for the encoder."
     },
     {
       "id": "HIL-DISP-004",
-      "status": "PENDING",
-      "evidence": []
+      "status": "NOT_APPLICABLE",
+      "reason": "No firmware environment builds an I2C display profile; PB6/PB7 are reserved for the encoder."
     },
     {
       "id": "HIL-LONG-001",

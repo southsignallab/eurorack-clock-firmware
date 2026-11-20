@@ -17,8 +17,7 @@ bool PersistentStateService::factoryReset(const ClockState& factoryState) {
     }
 
     const auto currentRecord = serializeCurrentRecord(factoryState);
-    const bool staged =
-        storage_.stageFill(0U, hal::PersistentStorage::kCapacityBytes, 0xFFU) &&
+    const bool staged = storage_.stageFill(0U, hal::PersistentStorage::kCapacityBytes, 0xFFU) &&
         storage_.stageBytes(kCurrentRecordOffset, currentRecord.data(), currentRecord.size());
     if (!staged || !storage_.commitUpdate()) {
         storage_.cancelUpdate();

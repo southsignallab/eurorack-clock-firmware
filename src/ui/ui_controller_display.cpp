@@ -62,8 +62,7 @@ void UiController::noteUserActivity(const std::uint32_t nowMs) {
 }
 
 bool UiController::hasUserActivity(const hal::ControlSample& controls) {
-    return controls.encoderDelta != 0 ||
-        controls.encoderButton.edge != hal::ButtonEdge::None ||
+    return controls.encoderDelta != 0 || controls.encoderButton.edge != hal::ButtonEdge::None ||
         controls.transportButton.edge != hal::ButtonEdge::None ||
         controls.tapButton.edge != hal::ButtonEdge::None ||
         controls.resetButton.edge != hal::ButtonEdge::None;
@@ -112,15 +111,13 @@ void UiController::serviceRendering(const std::uint32_t nowMs) {
             (state_.operatingMode == OperatingMode::Independent &&
              (mode == ChannelMode::Euclid || mode == ChannelMode::Sequencer));
 
-        const bool preCountStateChanged =
-            snapshot.preCountActive != lastRenderedPreCountActive_ ||
+        const bool preCountStateChanged = snapshot.preCountActive != lastRenderedPreCountActive_ ||
             snapshot.preCountRemaining != lastRenderedPreCountRemaining_;
 
         // Performance redraws live rhythm feedback; the Sequencer editor also
         // follows the production step so its independent playhead can move while
         // the edit cursor remains stationary.
-        if (!hasRenderedEngineStatus_ ||
-            snapshot.externalLocked != lastRenderedExternalLocked_ ||
+        if (!hasRenderedEngineStatus_ || snapshot.externalLocked != lastRenderedExternalLocked_ ||
             (playbackStepIsVisible && currentStep != lastRenderedChannelStep_) ||
             preCountStateChanged) {
             invalidate();
@@ -133,8 +130,7 @@ void UiController::serviceRendering(const std::uint32_t nowMs) {
     }
 
     DiagnosticSnapshot diagnostics{};
-    const bool diagnosticsVisible =
-        navigation_.screen == Screen::Settings &&
+    const bool diagnosticsVisible = navigation_.screen == Screen::Settings &&
         (navigation_.settingsPage == SettingsPage::DiagnosticsInputs ||
          navigation_.settingsPage == SettingsPage::DiagnosticsOutputs);
     if (diagnosticsVisible) {
@@ -164,7 +160,6 @@ void UiController::serviceRendering(const std::uint32_t nowMs) {
     lastRenderAtMs_ = nowMs;
     renderDirty_ = false;
 }
-
 
 /**
  * Applies STOP-mode screensaver, dimming, and panel power-off policy.
@@ -205,8 +200,7 @@ bool UiController::serviceStopModeDisplay(const std::uint32_t nowMs) {
     }
 
     const bool shouldAnimate =
-        state_.display.screensaverMode != ScreensaverMode::None &&
-        idleMs >= screensaverAtMs;
+        state_.display.screensaverMode != ScreensaverMode::None && idleMs >= screensaverAtMs;
     if (!shouldAnimate) {
         return false;
     }

@@ -34,7 +34,7 @@ struct GrooveRecorderView final {
  * change wall-clock speed without changing the pattern phase or capture math.
  */
 class GrooveRecorder final {
-public:
+  public:
     /** @brief Returns the recorder to READY with the supplied non-musical capture settings. */
     void reset(GrooveRecordMode mode, std::uint8_t countInBeats, std::uint64_t capturedMask = 0U);
 
@@ -83,7 +83,7 @@ public:
     /** @brief Returns the compact immutable state consumed by the UI. */
     GrooveRecorderView view() const;
 
-private:
+  private:
     GrooveRecordMode mode_ = GrooveRecordMode::OneShot;
     GrooveRecordState state_ = GrooveRecordState::Ready;
     std::uint8_t countInBeats_ = 4U;

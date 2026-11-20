@@ -20,16 +20,13 @@ constexpr double kMicrosPerMinuteMilliBpm = 60000000000.0;
 /** Returns one physical master-beat duration for the configured meter unit. */
 double masterBeatIntervalUs(const ClockState& state, const std::uint32_t bpmMilli) {
     const std::uint8_t beatUnit = state.masterMeter.unit != 0U ? state.masterMeter.unit : 4U;
-    const double divisor = static_cast<double>(std::max<std::uint32_t>(bpmMilli, 1U)) *
-        static_cast<double>(beatUnit);
+    const double divisor =
+        static_cast<double>(std::max<std::uint32_t>(bpmMilli, 1U)) * static_cast<double>(beatUnit);
     return (kMicrosPerMinuteMilliBpm * 4.0) / divisor;
 }
 
 /** Resolves one integer/rational rate without duplicating ClockEngine scheduling policy. */
-void resolveRate(
-    const RateSettings& rate,
-    std::uint32_t& numerator,
-    std::uint32_t& denominator) {
+void resolveRate(const RateSettings& rate, std::uint32_t& numerator, std::uint32_t& denominator) {
     CommonChannelSettings settings{};
     settings.rate = rate;
     core::calculateEffectiveRate(settings, numerator, denominator);
@@ -106,9 +103,7 @@ MusicalGridSpec musicalGridSpec(
 
     grid.intervalUs = std::max(grid.intervalUs, 1.0);
     grid.minorEvery = readableMinorStride(grid.intervalUs, windowUs);
-    grid.majorEvery = grid.minorEvery <= UINT32_MAX / 4U
-        ? grid.minorEvery * 4U
-        : grid.minorEvery;
+    grid.majorEvery = grid.minorEvery <= UINT32_MAX / 4U ? grid.minorEvery * 4U : grid.minorEvery;
     return grid;
 }
 
@@ -149,9 +144,7 @@ std::uint64_t firstMinorReferenceSerialAtOrAfter(
         return 0ULL;
     }
     const double rawSerial = std::ceil(static_cast<double>(startUs) / safeIntervalUs);
-    const std::uint64_t serial = rawSerial > 0.0
-        ? static_cast<std::uint64_t>(rawSerial)
-        : 0ULL;
+    const std::uint64_t serial = rawSerial > 0.0 ? static_cast<std::uint64_t>(rawSerial) : 0ULL;
     const std::uint64_t remainder = serial % stride;
     return remainder == 0ULL ? serial : serial + (stride - remainder);
 }

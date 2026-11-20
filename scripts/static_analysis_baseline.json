@@ -1,0 +1,485 @@
+{
+ "clang_tidy": "LLVM version 23.1.4",
+ "findings": [
+  {
+   "file": "src/engine/clock_engine.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'runSchedulerTick' has cognitive complexity of 35 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/engine/clock_engine_sequencer.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'fireChannelEvent' has cognitive complexity of 41 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/engine/clock_engine_timing.cpp",
+   "check": "bugprone-branch-clone",
+   "message": "repeated branch body in conditional chain",
+   "count": 1
+  },
+  {
+   "file": "src/engine/clock_engine_timing.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'calculateEventPositionQ32' has cognitive complexity of 42 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/game/arcade_shell.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 3
+  },
+  {
+   "file": "src/game/arcade_shell.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'update' has cognitive complexity of 28 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/game/beatknecht.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 1
+  },
+  {
+   "file": "src/game/breakout_game.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 1
+  },
+  {
+   "file": "src/game/breakout_game.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'updateBallSubstep' has cognitive complexity of 27 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/game/egg_journey_game.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'update' has cognitive complexity of 32 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/game/egg_journey_render.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 4
+  },
+  {
+   "file": "src/game/formula1_game.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 4
+  },
+  {
+   "file": "src/game/formula1_game.cpp",
+   "check": "readability-braces-around-statements",
+   "message": "statement should be inside braces",
+   "count": 18
+  },
+  {
+   "file": "src/game/formula1_game.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'update' has cognitive complexity of 29 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/game/pixel_raid_game.cpp",
+   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
+   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
+   "count": 5
+  },
+  {
+   "file": "src/game/pixel_raid_game.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 1
+  },
+  {
+   "file": "src/hal/display_font.cpp",
+   "check": "bugprone-branch-clone",
+   "message": "switch has 2 consecutive identical branches",
+   "count": 1
+  },
+  {
+   "file": "src/hal/oled_display_transport.cpp",
+   "check": "readability-braces-around-statements",
+   "message": "statement should be inside braces",
+   "count": 1
+  },
+  {
+   "file": "src/hal/persistent_storage_slots.cpp",
+   "check": "bugprone-throwing-static-initialization,cert-err58-cpp",
+   "message": "initialization of 'gHostSlots' with static storage duration may throw an exception that cannot be caught",
+   "count": 1
+  },
+  {
+   "file": "src/main.cpp",
+   "check": "bugprone-throwing-static-initialization,cert-err58-cpp",
+   "message": "initialization of 'application' with static storage duration may throw an exception that cannot be caught",
+   "count": 1
+  },
+  {
+   "file": "src/services/external_sync_controller.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'processSyncEdges' has cognitive complexity of 32 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/services/persistent_state_migration_v9.cpp",
+   "check": "readability-braces-around-statements",
+   "message": "statement should be inside braces",
+   "count": 1
+  },
+  {
+   "file": "src/services/template_service.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'apply' has cognitive complexity of 27 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/ui/channel_navigation_mode_renderer.cpp",
+   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
+   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
+   "count": 63
+  },
+  {
+   "file": "src/ui/channel_navigation_renderer.cpp",
+   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
+   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
+   "count": 30
+  },
+  {
+   "file": "src/ui/channel_navigation_renderer.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 13
+  },
+  {
+   "file": "src/ui/channel_navigation_renderer.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'renderSequencerEditor' has cognitive complexity of 27 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/ui/groove_editor_renderer.cpp",
+   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
+   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
+   "count": 8
+  },
+  {
+   "file": "src/ui/groove_editor_renderer.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 9
+  },
+  {
+   "file": "src/ui/groove_editor_renderer.cpp",
+   "check": "readability-braces-around-statements",
+   "message": "statement should be inside braces",
+   "count": 3
+  },
+  {
+   "file": "src/ui/groove_name_generator.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 1
+  },
+  {
+   "file": "src/ui/menu_model.cpp",
+   "check": "bugprone-branch-clone",
+   "message": "repeated branch body in conditional chain",
+   "count": 1
+  },
+  {
+   "file": "src/ui/menu_model.cpp",
+   "check": "bugprone-branch-clone",
+   "message": "switch has 2 consecutive identical branches",
+   "count": 3
+  },
+  {
+   "file": "src/ui/menu_model.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 15
+  },
+  {
+   "file": "src/ui/menu_model.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'buildMenuRow' has cognitive complexity of 110 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/ui/menu_model_channel.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 14
+  },
+  {
+   "file": "src/ui/menu_model_groove.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 17
+  },
+  {
+   "file": "src/ui/menu_model_sequencer.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 4
+  },
+  {
+   "file": "src/ui/menu_model_sync.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 5
+  },
+  {
+   "file": "src/ui/menu_model_sync.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'buildSyncMenuRow' has cognitive complexity of 30 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/ui/pattern_strip_renderer.cpp",
+   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
+   "message": "narrowing conversion from 'int' to signed type 'short' is implementation-defined",
+   "count": 1
+  },
+  {
+   "file": "src/ui/performance_renderer.cpp",
+   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
+   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
+   "count": 9
+  },
+  {
+   "file": "src/ui/performance_renderer.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 8
+  },
+  {
+   "file": "src/ui/performance_renderer.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'render' has cognitive complexity of 33 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/ui/performance_renderer_groove.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 1
+  },
+  {
+   "file": "src/ui/performance_renderer_precount.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 1
+  },
+  {
+   "file": "src/ui/screensaver_blox.cpp",
+   "check": "bugprone-signed-char-misuse,cert-str34-c",
+   "message": "'signed char' to 'std::size_t' (aka 'unsigned long long') conversion in array subscript; consider casting to 'unsigned char' first.",
+   "count": 6
+  },
+  {
+   "file": "src/ui/screensaver_blox.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'renderBlox' has cognitive complexity of 63 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/ui/screensaver_field.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'renderField' has cognitive complexity of 34 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/ui/screensaver_fireworks.cpp",
+   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
+   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
+   "count": 2
+  },
+  {
+   "file": "src/ui/screensaver_labyrinth.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'generateMaze' has cognitive complexity of 27 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/ui/screensaver_renderer.cpp",
+   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
+   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
+   "count": 2
+  },
+  {
+   "file": "src/ui/screensaver_renderer.cpp",
+   "check": "bugprone-signed-char-misuse,cert-str34-c",
+   "message": "'signed char' to 'const std::int32_t' (aka 'const int') conversion; consider casting to 'unsigned char' first.",
+   "count": 2
+  },
+  {
+   "file": "src/ui/screensaver_renderer.cpp",
+   "check": "bugprone-signed-char-misuse,cert-str34-c",
+   "message": "'signed char' to 'std::int32_t' (aka 'int') conversion; consider casting to 'unsigned char' first.",
+   "count": 2
+  },
+  {
+   "file": "src/ui/screensaver_renderer.cpp",
+   "check": "readability-braces-around-statements",
+   "message": "statement should be inside braces",
+   "count": 2
+  },
+  {
+   "file": "src/ui/screensaver_spectrum.cpp",
+   "check": "bugprone-signed-char-misuse,cert-str34-c",
+   "message": "'signed char' to 'std::int16_t' (aka 'short') conversion; consider casting to 'unsigned char' first.",
+   "count": 2
+  },
+  {
+   "file": "src/ui/sequencer_editor_primitives.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 1
+  },
+  {
+   "file": "src/ui/settings_editor.cpp",
+   "check": "clang-analyzer-optin.core.EnumCastOutOfRange",
+   "message": "The value provided to the cast expression is not in the valid range of values for 'InputFunction'",
+   "count": 2
+  },
+  {
+   "file": "src/ui/settings_editor_groove.cpp",
+   "check": "readability-braces-around-statements",
+   "message": "statement should be inside braces",
+   "count": 1
+  },
+  {
+   "file": "src/ui/settings_renderer.cpp",
+   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
+   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
+   "count": 4
+  },
+  {
+   "file": "src/ui/settings_renderer.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 12
+  },
+  {
+   "file": "src/ui/settings_renderer.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'renderSettings' has cognitive complexity of 59 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/ui/settings_renderer_lists.cpp",
+   "check": "bugprone-narrowing-conversions,cppcoreguidelines-narrowing-conversions",
+   "message": "narrowing conversion from 'int' to signed type 'std::int16_t' (aka 'short') is implementation-defined",
+   "count": 2
+  },
+  {
+   "file": "src/ui/settings_renderer_lists.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 2
+  },
+  {
+   "file": "src/ui/text_formatter.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 9
+  },
+  {
+   "file": "src/ui/ui_controller.cpp",
+   "check": "bugprone-branch-clone",
+   "message": "repeated branch body in conditional chain",
+   "count": 4
+  },
+  {
+   "file": "src/ui/ui_controller.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'handleResetButton' has cognitive complexity of 36 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/ui/ui_controller_display.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'serviceRendering' has cognitive complexity of 29 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/ui/ui_controller_encoder.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'handleShortEncoderPress' has cognitive complexity of 61 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/ui/ui_controller_encoder_delta.cpp",
+   "check": "readability-braces-around-statements",
+   "message": "statement should be inside braces",
+   "count": 1
+  },
+  {
+   "file": "src/ui/ui_controller_encoder_delta.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'handleEncoderDelta' has cognitive complexity of 101 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/ui/ui_controller_groove.cpp",
+   "check": "bugprone-signed-char-misuse,cert-str34-c",
+   "message": "'signed char' to 'const int' conversion; consider casting to 'unsigned char' first.",
+   "count": 1
+  },
+  {
+   "file": "src/ui/ui_controller_groove.cpp",
+   "check": "readability-braces-around-statements",
+   "message": "statement should be inside braces",
+   "count": 1
+  },
+  {
+   "file": "src/ui/ui_controller_groove_record.cpp",
+   "check": "readability-braces-around-statements",
+   "message": "statement should be inside braces",
+   "count": 5
+  },
+  {
+   "file": "src/ui/ui_controller_navigation.cpp",
+   "check": "bugprone-branch-clone",
+   "message": "repeated branch body in conditional chain",
+   "count": 3
+  },
+  {
+   "file": "src/ui/ui_controller_navigation.cpp",
+   "check": "readability-function-cognitive-complexity",
+   "message": "function 'backFromSettings' has cognitive complexity of 61 (threshold 25)",
+   "count": 1
+  },
+  {
+   "file": "src/ui/ui_controller_navigation_activate.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 2
+  },
+  {
+   "file": "src/ui/ui_controller_presets.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 1
+  },
+  {
+   "file": "src/ui/ui_renderer.cpp",
+   "check": "cert-err33-c",
+   "message": "the value returned by this function should not be disregarded; neglecting it may lead to errors",
+   "count": 1
+  },
+  {
+   "file": "src/ui_text.cpp",
+   "check": "bugprone-branch-clone",
+   "message": "switch has 3 consecutive identical branches",
+   "count": 1
+  }
+ ]
+}

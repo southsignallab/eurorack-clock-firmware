@@ -33,9 +33,6 @@ inline constexpr std::array kModeFunctions{
 std::uint8_t modeFunctionIndexForState(const ClockState& state, std::uint8_t selectedChannel);
 
 /** @brief Applies one mode-selector action to the persistent state model. */
-void applyModeFunction(
-    ClockState& state,
-    std::uint8_t selectedChannel,
-    ModeFunction modeFunction);
+void applyModeFunction(ClockState& state, std::uint8_t selectedChannel, ModeFunction modeFunction);
 
 }  // namespace clockfw::ui

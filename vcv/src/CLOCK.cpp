@@ -56,7 +56,9 @@ clockfw::vcv::PanelKey panelKeyFor(const int key) {
 bool hostKeyDown(const clockfw::vcv::PanelKey key) {
     using clockfw::vcv::PanelKey;
     GLFWwindow* const window = APP->window->win;
-    const auto down = [window](const int glfwKey) { return glfwGetKey(window, glfwKey) == GLFW_PRESS; };
+    const auto down = [window](const int glfwKey) {
+        return glfwGetKey(window, glfwKey) == GLFW_PRESS;
+    };
     switch (key) {
         case PanelKey::LeftShift:
             return down(GLFW_KEY_LEFT_SHIFT);
@@ -140,11 +142,7 @@ struct ClockModule final : Module {
         PARAMS_LEN
     };
 
-    enum InputId {
-        SYNC_INPUT,
-        RESET_INPUT,
-        INPUTS_LEN
-    };
+    enum InputId { SYNC_INPUT, RESET_INPUT, INPUTS_LEN };
 
     enum OutputId {
         OUT1_OUTPUT,
@@ -173,12 +171,7 @@ struct ClockModule final : Module {
     std::unique_ptr<clockfw::vcv::ClockVcvRuntime> runtime{};
     std::filesystem::path statePath{};
     std::array<std::atomic<std::uint8_t>, clockfw::hal::OledDisplay::kFramebufferSize> display{};
-    enum class EncoderGestureMode : std::uint8_t {
-        Idle,
-        Pending,
-        Press,
-        Rotate
-    };
+    enum class EncoderGestureMode : std::uint8_t { Idle, Pending, Press, Rotate };
 
     std::atomic<int> queuedEncoderDetents{0};
     std::atomic<EncoderGestureMode> encoderGestureMode{EncoderGestureMode::Idle};
@@ -289,8 +282,8 @@ struct ClockModule final : Module {
     }
 
     void endEncoderGesture() noexcept {
-        const EncoderGestureMode finished = encoderGestureMode.exchange(
-            EncoderGestureMode::Idle, std::memory_order_acq_rel);
+        const EncoderGestureMode finished =
+            encoderGestureMode.exchange(EncoderGestureMode::Idle, std::memory_order_acq_rel);
         if (finished == EncoderGestureMode::Pending) {
             encoderShortClickReleased.store(true, std::memory_order_release);
         }
@@ -350,8 +343,8 @@ struct ClockModule final : Module {
             keyboardEncoderHeld.load(std::memory_order_acquire);
         if (encoderClickPulseSeconds > 0.0) {
             encoderPressed = true;
-            encoderClickPulseSeconds = std::max(
-                0.0, encoderClickPulseSeconds - static_cast<double>(args.sampleTime));
+            encoderClickPulseSeconds =
+                std::max(0.0, encoderClickPulseSeconds - static_cast<double>(args.sampleTime));
         }
 
         clockfw::vcv::PanelControls controls{};
@@ -384,13 +377,12 @@ struct ClockModule final : Module {
             // Rack's engine light smoothing gives short gates an immediate visible attack and a
             // bounded decay, without a separate hold timer that can make activity appear latched.
             // The actual output voltage above remains the instantaneous production gate state.
-            lights[OUT1_LIGHT + index].setBrightnessSmooth(
-                gateHigh ? 1.0F : 0.0F, args.sampleTime);
+            lights[OUT1_LIGHT + index].setBrightnessSmooth(gateHigh ? 1.0F : 0.0F, args.sampleTime);
         }
 
         ++displayDivider;
-        const std::uint32_t refreshSamples = static_cast<std::uint32_t>(
-            std::max(1.0F, args.sampleRate / 200.0F));
+        const std::uint32_t refreshSamples =
+            static_cast<std::uint32_t>(std::max(1.0F, args.sampleRate / 200.0F));
         if (displayDivider >= refreshSamples) {
             displayDivider = 0U;
             publishDisplay();
@@ -405,7 +397,8 @@ struct ClockModule final : Module {
         }
         const auto image = runtime->persistenceImage();
         const std::string encoded = encodeHex(image.data(), image.size());
-        json_object_set_new(root, "clockPersistenceHex", json_stringn(encoded.data(), encoded.size()));
+        json_object_set_new(
+            root, "clockPersistenceHex", json_stringn(encoded.data(), encoded.size()));
         json_object_set_new(root, "engineBaseline", json_string("1.1.0"));
         return root;
     }
@@ -455,8 +448,12 @@ struct ClockDisplayWidget final : Widget {
             nvgFontSize(args.vg, 10.0F);
             nvgFillColor(args.vg, nvgRGB(220, 220, 220));
             nvgTextAlign(args.vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-            nvgText(args.vg, box.size.x * 0.5F, box.size.y * 0.5F,
-                module == nullptr ? "CLOCK" : "ONE INSTANCE", nullptr);
+            nvgText(
+                args.vg,
+                box.size.x * 0.5F,
+                box.size.y * 0.5F,
+                module == nullptr ? "CLOCK" : "ONE INSTANCE",
+                nullptr);
             return;
         }
 
@@ -475,7 +472,8 @@ struct ClockDisplayWidget final : Widget {
                     continue;
                 }
                 nvgBeginPath(args.vg);
-                nvgRect(args.vg,
+                nvgRect(
+                    args.vg,
                     originX + static_cast<float>(x) * scale,
                     originY + static_cast<float>(y) * scale,
                     std::max(1.0F, scale),
@@ -514,8 +512,7 @@ struct ClockEncoderWidget final : widget::OpaqueWidget {
         }
         clockModule->queueEncoderDetents(detents);
         indicatorAngle = std::remainder(
-            indicatorAngle + static_cast<float>(detents) * kAnglePerDetent,
-            2.0F * kPi);
+            indicatorAngle + static_cast<float>(detents) * kAnglePerDetent, 2.0F * kPi);
     }
 
     void draw(const DrawArgs& args) override {
@@ -704,14 +701,11 @@ struct ClockWidget final : ModuleWidget {
         ClockModule* const clock = clockModule();
         menu->addChild(new MenuSeparator);
         menu->addChild(createMenuLabel("South Signal Lab CLOCK"));
-        menu->addChild(createMenuItem(
-            "General Settings...",
-            "",
-            [clock]() {
-                if (clock != nullptr) {
-                    clock->requestGeneralSettings();
-                }
-            }));
+        menu->addChild(createMenuItem("General Settings...", "", [clock]() {
+            if (clock != nullptr) {
+                clock->requestGeneralSettings();
+            }
+        }));
         menu->addChild(new MenuSeparator);
         menu->addChild(createMenuLabel("VCV controls"));
         menu->addChild(createMenuLabel("Shift: hold TAP / SHIFT"));
@@ -728,7 +722,6 @@ struct ClockWidget final : ModuleWidget {
         setModule(module);
         setPanel(createPanel(asset::plugin(pluginInstance, "res/CLOCK.svg")));
 
-
         auto* display = createWidget<ClockDisplayWidget>(
             mm2px(Vec(kDisplay.x + kPanelOffsetXmm, kDisplay.y + kPanelOffsetYmm)));
         display->box.size = mm2px(Vec(kDisplay.width, kDisplay.height));
@@ -741,25 +734,40 @@ struct ClockWidget final : ModuleWidget {
         constexpr float kEncoderHitDiameterMm = 12.0F;
         const Vec encoderCenter = panelPoint(kEncoderCenter);
         const Vec encoderSize = mm2px(Vec(kEncoderHitDiameterMm, kEncoderHitDiameterMm));
-        auto* encoder = createWidget<ClockEncoderWidget>(encoderCenter.minus(encoderSize.div(2.0F)));
+        auto* encoder =
+            createWidget<ClockEncoderWidget>(encoderCenter.minus(encoderSize.div(2.0F)));
         encoder->box.size = encoderSize;
         encoder->visibleDiameterPx = mm2px(Vec(kEncoderDiameterMm, kEncoderDiameterMm)).x;
         encoder->clockModule = module;
         addChild(encoder);
 
-        addParam(createParamCentered<ClockPlayButton>(panelPoint(kPlayCenter), module, ClockModule::PLAY_PARAM));
-        addParam(createParamCentered<ClockTapButton>(panelPoint(kTapCenter), module, ClockModule::TAP_PARAM));
-        addParam(createParamCentered<ClockStopButton>(panelPoint(kStopCenter), module, ClockModule::STOP_PARAM));
+        addParam(
+            createParamCentered<ClockPlayButton>(
+                panelPoint(kPlayCenter), module, ClockModule::PLAY_PARAM));
+        addParam(
+            createParamCentered<ClockTapButton>(
+                panelPoint(kTapCenter), module, ClockModule::TAP_PARAM));
+        addParam(
+            createParamCentered<ClockStopButton>(
+                panelPoint(kStopCenter), module, ClockModule::STOP_PARAM));
 
-        addInput(createInputCentered<PJ301MPort>(panelPoint(kSyncCenter), module, ClockModule::SYNC_INPUT));
-        addInput(createInputCentered<PJ301MPort>(panelPoint(kResetCenter), module, ClockModule::RESET_INPUT));
+        addInput(
+            createInputCentered<PJ301MPort>(
+                panelPoint(kSyncCenter), module, ClockModule::SYNC_INPUT));
+        addInput(
+            createInputCentered<PJ301MPort>(
+                panelPoint(kResetCenter), module, ClockModule::RESET_INPUT));
 
         for (int index = 0; index < 8; ++index) {
             const std::size_t position = static_cast<std::size_t>(index);
-            addChild(createLightCentered<MediumLight<RedLight>>(
-                panelPoint(kLedCenters[position]), module, ClockModule::OUT1_LIGHT + index));
-            addOutput(createOutputCentered<PJ301MPort>(
-                panelPoint(kOutputCenters[position]), module, ClockModule::OUT1_OUTPUT + index));
+            addChild(
+                createLightCentered<MediumLight<RedLight>>(
+                    panelPoint(kLedCenters[position]), module, ClockModule::OUT1_LIGHT + index));
+            addOutput(
+                createOutputCentered<PJ301MPort>(
+                    panelPoint(kOutputCenters[position]),
+                    module,
+                    ClockModule::OUT1_OUTPUT + index));
         }
 
         for (const PointMm& screw : kScrewCenters) {

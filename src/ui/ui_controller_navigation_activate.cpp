@@ -36,9 +36,8 @@ void UiController::activateCurrentSetting(const std::uint32_t nowMs) {
             return;
         case SettingsPage::Diagnostics:
             openSettingsPage(
-                navigation_.cursor == 0U
-                    ? SettingsPage::DiagnosticsInputs
-                    : SettingsPage::DiagnosticsOutputs);
+                navigation_.cursor == 0U ? SettingsPage::DiagnosticsInputs
+                                         : SettingsPage::DiagnosticsOutputs);
             return;
         case SettingsPage::Info:
             activateInfoSetting();
@@ -341,6 +340,5 @@ void UiController::activateSequencerPatternSetting(const std::uint32_t nowMs) {
         invalidate();
     }
 }
-
 
 }  // namespace clockfw::ui

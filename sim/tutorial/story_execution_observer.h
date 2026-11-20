@@ -34,7 +34,7 @@ struct StoryExecutionSample {
  * Samples are delivered while the real simulator is already at the matching firmware timestamp.
  */
 class StoryExecutionObserver {
-public:
+  public:
     virtual ~StoryExecutionObserver() = default;
 
     /** @brief Returns the next absolute presentation timestamp to sample, or nullopt when finished. */

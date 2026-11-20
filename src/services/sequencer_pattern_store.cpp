@@ -19,7 +19,7 @@ namespace {
 constexpr std::uint32_t kMagic = 0x50325153UL;  // "SQ2P" little-endian.
 constexpr std::size_t kCrcOffset = 8U;
 constexpr std::size_t kPayloadOffset = SequencerPatternStore::kHeaderBytes;
-}
+}  // namespace
 
 SequencerPatternStore::SequencerPatternStore(hal::PersistentStorage& storage) : storage_(storage) {
     resetDefaults();
@@ -39,8 +39,7 @@ void SequencerPatternStore::write32(std::uint8_t* const destination, const std::
 }
 
 std::uint32_t SequencerPatternStore::read32(const std::uint8_t* const source) {
-    return static_cast<std::uint32_t>(source[0]) |
-        (static_cast<std::uint32_t>(source[1]) << 8U) |
+    return static_cast<std::uint32_t>(source[0]) | (static_cast<std::uint32_t>(source[1]) << 8U) |
         (static_cast<std::uint32_t>(source[2]) << 16U) |
         (static_cast<std::uint32_t>(source[3]) << 24U);
 }
@@ -188,7 +187,6 @@ const SequencerPatternV2& SequencerPatternStore::pattern(
     return patterns_[flatIndex(channelIndex, slotIndex)];
 }
 
-
 std::uint8_t SequencerPatternStore::activeSlot(const std::uint8_t channelIndex) const {
     return channelIndex < kChannelCount ? activeSlots_[channelIndex] : 0U;
 }
@@ -261,6 +259,7 @@ bool SequencerPatternStore::setGate(
         return false;
     }
     SequencerPatternV2 candidate = patterns_[flatIndex(channelIndex, slotIndex)];
+    // It fails only for step >= kSequencerMaximumSteps, which is rejected above.
     (void)setSequencerPatternGate(candidate, step, enabled);
     return updatePattern(channelIndex, slotIndex, candidate, nowMs);
 }

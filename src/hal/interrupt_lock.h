@@ -19,7 +19,7 @@ namespace clockfw::hal {
  * the scheduler ISR. It must not be nested or constructed inside an ISR.
  */
 class InterruptLock final {
-public:
+  public:
     /** @brief Enters the critical section by disabling interrupts. */
     InterruptLock();
 
@@ -43,7 +43,7 @@ public:
     static std::uint32_t nestedCountForTest();
 #endif
 
-private:
+  private:
     std::uint32_t previousPrimask_ = 0U;
 #if defined(CLOCK_RUNTIME_INSTRUMENTATION)
     /** Cycle counter at entry, only in instrumented debug builds (W-056). */

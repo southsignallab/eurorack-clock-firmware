@@ -21,8 +21,7 @@ std::uint16_t readUint16LeV12(const std::uint8_t* const source) {
 
 /** @brief Reads one little-endian 32-bit value from a legacy v12 record. */
 std::uint32_t readUint32LeV12(const std::uint8_t* const source) {
-    return static_cast<std::uint32_t>(source[0]) |
-        (static_cast<std::uint32_t>(source[1]) << 8U) |
+    return static_cast<std::uint32_t>(source[0]) | (static_cast<std::uint32_t>(source[1]) << 8U) |
         (static_cast<std::uint32_t>(source[2]) << 16U) |
         (static_cast<std::uint32_t>(source[3]) << 24U);
 }
@@ -30,8 +29,7 @@ std::uint32_t readUint32LeV12(const std::uint8_t* const source) {
 /** @brief Returns whether a v12 preset-name byte belongs to the supported alphabet. */
 bool isAllowedV12PresetCharacter(const char character) {
     return character == ' ' || character == '-' || character == '_' ||
-        (character >= '0' && character <= '9') ||
-        (character >= 'A' && character <= 'Z');
+        (character >= '0' && character <= '9') || (character >= 'A' && character <= 'Z');
 }
 }  // namespace
 
@@ -51,8 +49,8 @@ bool PersistentStateService::deserializeV12CurrentRecord(
     const std::array<std::uint8_t, kV12CurrentRecordSize>& record,
     ClockState& state) {
     constexpr std::uint32_t kMagic = 0x32315543UL;  // "CU12"
-    if (readUint32LeV12(record.data()) != kMagic || record[4] != kV12SchemaVersion || record[5] != 0U ||
-        readUint16LeV12(record.data() + 6U) != kV12StatePayloadSize ||
+    if (readUint32LeV12(record.data()) != kMagic || record[4] != kV12SchemaVersion ||
+        record[5] != 0U || readUint16LeV12(record.data() + 6U) != kV12StatePayloadSize ||
         readUint32LeV12(record.data() + kV12CurrentRecordSize - 4U) !=
             calculateCrc32(record.data(), kV12CurrentRecordSize - 4U)) {
         return false;
@@ -69,8 +67,8 @@ bool PersistentStateService::deserializeV12PresetRecord(
     constexpr std::uint32_t kMagic = 0x32315250UL;  // "PR12"
     constexpr std::size_t kNameOffset = 8U;
     constexpr std::size_t kPayloadOffset = kNameOffset + kPresetNameLength;
-    if (readUint32LeV12(record.data()) != kMagic || record[4] != kV12SchemaVersion || record[5] != 1U ||
-        readUint16LeV12(record.data() + 6U) != kV12StatePayloadSize ||
+    if (readUint32LeV12(record.data()) != kMagic || record[4] != kV12SchemaVersion ||
+        record[5] != 1U || readUint16LeV12(record.data() + 6U) != kV12StatePayloadSize ||
         readUint32LeV12(record.data() + kV12PresetRecordSize - 4U) !=
             calculateCrc32(record.data(), kV12PresetRecordSize - 4U)) {
         return false;

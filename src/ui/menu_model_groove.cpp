@@ -6,9 +6,9 @@
  * @license PolyForm-Noncommercial-1.0.0
  */
 #include "ui/menu_model_groove.h"
-#include <cstdio>
 #include "domain/groove_catalog.h"
 #include "ui_text.h"
+#include <cstdio>
 namespace clockfw::ui {
 MenuRow buildGrooveMenuRow(
     const std::uint8_t rowIndex,

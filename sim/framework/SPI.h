@@ -16,17 +16,19 @@ inline constexpr bool SPI_TRANSMITONLY = true;
 inline constexpr std::uint8_t SPI_MODE0 = 0U;
 
 class SPISettings {
-public:
+  public:
     SPISettings(std::uint32_t, std::uint8_t, std::uint8_t) {}
 };
 
 class SPIClass {
-public:
+  public:
     void setSCLK(PinName) {}
     void setMOSI(PinName) {}
     void begin() {}
     void beginTransaction(const SPISettings&) {}
-    std::uint8_t transfer(std::uint8_t value, bool = false) { return value; }
+    std::uint8_t transfer(std::uint8_t value, bool = false) {
+        return value;
+    }
     void endTransaction() {}
 };
 

@@ -28,27 +28,21 @@ void initializeFactoryDefaults(ClockState& state) {
         defaults::kExternalSyncSmoothing,
         defaults::kExternalSyncGlitchFilterUs,
         defaults::kExternalSyncTimeoutMs};
-    state.inputs = {
-        defaults::kInput1Function,
-        defaults::kInput2Function};
+    state.inputs = {defaults::kInput1Function, defaults::kInput2Function};
     state.unifiedClock = {
         defaults::kUnifiedClockRate,
         defaults::kUnifiedClockSwingPercent,
         defaults::kUnifiedClockGroove,
         defaults::kUnifiedClockGateLengthMs,
         defaults::kUnifiedClockPhasePercent};
-    state.dividerBank = {
-        defaults::kDividerBank,
-        defaults::kDividerGateLengthMs};
+    state.dividerBank = {defaults::kDividerBank, defaults::kDividerGateLengthMs};
     state.display = {
         defaults::kScreensaverMode,
         defaults::kScreensaverAfterMinutes,
         defaults::kScreensaverDimAfterMinutes,
         defaults::kScreensaverOffAfterMinutes};
 
-    state.device = {
-        defaults::kEncoderDirectionReversed,
-        defaults::kDisplayRotated180};
+    state.device = {defaults::kEncoderDirectionReversed, defaults::kDisplayRotated180};
 
     for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
         ChannelConfig& channel = state.channels[channelIndex];
@@ -68,9 +62,8 @@ void initializeFactoryDefaults(ClockState& state) {
             defaults::kEuclidRotation};
         channel.sequencer.length = defaults::kSequencerLength;
         channel.sequencer.rotation = defaults::kSequencerRotation;
-        channel.sequencer.pattern = (channelIndex & 1U) != 0U
-            ? defaults::kSequencerPatternB
-            : defaults::kSequencerPatternA;
+        channel.sequencer.pattern =
+            (channelIndex & 1U) != 0U ? defaults::kSequencerPatternB : defaults::kSequencerPatternA;
     }
 }
 

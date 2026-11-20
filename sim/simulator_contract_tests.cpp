@@ -16,12 +16,12 @@
 #include <string>
 
 #include "domain/clock_types.h"
-#include "hal/persistent_storage.h"
-#include "services/custom_groove_store.h"
-#include <cstring>
 #include "hal/oled_display.h"
+#include "hal/persistent_storage.h"
 #include "panel_layout.h"
 #include "scope_timeline.h"
+#include "services/custom_groove_store.h"
+#include <cstring>
 
 namespace clockfw::sim::tests {
 namespace {
@@ -44,12 +44,10 @@ int runStaticContracts() {
         pattern.length = 4U;
         pattern.offsets256[1] = 32;
         const std::uint32_t before = hal::PersistentStorage::writeCommitCountForTest();
-        if (!store.save(0U, "FIRST", pattern) ||
-            !store.save(1U, "SECOND", pattern) ||
-            !store.save(0U, "RENAMED", pattern) || !store.clear(1U) ||
-            !store.service(false) ||
-            hal::PersistentStorage::writeCommitCountForTest() != before ||
-            !store.exists(0U) || store.exists(1U)) {
+        if (!store.save(0U, "FIRST", pattern) || !store.save(1U, "SECOND", pattern) ||
+            !store.save(0U, "RENAMED", pattern) || !store.clear(1U) || !store.service(false) ||
+            hal::PersistentStorage::writeCommitCountForTest() != before || !store.exists(0U) ||
+            store.exists(1U)) {
             return fail("groove SAVE/RENAME/DELETE must not touch Flash during PLAY");
         }
         char name[services::CustomGrooveStore::kNameLength + 1U]{};
@@ -59,8 +57,7 @@ int runStaticContracts() {
             return fail("queued grooves must be visible only to their owning runtime");
         }
         hal::PersistentStorage::failNextWriteForTest();
-        if (store.service(true) ||
-            hal::PersistentStorage::writeCommitCountForTest() != before ||
+        if (store.service(true) || hal::PersistentStorage::writeCommitCountForTest() != before ||
             !store.exists(0U) || !store.service(true) ||
             hal::PersistentStorage::writeCommitCountForTest() != before + 1U) {
             return fail("failed groove commit must retain every queued change for retry");
@@ -72,8 +69,7 @@ int runStaticContracts() {
         if (std::strcmp(name, "RENAMED") != 0) {
             return fail("groove rename must survive a fresh reader after safe flush");
         }
-        if (!store.clear(0U) || !store.save(2U, "THIRD", pattern) ||
-            !store.service(false) ||
+        if (!store.clear(0U) || !store.save(2U, "THIRD", pattern) || !store.service(false) ||
             hal::PersistentStorage::writeCommitCountForTest() != before + 1U ||
             !store.service(true) ||
             hal::PersistentStorage::writeCommitCountForTest() != before + 2U ||
@@ -81,7 +77,6 @@ int runStaticContracts() {
             return fail("safe flush must preserve queued delete and another slot save");
         }
     }
-
 
     // The virtual OLED must follow the same transfer transform as hardware.
     // CLOCK keeps the controller at its proven A1/C8 orientation and rotates the
@@ -91,14 +86,15 @@ int runStaticContracts() {
         display.setPixel(3, 5);
         display.setPixel(11, 17);
         const auto& canonical = display.framebufferForTest();
-        const auto pixelIsSet = [](
-            const std::array<std::uint8_t, hal::OledDisplay::kFramebufferSize>& framebuffer,
-            const std::int16_t x,
-            const std::int16_t y) {
-            const std::size_t index = static_cast<std::size_t>(x) +
-                static_cast<std::size_t>(y / 8) * static_cast<std::size_t>(hal::OledDisplay::kWidth);
-            return (framebuffer[index] & static_cast<std::uint8_t>(1U << (y & 7))) != 0U;
-        };
+        const auto pixelIsSet =
+            [](const std::array<std::uint8_t, hal::OledDisplay::kFramebufferSize>& framebuffer,
+               const std::int16_t x,
+               const std::int16_t y) {
+                const std::size_t index = static_cast<std::size_t>(x) +
+                    static_cast<std::size_t>(y / 8) *
+                        static_cast<std::size_t>(hal::OledDisplay::kWidth);
+                return (framebuffer[index] & static_cast<std::uint8_t>(1U << (y & 7))) != 0U;
+            };
 
         if (!pixelIsSet(canonical, 3, 5) || !pixelIsSet(canonical, 11, 17) ||
             !pixelIsSet(display.panelFramebufferForSimulator(), 3, 5)) {
@@ -110,19 +106,28 @@ int runStaticContracts() {
         if (!pixelIsSet(rotated, 124, 58) || !pixelIsSet(rotated, 116, 46) ||
             pixelIsSet(rotated, 3, 5) || pixelIsSet(rotated, 11, 17) ||
             !pixelIsSet(display.framebufferForTest(), 3, 5)) {
-            return fail("180-degree OLED transfer must rotate both axes without mirroring the canonical framebuffer");
+            return fail(
+                "180-degree OLED transfer must rotate both axes without mirroring the canonical "
+                "framebuffer");
         }
 
         display.setRotation180(false);
         const auto& restored = display.panelFramebufferForSimulator();
         if (!pixelIsSet(restored, 3, 5) || !pixelIsSet(restored, 11, 17)) {
-            return fail("returning to 0 degrees must restore canonical OLED orientation immediately");
+            return fail(
+                "returning to 0 degrees must restore canonical OLED orientation immediately");
         }
     }
     // The developer-scope ruler is a real timeline, not a screen-fixed decoration.
-    if (scope::kWindowOptionsUs != std::array<std::uint64_t, 7U>{{
-            500000ULL, 1000000ULL, 2000000ULL, 4000000ULL, 8000000ULL,
-            16000000ULL, 32000000ULL}} ||
+    if (scope::kWindowOptionsUs !=
+            std::array<std::uint64_t, 7U>{
+                {500000ULL,
+                 1000000ULL,
+                 2000000ULL,
+                 4000000ULL,
+                 8000000ULL,
+                 16000000ULL,
+                 32000000ULL}} ||
         scope::kWindowOptionsUs[scope::kDefaultWindowIndex] != 4000000ULL ||
         scope::kMaximumWindowUs != 32000000ULL) {
         return fail("scope zoom stages must remain fixed at 0.5/1/2/4/8/16/32 seconds");
@@ -140,10 +145,9 @@ int runStaticContracts() {
     // is 115.384615 ms; a CLOCK x2 output therefore lands on every second line
     // instead of drifting against the old fixed 250 ms ruler.
     gridState.operatingMode = clockfw::OperatingMode::Independent;
-    const std::uint32_t internalBpmMilli = scope::effectiveReferenceBpmMilli(
-        gridState, false, 0U);
-    const scope::MusicalGridSpec independentGrid = scope::musicalGridSpec(
-        gridState, internalBpmMilli, 4000000ULL);
+    const std::uint32_t internalBpmMilli = scope::effectiveReferenceBpmMilli(gridState, false, 0U);
+    const scope::MusicalGridSpec independentGrid =
+        scope::musicalGridSpec(gridState, internalBpmMilli, 4000000ULL);
     if (std::fabs(independentGrid.intervalUs - (15000000000.0 / 130000.0)) > 0.001 ||
         independentGrid.minorEvery != 1U || independentGrid.majorEvery != 4U) {
         return fail("independent scope grid must follow the BPM-derived 1/16 musical lattice");
@@ -157,8 +161,8 @@ int runStaticContracts() {
     // visible as displacement from each expected gate boundary.
     gridState.operatingMode = clockfw::OperatingMode::UnifiedClock;
     gridState.unifiedClock.rate = {clockfw::ClockRatioMode::Multiply, 2U, 1U, 1U};
-    const scope::MusicalGridSpec unifiedGrid = scope::musicalGridSpec(
-        gridState, internalBpmMilli, 4000000ULL);
+    const scope::MusicalGridSpec unifiedGrid =
+        scope::musicalGridSpec(gridState, internalBpmMilli, 4000000ULL);
     if (std::fabs(unifiedGrid.intervalUs - (30000000000.0 / 130000.0)) > 0.001 ||
         std::string(unifiedGrid.basis) != "ONE CLOCK") {
         return fail("ONE CLOCK scope grid must follow the unswung shared-clock event interval");
@@ -168,17 +172,16 @@ int runStaticContracts() {
     // from replaying current BPM backwards to transport t=0. This is what keeps
     // reference lines phase-coherent after a tempo/sync/rate change.
     clockfw::engine::EngineSnapshot phaseSnapshot{};
-    phaseSnapshot.masterPositionQ32 = (2ULL << 32U) + (1ULL << 31U); // 2.5 master beats
-    const scope::GridAnchor phaseAnchor = scope::phaseLockedGridAnchor(
-        gridState, phaseSnapshot, 1000000.0, unifiedGrid);
-    if (phaseAnchor.serial != 5ULL ||
-        std::fabs(phaseAnchor.timeUs - 1000000.0) > 0.001) {
+    phaseSnapshot.masterPositionQ32 = (2ULL << 32U) + (1ULL << 31U);  // 2.5 master beats
+    const scope::GridAnchor phaseAnchor =
+        scope::phaseLockedGridAnchor(gridState, phaseSnapshot, 1000000.0, unifiedGrid);
+    if (phaseAnchor.serial != 5ULL || std::fabs(phaseAnchor.timeUs - 1000000.0) > 0.001) {
         return fail("ONE CLOCK scope anchor must follow real engine phase and output rate");
     }
 
-    phaseSnapshot.masterPositionQ32 = (2ULL << 32U) + (1ULL << 30U); // 2.25 beats -> 4.5 x2 events
-    const scope::GridAnchor halfPhaseAnchor = scope::phaseLockedGridAnchor(
-        gridState, phaseSnapshot, 1000000.0, unifiedGrid);
+    phaseSnapshot.masterPositionQ32 = (2ULL << 32U) + (1ULL << 30U);  // 2.25 beats -> 4.5 x2 events
+    const scope::GridAnchor halfPhaseAnchor =
+        scope::phaseLockedGridAnchor(gridState, phaseSnapshot, 1000000.0, unifiedGrid);
     if (halfPhaseAnchor.serial != 4ULL ||
         std::fabs(halfPhaseAnchor.timeUs - (1000000.0 - unifiedGrid.intervalUs * 0.5)) > 0.001) {
         return fail("scope anchor must preserve fractional engine phase between reference events");
@@ -197,15 +200,13 @@ int runStaticContracts() {
     gridState.source = clockfw::ClockSource::Internal;
     gridState.bpm = 999U;
     gridState.operatingMode = clockfw::OperatingMode::Independent;
-    const scope::MusicalGridSpec fastGrid = scope::musicalGridSpec(
-        gridState, 999000U, 32000000ULL);
-    if (fastGrid.minorEvery <= 1U ||
-        scope::referenceTimeUs(fastGrid.minorEvery, fastGrid) <= 0.0) {
+    const scope::MusicalGridSpec fastGrid = scope::musicalGridSpec(gridState, 999000U, 32000000ULL);
+    if (fastGrid.minorEvery <= 1U || scope::referenceTimeUs(fastGrid.minorEvery, fastGrid) <= 0.0) {
         return fail("high-rate scope grids must decimate by whole musical reference serials");
     }
 
-    const std::uint64_t firstVisible = scope::firstMinorReferenceSerialAtOrAfter(
-        4123456LL, unifiedGrid);
+    const std::uint64_t firstVisible =
+        scope::firstMinorReferenceSerialAtOrAfter(4123456LL, unifiedGrid);
     const double firstVisibleTime = scope::referenceTimeUs(firstVisible, unifiedGrid);
     if (firstVisibleTime < 4123456.0 || !scope::isMajorReference(0U, unifiedGrid)) {
         return fail("scope reference serial utility must remain mathematically stable");
@@ -235,11 +236,14 @@ int runStaticContracts() {
     const float ledOffsetX = defaultLayout.ledCenters[0].x - defaultLayout.outputCenters[0].x;
     const float ledOffsetY = defaultLayout.ledCenters[0].y - defaultLayout.outputCenters[0].y;
     for (std::size_t index = 0U; index < defaultLayout.outputCenters.size(); ++index) {
-        const float offsetX = defaultLayout.ledCenters[index].x - defaultLayout.outputCenters[index].x;
-        const float offsetY = defaultLayout.ledCenters[index].y - defaultLayout.outputCenters[index].y;
-        if (offsetY >= 0.0F || offsetX <= 0.0F ||
-            std::fabs(offsetX - ledOffsetX) > 0.5F || std::fabs(offsetY - ledOffsetY) > 0.5F) {
-            return fail("each output LED must sit above and right of its jack with one common offset");
+        const float offsetX =
+            defaultLayout.ledCenters[index].x - defaultLayout.outputCenters[index].x;
+        const float offsetY =
+            defaultLayout.ledCenters[index].y - defaultLayout.outputCenters[index].y;
+        if (offsetY >= 0.0F || offsetX <= 0.0F || std::fabs(offsetX - ledOffsetX) > 0.5F ||
+            std::fabs(offsetY - ledOffsetY) > 0.5F) {
+            return fail(
+                "each output LED must sit above and right of its jack with one common offset");
         }
     }
     if (defaultLayout.displayPixelScale != 2) {
@@ -255,7 +259,8 @@ int runStaticContracts() {
         std::fabs(defaultLayout.trsJack.nutRadius - 27.475F) > 0.001F ||
         std::fabs(defaultLayout.trsJack.bushingRadius - 21.0F) > 0.001F ||
         std::fabs(defaultLayout.trsJack.openingRadius - 12.6F) > 0.001F) {
-        return fail("default Thonkiconn TS/TRS front geometry must use documented 6/3.6 mm diameters");
+        return fail(
+            "default Thonkiconn TS/TRS front geometry must use documented 6/3.6 mm diameters");
     }
     if (defaultLayout.ledRadius != 10.5F) {
         return fail("default output LEDs must be 3 mm diameter");
@@ -266,41 +271,40 @@ int runStaticContracts() {
     const std::filesystem::path layoutPath = ".clock-simulator-test-layout.ini";
     {
         std::ofstream layoutFile(layoutPath);
-        layoutFile
-            << "[simulator]\n"
-            << "panel_x = 10\n"
-            << "panel_y = 20\n"
-            << "pixels_per_mm = 10\n"
-            << "[panel]\n"
-            << "width_mm = 50.5\n"
-            << "height_mm = 128.5\n"
-            << "background_image = panel-test.png\n"
-            << "draw_builtin_labels = false\n"
-            << "[display]\n"
-            << "pixel_scale = 3\n"
-            << "[encoder]\n"
-            << "x_mm = 25.25\n"
-            << "y_mm = 64.25\n"
-            << "knob_diameter_mm = 10\n"
-            << "[play]\n"
-            << "x_mm = 10\n"
-            << "y_mm = 40\n"
-            << "actuator_diameter_mm = 8\n"
-            << "body_diameter_mm = 11\n"
-            << "color = #123456\n"
-            << "[jack_trs]\n"
-            << "nut_diameter_mm = 8\n"
-            << "bushing_diameter_mm = 7\n"
-            << "opening_diameter_mm = 3.5\n"
-            << "[sync]\n"
-            << "jack_type = trs\n"
-            << "[leds]\n"
-            << "diameter_mm = 4\n"
-            << "[output_1]\n"
-            << "x_mm = 5.05\n"
-            << "y_mm = 102.8\n"
-            << "led_x_mm = 5.05\n"
-            << "led_y_mm = 90\n";
+        layoutFile << "[simulator]\n"
+                   << "panel_x = 10\n"
+                   << "panel_y = 20\n"
+                   << "pixels_per_mm = 10\n"
+                   << "[panel]\n"
+                   << "width_mm = 50.5\n"
+                   << "height_mm = 128.5\n"
+                   << "background_image = panel-test.png\n"
+                   << "draw_builtin_labels = false\n"
+                   << "[display]\n"
+                   << "pixel_scale = 3\n"
+                   << "[encoder]\n"
+                   << "x_mm = 25.25\n"
+                   << "y_mm = 64.25\n"
+                   << "knob_diameter_mm = 10\n"
+                   << "[play]\n"
+                   << "x_mm = 10\n"
+                   << "y_mm = 40\n"
+                   << "actuator_diameter_mm = 8\n"
+                   << "body_diameter_mm = 11\n"
+                   << "color = #123456\n"
+                   << "[jack_trs]\n"
+                   << "nut_diameter_mm = 8\n"
+                   << "bushing_diameter_mm = 7\n"
+                   << "opening_diameter_mm = 3.5\n"
+                   << "[sync]\n"
+                   << "jack_type = trs\n"
+                   << "[leds]\n"
+                   << "diameter_mm = 4\n"
+                   << "[output_1]\n"
+                   << "x_mm = 5.05\n"
+                   << "y_mm = 102.8\n"
+                   << "led_x_mm = 5.05\n"
+                   << "led_y_mm = 90\n";
     }
     const layout::PanelLayout configuredLayout = layout::loadPanelLayout(layoutPath);
     if (configuredLayout.encoderCenter.x != 262.5F || configuredLayout.encoderCenter.y != 662.5F) {
@@ -315,11 +319,15 @@ int runStaticContracts() {
     if (configuredLayout.panel.width != 505.0F || configuredLayout.panel.height != 1285.0F) {
         return fail("pixels_per_mm must preserve exact panel physical proportions");
     }
-    if (configuredLayout.playButton.center.x != 110.0F || configuredLayout.playButton.center.y != 420.0F ||
-        configuredLayout.playButton.radius != 40.0F || configuredLayout.playButton.bodyRadius != 55.0F ||
-        configuredLayout.playButton.color.red != 0x12U || configuredLayout.playButton.color.green != 0x34U ||
+    if (configuredLayout.playButton.center.x != 110.0F ||
+        configuredLayout.playButton.center.y != 420.0F ||
+        configuredLayout.playButton.radius != 40.0F ||
+        configuredLayout.playButton.bodyRadius != 55.0F ||
+        configuredLayout.playButton.color.red != 0x12U ||
+        configuredLayout.playButton.color.green != 0x34U ||
         configuredLayout.playButton.color.blue != 0x56U) {
-        return fail("round button size, body envelope and RGB color must resolve from millimetres/config");
+        return fail(
+            "round button size, body envelope and RGB color must resolve from millimetres/config");
     }
     if (configuredLayout.syncJackType != layout::JackType::Trs ||
         std::fabs(configuredLayout.trsJack.nutRadius - 40.0F) > 0.001F ||
@@ -338,7 +346,8 @@ int runStaticContracts() {
             configuredLayout.resetInputCenter.x, configuredLayout.resetInputCenter.y)) {
         return fail("RST IN hit testing must follow the configured layout");
     }
-    if (configuredLayout.outputCenters[0].x != 60.5F || configuredLayout.outputCenters[0].y != 1048.0F) {
+    if (configuredLayout.outputCenters[0].x != 60.5F ||
+        configuredLayout.outputCenters[0].y != 1048.0F) {
         return fail("configured output jack coordinates must be resolved from millimetres");
     }
     if (configuredLayout.backgroundImagePath.filename() != "panel-test.png") {

@@ -47,7 +47,7 @@ struct ControlSample {
 
 /** @brief Reads, debounces, and decodes all physical front-panel controls. */
 class ControlPanel final {
-public:
+  public:
     /** @brief Constructs the control panel with the board-specific GPIO assignment. */
     ControlPanel();
 
@@ -73,13 +73,15 @@ public:
     };
 
     /** @brief Returns the encoder anchor diagnostics (host tests only). */
-    EncoderDiagnosticsForTest encoderDiagnosticsForTest() const { return encoderDiagnostics_; }
+    EncoderDiagnosticsForTest encoderDiagnosticsForTest() const {
+        return encoderDiagnostics_;
+    }
 #endif
 
-private:
+  private:
     /** @brief Small state machine used for one active-low button input. */
     class DebouncedButton final {
-    public:
+      public:
         /** @brief Associates the helper with a physical GPIO pin. */
         explicit DebouncedButton(std::uint32_t pin);
 
@@ -93,7 +95,7 @@ private:
          */
         ButtonSample sample(std::uint32_t nowMs);
 
-    private:
+      private:
         std::uint32_t pin_;
         bool rawPressed_ = false;
         bool stablePressed_ = false;

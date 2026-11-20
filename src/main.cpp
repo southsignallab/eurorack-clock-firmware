@@ -9,11 +9,17 @@
 #include "hal/platform_io.h"
 
 #if defined(CLOCK_HOST_TEST)
-namespace { clockfw::app::ClockApplication application; }
-extern "C" void setup(){ application.begin(); }
-extern "C" void loop(){ application.runOnce(); }
+namespace {
+clockfw::app::ClockApplication application;
+}
+extern "C" void setup() {
+    application.begin();
+}
+extern "C" void loop() {
+    application.runOnce();
+}
 #else
-int main(){
+int main() {
     // STM32duino initialized HAL/board hardware from its premain constructor
     // before sketch-level C++ objects were constructed. Preserve that ordering
     // after removing the Arduino runtime: no application object may be created
@@ -21,6 +27,8 @@ int main(){
     clockfw::hal::platform::initializeMcu();
     static clockfw::app::ClockApplication application;
     application.begin();
-    while(true){ application.runOnce(); }
+    while (true) {
+        application.runOnce();
+    }
 }
 #endif

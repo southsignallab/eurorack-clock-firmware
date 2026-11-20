@@ -286,6 +286,45 @@ def check_hardware_boundaries(errors: list[str]) -> None:
             )
 
 
+HOST_PATH_CONDITION = "defined(CLOCK_HOST_TEST) || defined(CLOCK_SIMULATOR)"
+PREPROCESSOR_PATTERN = re.compile(r"^\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b(.*)$")
+
+
+def unguarded_framework_includes(text: str) -> list[int]:
+    """Return lines that include an Arduino-style framework header outside the host-only branch.
+
+    The Arduino compatibility path serves host tests and the simulator. Its includes must sit in
+    the true branch of `#if defined(CLOCK_HOST_TEST) || defined(CLOCK_SIMULATOR)` (possibly
+    nested deeper), so a target build can never compile them.
+    """
+    stack: list[bool] = []  # per open #if: is this branch the host-only branch?
+    found: list[int] = []
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        directive = PREPROCESSOR_PATTERN.match(line)
+        if directive:
+            keyword, condition = directive.group(1), directive.group(2).strip()
+            if keyword in ("if", "ifdef", "ifndef"):
+                stack.append(keyword == "if" and condition == HOST_PATH_CONDITION)
+            elif keyword in ("elif", "else") and stack:
+                stack[-1] = False
+            elif keyword == "endif" and stack:
+                stack.pop()
+            continue
+        if HARDWARE_INCLUDE_PATTERN.match(line) and not any(stack):
+            found.append(line_number)
+    return found
+
+
+def check_host_path_guard(errors: list[str]) -> None:
+    """Keep the Arduino compatibility path of the platform layer out of target builds."""
+    for path in sorted([*(ROOT / "src").rglob("*.cpp"), *(ROOT / "src").rglob("*.h")]):
+        for line_number in unguarded_framework_includes(path.read_text(encoding="utf-8")):
+            errors.append(
+                f"{repository_relative(path)}:{line_number}: framework include outside the "
+                f"`#if {HOST_PATH_CONDITION}` host-only branch"
+            )
+
+
 def check_storybook_dependency_boundary(errors: list[str]) -> None:
     """Keep Storybook/parser/media dependencies out of embedded production code."""
     candidates = sorted(
@@ -383,20 +422,68 @@ def check_header_colocation(errors: list[str]) -> None:
                 )
 
 
+def static_ui_text_lines(text: str) -> list[int]:
+    """Return the line numbers that embed a static UI literal.
+
+    Includes, comments and ``static_assert`` statements are skipped; a ``static_assert`` that the
+    formatter wraps over several lines is skipped up to the line that closes it.
+    """
+    found: list[int] = []
+    in_static_assert = False
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        stripped = line.strip()
+        if "static_assert" in stripped:
+            in_static_assert = True
+        if in_static_assert:
+            if stripped.endswith(");"):
+                in_static_assert = False
+            continue
+        if stripped.startswith("#include") or stripped.startswith("//"):
+            continue
+        if STATIC_UI_LITERAL_PATTERN.search(line):
+            found.append(line_number)
+    return found
+
+
+CURSOR_MODULO_PATTERN = re.compile(r"\([^;=()]*\b\w*[Cc]ursor\w*\b[^;=()]*\)\s*%")
+
+
+def cursor_modulo_lines(text: str) -> list[int]:
+    """Return the line numbers that wrap a cursor index with an inline modulo.
+
+    `(cursor + delta) % count` turns negative for a large negative delta (F-004); cursor
+    wrapping goes through `UiController::wrapIndex()` instead. Comment lines are skipped.
+    """
+    found: list[int] = []
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        if line.strip().startswith("//"):
+            continue
+        if CURSOR_MODULO_PATTERN.search(line):
+            found.append(line_number)
+    return found
+
+
+def check_cursor_modulo(errors: list[str]) -> None:
+    """Reject inline modulo on cursor indices in project-owned implementation files."""
+    for path in sorted((ROOT / "src").rglob("*.cpp")):
+        for line_number in cursor_modulo_lines(path.read_text(encoding="utf-8")):
+            errors.append(
+                f"{repository_relative(path)}:{line_number}: wrap cursor indices with "
+                "UiController::wrapIndex(), not an inline modulo"
+            )
+
+
 def check_ui_text_centralization(errors: list[str]) -> None:
     """Reject static user-facing text embedded outside the central language catalog."""
     candidates = list((ROOT / "src/ui").rglob("*.cpp"))
-    candidates += [ROOT / "src/domain/clock_labels.cpp", ROOT / "src/services/template_service.cpp"]
+    candidates += [
+        ROOT / "src/domain/clock_labels.cpp",
+        ROOT / "src/domain/groove_catalog.cpp",
+        ROOT / "src/services/template_service.cpp",
+    ]
     for path in sorted(set(candidates)):
-        lines = path.read_text(encoding="utf-8").splitlines()
-        for line_number, line in enumerate(lines, start=1):
-            stripped = line.strip()
-            if stripped.startswith("#include") or stripped.startswith("//") or "static_assert" in stripped:
-                continue
-            if STATIC_UI_LITERAL_PATTERN.search(line):
-                errors.append(
-                    f"{repository_relative(path)}:{line_number}: static UI text must come from src/ui_text.h"
-                )
+        for line_number in static_ui_text_lines(path.read_text(encoding="utf-8")):
+            errors.append(f"{repository_relative(path)}:{line_number}: static UI text must come from src/ui_text.h")
 
 
 def check_external_library_policy(errors: list[str]) -> None:
@@ -587,6 +674,8 @@ def main() -> int:
     check_vcv_api_boundary(errors)
     check_header_colocation(errors)
     check_ui_text_centralization(errors)
+    check_cursor_modulo(errors)
+    check_host_path_guard(errors)
     check_external_library_policy(errors)
     check_header_executable_logic(errors)
     check_isr_lock_free(errors)
@@ -603,6 +692,8 @@ def main() -> int:
     print(f"  C++ files checked: {len(iter_cpp_files())}")
     print("  Hardware APIs: STM32Cube confined to HAL/pin_map; host framework fakes confined to test/simulator boundaries")
     print("  Static UI text: centralized in src/ui_text.h")
+    print("  Cursor wrap: no inline modulo on cursor indices")
+    print("  Host path: framework includes only in the host-test/simulator branch")
     print("  Third-party PlatformIO libraries: none")
     print("  VCV Rack API: confined to vcv/; Rack SDK must remain external")
     print("  Storybook/media dependencies: confined to host-only simulator/publication tooling")

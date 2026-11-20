@@ -18,18 +18,24 @@ constexpr double kTwoPi = 6.28318530717958647692;
 
 SignalWaveform nextSignalWaveform(const SignalWaveform waveform) {
     switch (waveform) {
-        case SignalWaveform::Square: return SignalWaveform::Sine;
-        case SignalWaveform::Sine: return SignalWaveform::Triangle;
-        case SignalWaveform::Triangle: return SignalWaveform::Square;
+        case SignalWaveform::Square:
+            return SignalWaveform::Sine;
+        case SignalWaveform::Sine:
+            return SignalWaveform::Triangle;
+        case SignalWaveform::Triangle:
+            return SignalWaveform::Square;
     }
     return SignalWaveform::Square;
 }
 
 const char* signalWaveformName(const SignalWaveform waveform) {
     switch (waveform) {
-        case SignalWaveform::Square: return "SQUARE";
-        case SignalWaveform::Sine: return "SINE";
-        case SignalWaveform::Triangle: return "TRIANGLE";
+        case SignalWaveform::Square:
+            return "SQUARE";
+        case SignalWaveform::Sine:
+            return "SINE";
+        case SignalWaveform::Triangle:
+            return "TRIANGLE";
     }
     return "SQUARE";
 }
@@ -41,8 +47,8 @@ double sampleIdealSignal(
     const std::uint64_t periodUs) {
     const std::uint64_t safePeriodUs = periodUs != 0ULL ? periodUs : 1ULL;
     const std::uint64_t elapsedUs = nowUs >= epochUs ? nowUs - epochUs : 0ULL;
-    const double phase = static_cast<double>(elapsedUs % safePeriodUs) /
-        static_cast<double>(safePeriodUs);
+    const double phase =
+        static_cast<double>(elapsedUs % safePeriodUs) / static_cast<double>(safePeriodUs);
 
     switch (waveform) {
         case SignalWaveform::Square:
@@ -50,8 +56,10 @@ double sampleIdealSignal(
         case SignalWaveform::Sine:
             return std::sin(kTwoPi * phase);
         case SignalWaveform::Triangle:
-            if (phase < 0.25) return phase * 4.0;
-            if (phase < 0.75) return 2.0 - phase * 4.0;
+            if (phase < 0.25)
+                return phase * 4.0;
+            if (phase < 0.75)
+                return 2.0 - phase * 4.0;
             return phase * 4.0 - 4.0;
     }
     return 1.0;

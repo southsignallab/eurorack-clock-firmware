@@ -1,0 +1,4 @@
+# Author: Axel Napolitano
+# License: PolyForm-Noncommercial-1.0.0
+# Generated sources keep the exact generator output (scripts/generate_vcv_panel.py --check).
+vcv/generated_panel_layout.hpp

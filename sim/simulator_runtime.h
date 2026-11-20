@@ -81,7 +81,7 @@ struct ResetInputTelemetry {
  * and mirrors the same persistence bytes used by host tests.
  */
 class SimulatorRuntime final {
-public:
+  public:
     /** @brief Constructs the simulator using one durable host-state file. */
     explicit SimulatorRuntime(std::filesystem::path persistencePath);
 
@@ -214,7 +214,7 @@ public:
     void restorePersistenceImage(
         const std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>& image);
 
-private:
+  private:
     /** @brief Applies one queued quadrature phase before the next foreground input poll. */
     void serviceEncoderSequence();
 

@@ -21,15 +21,13 @@ constexpr text::TextId kTemplateNameIds[TemplateService::kTemplateCount] = {
     text::TextId::TemplateDividers,
     text::TextId::TemplatePolyrhythm,
     text::TextId::TemplateEuclidKit,
-    text::TextId::TemplateHybrid
-};
+    text::TextId::TemplateHybrid};
 
 }  // namespace
 
 const char* TemplateService::name(const std::size_t templateIndex) {
-    return templateIndex < kTemplateCount
-        ? text::get(kTemplateNameIds[templateIndex])
-        : text::get(text::TextId::Off);
+    return templateIndex < kTemplateCount ? text::get(kTemplateNameIds[templateIndex])
+                                          : text::get(text::TextId::Off);
 }
 
 bool TemplateService::apply(const std::size_t templateIndex, ClockState& state) {
@@ -52,10 +50,14 @@ bool TemplateService::apply(const std::size_t templateIndex, ClockState& state) 
 
     if (templateIndex == 1U) {
         constexpr ClockRatioMode modes[kChannelCount] = {
-            ClockRatioMode::Multiply, ClockRatioMode::Divide, ClockRatioMode::Divide,
-            ClockRatioMode::Divide, ClockRatioMode::Multiply, ClockRatioMode::Multiply,
-            ClockRatioMode::Multiply, ClockRatioMode::Multiply
-        };
+            ClockRatioMode::Multiply,
+            ClockRatioMode::Divide,
+            ClockRatioMode::Divide,
+            ClockRatioMode::Divide,
+            ClockRatioMode::Multiply,
+            ClockRatioMode::Multiply,
+            ClockRatioMode::Multiply,
+            ClockRatioMode::Multiply};
         constexpr std::uint8_t factors[kChannelCount] = {1U, 2U, 4U, 8U, 2U, 4U, 8U, 16U};
         for (std::size_t channelIndex = 0U; channelIndex < kChannelCount; ++channelIndex) {
             state.channels[channelIndex].common.rate.mode = modes[channelIndex];

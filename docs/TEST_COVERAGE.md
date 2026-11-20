@@ -11,8 +11,10 @@ The following are mandatory:
 - **Executable lines: >=95%**
 - **Functions: >=95%**
 - **Non-throw decision branches: >=90%**
+- **AddressSanitizer and UndefinedBehaviorSanitizer: clean** (see [Sanitizer gate](#sanitizer-gate))
+- **Host compiler warnings: zero** (`-Werror`)
 
-The release gates remain stringent without requiring synthetic tests for every defensive/error path. The coverage report still lists every uncovered production function and source decision so regressions remain visible during review.
+The release gates remain stringent without requiring synthetic tests for every defensive/error path; the goal is meaningful behavioral coverage rather than tests written solely to reach a percentage. The coverage report still lists every uncovered production function and source decision so regressions remain visible during review; an uncovered production function should normally be justified or tested before merge. `python scripts/run_host_tests.py --skip-sanitizers` writes the report to `coverage/full_coverage.txt` and `coverage/full_coverage.json`.
 
 Historical reference — the last complete repository-wide baseline before the 1.0.1 maintenance patch (`1.0.0`) was:
 

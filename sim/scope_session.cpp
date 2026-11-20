@@ -55,19 +55,16 @@ void Session::update(SimulatorRuntime& runtime) {
     const bool freezeNow = freezeOnStop_ && transport.state == TransportState::Stopped;
     runtime.setTelemetryHistoryFrozen(freezeNow);
 
-    const std::uint64_t referenceSimulatorUs = freezeNow && transport.lastStopUs >= epochSimulatorUs_
-        ? transport.lastStopUs
-        : runtime.nowMicroseconds();
-    referenceUs_ = referenceSimulatorUs >= epochSimulatorUs_
-        ? referenceSimulatorUs - epochSimulatorUs_
-        : 0ULL;
+    const std::uint64_t referenceSimulatorUs =
+        freezeNow && transport.lastStopUs >= epochSimulatorUs_ ? transport.lastStopUs
+                                                               : runtime.nowMicroseconds();
+    referenceUs_ =
+        referenceSimulatorUs >= epochSimulatorUs_ ? referenceSimulatorUs - epochSimulatorUs_ : 0ULL;
 }
 
 void Session::setWindowUs(const std::uint64_t windowUs) {
-    windowUs_ = std::clamp<std::uint64_t>(
-        windowUs,
-        kWindowOptionsUs.front(),
-        kWindowOptionsUs.back());
+    windowUs_ =
+        std::clamp<std::uint64_t>(windowUs, kWindowOptionsUs.front(), kWindowOptionsUs.back());
 }
 
 void Session::setFreezeOnStop(const bool enabled) {

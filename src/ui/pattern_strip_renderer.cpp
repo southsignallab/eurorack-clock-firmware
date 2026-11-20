@@ -56,8 +56,7 @@ void PatternStripRenderer::drawEuclidPattern(
     }
 
     drawCurrentStepUnderline(
-        static_cast<std::int16_t>((boundedStep % 16U) * kSlotWidth),
-        kSlotWidth);
+        static_cast<std::int16_t>((boundedStep % 16U) * kSlotWidth), kSlotWidth);
     drawPatternBlockIndicator(stepCount, boundedStep, 16U);
 }
 
@@ -87,8 +86,7 @@ void PatternStripRenderer::drawSequencerPlaybackBlock(
     }
 
     drawCurrentStepUnderline(
-        static_cast<std::int16_t>((boundedStep % 16U) * kSlotWidth),
-        kSlotWidth);
+        static_cast<std::int16_t>((boundedStep % 16U) * kSlotWidth), kSlotWidth);
     drawSequencerBlockIndicator(safeLength, boundedStep);
 }
 
@@ -117,8 +115,7 @@ void PatternStripRenderer::drawSequencerPlaybackBlock(
     }
 
     drawCurrentStepUnderline(
-        static_cast<std::int16_t>((boundedStep % 16U) * kSlotWidth),
-        kSlotWidth);
+        static_cast<std::int16_t>((boundedStep % 16U) * kSlotWidth), kSlotWidth);
     drawSequencerBlockIndicator(safeLength, boundedStep);
 }
 
@@ -144,14 +141,13 @@ void PatternStripRenderer::drawPatternBlockIndicator(
 
     const std::uint8_t blockCount = static_cast<std::uint8_t>(
         (static_cast<std::uint16_t>(sequenceLength) + blockSize - 1U) / blockSize);
-    const std::uint8_t activeBlock = static_cast<std::uint8_t>(
-        std::min<std::uint8_t>(
-            static_cast<std::uint8_t>(activeStep / blockSize),
-            static_cast<std::uint8_t>(blockCount - 1U)));
+    const std::uint8_t activeBlock = static_cast<std::uint8_t>(std::min<std::uint8_t>(
+        static_cast<std::uint8_t>(activeStep / blockSize),
+        static_cast<std::uint8_t>(blockCount - 1U)));
     constexpr std::int16_t kGap = 3;
     const std::int16_t totalGapWidth = static_cast<std::int16_t>((blockCount - 1U) * kGap);
-    const std::int16_t segmentWidth = static_cast<std::int16_t>(
-        (hal::OledDisplay::kWidth - totalGapWidth) / blockCount);
+    const std::int16_t segmentWidth =
+        static_cast<std::int16_t>((hal::OledDisplay::kWidth - totalGapWidth) / blockCount);
 
     for (std::uint8_t block = 0U; block < blockCount; ++block) {
         const std::int16_t x = static_cast<std::int16_t>(block * (segmentWidth + kGap));

@@ -98,19 +98,15 @@ ButtonSample ControlPanel::DebouncedButton::sample(const std::uint32_t nowMs) {
 }
 
 ControlPanel::ControlPanel()
-    : encoderButton_(pinmap::kEncoderPushButtonPin),
-      transportButton_(pinmap::kPlayPauseButtonPin),
-      tapButton_(pinmap::kTapTempoButtonPin),
-      resetButton_(pinmap::kResetBackButtonPin) {}
+    : encoderButton_(pinmap::kEncoderPushButtonPin), transportButton_(pinmap::kPlayPauseButtonPin),
+      tapButton_(pinmap::kTapTempoButtonPin), resetButton_(pinmap::kResetBackButtonPin) {}
 
 void ControlPanel::begin() {
     // PB6/PB7 are handled by the dedicated quadrature backend. On STM32F401 the
     // production implementation is TIM4 encoder mode (x4), so the first physical
     // detent and every later direction change are counted independently of EXTI
     // latency or foreground/display work.
-    (void)platform::beginQuadratureEncoder(
-        pinmap::kEncoderPhaseAPin,
-        pinmap::kEncoderPhaseBPin);
+    (void)platform::beginQuadratureEncoder(pinmap::kEncoderPhaseAPin, pinmap::kEncoderPhaseBPin);
     encoderLastTransitionCount_ = platform::quadratureEncoderCount();
     // Hardware Rev C fits a Bourns PEC11R-4220F-S0024: 24 detents / 24 PPR, one
     // quadrature cycle per mechanical detent. The detent state comes from the
@@ -149,8 +145,7 @@ ControlSample ControlPanel::sample(const std::uint32_t nowMs) {
         encoderButton,
         transportButton_.sample(nowMs),
         tapButton_.sample(nowMs),
-        resetButton_.sample(nowMs)
-    };
+        resetButton_.sample(nowMs)};
 }
 
 void ControlPanel::setEncoderDirectionReversed(const bool reversed) {
@@ -171,8 +166,7 @@ void ControlPanel::requestEncoderAnchor() {
 
 void ControlPanel::anchorEncoderAtRest(const std::uint32_t nowMs) {
     // Unsigned difference: exact across the 2^32 ms wrap.
-    if (!encoderAnchorPending_ ||
-        nowMs - encoderLastActivityMs_ < kEncoderAnchorQuietMs ||
+    if (!encoderAnchorPending_ || nowMs - encoderLastActivityMs_ < kEncoderAnchorQuietMs ||
         platform::quadratureEncoderState() != kEncoderDetentState) {
         return;
     }
@@ -208,16 +202,15 @@ std::int8_t ControlPanel::sampleEncoder(const std::uint32_t nowMs) {
     constexpr std::int16_t kMinimumReportedDelta = -127;
 
     const std::uint32_t currentCount = platform::quadratureEncoderCount();
-    const std::int32_t transitionDelta = static_cast<std::int32_t>(
-        currentCount - encoderLastTransitionCount_);
+    const std::int32_t transitionDelta =
+        static_cast<std::int32_t>(currentCount - encoderLastTransitionCount_);
     encoderLastTransitionCount_ = currentCount;
 
     if (transitionDelta != 0) {
         encoderLastActivityMs_ = nowMs;
         const std::int64_t accumulatedTransitions =
             static_cast<std::int64_t>(encoderTransitionRemainder_) + transitionDelta;
-        const bool atDetentPhase =
-            platform::quadratureEncoderState() == kEncoderDetentState;
+        const bool atDetentPhase = platform::quadratureEncoderState() == kEncoderDetentState;
 
         std::int32_t newDetents = 0;
         if (atDetentPhase) {
@@ -230,8 +223,8 @@ std::int8_t ControlPanel::sampleEncoder(const std::uint32_t nowMs) {
             // because they are electrically ambiguous.
             const std::int64_t magnitude =
                 accumulatedTransitions < 0 ? -accumulatedTransitions : accumulatedTransitions;
-            const std::int32_t completedCycles = static_cast<std::int32_t>(
-                (magnitude + 1) / kTransitionsPerDetent);
+            const std::int32_t completedCycles =
+                static_cast<std::int32_t>((magnitude + 1) / kTransitionsPerDetent);
             newDetents = accumulatedTransitions < 0 ? -completedCycles : completedCycles;
             encoderTransitionRemainder_ = 0;
             if (accumulatedTransitions !=
@@ -239,21 +232,17 @@ std::int8_t ControlPanel::sampleEncoder(const std::uint32_t nowMs) {
                 countDiscardedEncoderRemainder();
             }
         } else {
-            newDetents = static_cast<std::int32_t>(
-                accumulatedTransitions / kTransitionsPerDetent);
+            newDetents = static_cast<std::int32_t>(accumulatedTransitions / kTransitionsPerDetent);
             encoderTransitionRemainder_ = static_cast<std::int8_t>(
                 accumulatedTransitions -
                 static_cast<std::int64_t>(newDetents) * kTransitionsPerDetent);
         }
 
-        const std::int32_t pending =
-            static_cast<std::int32_t>(pendingEncoderDetents_) + newDetents;
+        const std::int32_t pending = static_cast<std::int32_t>(pendingEncoderDetents_) + newDetents;
         pendingEncoderDetents_ = static_cast<std::int16_t>(
             pending > kMaximumPendingDetents
                 ? kMaximumPendingDetents
-                : (pending < kMinimumPendingDetents
-                    ? kMinimumPendingDetents
-                    : pending));
+                : (pending < kMinimumPendingDetents ? kMinimumPendingDetents : pending));
     }
 
     if (pendingEncoderDetents_ == 0) {
@@ -262,9 +251,8 @@ std::int8_t ControlPanel::sampleEncoder(const std::uint32_t nowMs) {
 
     const std::int16_t bounded = pendingEncoderDetents_ > kMaximumReportedDelta
         ? kMaximumReportedDelta
-        : (pendingEncoderDetents_ < kMinimumReportedDelta
-            ? kMinimumReportedDelta
-            : pendingEncoderDetents_);
+        : (pendingEncoderDetents_ < kMinimumReportedDelta ? kMinimumReportedDelta
+                                                          : pendingEncoderDetents_);
     pendingEncoderDetents_ = static_cast<std::int16_t>(pendingEncoderDetents_ - bounded);
     return static_cast<std::int8_t>(bounded);
 }

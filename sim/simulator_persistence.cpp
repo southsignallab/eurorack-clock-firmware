@@ -18,8 +18,7 @@ thread_local std::uint64_t tFileWrites = 0U;
 
 }  // namespace
 
-SimulatorPersistence::SimulatorPersistence(std::filesystem::path path)
-    : path_(std::move(path)) {
+SimulatorPersistence::SimulatorPersistence(std::filesystem::path path) : path_(std::move(path)) {
     lastFlushedImage_.fill(0xFFU);
 }
 
@@ -96,7 +95,9 @@ void SimulatorPersistence::writeImageFile(
         if (!stream) {
             throw std::runtime_error("Could not open simulator persistence file for writing");
         }
-        stream.write(reinterpret_cast<const char*>(image.data()), static_cast<std::streamsize>(image.size()));
+        stream.write(
+            reinterpret_cast<const char*>(image.data()),
+            static_cast<std::streamsize>(image.size()));
         if (!stream) {
             throw std::runtime_error("Could not write simulator persistence file");
         }
@@ -118,8 +119,8 @@ const std::filesystem::path& SimulatorPersistence::path() const {
     return path_;
 }
 
-std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>
-SimulatorPersistence::exportImage() const {
+std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes> SimulatorPersistence::exportImage()
+    const {
     return readImage();
 }
 
@@ -135,8 +136,8 @@ void SimulatorPersistence::importImage(
     flush();
 }
 
-std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes>
-SimulatorPersistence::readImage() const {
+std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes> SimulatorPersistence::readImage()
+    const {
     std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes> image{};
     hal::PersistentStorage storage;
     if (!storage.readBytes(0U, image.data(), image.size())) {

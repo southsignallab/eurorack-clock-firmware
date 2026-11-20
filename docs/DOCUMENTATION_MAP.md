@@ -56,10 +56,10 @@ Paths are relative to the repository root. A row with a wildcard covers a group 
 | `THIRD_PARTY_NOTICES.md` | Third-party components and licenses (HAL, CMSIS, fonts, SDL3, toolchain, Rack SDK) | release/legal |
 | `codemeta.json` | CodeMeta 3.0 software metadata | release/legal |
 | `docs/ARCHITECTURE.md` | Firmware architecture: layers, scheduler, HAL, display, persistence, inputs | developer |
-| `docs/CONFIGURATION.md` | Compile-time config (config.h, defaults.h, pin_map.h), persistence overview | developer + builder/DIY |
+| `docs/CONFIGURATION.md` | Compile-time config (config.h, defaults.h, pin_map.h); points to ARCHITECTURE.md for persistence | developer + builder/DIY |
 | `docs/DEPENDENCIES.md` | Dependency analysis (framework, HAL, display, toolchain) | developer + release/legal |
 | `docs/DEVELOPER_README.md` | Workstation setup per OS, build/upload/simulator/VCV, coverage and memory policy | developer |
-| `docs/DEVELOPMENT.md` | Day-to-day dev and release workflow, tests, coverage, CI | developer |
+| `docs/DEVELOPMENT.md` | Day-to-day development: coding standard, tests, CI; links to the coverage and release documents | developer |
 | `docs/DOCUMENTATION_MAP.md` | This file: authoritative document per topic and documentation inventory | all |
 | `docs/DOCUMENTATION_STYLE.md` | Documentation style rules (units, admonitions, version statements) | developer/contributor |
 | `docs/FIRMWARE_UPDATE.md` | Install/update/recovery via ST-LINK and DFU, variants, persistence safety | end user + builder/DIY |
@@ -67,7 +67,7 @@ Paths are relative to the repository root. A row with a wildcard covers a group 
 | `docs/LICENSING.md` | Licensing and distribution constraints | release/legal |
 | `docs/PROJECT_IDENTITY.md` | Canonical repo identity, citation, DOI policy | release/legal |
 | `docs/README.md` | Documentation entry point: task/audience index, doc rules, asset list | all |
-| `docs/RELEASE_PROCESS.md` | Release procedure: tags, manual publication, release notes | release |
+| `docs/RELEASE_PROCESS.md` | Release procedure: preparation, tags, tag-build steps, manual publication, release notes | release |
 | `docs/ROADMAP.md` | Version roadmap 1.0 to 1.5+, HIL policy, VCV track | end user + developer |
 | `docs/SEQUENCER_2.md` | Sequencer 2.0 contract: scope released in 1.2.0 and parked follow-up work | developer |
 | `docs/SIMULATOR.md` | Native SDL3 simulator: build, CLI, layout schema, scope, boundaries | developer + end user (trial) |
@@ -75,7 +75,7 @@ Paths are relative to the repository root. A row with a wildcard covers a group 
 | `docs/TEST_COVERAGE.md` | Coverage gates, the release coverage baseline and its history, areas covered by host tests | developer |
 | `docs/TIMING.md` | Timing contract: scheduler, gate writes, EXTI, display transports | developer |
 | `docs/USER_GUIDE.md` | Index of the 24 User Guide chapters; repeats no operating facts | end user |
-| `docs/V1_FORWARD_COMPATIBILITY.md` | Persistence/V1 forward-compat audit: image map, byte budgets, schema history | developer |
+| `docs/V1_FORWARD_COMPATIBILITY.md` | Persistence/V1 forward-compat audit: byte budgets and constraints for later features; map and schemas in ARCHITECTURE.md | developer |
 | `docs/VCV_DEVELOPMENT.md` | VCV plugin developer guide: SDK, build, smoke tests | developer (VCV) |
 | `docs/VCV_RACK.md` | VCV Rack port status and verified boundary | developer + end user (VCV) |
 | `docs/WIKI.md` | How the GitHub Wiki is generated and published | developer/maintainer |
@@ -87,7 +87,7 @@ Paths are relative to the repository root. A row with a wildcard covers a group 
 | `docs/qualification/README.md` | Index of V1 qualification evidence | developer + bench |
 | `docs/qualification/V1_ACCEPTANCE.md` | Objective V1 physical timing acceptance contract | developer + bench |
 | `docs/qualification/V1_BENCH_MATRIX.md` | Repeatable bench configurations QP-01 ff. | bench/builder |
-| `docs/qualification/v1_qualification.json` | Machine-readable HIL ledger (PENDING/BLOCKED/PASS/FAIL) | developer + release |
+| `docs/qualification/v1_qualification.json` | Machine-readable HIL ledger (PENDING/BLOCKED/PASS/FAIL/NOT_APPLICABLE) | developer + release |
 | `docs/releases/CHANGELOG-0.x.md` | Archived change history of the 0.x prototype and beta releases | developer + release |
 | `docs/tutorials/PHASE1_ACCEPTANCE.md` | Storybook phase-1 acceptance evidence | tutorial production |
 | `docs/tutorials/README.md` | Storybook tutorial system overview | tutorial production |

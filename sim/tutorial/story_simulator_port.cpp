@@ -37,8 +37,7 @@ StoryPortResult::operator bool() const {
     return error == StoryPortError::None;
 }
 
-StorySimulatorPort::StorySimulatorPort(SimulatorRuntime& runtime)
-    : runtime_(runtime) {}
+StorySimulatorPort::StorySimulatorPort(SimulatorRuntime& runtime) : runtime_(runtime) {}
 
 StoryPortResult StorySimulatorPort::rotateEncoderDetent(const int direction) {
     if (!runtime_.poweredOn()) {
@@ -129,8 +128,8 @@ StoryPortResult StorySimulatorPort::configureSyncSource(
     }
 
     runtime_.setSyncBpmMilli(bpmMilli);
-    for (std::size_t attempt = 0U;
-         attempt < clockfw::kExternalPpqnOptions.size() && runtime_.syncInputTelemetry().ppqn != ppqn;
+    for (std::size_t attempt = 0U; attempt < clockfw::kExternalPpqnOptions.size() &&
+         runtime_.syncInputTelemetry().ppqn != ppqn;
          ++attempt) {
         runtime_.cycleSyncPpqn();
     }
@@ -149,9 +148,10 @@ StoryPortResult StorySimulatorPort::configureResetSource(
     }
 
     const std::uint32_t currentPeriodMs = runtime_.resetInputTelemetry().periodMs;
-    const std::int64_t deltaMs = static_cast<std::int64_t>(periodMs) -
-        static_cast<std::int64_t>(currentPeriodMs);
-    runtime_.adjustResetPeriod(static_cast<int>(deltaMs / static_cast<std::int64_t>(kResetPeriodStepMs)));
+    const std::int64_t deltaMs =
+        static_cast<std::int64_t>(periodMs) - static_cast<std::int64_t>(currentPeriodMs);
+    runtime_.adjustResetPeriod(
+        static_cast<int>(deltaMs / static_cast<std::int64_t>(kResetPeriodStepMs)));
     if (runtime_.resetInputTelemetry().periodMs != periodMs) {
         return {StoryPortError::InvalidParameter};
     }
@@ -201,9 +201,7 @@ SimulatorRuntime& StorySimulatorPort::presentationRuntime() {
     return runtime_;
 }
 
-StoryPortResult StorySimulatorPort::mapButton(
-    const ModuleControl control,
-    SimButton& button) {
+StoryPortResult StorySimulatorPort::mapButton(const ModuleControl control, SimButton& button) {
     switch (control) {
         case ModuleControl::EncoderPush:
             button = SimButton::Encoder;

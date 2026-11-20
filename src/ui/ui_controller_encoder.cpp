@@ -13,9 +13,7 @@
 
 namespace clockfw::ui {
 
-void UiController::handleEncoderButton(
-    const hal::ButtonSample& button,
-    const std::uint32_t nowMs) {
+void UiController::handleEncoderButton(const hal::ButtonSample& button, const std::uint32_t nowMs) {
     if (settingsChordActive_ || modeTapTurnActive_) {
         encoderPressTracking_ = false;
         encoderLongPressHandled_ = false;
@@ -35,8 +33,7 @@ void UiController::handleEncoderButton(
          navigation_.screen == Screen::ChannelQuickSelect ||
          navigation_.screen == Screen::GrooveEditor ||
          navigation_.screen == Screen::GrooveRecorder ||
-         navigation_.screen == Screen::SequencerEditor ||
-         navigation_.screen == Screen::NameEntry ||
+         navigation_.screen == Screen::SequencerEditor || navigation_.screen == Screen::NameEntry ||
          navigation_.screen == Screen::GrooveNameEntry)) {
         encoderLongPressHandled_ = true;
         handleLongEncoderPress(nowMs);
@@ -273,7 +270,6 @@ void UiController::handleShortEncoderPress(const std::uint32_t nowMs) {
     }
 }
 
-
 void UiController::handleLongEncoderPress(const std::uint32_t nowMs) {
     const Screen origin = navigation_.screen;
     if (origin == Screen::GrooveNameEntry) {
@@ -308,8 +304,7 @@ void UiController::handleLongEncoderPress(const std::uint32_t nowMs) {
         return;
     }
     if (origin == Screen::ChannelQuickSelect &&
-        state_.operatingMode == OperatingMode::Independent &&
-        navigation_.cursor < kChannelCount) {
+        state_.operatingMode == OperatingMode::Independent && navigation_.cursor < kChannelCount) {
         navigation_.selectedChannel = navigation_.cursor;
     }
     navigation_.settingsExitScreen = origin;
@@ -322,6 +317,5 @@ void UiController::handleLongEncoderPress(const std::uint32_t nowMs) {
         openSettingsPage(SettingsPage::Channel);
     }
 }
-
 
 }  // namespace clockfw::ui

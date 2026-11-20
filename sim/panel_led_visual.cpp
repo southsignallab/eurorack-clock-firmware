@@ -23,8 +23,8 @@ bool panelLedVisuallyLit(
         return false;
     }
     const double safeSpeed = std::max(speedMultiplier, 1.0);
-    const auto persistenceUs = static_cast<std::uint64_t>(
-        static_cast<double>(kPanelLedVisualPersistenceUs) * safeSpeed);
+    const auto persistenceUs =
+        static_cast<std::uint64_t>(static_cast<double>(kPanelLedVisualPersistenceUs) * safeSpeed);
     return nowUs - telemetry.lastRisingUs <= persistenceUs;
 }
 

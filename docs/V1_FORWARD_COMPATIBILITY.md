@@ -15,17 +15,7 @@ No V1 feature must be added to solve this now. The correct action before 1.0 is 
 
 ## Persistent-image map
 
-The V1 logical image is 8,192 bytes inside each power-loss-safe 16-KiB physical A/B Flash slot.
-
-| Region | Offset | Current use |
-| --- | ---: | --- |
-| Clock state + presets | `0` | CURRENT + eight named presets |
-| Legacy score compatibility | `3072` | historical 16-byte single-score records |
-| Top-100 leaderboards | `4096` | four independent compact leaderboard records |
-| End of V1 logical image | `8192` | current staging/commit image boundary |
-| Architectural maximum image | `12288` | policy ceiling; not allocated by V1 |
-
-The boundaries are now centralized in `src/hal/persistent_layout.h` and guarded by compile-time non-overlap assertions.
+The V1 logical image was 8,192 bytes inside each power-loss-safe 16-KiB physical A/B Flash slot; 1.2.0 uses the 12-KiB ceiling. The current map, generated from `src/hal/persistent_layout.h`, and the schema history are kept in [`ARCHITECTURE.md`](ARCHITECTURE.md#logical-image-map). The boundaries are centralized in that header and guarded by compile-time non-overlap assertions.
 
 ## Exact V1 state budget
 
@@ -101,7 +91,7 @@ Post-1.0 storage-heavy rhythm data must therefore remain outside the small hot-p
 ## Public-contract decisions frozen for V1
 
 - Hardware Rev 1 remains gate/trigger focused; no analog CV subsystem is required for 1.0.
-- Persistent schema v12 is the 1.1.0 write format; schema v13 is the 1.2.0 write format, and v12 is its explicit migration source. Schema v11, schema v10, schema v9, stable 1.0.x schema v8, schema v7, and the earlier supported formats remain explicit migration sources for upgrades. Schema v10 migrates with the factory input roles `SYNC / RESET` injected.
+- Persistent schema v12 is the 1.1.0 write format; schema v13 is the 1.2.0 write format. The supported migration sources and how long each decoder stays are listed in [`ARCHITECTURE.md`](ARCHITECTURE.md#schema-versions-and-decoder-lifetime).
 - Boot always enters STOP regardless of stored transport history.
 - CURRENT and eight named presets remain the user-facing persistence model.
 - No future 1.x feature may silently invalidate V1 presets; migration or explicit compatibility handling is required.

@@ -40,6 +40,8 @@ def main() -> int:
         "## Highlights\n\n"
         "- TODO: describe the most important user-visible change.\n"
         "- TODO: describe the next user-visible change.\n\n"
+        "## Known issues\n\n"
+        "TODO: list at most eight known limitations of this release, or write that none are known.\n\n"
         "## Compatibility\n\n"
         "TODO: state anything users need to know about presets, hardware, updates, or behavior.\n",
         encoding="utf-8",

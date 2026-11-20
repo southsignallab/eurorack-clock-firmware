@@ -17,14 +17,7 @@ namespace clockfw::ui {
 struct MenuRow;
 
 /** @brief One selectable entry on the Channel root page. */
-enum class ChannelMenuAction : std::uint8_t {
-    Mode,
-    Timing,
-    Clock,
-    Euclid,
-    Sequencer,
-    Output
-};
+enum class ChannelMenuAction : std::uint8_t { Mode, Timing, Clock, Euclid, Sequencer, Output };
 
 /** @brief Returns the selectable row count for one Independent channel root. */
 std::uint8_t channelMenuItemCount(ChannelMode mode);

@@ -15,9 +15,7 @@
 
 namespace clockfw::ui {
 
-void PerformanceRenderer::drawGrooveStatus(
-    const GrooveSettings& settings,
-    const std::int16_t y) {
+void PerformanceRenderer::drawGrooveStatus(const GrooveSettings& settings, const std::int16_t y) {
     if (settings.preset == GroovePreset::Off || settings.amountPercent == 0U) {
         return;
     }
@@ -32,12 +30,7 @@ void PerformanceRenderer::drawGrooveStatus(
     }
 
     char label[21]{};
-    std::snprintf(
-        label,
-        sizeof(label),
-        "%s%s",
-        text::get(text::TextId::GroovePrefix),
-        grooveLabel);
+    std::snprintf(label, sizeof(label), "%s%s", text::get(text::TextId::GroovePrefix), grooveLabel);
     display_.setFont(hal::DisplayFont::Small);
     display_.drawText(1, y, label);
 }

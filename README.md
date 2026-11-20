@@ -201,7 +201,8 @@ Open `SETTINGS → GENERAL SETTINGS → INPUTS` to assign a role. Current select
 - selectable period smoothing: `OFF`, `LOW`, `MEDIUM`, `FULL` (factory default: `LOW`);
 - lock-loss timeout;
 - loss policy: stop, freewheel or return to internal timing;
-- reset mode: `TRIGGER` or `GATE`.
+- reset mode: `TRIGGER` or `GATE`;
+- `AUTOSTART`: start transport at the first SYNC lock (factory default: `OFF`).
 
 Physical input transitions are captured by GPIO interrupts and timestamped before scheduler-side role interpretation. A role change discards already queued edges from the old assignment, so an electrical pulse captured as SYNC can never become START, STOP or TAP merely because the menu was changed before the scheduler consumed it. `RUN` is level-authoritative after assignment, but assigning RUN is transport-neutral: the current comparator level is adopted as a baseline and only a later physical level change may command PLAY/STOP. This also preserves the boot STOP contract for a persisted RUN assignment.
 

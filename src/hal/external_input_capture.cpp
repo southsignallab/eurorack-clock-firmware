@@ -26,12 +26,14 @@ void ExternalInputCapture::begin() {
     if (pinmap::kExternalSyncSignalPin != pinmap::kUnassignedDigitalPin) {
         platform::configureInputPullup(pinmap::kExternalSyncSignalPin);
         syncLevelHigh_ = platform::read(pinmap::kExternalSyncSignalPin);
-        platform::attachInterrupt(pinmap::kExternalSyncSignalPin, syncInterruptThunk, platform::InterruptEdge::Change);
+        platform::attachInterrupt(
+            pinmap::kExternalSyncSignalPin, syncInterruptThunk, platform::InterruptEdge::Change);
     }
     if (pinmap::kExternalResetSignalPin != pinmap::kUnassignedDigitalPin) {
         platform::configureInputPullup(pinmap::kExternalResetSignalPin);
         resetLevelHigh_ = platform::read(pinmap::kExternalResetSignalPin);
-        platform::attachInterrupt(pinmap::kExternalResetSignalPin, resetInterruptThunk, platform::InterruptEdge::Change);
+        platform::attachInterrupt(
+            pinmap::kExternalResetSignalPin, resetInterruptThunk, platform::InterruptEdge::Change);
     }
 }
 
@@ -72,11 +74,15 @@ void ExternalInputCapture::resetInterruptThunk() {
 }
 
 void ExternalInputCapture::captureSyncFromIsr() {
-    captureFromIsr(syncQueue_, syncLevelHigh_, platform::readInterruptLevel(pinmap::kExternalSyncSignalPin));
+    captureFromIsr(
+        syncQueue_, syncLevelHigh_, platform::readInterruptLevel(pinmap::kExternalSyncSignalPin));
 }
 
 void ExternalInputCapture::captureResetFromIsr() {
-    captureFromIsr(resetQueue_, resetLevelHigh_, platform::readInterruptLevel(pinmap::kExternalResetSignalPin));
+    captureFromIsr(
+        resetQueue_,
+        resetLevelHigh_,
+        platform::readInterruptLevel(pinmap::kExternalResetSignalPin));
 }
 
 void ExternalInputCapture::captureFromIsr(
@@ -139,8 +145,7 @@ bool ExternalInputCapture::pop(EdgeQueue& queue, ExternalInputEdge& edge) {
         edge = queue.edges[tail];
         // Release: the slot is read before the producer may reuse it.
         queue.tail.store(
-            static_cast<std::uint8_t>((tail + 1U) % kQueueCapacity),
-            std::memory_order_release);
+            static_cast<std::uint8_t>((tail + 1U) % kQueueCapacity), std::memory_order_release);
         return true;
     }
     if (!queue.overflowPending.load(std::memory_order_acquire)) {
@@ -154,9 +159,7 @@ bool ExternalInputCapture::pop(EdgeQueue& queue, ExternalInputEdge& edge) {
 }
 
 #ifdef CLOCK_HOST_TEST
-void ExternalInputCapture::injectSyncEdgeForTest(
-    const std::uint32_t timestampUs,
-    const bool high) {
+void ExternalInputCapture::injectSyncEdgeForTest(const std::uint32_t timestampUs, const bool high) {
     syncLevelHigh_ = high;
     pushFromIsr(syncQueue_, {timestampUs, high});
 }

@@ -19,22 +19,25 @@ GrooveSettings& activeRecordGrooveSettings(ClockState& state, const std::uint8_t
 }
 
 std::uint64_t grooveRecordLengthMask(const std::uint8_t length) {
-    if (length >= 64U) return UINT64_MAX;
+    if (length >= 64U)
+        return UINT64_MAX;
     return length == 0U ? 0U : (1ULL << length) - 1ULL;
 }
 
 services::GrooveRecordMode serviceRecordMode(const GrooveRecordMode mode) {
-    return mode == GrooveRecordMode::OneShot
-        ? services::GrooveRecordMode::OneShot
-        : services::GrooveRecordMode::Endless;
+    return mode == GrooveRecordMode::OneShot ? services::GrooveRecordMode::OneShot
+                                             : services::GrooveRecordMode::Endless;
 }
 
 GrooveRecordState uiRecordState(const services::GrooveRecordState state) {
     switch (state) {
-        case services::GrooveRecordState::PreCount: return GrooveRecordState::PreCount;
-        case services::GrooveRecordState::Recording: return GrooveRecordState::Recording;
+        case services::GrooveRecordState::PreCount:
+            return GrooveRecordState::PreCount;
+        case services::GrooveRecordState::Recording:
+            return GrooveRecordState::Recording;
         case services::GrooveRecordState::Ready:
-        default: return GrooveRecordState::Ready;
+        default:
+            return GrooveRecordState::Ready;
     }
 }
 
@@ -60,9 +63,8 @@ void UiController::openGrooveRecorder() {
     navigation_.grooveRecordPlayheadStep = 0U;
     navigation_.grooveRecordPlayheadPhase256 = 0U;
     navigation_.grooveRecordCountInRemaining = navigation_.grooveRecordCountInBeats;
-    navigation_.grooveRecordCapturedMask = loadedExisting
-        ? grooveRecordLengthMask(navigation_.grooveDraft.length)
-        : 0U;
+    navigation_.grooveRecordCapturedMask =
+        loadedExisting ? grooveRecordLengthMask(navigation_.grooveDraft.length) : 0U;
     grooveRecorder_.reset(
         serviceRecordMode(navigation_.grooveRecordMode),
         navigation_.grooveRecordCountInBeats,
@@ -99,9 +101,8 @@ void UiController::toggleGrooveRecording(const std::uint32_t nowMs) {
         persistCurrentState(nowMs);
     }
 
-    const std::size_t timingChannel = state_.operatingMode == OperatingMode::UnifiedClock
-        ? 0U
-        : navigation_.selectedChannel;
+    const std::size_t timingChannel =
+        state_.operatingMode == OperatingMode::UnifiedClock ? 0U : navigation_.selectedChannel;
     grooveRecorder_.setMode(serviceRecordMode(navigation_.grooveRecordMode));
     grooveRecorder_.setCountInBeats(navigation_.grooveRecordCountInBeats);
     grooveRecorder_.start(
@@ -119,9 +120,10 @@ void UiController::toggleGrooveRecording(const std::uint32_t nowMs) {
 }
 
 void UiController::serviceGrooveRecorder(const engine::EngineSnapshot& snapshot) {
-    if (navigation_.screen != Screen::GrooveRecorder) return;
-    const bool changed = grooveRecorder_.service(
-        snapshot.masterPositionQ32, navigation_.grooveDraft.length);
+    if (navigation_.screen != Screen::GrooveRecorder)
+        return;
+    const bool changed =
+        grooveRecorder_.service(snapshot.masterPositionQ32, navigation_.grooveDraft.length);
     const services::GrooveRecorderView view = grooveRecorder_.view();
     navigation_.grooveRecordState = uiRecordState(view.state);
     navigation_.grooveRecordCountInRemaining = view.countInRemaining;
@@ -129,23 +131,21 @@ void UiController::serviceGrooveRecorder(const engine::EngineSnapshot& snapshot)
     navigation_.grooveRecordPlayheadPhase256 = view.playheadPhase256;
     navigation_.grooveRecordCapturedMask = view.capturedMask;
     navigation_.grooveCursor = view.playheadStep;
-    if (changed) invalidate();
+    if (changed)
+        invalidate();
 }
 
-void UiController::captureGrooveTap(
-    const hal::ButtonSample& button,
-    const std::uint32_t nowUs) {
+void UiController::captureGrooveTap(const hal::ButtonSample& button, const std::uint32_t nowUs) {
     const services::GrooveRecorderView before = grooveRecorder_.view();
-    if (before.state != services::GrooveRecordState::Recording) return;
+    if (before.state != services::GrooveRecordState::Recording)
+        return;
 
     // TIM5 0 is a valid timestamp (F-073): the flag, not the value, says whether
     // the first raw edge of the press is known.
-    const std::uint32_t physicalTapUs = button.edgeTimestampValid
-        ? button.edgeTimestampUs
-        : nowUs;
-    const std::uint64_t tapPositionQ32 = engine_.estimateMasterPositionAtUs(
-        physicalTapUs, nowUs);
-    if (!grooveRecorder_.capture(tapPositionQ32, navigation_.grooveDraft)) return;
+    const std::uint32_t physicalTapUs = button.edgeTimestampValid ? button.edgeTimestampUs : nowUs;
+    const std::uint64_t tapPositionQ32 = engine_.estimateMasterPositionAtUs(physicalTapUs, nowUs);
+    if (!grooveRecorder_.capture(tapPositionQ32, navigation_.grooveDraft))
+        return;
 
     const services::GrooveRecorderView after = grooveRecorder_.view();
     navigation_.grooveRecordCapturedMask = after.capturedMask;
@@ -170,6 +170,5 @@ void UiController::clearGrooveRecording() {
     navigation_.editing = false;
     invalidate();
 }
-
 
 }  // namespace clockfw::ui

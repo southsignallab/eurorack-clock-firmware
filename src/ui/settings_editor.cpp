@@ -72,8 +72,7 @@ void SettingsEditor::adjust(
             }
             break;
         case SettingsPage::ChannelOutput:
-            adjustCommonChannel(
-                channelIndex, static_cast<std::uint8_t>(rowIndex + 4U), delta);
+            adjustCommonChannel(channelIndex, static_cast<std::uint8_t>(rowIndex + 4U), delta);
             break;
         case SettingsPage::Clock:
             adjustClock(channelIndex, rowIndex, delta);
@@ -135,9 +134,8 @@ bool SettingsEditor::executeSequencerCommand(
     ChannelConfig& channel = state_.channels[channelIndex];
 
     if (rowIndex == 1U) {
-        channel.sequencer.pattern = core::invertPattern(
-            channel.sequencer.pattern,
-            channel.sequencer.length);
+        channel.sequencer.pattern =
+            core::invertPattern(channel.sequencer.pattern, channel.sequencer.length);
     } else if (rowIndex == 2U) {
         channel.sequencer.pattern = 0U;
     } else if (rowIndex == 3U) {
@@ -147,9 +145,8 @@ bool SettingsEditor::executeSequencerCommand(
         sequencerClipboardValid_ = true;
         return true;
     } else if (rowIndex == 5U && sequencerClipboardValid_) {
-        channel.sequencer.pattern = core::clampPattern(
-            sequencerClipboard_,
-            channel.sequencer.length);
+        channel.sequencer.pattern =
+            core::clampPattern(sequencerClipboard_, channel.sequencer.length);
     } else {
         return false;
     }
@@ -158,9 +155,7 @@ bool SettingsEditor::executeSequencerCommand(
     return true;
 }
 
-void SettingsEditor::adjustInputAssignments(
-    const std::uint8_t rowIndex,
-    const std::int8_t delta) {
+void SettingsEditor::adjustInputAssignments(const std::uint8_t rowIndex, const std::int8_t delta) {
     if (delta == 0 || rowIndex > 1U) {
         return;
     }
@@ -223,8 +218,8 @@ void SettingsEditor::adjustMaster(const std::uint8_t rowIndex, const std::int8_t
             engine_.updateMasterTempo(state_.bpm);
         }
     } else if (rowIndex == 3U) {
-        state_.masterMeter.beats = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(state_.masterMeter.beats) + delta, 1, 16));
+        state_.masterMeter.beats = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(state_.masterMeter.beats) + delta, 1, 16));
         engine_.updateConfiguration(state_, false);
     } else if (rowIndex == 4U) {
         const std::size_t currentIndex = findBeatUnitOptionIndex(state_.masterMeter.unit);
@@ -235,31 +230,43 @@ void SettingsEditor::adjustMaster(const std::uint8_t rowIndex, const std::int8_t
         state_.masterMeter.unit = kBeatUnitOptions[newIndex];
         engine_.updateConfiguration(state_, true);
     } else if (rowIndex == 5U) {
-        state_.preCountSteps = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(state_.preCountSteps) + delta, 0, 64));
+        state_.preCountSteps = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(state_.preCountSteps) + delta, 0, 64));
         engine_.updateConfiguration(state_, false);
     }
 }
 
-void SettingsEditor::adjustScreensaver(
-    const std::uint8_t rowIndex,
-    const std::int8_t delta) {
+void SettingsEditor::adjustScreensaver(const std::uint8_t rowIndex, const std::int8_t delta) {
     DisplayPreferences& display = state_.display;
 
     if (rowIndex == 0U) {
         // Explicit UI order preserves persisted enum values while keeping OFF first.
-        constexpr std::array<ScreensaverMode, 16U> kOrder{{
-            ScreensaverMode::None, ScreensaverMode::Clock, ScreensaverMode::Plug,
-            ScreensaverMode::Heartbeat, ScreensaverMode::Acid, ScreensaverMode::Spectrum,
-            ScreensaverMode::Field, ScreensaverMode::Blox, ScreensaverMode::Matrix,
-            ScreensaverMode::CubeCover, ScreensaverMode::Fractal, ScreensaverMode::Orbit,
-            ScreensaverMode::MakeMusic, ScreensaverMode::Labyrinth,
-            ScreensaverMode::Starfield, ScreensaverMode::Fireworks}};
+        constexpr std::array<ScreensaverMode, 16U> kOrder{
+            {ScreensaverMode::None,
+             ScreensaverMode::Clock,
+             ScreensaverMode::Plug,
+             ScreensaverMode::Heartbeat,
+             ScreensaverMode::Acid,
+             ScreensaverMode::Spectrum,
+             ScreensaverMode::Field,
+             ScreensaverMode::Blox,
+             ScreensaverMode::Matrix,
+             ScreensaverMode::CubeCover,
+             ScreensaverMode::Fractal,
+             ScreensaverMode::Orbit,
+             ScreensaverMode::MakeMusic,
+             ScreensaverMode::Labyrinth,
+             ScreensaverMode::Starfield,
+             ScreensaverMode::Fireworks}};
         std::size_t current = 0U;
         for (std::size_t index = 0U; index < kOrder.size(); ++index) {
-            if (kOrder[index] == display.screensaverMode) { current = index; break; }
+            if (kOrder[index] == display.screensaverMode) {
+                current = index;
+                break;
+            }
         }
-        const int next = clampInt(static_cast<int>(current) + delta, 0, static_cast<int>(kOrder.size() - 1U));
+        const int next =
+            clampInt(static_cast<int>(current) + delta, 0, static_cast<int>(kOrder.size() - 1U));
         display.screensaverMode = kOrder[static_cast<std::size_t>(next)];
     } else if (rowIndex == 1U) {
         display.screensaverAfterMinutes = static_cast<std::uint8_t>(clampInt(
@@ -279,9 +286,7 @@ void SettingsEditor::adjustScreensaver(
     }
 }
 
-void SettingsEditor::adjustUnifiedTiming(
-    const std::uint8_t rowIndex,
-    const std::int8_t delta) {
+void SettingsEditor::adjustUnifiedTiming(const std::uint8_t rowIndex, const std::int8_t delta) {
     UnifiedClockSettings& settings = state_.unifiedClock;
     if (rowIndex == 0U) {
         std::size_t currentIndex = 9U;
@@ -293,20 +298,18 @@ void SettingsEditor::adjustUnifiedTiming(
             }
         }
         const std::size_t newIndex = static_cast<std::size_t>(clampInt(
-            static_cast<int>(currentIndex) + delta,
-            0,
-            static_cast<int>(kRateOptions.size() - 1U)));
+            static_cast<int>(currentIndex) + delta, 0, static_cast<int>(kRateOptions.size() - 1U)));
         settings.rate.mode = kRateOptions[newIndex].mode;
         settings.rate.factor = kRateOptions[newIndex].factor;
     } else if (rowIndex == 1U) {
-        settings.rate.numerator = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(settings.rate.numerator) + delta, 1, 16));
+        settings.rate.numerator = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(settings.rate.numerator) + delta, 1, 16));
     } else if (rowIndex == 2U) {
-        settings.rate.denominator = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(settings.rate.denominator) + delta, 1, 16));
+        settings.rate.denominator = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(settings.rate.denominator) + delta, 1, 16));
     } else if (rowIndex == 3U) {
-        settings.swingPercent = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(settings.swingPercent) + delta, 0, 50));
+        settings.swingPercent = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(settings.swingPercent) + delta, 0, 50));
     } else if (rowIndex == 5U) {
         std::size_t currentIndex = 0U;
         for (std::size_t index = 0U; index < kHumanizeOptionsUs.size(); ++index) {
@@ -327,9 +330,7 @@ void SettingsEditor::adjustUnifiedTiming(
     engine_.updateConfiguration(state_, true);
 }
 
-void SettingsEditor::adjustUnifiedOutput(
-    const std::uint8_t rowIndex,
-    const std::int8_t delta) {
+void SettingsEditor::adjustUnifiedOutput(const std::uint8_t rowIndex, const std::int8_t delta) {
     UnifiedClockSettings& settings = state_.unifiedClock;
     if (rowIndex == 0U) {
         const std::size_t currentIndex = findGateLengthOptionIndex(settings.gateLengthMs);
@@ -339,8 +340,8 @@ void SettingsEditor::adjustUnifiedOutput(
             static_cast<int>(kGateLengthOptionsMs.size() - 1U)));
         settings.gateLengthMs = kGateLengthOptionsMs[newIndex];
     } else if (rowIndex == 1U) {
-        settings.phasePercent = static_cast<std::uint8_t>(clampInt(
-            static_cast<int>(settings.phasePercent) + delta, 0, 99));
+        settings.phasePercent = static_cast<std::uint8_t>(
+            clampInt(static_cast<int>(settings.phasePercent) + delta, 0, 99));
     } else {
         return;
     }
@@ -348,12 +349,10 @@ void SettingsEditor::adjustUnifiedOutput(
     engine_.updateConfiguration(state_, true);
 }
 
-void SettingsEditor::adjustDividerBank(
-    const std::uint8_t rowIndex,
-    const std::int8_t delta) {
+void SettingsEditor::adjustDividerBank(const std::uint8_t rowIndex, const std::int8_t delta) {
     if (rowIndex == 1U) {
-        state_.dividerBank.bank = static_cast<DividerBank>(clampInt(
-            static_cast<int>(state_.dividerBank.bank) + delta, 0, 2));
+        state_.dividerBank.bank = static_cast<DividerBank>(
+            clampInt(static_cast<int>(state_.dividerBank.bank) + delta, 0, 2));
     } else if (rowIndex == 2U) {
         const std::size_t currentIndex = findGateLengthOptionIndex(state_.dividerBank.gateLengthMs);
         const std::size_t newIndex = static_cast<std::size_t>(clampInt(

@@ -39,10 +39,12 @@ bool PersistentStorage::readBytes(
         return true;
     }
     const std::size_t activeSlot = static_cast<std::size_t>(current.active);
-    const std::size_t payloadSize = static_cast<std::size_t>(current.headers[activeSlot].payloadSize);
+    const std::size_t payloadSize =
+        static_cast<std::size_t>(current.headers[activeSlot].payloadSize);
     if (offset < payloadSize) {
         const std::size_t readable = std::min<std::size_t>(size, payloadSize - offset);
-        std::memcpy(destination, slots::slotBase(activeSlot) + slots::kPayloadOffset + offset, readable);
+        std::memcpy(
+            destination, slots::slotBase(activeSlot) + slots::kPayloadOffset + offset, readable);
     }
     return true;
 }
@@ -72,8 +74,12 @@ void PersistentStorage::openUpdate(const bool replacement) {
     if (!replacement && current.active >= 0) {
         const std::size_t activeSlot = static_cast<std::size_t>(current.active);
         const std::size_t previousSize = std::min<std::size_t>(
-            stagingImage_.size(), static_cast<std::size_t>(current.headers[activeSlot].payloadSize));
-        std::memcpy(stagingImage_.data(), slots::slotBase(activeSlot) + slots::kPayloadOffset, previousSize);
+            stagingImage_.size(),
+            static_cast<std::size_t>(current.headers[activeSlot].payloadSize));
+        std::memcpy(
+            stagingImage_.data(),
+            slots::slotBase(activeSlot) + slots::kPayloadOffset,
+            previousSize);
     }
     updateOpen_ = true;
     updateDirty_ = replacement;
@@ -154,7 +160,8 @@ bool PersistentStorage::commitUpdate() {
     }
 #ifdef CLOCK_HOST_TEST
     ++slots::hostFaults().commitAttempts;
-    const bool injectedFailure = slots::hostFaults().failNextWrite || slots::hostFaults().failAllWrites;
+    const bool injectedFailure =
+        slots::hostFaults().failNextWrite || slots::hostFaults().failAllWrites;
     slots::hostFaults().failNextWrite = false;
     const bool committed =
         !injectedFailure && slots::commitImage(stagedTargetSlot_, stagedGeneration_, stagingImage_);
@@ -267,7 +274,8 @@ void PersistentStorage::corruptNewestPayloadByteForTest(const std::size_t offset
     if (offset >= kCapacityBytes || activeSlot < 0) {
         return;
     }
-    slots::mutableSlotBase(static_cast<std::size_t>(activeSlot))[slots::kPayloadOffset + offset] ^= 0x01U;
+    slots::mutableSlotBase(static_cast<std::size_t>(activeSlot))[slots::kPayloadOffset + offset] ^=
+        0x01U;
     slots::invalidateScan();
 }
 void PersistentStorage::corruptNewestHeaderWordForTest(
@@ -278,12 +286,15 @@ void PersistentStorage::corruptNewestHeaderWordForTest(
         return;
     }
     std::memcpy(
-        slots::mutableSlotBase(static_cast<std::size_t>(activeSlot)) + wordIndex * sizeof(std::uint32_t),
+        slots::mutableSlotBase(static_cast<std::size_t>(activeSlot)) +
+            wordIndex * sizeof(std::uint32_t),
         &value,
         sizeof(value));
     slots::invalidateScan();
 }
-bool PersistentStorage::seedLegacyImageForTest(const std::uint8_t* const image, const std::size_t size) {
+bool PersistentStorage::seedLegacyImageForTest(
+    const std::uint8_t* const image,
+    const std::size_t size) {
     if (image == nullptr || size != slots::kLegacyPayloadBytes) {
         return false;
     }
@@ -291,7 +302,9 @@ bool PersistentStorage::seedLegacyImageForTest(const std::uint8_t* const image, 
     (void)seedHostSlot(0U, slots::sealedHeader(7U, image, size), image, size);
     return slots::scan().active == 0 && slots::scan().headers[0].payloadSize == size;
 }
-bool PersistentStorage::seedV1ImageForTest(const std::uint8_t* const image, const std::size_t size) {
+bool PersistentStorage::seedV1ImageForTest(
+    const std::uint8_t* const image,
+    const std::size_t size) {
     if (image == nullptr || size != slots::kV1PayloadBytes) {
         return false;
     }

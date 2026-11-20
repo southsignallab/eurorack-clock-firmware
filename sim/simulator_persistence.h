@@ -17,7 +17,7 @@ namespace clockfw::sim {
 
 /** @brief Mirrors the host-test persistence bytes to a normal desktop file. */
 class SimulatorPersistence final {
-public:
+  public:
     /** @brief Constructs the adapter for one simulator-state file. */
     explicit SimulatorPersistence(std::filesystem::path path);
 
@@ -60,7 +60,7 @@ public:
     /** @brief Number of image files written by the calling thread, for host tests. */
     static std::uint64_t fileWritesOnThisThreadForTest();
 
-private:
+  private:
     /** @brief Reads the complete host-storage image through the real persistence HAL API. */
     std::array<std::uint8_t, hal::PersistentStorage::kCapacityBytes> readImage() const;
 

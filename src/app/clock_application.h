@@ -10,24 +10,24 @@
 
 #include "domain/clock_types.h"
 #include "engine/clock_engine.h"
-#include "game/breakout_game.h"
 #include "game/arcade_leaderboard_store.h"
-#include "game/formula1_game.h"
-#include "game/egg_journey_game.h"
-#include "game/pixel_raid_game.h"
 #include "game/beatknecht.h"
+#include "game/breakout_game.h"
+#include "game/egg_journey_game.h"
+#include "game/formula1_game.h"
+#include "game/pixel_raid_game.h"
 #include "hal/control_panel.h"
-#include "hal/gate_output_driver.h"
 #include "hal/external_input_capture.h"
+#include "hal/gate_output_driver.h"
 #include "hal/oled_display.h"
 #include "hal/periodic_timer.h"
 #include "hal/persistent_storage.h"
-#include "services/persistent_state_service.h"
-#include "services/sequencer_pattern_store.h"
-#include "services/sequencer_step_store.h"
 #include "services/custom_groove_store.h"
 #include "services/external_sync_controller.h"
 #include "services/persistence_coordinator.h"
+#include "services/persistent_state_service.h"
+#include "services/sequencer_pattern_store.h"
+#include "services/sequencer_step_store.h"
 #include "ui/ui_controller.h"
 #include "ui/ui_renderer.h"
 
@@ -41,7 +41,7 @@ namespace clockfw::app {
  * PersistentStateService, and interaction behavior in UiController.
  */
 class ClockApplication final {
-public:
+  public:
     /** @brief Constructs all firmware components in dependency order. */
     ClockApplication();
 
@@ -62,10 +62,14 @@ public:
 
 #ifdef CLOCK_HOST_TEST
     /** @brief Returns the persistence coordinator for host integration tests. */
-    const services::PersistenceCoordinator& persistenceForTest() const { return persistenceCoordinator_; }
+    const services::PersistenceCoordinator& persistenceForTest() const {
+        return persistenceCoordinator_;
+    }
 
     /** @brief Returns UI navigation state for host integration tests. */
-    const ui::NavigationState& navigationForTest() const { return uiController_.navigation(); }
+    const ui::NavigationState& navigationForTest() const {
+        return uiController_.navigation();
+    }
 
     /** @brief Returns the foreground transport field for host regression tests. */
     TransportState transportForTest() const;
@@ -77,7 +81,9 @@ public:
     std::uint16_t bpmForTest() const;
 
     /** @brief True while STOP-mode display protection has switched the OLED off. */
-    bool displayPoweredOffForTest() const { return uiController_.displayPoweredOffForTest(); }
+    bool displayPoweredOffForTest() const {
+        return uiController_.displayPoweredOffForTest();
+    }
 #endif
 
 #ifdef CLOCK_SIMULATOR
@@ -129,7 +135,7 @@ public:
     std::uint64_t persistenceSnapshotRevisionForSimulator() const;
 #endif
 
-private:
+  private:
     /** @brief Timer ISR thunk used by the HAL periodic-timer callback boundary. */
     static void schedulerInterruptThunk();
 

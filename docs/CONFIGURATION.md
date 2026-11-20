@@ -64,7 +64,7 @@ Use this file for the user-visible factory state:
 
 - master BPM, user MIN/MAX BPM limits, and meter
 - initial transport and clock source
-- factory operating mode (`ONE CLOCK`) and channel-mode carousel order
+- factory operating mode (`ONE CLOCK`); the channel-mode carousel order is defined in `src/ui/mode_functions.h`
 - default channel mode/rate
 - swing, probability, gate length, phase, reset mode, mute, and One Clock Humanize default
 - CLOCK meter
@@ -164,12 +164,4 @@ This arrangement means adding another language does not require changes to scree
 
 ## Persistent configuration
 
-Persistent user state is not configured by scattered constants. `PersistentStateService` stores one autosaved `CURRENT` state plus eight named user preset slots. Each state includes master settings (including Pre-Count), configurable INPUT 1/2 roles and external-sync parameters, display/screensaver preferences, every channel's common settings including Groove selection, CLOCK meter data, Euclid parameters, complete 64-bit Sequencer patterns, and the active Custom Groove slot reference. Firmware 1.2.0 writes **schema v13**, which appends the SYNC `AUTOSTART` setting and migrates v12 records (the 1.1.0 write format) with `AUTOSTART = OFF`. Schema v11, v10, v9, stable 1.0.x schema v8, schema v7, and earlier supported formats remain explicit migration sources; missing newer fields are injected with their documented factory-safe defaults.
-
-Firmware 1.1.0 used an **8192-byte** logical persistence image. The lower 4096 bytes preserve the established settings/preset and legacy-score layout while using bytes **3136–4095** for ten fixed 96-byte named Custom Groove records; the upper half stores the four independent arcade Top-100 tables. A Custom Groove record carries a 16-character name, one signed 1–64-step microtiming pattern, metadata and its own CRC. Ten slots are the frozen 1.1.0 release scope.
-
-Firmware 1.2.0 raises the logical image to the existing **12288-byte architectural ceiling** for Sequencer 2.0 and reserves bytes **8192–10239** for a 64-slot Sequencer pattern bank. The historical first 8192 bytes are unchanged. Valid 8192-byte and older 4096-byte A/B generations remain readable; reads beyond their payload return erased bytes and the next durable write promotes the image without altering the old prefix. On STM32F401 the complete logical image is still committed into two independent 16 KiB A/B slots with COMMIT programmed last.
-
-Because the existing storage implementation keeps a complete staging image in static RAM, the 12-KiB configuration adds 4 KiB of BSS versus 1.1.0. The release ELF passes the 90 % memory gate of `scripts/platformio_memory_gate.py`: Flash 116 212 of 229 376 B, RAM 37 836 of 65 536 B (`release_default`, 1.2.0). Host persistence tests are not target-memory evidence. Firmware owns sector 0 plus sectors 3..5, for 224 KiB total Flash. `scripts/platformio_memory_gate.py` enforces the additional 90% Flash/RAM headroom policy after linking.
-
-Preset names are limited to 16 display-supported characters. Storage records are schema-versioned and CRC-32 protected; do not serialize raw C++ structs into Flash.
+Persistent user state is not configured by scattered constants. The stored state, the logical image map, the schema versions with their decoder lifetime and the A/B commit are described in [`ARCHITECTURE.md`](ARCHITECTURE.md#persistence); the image map there is generated from `src/hal/persistent_layout.h`. Firmware owns sector 0 plus sectors 3..5, for 224 KiB total Flash; `scripts/platformio_memory_gate.py` enforces the additional 90% Flash/RAM headroom policy after linking.

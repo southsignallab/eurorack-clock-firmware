@@ -25,13 +25,8 @@ UiController::UiController(
     game::ArcadeLeaderboardStore* const leaderboard,
     const hal::ExternalInputCapture* const externalInputs,
     const hal::GateOutputDriver* const gateOutputs)
-    : state_(state),
-      engine_(engine),
-      renderer_(renderer),
-      persistentState_(persistentState),
-      leaderboard_(leaderboard),
-      externalInputs_(externalInputs),
-      gateOutputs_(gateOutputs),
+    : state_(state), engine_(engine), renderer_(renderer), persistentState_(persistentState),
+      leaderboard_(leaderboard), externalInputs_(externalInputs), gateOutputs_(gateOutputs),
       settingsEditor_(state, engine, customGrooveStore_) {}
 
 UiController::UiController(
@@ -43,14 +38,9 @@ UiController::UiController(
     game::ArcadeLeaderboardStore* const leaderboard,
     const hal::ExternalInputCapture* const externalInputs,
     const hal::GateOutputDriver* const gateOutputs)
-    : state_(state),
-      engine_(engine),
-      renderer_(renderer),
-      persistentState_(persistentState),
-      customGrooveStore_(&customGrooveStore),
-      leaderboard_(leaderboard),
-      externalInputs_(externalInputs),
-      gateOutputs_(gateOutputs),
+    : state_(state), engine_(engine), renderer_(renderer), persistentState_(persistentState),
+      customGrooveStore_(&customGrooveStore), leaderboard_(leaderboard),
+      externalInputs_(externalInputs), gateOutputs_(gateOutputs),
       settingsEditor_(state, engine, customGrooveStore_) {}
 
 UiController::UiController(
@@ -63,15 +53,9 @@ UiController::UiController(
     game::ArcadeLeaderboardStore* const leaderboard,
     const hal::ExternalInputCapture* const externalInputs,
     const hal::GateOutputDriver* const gateOutputs)
-    : state_(state),
-      engine_(engine),
-      renderer_(renderer),
-      persistentState_(persistentState),
-      customGrooveStore_(&customGrooveStore),
-      sequencerPatternStore_(&sequencerPatternStore),
-      leaderboard_(leaderboard),
-      externalInputs_(externalInputs),
-      gateOutputs_(gateOutputs),
+    : state_(state), engine_(engine), renderer_(renderer), persistentState_(persistentState),
+      customGrooveStore_(&customGrooveStore), sequencerPatternStore_(&sequencerPatternStore),
+      leaderboard_(leaderboard), externalInputs_(externalInputs), gateOutputs_(gateOutputs),
       settingsEditor_(state, engine, customGrooveStore_) {}
 
 UiController::UiController(
@@ -85,16 +69,10 @@ UiController::UiController(
     game::ArcadeLeaderboardStore* const leaderboard,
     const hal::ExternalInputCapture* const externalInputs,
     const hal::GateOutputDriver* const gateOutputs)
-    : state_(state),
-      engine_(engine),
-      renderer_(renderer),
-      persistentState_(persistentState),
-      customGrooveStore_(&customGrooveStore),
-      sequencerPatternStore_(&sequencerPatternStore),
-      sequencerStepStore_(&sequencerStepStore),
-      leaderboard_(leaderboard),
-      externalInputs_(externalInputs),
-      gateOutputs_(gateOutputs),
+    : state_(state), engine_(engine), renderer_(renderer), persistentState_(persistentState),
+      customGrooveStore_(&customGrooveStore), sequencerPatternStore_(&sequencerPatternStore),
+      sequencerStepStore_(&sequencerStepStore), leaderboard_(leaderboard),
+      externalInputs_(externalInputs), gateOutputs_(gateOutputs),
       settingsEditor_(state, engine, customGrooveStore_) {}
 
 void UiController::invalidate() {
@@ -128,10 +106,8 @@ void UiController::processControls(
     }
     tapModifierPressed_ = controls.tapButton.pressed;
 
-    const bool settingsChordPressed =
-        navigation_.screen == Screen::Performance &&
-        controls.tapButton.pressed &&
-        controls.encoderButton.edge == hal::ButtonEdge::Pressed;
+    const bool settingsChordPressed = navigation_.screen == Screen::Performance &&
+        controls.tapButton.pressed && controls.encoderButton.edge == hal::ButtonEdge::Pressed;
 
     if (settingsChordPressed) {
         // TAP + encoder push is the explicit entry point for the combined
@@ -143,7 +119,10 @@ void UiController::processControls(
 
     if (controls.encoderDelta != 0 && !settingsChordActive_) {
         handleEncoderDelta(
-            controls.encoderDelta, controls.tapButton.pressed, controls.transportButton.pressed, nowMs);
+            controls.encoderDelta,
+            controls.tapButton.pressed,
+            controls.transportButton.pressed,
+            nowMs);
         persistCurrentState(nowMs);
     }
 
@@ -152,9 +131,7 @@ void UiController::processControls(
     handleTapButton(controls.tapButton, nowMs, nowUs);
     handleResetButton(controls.resetButton, nowMs);
 
-    if (settingsChordActive_ &&
-        !controls.tapButton.pressed &&
-        !controls.encoderButton.pressed) {
+    if (settingsChordActive_ && !controls.tapButton.pressed && !controls.encoderButton.pressed) {
         settingsChordActive_ = false;
     }
     if (navigation_.screen != screenBeforeControls) {
@@ -246,8 +223,8 @@ void UiController::handleTapButton(
     }
 
     if (navigation_.screen == Screen::GrooveEditor) {
-        navigation_.grooveCursor = static_cast<std::uint8_t>(
-            (navigation_.grooveCursor + 1U) % navigation_.grooveDraft.length);
+        navigation_.grooveCursor =
+            wrapIndex(navigation_.grooveCursor, 1, navigation_.grooveDraft.length);
         invalidate();
     } else if (navigation_.screen == Screen::Performance) {
         // TAP registers on release (it is also a modifier) but times the press:
@@ -260,9 +237,7 @@ void UiController::handleTapButton(
     }
 }
 
-void UiController::handleResetButton(
-    const hal::ButtonSample& button,
-    const std::uint32_t nowMs) {
+void UiController::handleResetButton(const hal::ButtonSample& button, const std::uint32_t nowMs) {
     if (button.edge != hal::ButtonEdge::Pressed) {
         return;
     }
@@ -336,7 +311,8 @@ void UiController::handleResetButton(
         navigation_.cursor = modeFunctionIndexForState(state_, navigation_.selectedChannel);
         invalidate();
     } else if (navigation_.screen == Screen::HighScoreClearConfirm) {
-        openSettingsPage(SettingsPage::Root, navigation_.highScoreResetAvailable ? kRootHighScoresRow : 0U);
+        openSettingsPage(
+            SettingsPage::Root, navigation_.highScoreResetAvailable ? kRootHighScoresRow : 0U);
     } else if (navigation_.screen == Screen::FactoryResetConfirm) {
         openSettingsPage(SettingsPage::Info, 5U);
     } else if (navigation_.screen == Screen::ModeSelect) {

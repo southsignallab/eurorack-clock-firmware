@@ -5,7 +5,7 @@
 ### Eight exact copies of one master clock
 
 1. Select **One Clock**.
-2. Set `RATE = ×1` and `HUMANIZE = OFF`.
+2. Set `DIV/MULT = ×1` and `HUMANIZE = OFF`.
 3. Choose the shared gate length.
 4. Press **START**.
 
@@ -25,8 +25,8 @@
 
 ### An expressive 64-step gate phrase
 
-1. Choose **Sequencer** and open **EDITOR**.
-2. Set `LENGTH = 64` and choose the required P1–P8 pattern slot.
+1. Choose **Sequencer**; on its settings page choose the required P1–P8 `PATTERN` and set `LENGTH = 64`.
+2. Open **EDITOR**.
 3. Turn the encoder through the pattern; the eight-step viewport follows automatically.
 4. Toggle gates with encoder presses. Use TAP TEMPO + encoder press for Probability, Gate/Duty, Ratchet or Tie on exceptional steps.
 5. Press START to audition without losing the edit cursor; the triangle is the independent playhead.
